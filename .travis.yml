@@ -35,7 +35,7 @@ script:
   # Run tests
   - pip install -q codecov
   - conda install -q tqdm ipython matplotlib joblib scikit-learn rdkit mdtraj htmd-pdb2pqr propka openbabel -c acellera  # Installing extra dependencies for tests
-  - coverage run -m unittest discover --start-directory ./htmdmol --pattern "*.py"
+  - coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
   - echo "Finished tests"
 
 after_success:
@@ -50,12 +50,12 @@ deploy:
     tags: true
     branch: master
   user: stefdoerr
-  password: # To produce encrypted pass use `travis encrypt "dont-escape-this-password" -r Acellera/htmdmol`
+  password: # To produce encrypted pass use `travis encrypt "dont-escape-this-password" -r Acellera/moleculekit`
     secure: mKRrPJ/DwcGCFayNfY8vfSuiJswxf5xSOSV8NH949PYnX/qZ4Owc8Sfm7zQjK7uamOKVtjC7Ig9TFpvpQESsB3jWfenzHljj7J5hwtPqSL/26+q6DrHc1MzgOQgtWXmDEiaF9Tvw51CIYkRTECxNla01c8/Qkael98rXAjZh+Q6UHO6gOJ0cbFjd9Tqa50IzUWzb7pwPqIGlfja5llR35/PvPD+1bPCIzvYAEzCAHFsKLcI9Nd54c881Y9RHSAWGiWzbKnvU5Sjl/9YoFNuoyEUHI1IgXrx7fIDTmaR25err7kL6Dmqr1XmKAs3s80PSoWoCpG55nUBH9apsOFQniBpVnl+FSJ761HPyPqzq+9oVLUNRPwS2h10dYst68+Aba8+t7hWfvuUd9NYeeb/WwJnnFJVjGnyUgjLNFkDipWUlJGXOMXqCpuSoc8KOISprowoQ8pm+vIK3wZ7lHHjXekVeYf1vHXvZtn1cYkZRk1XGeRH41wMeyDT3OWjYcWvy6vwrapyc6h48I1WPtVf3eOYjsph0177kTsyWsfGiwuVjiZ+Kj6wRivs2oQ9IZhHysEsOF4wUK/Uolir07guG1/lgHjlS+7PYGZo3b2/O8XV2dgWpW8ERGndobJOKF4uBD2jKfxh3o4woQ9IZ96OqU5RdW+uOef3LNT7x6gPXhLI=
   server: https://test.pypi.org/legacy/
 
 after_deploy:
   - echo "Uploading build"
-  # If the build did not fail, if it is not PR, it's on Acellera/htmdmol and a tagged build, do anaconda upload tasks
-  - if [ "$TRAVIS_TEST_RESULT" == "0" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ] && [ "$TRAVIS_REPO_SLUG" == "Acellera/htmdmol" ] && [ "$TRAVIS_BRANCH" == "$TRAVIS_TAG" ]; then bash -x ./ci/travis/deploy.sh; fi
+  # If the build did not fail, if it is not PR, it's on Acellera/moleculekit and a tagged build, do anaconda upload tasks
+  - if [ "$TRAVIS_TEST_RESULT" == "0" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ] && [ "$TRAVIS_REPO_SLUG" == "Acellera/moleculekit" ] && [ "$TRAVIS_BRANCH" == "$TRAVIS_TAG" ]; then bash -x ./ci/travis/deploy.sh; fi
 

@@ -1,3 +1,3 @@
-# htmdmol
+# MoleculeKit
 
-Molecule manipulation library for HTMD
+Molecule manipulation library

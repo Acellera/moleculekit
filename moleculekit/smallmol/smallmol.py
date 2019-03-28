@@ -662,7 +662,7 @@ class SmallMol(object):
         Parameters
         ----------
         mol: moleculekit.molecule.Molecule
-            The htmd Molecule object
+            The moleculekit Molecule object
 
         Returns
         -------
@@ -686,13 +686,13 @@ class SmallMol(object):
         formalcharges: bool
             If True,the formal charges are used instead of partial ones
         ids: list
-            The list of conformer ids to store in the htmd Molecule object- If None, all are returned
+            The list of conformer ids to store in the moleculekit Molecule object- If None, all are returned
             Default: None
 
         Returns
         -------
         mol: moleculekit.molecule.Molecule
-         The htmd Molecule object
+            The moleculekit Molecule object
 
         """
         from moleculekit.molecule import Molecule

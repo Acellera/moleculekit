@@ -15,7 +15,7 @@ with open('DEPENDENCIES', 'r') as f:
 with open('setup.py', 'r') as f:
     text = f.read()
 
-text = text.replace('HTMDMOL_VERSION_PLACEHOLDER', version)
+text = text.replace('MOLECULEKIT_VERSION_PLACEHOLDER', version)
 text = text.replace('PYTHON_VERSION_PLACEHOLDER', os.getenv('CONDA_PY'))
 text = text.replace('DEPENDENCY_PLACEHOLDER', ''.join(["'{}',\n".format(dep.strip()) for dep in deps]))
 

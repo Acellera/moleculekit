@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     setuptools.setup(
         name='moleculekit',
-        version='HTMDMOL_VERSION_PLACEHOLDER',
+        version='MOLECULEKIT_VERSION_PLACEHOLDER',
         author='Acellera',
         author_email='info@acellera.com',
         description='A molecule reading/writing and manipulation package.',

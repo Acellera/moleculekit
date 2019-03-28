@@ -11,7 +11,7 @@ import platform
 
 
 def home(dataDir=None, libDir=False):
-    """Return the pathname of the HTMD root directory (or a data subdirectory).
+    """Return the pathname of the moleculekit root directory (or a data subdirectory).
 
     Parameters
     ----------

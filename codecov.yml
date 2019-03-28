@@ -1,2 +1,2 @@
 ignore:
-  - "htmdmol/pdbx"  # Not our code. Taken from RCSB
+  - "moleculekit/pdbx"  # Not our code. Taken from RCSB

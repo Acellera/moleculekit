@@ -22,7 +22,7 @@ if [ "$?" == "0" ]; then
         git --git-dir=htmdlib/.git --work-tree=htmdlib checkout master
     fi
     # Remove compiled DSOs present in the repo
-    rm htmdmol/lib/*/*.so
+    rm moleculekit/lib/*/*.so
     # Compile the DSOs
-    htmdlib/C/build.sh $PWD/htmdmol/lib/$OSNAME/
+    htmdlib/C/build.sh $PWD/moleculekit/lib/$OSNAME/
 fi

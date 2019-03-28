@@ -1,3 +1,3 @@
 path_classifiers:
   library:
-    - htmdmol/pdbx  # Define pdbx as external library so it doesn't mess up our statistics on lgtm
+    - moleculekit/pdbx  # Define pdbx as external library so it doesn't mess up our statistics on lgtm
