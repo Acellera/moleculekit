@@ -1,0 +1,2 @@
+ignore:
+  - "htmdmol/pdbx"  # Not our code. Taken from RCSB
