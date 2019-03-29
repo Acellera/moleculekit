@@ -206,7 +206,10 @@ class PdbxReader(object):
                 else:
                     self.__syntaxError("Missing value in item-value pair")
 
-                curCatName, curAttName, curQuotedString, curWord = next(tokenizer)
+                try:
+                    curCatName, curAttName, curQuotedString, curWord = next(tokenizer)
+                except RuntimeError:
+                    raise StopIteration()
                 continue
 
             #
@@ -270,7 +273,10 @@ class PdbxReader(object):
                         elif curQuotedString is not None:
                             curRow.append(curQuotedString)
 
-                        curCatName, curAttName, curQuotedString, curWord = next(tokenizer)
+                        try:
+                            curCatName, curAttName, curQuotedString, curWord = next(tokenizer)
+                        except RuntimeError:
+                            raise StopIteration()
 
                     # loop_ data processing ends if - 
 
@@ -340,14 +346,14 @@ class PdbxReader(object):
         mmcifRe = re.compile(
             r"(?:"
 
-            "(?:_(.+?)[.](\S+))"               "|"  # _category.attribute
+            r"(?:_(.+?)[.](\S+))"               "|"  # _category.attribute
 
-            "(?:['](.*?)(?:[']\s|[']$))"       "|"  # single quoted strings
-            "(?:[\"](.*?)(?:[\"]\s|[\"]$))"    "|"  # double quoted strings             
+            r"(?:['](.*?)(?:[']\s|[']$))"       "|"  # single quoted strings
+            r"(?:[\"](.*?)(?:[\"]\s|[\"]$))"    "|"  # double quoted strings             
 
-            "(?:\s*#.*$)"                      "|"  # comments (dumped)
+            r"(?:\s*#.*$)"                      "|"  # comments (dumped)
 
-            "(\S+)"  # unquoted words
+            r"(\S+)"  # unquoted words
 
             ")")
 
@@ -412,13 +418,13 @@ class PdbxReader(object):
         mmcifRe = re.compile(
             r"(?:"
 
-            "(?:_(.+?)[.](\S+))"               "|"  # _category.attribute
+            r"(?:_(.+?)[.](\S+))"               "|"  # _category.attribute
 
-            "(?:['\"](.*?)(?:['\"]\s|['\"]$))" "|"  # quoted strings
+            r"(?:['\"](.*?)(?:['\"]\s|['\"]$))" "|"  # quoted strings
 
-            "(?:\s*#.*$)"                      "|"  # comments (dumped)
+            r"(?:\s*#.*$)"                      "|"  # comments (dumped)
 
-            "(\S+)"  # unquoted words
+            r"(\S+)"  # unquoted words
 
             ")")
 
