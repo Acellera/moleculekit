@@ -1,13 +1,12 @@
 sudo: required
-dist: trusty
-group: deprecated-2017Q4
+dist: xenial
 matrix:
   include:
     - os: linux
       language: python
       python:
         - '3.6'
-      env: MAKE_NOARCH=1 OSNAME=Linux CONDA_PY=3.6
+      env: OSNAME=Linux CONDA_PY=3.6
     - os: linux
       language: python
       python:
