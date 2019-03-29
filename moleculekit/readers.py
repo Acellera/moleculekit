@@ -347,7 +347,7 @@ def GJFread(filename, frame=None, topoloc=None):
 
     with open(filename, "r") as f:
         for line in f:
-            pieces = re.split(r'\s*|,', line.strip())
+            pieces = re.split(r'\s+|,', line.strip())
             if len(pieces) == 4 and not line.startswith('$') and not line.startswith('%') and not line.startswith('#'):
                 topo.record.append('HETATM')
                 topo.element.append(pieces[0])
