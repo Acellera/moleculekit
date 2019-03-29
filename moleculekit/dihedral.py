@@ -4,6 +4,13 @@ from math import sqrt, atan2
 
 
 @jit('float32(float32, float32)', nopython=True)
+def wrapDistance(d, box):
+    if box == 0:
+        return d
+    return d - box * round(d / box)
+
+
+@jit('float32(float32, float32)', nopython=True)
 def wrapBondedDistance(d, box):
     if box == 0:
         return d
