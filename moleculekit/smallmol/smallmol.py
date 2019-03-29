@@ -632,9 +632,9 @@ class SmallMol(object):
         Parameters
         ----------
         explicitHs: bool
-            Set as True for keep the hydrogens
+            Set as True to keep the hydrogens
         kekulizeSmile: bool
-            Set as True for returns the kekule smile format
+            Set as True to return the kekule smile format
 
         Returns
         -------
