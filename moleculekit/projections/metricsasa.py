@@ -150,7 +150,7 @@ class _TestMetricSasa(unittest.TestCase):
         metr = MetricSasa(mode='atom')
         sasaA = metr.project(self.mol.copy())
         sasaA_ref = np.load(path.join(home(dataDir='test-projections'), 'metricsasa', 'sasa_atom.npy'))
-        assert np.array_equal(sasaA, sasaA_ref)
+        assert np.allclose(sasaA, sasaA_ref, atol=7e-4)
 
     def test_sasa_residue(self):
         from os import path
@@ -159,7 +159,7 @@ class _TestMetricSasa(unittest.TestCase):
         metr = MetricSasa(mode='residue')
         sasaR = metr.project(self.mol.copy())
         sasaR_ref = np.load(path.join(home(dataDir='test-projections'), 'metricsasa', 'sasa_residue.npy'))
-        assert np.array_equal(sasaR, sasaR_ref)
+        assert np.allclose(sasaR, sasaR_ref, atol=3e-3)
 
 
 if __name__ == '__main__':
