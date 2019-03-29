@@ -30,3 +30,12 @@ text = text.replace('DEPENDENCY_PLACEHOLDER', ''.join(["    - {}\n".format(dep.s
 
 with open('package/moleculekit/meta.yaml', 'w') as f:
     f.write(text)
+
+# Set version in version file for __version__ variable
+with open('moleculekit/version.py', 'r') as f:
+  filedata = f.read()
+# Replace the target string
+filedata = filedata.replace('unpackaged', version)
+# Write the file out again
+with open('moleculekit/version.py', 'w') as f:
+  f.write(filedata)
