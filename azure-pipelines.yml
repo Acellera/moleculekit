@@ -9,26 +9,22 @@ jobs:
     strategy:
       matrix:
         Python36:
-          PYTHON_VERSION: '3.6'
+          python.version: '3.6'
         Python37:
-          PYTHON_VERSION: '3.7'
+          python.version: '3.7'
       maxParallel: 2
 
     steps:
-    - checkout: self
-      clean: false
-      fetchDepth: 5
-
     - bash: echo "##vso[task.prependpath]$CONDA/bin"
       displayName: Add conda to PATH
 
     - bash: sudo chown -R $USER /usr/share/miniconda
       displayName: Take ownership of conda installation
 
-    - bash:  conda install -q conda-build=3
+    - bash:  conda install -y -q conda-build=3
       displayName: Installing conda-build
 
-    - bash: conda create --yes --quiet --name test python=$[ variables['PYTHON_VERSION'] ]
+    - bash: conda create -y -q --name test python=$(python.version)
       displayName: Create Anaconda test environment
 
     - bash: |
