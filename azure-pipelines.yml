@@ -1,3 +1,6 @@
+variables:
+  - group: secrets
+
 jobs:
   - job: TestMoleculeKit
     displayName: Test MoleculeKit
@@ -39,6 +42,9 @@ jobs:
         source activate test
         conda install -y -q tqdm ipython matplotlib joblib scikit-learn rdkit mdtraj htmd-pdb2pqr propka openbabel -c acellera  # Installing extra dependencies for tests
       displayName: Install Anaconda packages
+
+    - bash: python ci/travis/insert_placeholder_values.py
+      displayName: Insert version number and dependencies into pip and conda recipes
 
     - bash: |
         source activate test
