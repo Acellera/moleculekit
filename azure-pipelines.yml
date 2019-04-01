@@ -31,6 +31,7 @@ jobs:
       displayName: Create Anaconda test environment
 
     - bash: |
+        source activate test
         python -m pip install --upgrade pip setuptools wheel
         pip install twine codecov coverage
       displayName: Install pip packages
