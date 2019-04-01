@@ -175,11 +175,11 @@ class _TestSmallMol(unittest.TestCase):
 
     def test_toSMILES(self):
         sm = SmallMol(self.benzamidine_mol2)
-        assert sm.toSMILES() == 'NC(=[NH2+])C1=CC=CC=C1'
+        assert sm.toSMILES() == '[H]/[NH+]=C(\\N)C1=CC=CC=C1'
 
     def test_toSMARTS(self):
         sm = SmallMol(self.benzamidine_mol2)
-        assert sm.toSMARTS() == '[#6]1(:[#6H]:[#6H]:[#6H]:[#6H]:[#6H]:1)-[#6](=[#7H2+])-[#7H2]'
+        assert sm.toSMARTS() == '[#6]1(:[#6H]:[#6H]:[#6H]:[#6H]:[#6H]:1)/[#6](=[#7H+]/[H])-[#7H2]'
 
     def test_align(self):
         from moleculekit.util import rotationMatrix
