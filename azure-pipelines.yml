@@ -49,6 +49,8 @@ jobs:
 
     - bash: python ci/travis/insert_placeholder_values.py
       displayName: Insert version number and dependencies into pip and conda recipes
+      env:
+        CONDA_PY: $(python.version)
 
     - bash: |
         source activate test
