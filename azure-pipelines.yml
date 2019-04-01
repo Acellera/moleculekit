@@ -35,8 +35,11 @@ jobs:
         pip install twine codecov coverage
       displayName: Install pip packages
 
-    - bash: bash ./ci/travis/compile_htmdlib.sh
+    - bash: bash -x ./ci/travis/compile_htmdlib.sh
       displayName: Clone and compile the private htmdlib repo
+      env:
+        GITHUB_HTMDLIB_USERNAME: $(GITHUB_HTMDLIB_USERNAME)
+        GITHUB_HTMDLIB_PASSWORD: $(GITHUB_HTMDLIB_PASSWORD)
 
     - bash: |
         source activate test
