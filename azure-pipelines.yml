@@ -55,7 +55,7 @@ jobs:
 
     - bash: |
         source activate test
-        python setup.py install
+        pip install .
       displayName: Install moleculekit locally
 
     - bash: |

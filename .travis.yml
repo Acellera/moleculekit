@@ -30,7 +30,7 @@ script:
   # Clone and compile the private htmdlib repo
   - bash -x ./ci/travis/compile_htmdlib.sh
   # Install the library locally
-  - python setup.py install
+  - pip install .
   # Run tests
   - pip install -q codecov coverage
   - conda install -q tqdm ipython matplotlib joblib scikit-learn rdkit mdtraj htmd-pdb2pqr propka openbabel -c acellera  # Installing extra dependencies for tests

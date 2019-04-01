@@ -1,0 +1,1 @@
+pip install .    # Python command to install the script.
