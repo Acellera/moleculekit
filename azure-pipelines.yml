@@ -1,7 +1,3 @@
-- checkout: self
-  clean: false
-  fetchDepth: 5
-
 strategy:
   matrix:
     ubuntu16:
@@ -20,6 +16,10 @@ container: $[ variables['containerImage'] ]
       Python37:
         PYTHON_VERSION: '3.7'
   steps:
+    - checkout: self
+      clean: false
+      fetchDepth: 5
+      
     - bash: echo "##vso[task.prependpath]$CONDA/bin"
       displayName: Add conda to PATH
 
