@@ -5,10 +5,10 @@ strategy:
 
 container: $[ variables['containerImage'] ]
 
-job: TestMoleculeKit
+- job: TestMoleculeKit
   displayName: Test MoleculeKit
   continueOnError: false
-
+  
   strategy:
     parallel: 2
     matrix:
@@ -18,42 +18,5 @@ job: TestMoleculeKit
         PYTHON_VERSION: '3.7'
 
   steps:
-    - checkout: self
-      clean: false
-      fetchDepth: 5
-
     - bash: echo "##vso[task.prependpath]$CONDA/bin"
       displayName: Add conda to PATH
-
-    - bash: sudo chown -R $USER /usr/share/miniconda
-      displayName: Take ownership of conda installation
-
-    - bash:  conda install -q conda-build=3
-      displayName: Installing conda-build
-
-    - bash: conda create --yes --quiet --name test
-      displayName: Create Anaconda test environment
-
-    - bash: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install twine codecov coverage
-      displayName: Install pip packages
-
-    - bash: './ci/travis/compile_htmdlib.sh'
-      displayName: Clone and compile the private htmdlib repo
-
-    - bash: |
-        source activate test
-        conda install -y -q tqdm ipython matplotlib joblib scikit-learn rdkit mdtraj htmd-pdb2pqr propka openbabel -c acellera  # Installing extra dependencies for tests
-      displayName: Install Anaconda packages
-
-    - bash: |
-        source activate test
-        python setup.py install
-      displayName: Install moleculekit locally
-
-    - bash: |
-        source activate test
-        coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
-      condition: succeededOrFailed()
-      displayName: Run tests
