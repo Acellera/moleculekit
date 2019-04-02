@@ -736,27 +736,21 @@ class SmallMol(object):
         ----------
         sketch: bool
             Set to True for 2D depiction
-            Default: False
         filename: str
             Set the filename for the svg file
-            Default: None
         ipython: bool
             Set to True to return the jupiter-notebook rendering
-            Default: False
         optimize: bool
             Set to True to optimize the conformation. Works only with 3D.
         optimizemode: ['std', 'mmff']
             Set the optimization mode for 3D conformation
         removeHs: bool
             Set to True to hide hydrogens in the depiction
-            Default: True
         atomlabels: str
             Accept any combinations of the following pararemters as unique string '%a%i%c%*' a:atom name, i:atom index,
             c:atom formal charge (+/-), *:chiral (* if atom is chiral)
-            Default: None
         highlightAtoms: list
             List of atom to highlight. It can be also a list of atom list, in this case different colors will be used
-            Default: None
         resolution: tuple of integers
             Resolution in pixels: (X, Y)
 
@@ -789,6 +783,8 @@ class SmallMol(object):
         chirals = self._chiral
 
         _mol = deepcopy(self._mol)
+
+
         if sketch:
             Compute2DCoords(_mol)
 

@@ -272,8 +272,24 @@ def _depictMol(mol, filename=None, ipython=False, atomlabels=None, highlightAtom
     if highlightAtoms is not None and not isinstance(highlightAtoms, list):
         raise ValueError('highlightAtoms should be a list of atom idx or a list of atom idx list ')
 
+    ext = '.svg'
+
+    if filename is not None:
+        fileext = splitext(filename)[-1]
+
+        if fileext == '':
+            ext = '.svg'
+            filename = filename + '.svg'
+        else:
+            ext = fileext
+
     # init the drawer object
-    drawer = rdMolDraw2D.MolDraw2DSVG(*resolution)
+    if ext == '.png':
+        drawer = rdMolDraw2D.MolDraw2DCairo(*resolution)
+    elif ext == '.svg':
+        drawer = rdMolDraw2D.MolDraw2DSVG(*resolution)
+    else:
+        raise RuntimeError('Unsupported depiction extention {}. Use either svg or png.'.format(ext))
     # get the drawer options
     opts = drawer.drawOptions()
 
@@ -294,12 +310,8 @@ def _depictMol(mol, filename=None, ipython=False, atomlabels=None, highlightAtom
             sel_atoms = highlightAtoms
             sel_colors = {aIdx: _highlight_colors[0] for aIdx in sel_atoms}
 
-    # kekulize
     Kekulize(mol)
-
-
     drawer.DrawMolecule(mol, highlightAtoms=sel_atoms, highlightBonds=[], highlightAtomColors=sel_colors)
-
     drawer.FinishDrawing()
 
     # svg object
@@ -307,9 +319,10 @@ def _depictMol(mol, filename=None, ipython=False, atomlabels=None, highlightAtom
 
     # activate saving into a file
     if filename is not None:
-        ext = splitext(filename)[-1]
-        filename = filename if ext != '' else filename + '.svg'
-        f = open(filename, 'w')
+        if ext == '.svg':
+            f = open(filename, 'w')
+        elif ext == '.png':
+            f = open(filename, 'wb')
         f.write(svg)
         f.close()
 

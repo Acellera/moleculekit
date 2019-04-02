@@ -160,6 +160,10 @@ class _TestSmallMol(unittest.TestCase):
 
         img_name = NamedTemporaryFile().name + '.svg'
         sm.depict(sketch=True, filename=img_name, atomlabels="%a%i%c")
+        png_name = NamedTemporaryFile().name + '.png'
+        sm.depict(sketch=True, filename=png_name, atomlabels="%a%i%c")
+        noext_name = NamedTemporaryFile().name
+        sm.depict(sketch=True, filename=noext_name, atomlabels="%a%i%c")
         sm.depict(sketch=False, optimize=True)
         _img = sm.depict(sketch=True, ipython=True)
 
@@ -175,11 +179,11 @@ class _TestSmallMol(unittest.TestCase):
 
     def test_toSMILES(self):
         sm = SmallMol(self.benzamidine_mol2)
-        assert sm.toSMILES() == '[H]/[NH+]=C(\\N)C1=CC=CC=C1'
+        assert sm.toSMILES() == 'NC(=[NH2+])C1=CC=CC=C1', 'Failed with SMILES: {}'.format(sm.toSMILES())
 
     def test_toSMARTS(self):
         sm = SmallMol(self.benzamidine_mol2)
-        assert sm.toSMARTS() == '[#6]1(:[#6H]:[#6H]:[#6H]:[#6H]:[#6H]:1)/[#6](=[#7H+]/[H])-[#7H2]'
+        assert sm.toSMARTS() == '[#6]1(:[#6H]:[#6H]:[#6H]:[#6H]:[#6H]:1)-[#6](=[#7H2+])-[#7H2]', 'Failed with SMARTS: {}'.format(sm.toSMARTS())
 
     def test_align(self):
         from moleculekit.util import rotationMatrix
