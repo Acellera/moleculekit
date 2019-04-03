@@ -170,7 +170,7 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode='pdb'):
             if mode == 'pdb':
                 linefmt = "{!s:6.6}{!s:>5.5} {}{!s:>1.1}{!s:4.4}{!s:>1.1}{!s:>4.4}{!s:>1.1}   {}{}{}{}{}      {!s:4.4}{!s:>2.2}  \n"
                 prelast = mol.segid[i]
-                last = mol.element[i].capitalize()
+                last = mol.element[i].upper()
             elif mode == 'pdbqt':
                 linefmt = "{!s:6.6}{!s:>5.5} {}{!s:>1.1}{!s:4.4}{!s:>1.1}{!s:>4.4}{!s:>1.1}   {}{}{}{}{}    {:>6.3f} {!s:<2.2}  \n"
                 prelast = mol.charge[i]
