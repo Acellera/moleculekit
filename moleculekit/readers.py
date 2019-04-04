@@ -184,6 +184,29 @@ class MolFactory(object):
             return trajnatoms
 
     @staticmethod
+    def _elementChecks(mol, filename):
+        # Check for non-legit elements and capitalize them correctly
+
+        from moleculekit.periodictable import periodictable
+        misnamed_element_map = {'So': 'Na'}  # Map badly guessed elements
+        issued_warnings = []  # Don't issue multiplt times the same warning for the same element renaming
+
+        for i in range(mol.numAtoms):
+            el = mol.element[i].lower().capitalize()  # Standardize capitalization of elements
+
+            if el in misnamed_element_map:  # Check if element has a common misnaming
+                if el not in issued_warnings:
+                    logger.warning('Element {} doesn\'t exist in the periodic table. ' \
+                                'Assuming it was meant to be element {} and renaming it.'.format(el, misnamed_element_map[el]))
+                    issued_warnings.append(el)
+                el = misnamed_element_map[el]
+
+            if el not in periodictable:  # If it's still not in the periodic table of elements throw error
+                raise RuntimeError('Element {} was read in file {} but was not found in the periodictable.'.format(el, filename))
+
+            mol.element[i] = el  # Set standardized element
+
+    @staticmethod
     def _parseTopology(mol, topo, filename):
         from moleculekit.molecule import Molecule
         for field in topo.__dict__:
@@ -216,14 +239,7 @@ class MolFactory(object):
             mol.bondtype[:] = 'un'
 
         mol.element = mol._guessMissingElements()
-
-        # Check for non-legit elements and capitalize them correctly
-        from moleculekit.periodictable import periodictable
-        for i in range(mol.numAtoms):
-            el = mol.element[i].lower().capitalize()
-            if el not in periodictable:
-                raise RuntimeError('Element {} not found in the periodictable.'.format(el))
-            mol.element[i] = el
+        MolFactory._elementChecks(mol, filename)
 
         if os.path.exists(filename):
             filename = os.path.abspath(filename)
@@ -1859,7 +1875,7 @@ class _TestReaders(unittest.TestCase):
 
     def test_pdb_element_guessing(self):
         mol = Molecule(os.path.join(self.testfolder(), 'errors.pdb'))
-        refelem = np.array(['C', 'C', 'C', 'C', 'C', 'C', 'C', 'N', 'N', 'H', 'H', 'C', 'Cl', 'Ca'], dtype=object)
+        refelem = np.array(['C', 'C', 'C', 'C', 'C', 'C', 'C', 'N', 'Na', 'N', 'H', 'H', 'C', 'Cl', 'Ca'], dtype=object)
         assert np.array_equal(mol.element, refelem)
 
         mol = Molecule(os.path.join(self.testfolder(), 'dialanine_solute.pdb'))
@@ -1874,7 +1890,7 @@ class _TestReaders(unittest.TestCase):
 
     def test_pdb_charges(self):
         mol = Molecule(os.path.join(self.testfolder(), 'errors.pdb'))
-        refcharge = np.array([-1.,  1., -1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.], dtype=np.float32)
+        refcharge = np.array([-1.,  1., -1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 0.,  0.,  0.,  0.], dtype=np.float32)
         assert np.array_equal(mol.charge, refcharge)
 
     def test_prepi(self):
