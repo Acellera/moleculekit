@@ -125,7 +125,7 @@ class TopologyInconsistencyError(Exception):
 class MolFactory(object):
     """ This class converts Topology and Trajectory data into Molecule objects """
     @staticmethod
-    def construct(topos, trajs, filename, frame):
+    def construct(topos, trajs, filename, frame, validateElements=True):
         from moleculekit.molecule import Molecule
 
         topos = ensurelist(topos)
@@ -141,7 +141,7 @@ class MolFactory(object):
             mol = Molecule()
             if topo is not None:
                 mol._emptyTopo(natoms)
-                MolFactory._parseTopology(mol, topo, filename)
+                MolFactory._parseTopology(mol, topo, filename, validateElements=validateElements)
             if traj is not None:
                 mol._emptyTraj(natoms)
                 MolFactory._parseTraj(mol, traj, filename, frame)
@@ -202,12 +202,13 @@ class MolFactory(object):
                 el = misnamed_element_map[el]
 
             if el not in periodictable:  # If it's still not in the periodic table of elements throw error
-                raise RuntimeError('Element {} was read in file {} but was not found in the periodictable.'.format(el, filename))
+                raise RuntimeError('Element {} was read in file {} but was not found in the periodictable. ' \
+                                   'To disable this check, pass `validateElements=False` to the Molecule constructor or read method.'.format(el, filename))
 
             mol.element[i] = el  # Set standardized element
 
     @staticmethod
-    def _parseTopology(mol, topo, filename):
+    def _parseTopology(mol, topo, filename, validateElements=True):
         from moleculekit.molecule import Molecule
         for field in topo.__dict__:
             if field == 'crystalinfo':
@@ -239,7 +240,8 @@ class MolFactory(object):
             mol.bondtype[:] = 'un'
 
         mol.element = mol._guessMissingElements()
-        MolFactory._elementChecks(mol, filename)
+        if validateElements:
+            MolFactory._elementChecks(mol, filename)
 
         if os.path.exists(filename):
             filename = os.path.abspath(filename)
@@ -638,7 +640,7 @@ def pdbGuessElementByName(elements, names, onlymissing=True):
     return noelem, newelements[noelem]
 
 
-def PDBread(filename, mode='pdb', frame=None, topoloc=None):
+def PDBread(filename, mode='pdb', frame=None, topoloc=None, validateElements=True):
     from pandas import read_fwf
     import io
 
@@ -910,7 +912,7 @@ def PDBread(filename, mode='pdb', frame=None, topoloc=None):
 
     topo.crystalinfo = crystalinfo
     traj = Trajectory(coords=coords)
-    return MolFactory.construct(topo, traj, filename, frame)
+    return MolFactory.construct(topo, traj, filename, frame, validateElements=validateElements)
 
 
 def PDBQTread(filename, frame=None, topoloc=None):
