@@ -641,6 +641,8 @@ class Molecule(object):
         else:
             s = sel
 
+        s = np.atleast_1d(s)
+
         if indexes and s.dtype == bool:
             return np.array(np.where(s)[0], dtype=np.int32)
         else:
