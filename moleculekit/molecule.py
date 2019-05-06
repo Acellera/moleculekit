@@ -2082,7 +2082,7 @@ class _TestMolecule(TestCase):
         mol = Molecule(path.join(home(dataDir='test-molecule'), 'a1e.prmtop'))
         mol.read(path.join(home(dataDir='test-molecule'), 'a1e.pdb'))
         _ = mol.filter('not water')
-        bb, bt, di, im, an = np.load(path.join(home(dataDir='test-molecule'), 'updatebondsanglesdihedrals_nowater.npy'))
+        bb, bt, di, im, an = np.load(path.join(home(dataDir='test-molecule'), 'updatebondsanglesdihedrals_nowater.npy'), allow_pickle=True)
         assert np.array_equal(bb, mol.bonds)
         assert np.array_equal(bt, mol.bondtype)
         assert np.array_equal(di, mol.dihedrals)
@@ -2090,7 +2090,7 @@ class _TestMolecule(TestCase):
         assert np.array_equal(an, mol.angles)
         _ = mol.filter('not index 8 18')
         bb, bt, di, im, an = np.load(
-            path.join(home(dataDir='test-molecule'), 'updatebondsanglesdihedrals_remove8_18.npy'))
+            path.join(home(dataDir='test-molecule'), 'updatebondsanglesdihedrals_remove8_18.npy'), allow_pickle=True)
         assert np.array_equal(bb, mol.bonds)
         assert np.array_equal(bt, mol.bondtype)
         assert np.array_equal(di, mol.dihedrals)
@@ -2146,7 +2146,7 @@ class _TestMolecule(TestCase):
         mol = self.trajmollig.copy()
         mol.align('noh')
 
-        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-selfalign-mol.npy'))
+        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-selfalign-mol.npy'), allow_pickle=True)
 
         assert np.allclose(mol.coords, refcoords, atol=1E-3)
 
@@ -2162,7 +2162,7 @@ class _TestMolecule(TestCase):
 
         mol.align('noh', refmol=mol2)
 
-        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-align-refmol.npy'))
+        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-align-refmol.npy'), allow_pickle=True)
 
         assert np.allclose(mol.coords, refcoords, atol=1E-3)
         assert np.allclose(mol.coords[mol.atomselect('noh'), :, 3], mol2.coords[:, :, 0], atol=1E-3)
@@ -2178,7 +2178,7 @@ class _TestMolecule(TestCase):
 
         mol.align('noh', refmol=mol2, matchingframes=True)
 
-        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-align-refmol-matchingframes.npy'))
+        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-align-refmol-matchingframes.npy'), allow_pickle=True)
 
         assert np.allclose(mol.coords, refcoords, atol=1E-3)
 
@@ -2196,7 +2196,7 @@ class _TestMolecule(TestCase):
 
         mol.align('noh', refmol=mol2, frames=[0, 1, 2, 3])
 
-        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-align-refmol-selectedframes.npy'))
+        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-align-refmol-selectedframes.npy'), allow_pickle=True)
 
         assert np.allclose(originalcoords[:, :, 4:], mol.coords[:, :, 4:], atol=1E-3)
         assert np.allclose(mol.coords, refcoords, atol=1E-3)
@@ -2236,7 +2236,7 @@ class _TestMolecule(TestCase):
         from moleculekit.home import home
         mol = self.mol3PTB.copy()
         mapping = mol.renumberResidues(returnMapping=True)
-        refres = np.load(os.path.join(home(dataDir='test-molecule'), 'renumberedresidues.npy'))
+        refres = np.load(os.path.join(home(dataDir='test-molecule'), 'renumberedresidues.npy'), allow_pickle=True)
         assert np.array_equal(mol.resid, refres)
 
     def test_str_repr(self):

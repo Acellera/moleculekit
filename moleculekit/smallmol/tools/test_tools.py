@@ -185,8 +185,8 @@ class _TestSmallMol(unittest.TestCase):
         from moleculekit.smallmol.tools.restrainedembed import restrainedEmbed
         import numpy as np
 
-        atomPos = np.load(os.path.join(self.dataDir, 'restrain_positions.npy')).item()
-        refcoords = np.load(os.path.join(self.dataDir, 'restrain_final_coords.npy'))
+        atomPos = np.load(os.path.join(self.dataDir, 'restrain_positions.npy'), allow_pickle=True).item()
+        refcoords = np.load(os.path.join(self.dataDir, 'restrain_final_coords.npy'), allow_pickle=True)
         sml = SmallMolLib(os.path.join(self.dataDir, 'restrain_molecule.sdf'))
         sm = sml[0]
         
