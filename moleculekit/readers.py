@@ -1037,7 +1037,7 @@ def PRMTOPread(filename, frame=None, topoloc=None):
     return MolFactory.construct(topo, None, filename, frame)
 
 
-def PSFread(filename, frame=None, topoloc=None):
+def PSFread(filename, frame=None, topoloc=None, validateElements=True):
     import re
     residinsertion = re.compile(r'(\d+)([a-zA-Z])')
 
@@ -1095,7 +1095,7 @@ def PSFread(filename, frame=None, topoloc=None):
                 mode = 'dihedral'
             elif '!NIMPHI' in line:
                 mode = 'improper'
-    return MolFactory.construct(topo, None, filename, frame)
+    return MolFactory.construct(topo, None, filename, frame, validateElements=validateElements)
 
 
 def XTCread(filename, frame=None, topoloc=None):
