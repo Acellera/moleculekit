@@ -134,3 +134,11 @@ periodictable = {
     'Ts': _Element(symbol='Ts', name='tennessine', number=117, mass=294, vdw_radius=None),
     'Og': _Element(symbol='Og', name='oganesson', number=118, mass=294, vdw_radius=None),
 }
+
+
+import numpy as np
+# This of course fails for exotic elements like Bk-Cm Db-Lr Mc-Fl Og-Ts which have similar masses
+elements_by_mass = {np.trunc(periodictable[el].mass * 10): el for el in periodictable}
+
+def elements_from_masses(masses):
+    return list(map(elements_by_mass.get, np.trunc(np.array(masses)*10)))

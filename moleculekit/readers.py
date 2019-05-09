@@ -7,6 +7,7 @@ import ctypes as ct
 import numpy as np
 from moleculekit.support import pack_double_buffer, pack_int_buffer, pack_string_buffer, pack_ulong_buffer, xtc_lib
 from moleculekit.util import sequenceID
+from moleculekit.periodictable import elements_from_masses
 import os
 import re
 import logging
@@ -972,7 +973,7 @@ def PRMTOPread(filename, frame=None, topoloc=None):
             elif section == 'masses':
                 fieldlen = 16
                 topo.masses += [float(line[i:i + fieldlen].strip()) for i in range(0, len(line), fieldlen)
-                           if len(line[i:i + fieldlen].strip()) != 0]  # 18.2223 = Scaling factor for charges
+                           if len(line[i:i + fieldlen].strip()) != 0]
             elif section == 'resname':
                 fieldlen = 4
                 uqresnames += [line[i:i + fieldlen].strip() for i in range(0, len(line), fieldlen)
@@ -1034,6 +1035,9 @@ def PRMTOPread(filename, frame=None, topoloc=None):
         else:
             atoms[3] = abs(atoms[3])
             topo.impropers.append(atoms)
+
+    # Elements from masses
+    topo.element = elements_from_masses(topo.masses)
     return MolFactory.construct(topo, None, filename, frame)
 
 
@@ -1095,6 +1099,9 @@ def PSFread(filename, frame=None, topoloc=None, validateElements=True):
                 mode = 'dihedral'
             elif '!NIMPHI' in line:
                 mode = 'improper'
+
+    # Elements from masses
+    topo.element = elements_from_masses(topo.masses)
     return MolFactory.construct(topo, None, filename, frame, validateElements=validateElements)
 
 
