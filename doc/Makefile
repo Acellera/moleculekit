@@ -22,8 +22,17 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 rst:
-	rm -f source/moleculekit.*
 	$(SPHINXAPIDOC) --force --separate -o $(SOURCEDIR) ../moleculekit/ >/dev/null
 	echo "$(GITTAG)" > source/version
 	@echo
 	@echo "Build finished. The RST files are on source/"
+
+clean:
+	rm -f source/moleculekit.*
+	rm source/version
+
+publish:
+	ssh www.acellera.com 'rm -rf ~/software.acellera.com/source/moleculekit/*'
+	scp -r source/* www.acellera.com:~/software.acellera.com/source/moleculekit/
+	ssh www.acellera.com 'chmod -R g+rwX software.acellera.com/'
+
