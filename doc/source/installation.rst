@@ -18,35 +18,28 @@ and install it following the given instructions.
 
 Create a conda environment
 --------------------------
-After installing miniconda you can create a conda environment for MoleculeKit with the following command
-
-.. code-block:: 
+After installing miniconda you can create a conda environment for MoleculeKit with the following command::
 
    conda create -n moleculekit python=3.6
 
 This will create a new conda environment for python version 3.6. This does not install MoleculeKit.
 It simply creates a clean empty python environment named moleculekit.
 To now operate within this new environment use the following command to activate it. Anything installed with
-pip or conda after this command will be installed into this clean python environment.
-
-.. code-block:: 
+pip or conda after this command will be installed into this clean python environment.:: 
 
    conda activate moleculekit
 
 
 Install with pip
 ----------------
-
-.. code-block:: 
+::
 
    pip install moleculekit
 
 
 Install with conda
-------------------
-
-.. code-block:: 
+------------------ 
+::
 
    conda install moleculekit -c acellera
-
 
