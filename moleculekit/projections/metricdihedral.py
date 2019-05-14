@@ -47,7 +47,7 @@ class Dihedral:
             descr = '"{}" dihedral angle including atoms:\n'.format(self.dihedraltype)
         descr += 'name\tresid\tinsertion\tchain\tsegid\n'
         for a in self.atoms:
-            descr += '{}\t{}\t{}\t{}\t{}\n'.format(a['name'], a['resid'], a['insertion'], a['chain'], a['segid'])
+            descr += '{}\t{}\t{}\t\t{}\t{}\n'.format(a['name'], a['resid'], a['insertion'], a['chain'], a['segid'])
         return descr
 
     def __repr__(self):
