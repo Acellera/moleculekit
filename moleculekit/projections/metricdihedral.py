@@ -357,6 +357,7 @@ class Dihedral:
 
         resdict = Dihedral._findResidue(mol, res, insertion, chain, segid)
         resname = Dihedral._findResname(mol, resdict)
+        Dihedral._checkKnownResidues(resname)
         if resname not in chi1:
             return None
         return Dihedral(Dihedral._findAtom(mol, chi1[resname][0], resdict),
@@ -397,6 +398,7 @@ class Dihedral:
 
         resdict = Dihedral._findResidue(mol, res, insertion, chain, segid)
         resname = Dihedral._findResname(mol, resdict)
+        Dihedral._checkKnownResidues(resname)
         if resname not in chi2:
             return None
         return Dihedral(Dihedral._findAtom(mol, chi2[resname][0], resdict),
@@ -433,6 +435,7 @@ class Dihedral:
 
         resdict = Dihedral._findResidue(mol, res, insertion, chain, segid)
         resname = Dihedral._findResname(mol, resdict)
+        Dihedral._checkKnownResidues(resname)
         if resname not in chi3:
             return None
         return Dihedral(Dihedral._findAtom(mol, chi3[resname][0], resdict),
@@ -468,6 +471,7 @@ class Dihedral:
 
         resdict = Dihedral._findResidue(mol, res, insertion, chain, segid)
         resname = Dihedral._findResname(mol, resdict)
+        Dihedral._checkKnownResidues(resname)
         if resname not in chi4:
             return None
         return Dihedral(Dihedral._findAtom(mol, chi4[resname][0], resdict),
@@ -503,6 +507,7 @@ class Dihedral:
 
         resdict = Dihedral._findResidue(mol, res, insertion, chain, segid)
         resname = Dihedral._findResname(mol, resdict)
+        Dihedral._checkKnownResidues(resname)
         if resname not in chi5:
             return None
         return Dihedral(Dihedral._findAtom(mol, chi5[resname][0], resdict),
@@ -511,6 +516,13 @@ class Dihedral:
                         Dihedral._findAtom(mol, chi5[resname][3], resdict),
                         dihedraltype='chi5',
                         check_valid=False)
+
+    @staticmethod
+    def _checkKnownResidues(resname):
+        knownresnames = ['ARG','ASN', 'ASP', 'CYS', 'GLN', 'GLU', 'HIS', 'ILE', 'LEU', 'LYS', 'MET', 'PHE', 'PRO', 
+                         'SER', 'THR', 'TRP', 'TYR', 'VAL', 'GLY', 'ALA']
+        if resname not in knownresnames:
+            raise RuntimeError('Residue {} not in list of known residues {}. Rename your residues to match these.'.format(resname, knownresnames))
 
 
 class MetricDihedral(Projection):
