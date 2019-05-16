@@ -180,6 +180,34 @@ class VMDSphere(VMDGraphicObject):
         vmd.send(cmd)
 
 
+class VMDCylinder(VMDGraphicObject):
+    def __init__(self, start, end, color='red', radius=1):
+        """ Displays a cylinder in VMD.
+
+        The function returns an instance of VMDGraphicsObject. To delete it, use the delete() method.
+
+        Parameters
+        ----------
+        start : list
+            The starting coordinates of the cylinder
+        end : list
+            The ending coordinates of the cylinder
+        color : str
+            Color of the cylinder
+        radius : float
+            The radius of the cylinder
+        """
+        super().__init__([start, end])
+        #self._remember('draw materials off')
+        self._remember('draw color {}'.format(color))
+        self._remember('draw cylinder {{ {} }} {{ {} }} radius {}\n'.format(' '.join(map(str, start)), ' '.join(map(str, end)), radius))
+        self.script.write("\n")
+        self.script.write("set htmd_graphics_mol({:d}) [molinfo top]".format(self.n))
+        cmd = self.script.getvalue()
+        vmd = getCurrentViewer()
+        vmd.send(cmd)
+
+
 class VMDText(VMDGraphicObject):
     def __init__(self, text, xyz, color='red'):
         """ Displays a text in VMD.
