@@ -1607,7 +1607,7 @@ class Molecule(object):
         retval = None
         if viewer is None:
             try:
-                from moleculekit.config import _config
+                from htmd.config import _config
                 viewer = _config['viewer']
             except:
                 from moleculekit.config import _config
