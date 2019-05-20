@@ -6,6 +6,9 @@ def my_test_suite():
     test_suite = test_loader.discover(start_dir='moleculekit', pattern='*.py')
     return test_suite
 
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
+
 if __name__ == '__main__':
     with open('README.md', 'r') as fh:
         long_description = fh.read()
@@ -31,7 +34,5 @@ if __name__ == '__main__':
         },
 
         test_suite='setup.my_test_suite',
-        install_requires=[
-            DEPENDENCY_PLACEHOLDER
-        ]
+        install_requires=requirements
     )
