@@ -77,8 +77,7 @@ class MetricDistance(Projection):
             metric = pp_calcDistances(mol, sel1, sel2, self.metric, self.threshold, self.pbc, truncate=self.truncate)
         else:  # minimum distances by groups
             metric = pp_calcMinDistances(mol, sel1, sel2, self.metric, self.threshold, pbc=self.pbc, truncate=self.truncate)
-        if metric.ndim == 1:
-            metric = metric[np.newaxis, :]
+
         return metric
 
     def _calculateMolProp(self, mol, props='all'):
@@ -418,8 +417,8 @@ class _TestMetricDistance(unittest.TestCase):
         mapping = metr.getMapping(mol)
 
         tmpfile = tempname(suffix='.svg')
-        cm, newmapping, uqAtomGroups = contactVecToMatrix(data[0], mapping.atomIndexes)
-        reconstructContactMap(data[0], mapping, outfile=tmpfile)
+        cm, newmapping, uqAtomGroups = contactVecToMatrix(data, mapping.atomIndexes)
+        reconstructContactMap(data, mapping, outfile=tmpfile)
         refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'contactvectomatrix.npz'))
         
         assert np.array_equal(refdata['cm'], cm)
