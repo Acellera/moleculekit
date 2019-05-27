@@ -78,6 +78,8 @@ class MetricShell(Projection):
         """
         molprops = self._getMolProp(mol, 'all')
         distances = self.metricdistance.project(mol)
+        if distances.ndim == 1:
+            distances = distances[np.newaxis, :]
         return _shells(distances, molprops['map'][:, 0], molprops['shellcenters'], self.numshells, self.shellwidth)
 
     def getMapping(self, mol):
