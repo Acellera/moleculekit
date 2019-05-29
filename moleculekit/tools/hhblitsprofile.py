@@ -46,7 +46,7 @@ def getSequenceProfile(sequence, hhblits, hhblitsdb, ncpu=6, niter=4):
     >>> hhb = '~/hhsuite-2.0.16-linux-x86_64/bin/hhblits'
     >>> hhbdb = '~/hhsuite-2.0.16-linux-x86_64/databases/uniprot20_2016_02/uniprot20_2016_02'
     >>> seq = 'MKVIFLKDVKGMGKKGEIKNVADGYANNFLFKQGLAIEA'
-    >>> df, prof = getProfile(seq, hhb, hhbdb)
+    >>> df, prof = getSequenceProfile(seq, hhb, hhbdb)
     """
     regex = re.compile('^\w\s\d+')
     with tempfile.TemporaryDirectory() as tmpdir:
