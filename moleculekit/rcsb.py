@@ -1,4 +1,4 @@
-import urllib
+import urllib.request
 import logging
 logger = logging.getLogger(__name__)
 
