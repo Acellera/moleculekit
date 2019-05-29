@@ -7,6 +7,8 @@ import tempfile
 import os
 import re
 import numpy as np
+import subprocess
+from subprocess import check_output
 
 try:
     import pandas
@@ -26,7 +28,7 @@ def getSequenceProfile(sequence, hhblits, hhblitsdb, ncpu=6, niter=4):
     hhblits : str
         The path to the hhblits executable
     hhblitsdb : str
-        The path to the hhblits database that we want to search against
+        The path to the hhblits database that we want to search against. Should include the database name prefix, not just the folder.
     ncpu : int
         Number of CPUs to use for the search
     niter : int
@@ -51,7 +53,13 @@ def getSequenceProfile(sequence, hhblits, hhblitsdb, ncpu=6, niter=4):
         with open(tmpdir + '/input.fasta', 'w') as fp:
             fp.write('>\n{}\n'.format(sequence))
 
-        os.system('{} -i {}/input.fasta -d {} -cpu {} -M first -n {} -ohhm {}/output.hhm -v 0'.format(hhblits, tmpdir, hhblitsdb, ncpu, niter, tmpdir))
+        try:
+            check_output('{} -i {}/input.fasta -d {} -cpu {} -M first -n {} -ohhm {}/output.hhm -v 0'.format(hhblits, tmpdir, hhblitsdb, ncpu, niter, tmpdir),
+                        stderr=subprocess.STDOUT,
+                        shell=True
+                        )
+        except subprocess.CalledProcessError as err:                                                                                                   
+            print('HHBlits errored out with code {} and ouput: \n--------------- ERROR LOG ---------------\n{}\n--------------- END OF LOG ---------------\n'.format(err.returncode, err.output.decode('utf-8')))
         
         data = []
         seq = []
