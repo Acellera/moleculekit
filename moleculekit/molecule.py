@@ -1838,7 +1838,35 @@ class UniqueResidueID:
                + self.__str__()
 
 
-def mol_equal(mol1, mol2, checkFields=Molecule._atom_and_coord_fields, exceptFields=None, _logger=True):
+def mol_equal(mol1, mol2, checkFields=Molecule._atom_and_coord_fields, exceptFields=None, fieldPrecision=None, _logger=True):
+    """ Compare two Molecules for equality.
+
+    Parameters
+    ----------
+    mol1 : Molecule
+        The first molecule to compare
+    mol2 : Molecule
+        The second molecule to compare to the first
+    checkFields : list
+        A list of fields to compare. By default compares all atom information and coordinates in the molecule
+    exceptFields : list
+        A list of fields to not compare.
+    fieldPrecision : dict
+        A dictionary of `field`, `precision` key-value pairs which defines the numerical precision of the value comparisons of two arrays
+    _logger : bool
+        Set to False to disable the printing of the differences in the two Molecules
+
+    Returns
+    -------
+    equal : bool
+        Returns True if the molecules are equal or False if they are not.
+
+    Examples
+    --------
+    >>> mol_equal(mol1, mol2, checkFields=['resname', 'resid', 'segid'])
+    >>> mol_equal(mol1, mol2, exceptFields=['record', 'name'])
+    >>> mol_equal(mol1, mol2, fieldPrecision={'coords': 1e-5})
+    """
     difffields = []
     checkFields = list(checkFields)
     if exceptFields is not None:
@@ -1846,12 +1874,24 @@ def mol_equal(mol1, mol2, checkFields=Molecule._atom_and_coord_fields, exceptFie
     for field in checkFields:
         field1 = field
         field2 = field
+
         if not hasattr(mol1, field) and hasattr(mol1, '_'+field):
             field1 = '_'+field
             if _logger: logger.warning('Could not find attribute {f} in mol1. Using attribute _{f}'.format(f=field))
         if not hasattr(mol2, field) and hasattr(mol2, '_'+field):
             field2 = '_'+field
             if _logger: logger.warning('Could not find attribute {f} in mol2. Using attribute _{f}'.format(f=field))
+
+        
+        if fieldPrecision is not None:
+            precision = None
+            if field1 in fieldPrecision:
+                precision = fieldPrecision[field1]
+            if field2 in fieldPrecision:
+                precision = fieldPrecision[field2]
+            if precision is not None and np.allclose(mol1.__getattribute__(field1), mol2.__getattribute__(field2), atol=precision):
+                continue
+                
         if not np.array_equal(mol1.__getattribute__(field1), mol2.__getattribute__(field2)):
             difffields += [field]
 
@@ -2246,6 +2286,13 @@ class _TestMolecule(TestCase):
     def test_mol_equal(self):
         assert mol_equal(self.mol3PTB, self.mol3PTB)
         assert not mol_equal(self.mol3PTB, self.trajmol)
+
+    def test_mol_equal_precision(self):
+        mol1 = self.mol3PTB
+        mol2 = self.mol3PTB.copy()
+        mol2.coords += 0.001
+        assert mol_equal(mol1, mol2, fieldPrecision={'coords': 1e-2})
+        assert not mol_equal(mol1, mol2, fieldPrecision={'coords': 1e-4})
 
 
 
