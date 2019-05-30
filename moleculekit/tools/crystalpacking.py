@@ -71,8 +71,10 @@ def _place_crystal(mol, size, angles, axes):
 
 def generateCrystalPacking(pdbid, hexagonal=False, visualize=False, viewerhandle=None):
     """
-    Generates the crystal packing of a PDB protein. It is possible to inspect it immediately with the visualize option.
-    It can only be generated if there is crystallographic information in the
+    Generates the crystal packing of a PDB protein.
+
+    It is possible to inspect it immediately with the visualize option. It can only be generated if there is
+    crystallographic information in the PDB entry.
 
     Parameters
     ----------
@@ -120,9 +122,6 @@ def generateCrystalPacking(pdbid, hexagonal=False, visualize=False, viewerhandle
 
     molunit = Molecule()
 
-    if visualize:
-        _draw_cell(axes, ci['sGroup'], viewerhandle, hexagonal=hexagonal)
-
     # Creates copies of the molecule and places them correctly inside the complete Unit Cell
     hexagonal_molunit = None
     for i in tqdm(range(ci['numcopies']), desc='Generating symmetry mates'):
@@ -149,6 +148,9 @@ def generateCrystalPacking(pdbid, hexagonal=False, visualize=False, viewerhandle
             molunit.view(style='NewCartoon', viewerhandle=viewerhandle)
         else:
             return molunit
+
+    if visualize:
+        _draw_cell(axes, ci['sGroup'], viewerhandle, hexagonal=hexagonal)
 
 
 def _draw_cell(axes, group, viewerhandle, hexagonal=False):
