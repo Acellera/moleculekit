@@ -41,7 +41,7 @@ def smiReader(file, removeHs, fixHs, isgzip=False):
             logger.warning('Failed to load molecule with name {} with error {}. Skipping to next molecule.'.format(name, e))
     return mols
 
-def sdfReader(file, removeHs, fixHs, isgzip=False):
+def sdfReader(file, removeHs, fixHs, sanitize, isgzip=False):
     from tqdm import tqdm
     from moleculekit.util import tempname
 
@@ -52,7 +52,7 @@ def sdfReader(file, removeHs, fixHs, isgzip=False):
             with open(file, 'wb') as fout:
                 fout.write(f.read())
 
-    supplier = Chem.SDMolSupplier(file, removeHs=removeHs)
+    supplier = Chem.SDMolSupplier(file, removeHs=removeHs, sanitize=sanitize)
     mols = []
     countfailed = 0
     for mol in tqdm(supplier):
@@ -106,12 +106,12 @@ class SmallMolLib(object):
 
     """
 
-    def __init__(self, libfile=None, removeHs=False, fixHs=True):  # , n_jobs=1
+    def __init__(self, libfile=None, removeHs=False, fixHs=True, sanitize=True):  # , n_jobs=1
         if libfile is not None:
-            self._mols = self._loadLibrary(libfile, removeHs=removeHs, fixHs=fixHs, ext=None)
+            self._mols = self._loadLibrary(libfile, removeHs=removeHs, fixHs=fixHs, sanitize=sanitize, ext=None)
 
 
-    def _loadLibrary(self, libfile, removeHs=False, fixHs=True, ext=None):
+    def _loadLibrary(self, libfile, removeHs=False, fixHs=True, sanitize=True, ext=None):
         isgzip = False
         if ext == None:
             ext = os.path.splitext(libfile)[-1] 
@@ -120,7 +120,7 @@ class SmallMolLib(object):
             ext = os.path.splitext(os.path.splitext(libfile)[-2])[-1]
 
         if ext == '.sdf':
-            return sdfReader(libfile, removeHs, fixHs, isgzip)
+            return sdfReader(libfile, removeHs, fixHs, sanitize, isgzip)
         elif ext == '.smi':
             return smiReader(libfile, removeHs, fixHs, isgzip)
         else:
