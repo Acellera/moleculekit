@@ -7,18 +7,22 @@
 # -> Notes: line 69 explanation missing
 
 from moleculekit.molecule import Molecule
+from moleculekit.readers import _getPDB
 import numpy as np
 import copy
-import os
+from tqdm import tqdm
 import logging
+import unittest
 logger = logging.getLogger(__name__)
 
 
 def _get_cellloc(center, angles, box_size):
-    '''Computes the Unit Cell's location of the molecule object.
+    """
+    Computes the Unit Cell's location of the molecule object.
     Takes as argument the Euler angles of the Unit Cell's sides and performs
     a small correction to account for oblique sides.
-    Allows to correct x position dependent on y and z.'''
+    Allows to correct x position dependent on y and z.
+    """
     change = np.zeros(3)
     change[0] = center[1] / np.tan(angles[2]) + center[2] / np.tan(
         angles[1])  # get min_value x unit cell at given y,z
@@ -26,7 +30,8 @@ def _get_cellloc(center, angles, box_size):
 
 
 def _is_outside(center, cellloc):
-    '''Checks if a molecule object is inside the defined unit cell.
+    """
+    Checks if a molecule object is inside the defined unit cell.
     Takes as arguments the size vector [numpy array with 3 coordinates]
     and a vector [numpy array with three floats] with the Euler angles of
     the Unit Cell.
@@ -36,15 +41,17 @@ def _is_outside(center, cellloc):
     Creates the attributes:
            -> cellloc: location of the molecule object within the Unit Cell.
     Returns True if the molecule object is outside the Unit Cell, else
-    returns False.'''
+    returns False.
+    """
     return np.sum(np.abs(cellloc)) > 0, cellloc, center
 
 
 def _move_inside(mol, axes, cellloc, center):
-    '''Translates an HTMD molecule object inside another Unit Cell.
+    """
+    Translates an HTMD molecule object inside another Unit Cell.
     Takes as argument the vectors defining the Unit Cell the molecule
     object is currently in and translates it inside another Unit Cell.
-    '''
+    """
     neworigin = np.multiply(axes.transpose(), cellloc).transpose()  # computes translation to be applied to copy
     neworigin = np.sum(neworigin, axis=0)
     newcenter = center - neworigin  # computes difference between copy center and origin of its unit cell
@@ -52,23 +59,50 @@ def _move_inside(mol, axes, cellloc, center):
 
 
 def _place_crystal(mol, size, angles, axes):
-    '''Places MoleculeCopy object inside crystal.
-    Uses methods 'is_outside' and 'move_inside'.'''
+    """
+    Places MoleculeCopy object inside crystal.
+    Uses methods 'is_outside' and 'move_inside'.
+    """
     center = np.mean(mol.get('coords'), axis=0)
     cellloc = _get_cellloc(center, angles, size)  # integer from division for each axis = unit cell identifier
     if _is_outside(center, cellloc):
         _move_inside(mol, axes, cellloc, center)
 
 
-def viewCrystalPacking(mol, hexagonal=False, style_display='NewCartoon', viewerhandle=None):
-    """ Views the crystal packing of a protein
+def generateCrystalPacking(pdbid, hexagonal=False, visualize=False, viewerhandle=None):
+    """
+    Generates the crystal packing of a PDB protein.
+
+    It is possible to inspect it immediately with the visualize option. It can only be generated if there is
+    crystallographic information in the PDB entry.
 
     Parameters
     ----------
-    pdbfile : str
-        Path to the pdb file which to read. Can also be a 4-letter PDB ID
+    pdbid : str
+        ID from the Protein Databank
+    hexagonal : bool
+        # TODO: Undocumented
+    visualize : bool
+        If True, this function also visualizes the crystal packing
+    viewerhandle : :class:`VMD <moleculekit.vmdviewer.VMD>` object, optional
+        A specific viewer in which to visualize the molecule. If None it will use the current default viewer.
+    Returns
+    -------
+    mol : :class:`Molecule`
+        Molecule object with the crystal packing
     """
-    if viewerhandle is None:
+
+    if not isinstance(pdbid, str):
+        raise ValueError('pdbid should be a string')
+
+    filename, _ = _getPDB(pdbid)
+
+    mol = Molecule(filename)
+
+    if viewerhandle is not None and not visualize:
+        logger.warning('A viewerhandle was passed. Setting visualize to True.')
+        visualize = True
+    if visualize and viewerhandle is None:
         from moleculekit.vmdviewer import getCurrentViewer
         viewerhandle = getCurrentViewer()
 
@@ -83,17 +117,16 @@ def viewCrystalPacking(mol, hexagonal=False, style_display='NewCartoon', viewerh
 
     caux = (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
     axes = np.array([[a, 0, 0], [b * np.cos(gamma), b * np.sin(gamma), 0], [c * np.cos(beta), c * caux,
-                           c * np.sqrt(1 - np.cos(beta) ** 2 - caux ** 2)]])
+                    c * np.sqrt(1 - np.cos(beta) ** 2 - caux ** 2)]])
     size = np.array([axes[0][0], axes[1][1], axes[2][2]])
 
     molunit = Molecule()
 
-    _draw_cell(axes, ci['sGroup'], viewerhandle, hexagonal=hexagonal)
-
     # Creates copies of the molecule and places them correctly inside the complete Unit Cell
     hexagonal_molunit = None
-    for i in range(ci['numcopies']):
+    for i in tqdm(range(ci['numcopies']), desc='Generating symmetry mates'):
         molecule = mol.copy()
+        molecule.segid[:] = str(i+1)
         # apply SMTRY (Crystal Symmetry) operations
         molecule.rotateBy(ci['rotations'][i])
         molecule.moveBy(ci['translations'][i])
@@ -106,17 +139,27 @@ def viewCrystalPacking(mol, hexagonal=False, style_display='NewCartoon', viewerh
         _build_hexagon(molunit, hexagonal_molunit)
 
     if hexagonal_molunit is not None:
-        hexagonal_molunit.view(style=style_display, viewerhandle=viewerhandle)
+        if visualize:
+            hexagonal_molunit.view(style='NewCartoon', viewerhandle=viewerhandle)
+        else:
+            return hexagonal_molunit
     else:
-        molunit.view(style=style_display, viewerhandle=viewerhandle)
+        if visualize:
+            molunit.view(style='NewCartoon', viewerhandle=viewerhandle)
+        else:
+            return molunit
+
+    if visualize:
+        _draw_cell(axes, ci['sGroup'], viewerhandle, hexagonal=hexagonal)
 
 
 def _draw_cell(axes, group, viewerhandle, hexagonal=False):
-    """ Draws lines in the viewer that represent Unit Cell.
+    """
+    Draws lines in the viewer that represent Unit Cell.
 
     Parameters
     ----------
-    draw_hexagon : bool
+    hexagonal : bool
         If True, draws the Unit Cell with hexagonal boundaries if it is a hexagon. Else it draws a rectangle or
         trapezoid.
     """
@@ -169,15 +212,30 @@ def _build_hexagon(molunit, hexagonal_molunit):
         hexagonal_molunit.append(cellunit)
 
 
-import unittest
 class _TestCrystalPacking(unittest.TestCase):
-    def test_crystalpacking(self):
-        from moleculekit.molecule import Molecule
+    def test_crystalpacking_visualization(self):
         from moleculekit.vmdviewer import getCurrentViewer
 
         viewer = getCurrentViewer(dispdev='text')
-        mol = Molecule('3ptb')
-        viewCrystalPacking(mol, viewerhandle=viewer)
+        generateCrystalPacking('3ptb', visualize=True, viewerhandle=viewer)
+
+    def test_crystalpacking_asymmetric_unit(self):
+        from moleculekit.home import home
+        from os.path import join
+        from moleculekit.molecule import mol_equal
+
+        mol = generateCrystalPacking('2hhb')
+        refmol = Molecule(join(home(dataDir='test-crystalpacking'), '2hhb_packing.pdb'))
+        assert mol_equal(mol, refmol, fieldPrecision={'coords': 1e-3})
+
+    def test_crystalpacking_biological_unit(self):
+        from moleculekit.home import home
+        from os.path import join
+        from moleculekit.molecule import mol_equal
+
+        mol = generateCrystalPacking('1out')
+        refmol = Molecule(join(home(dataDir='test-crystalpacking'), '1out_packing.pdb'))
+        assert mol_equal(mol, refmol, fieldPrecision={'coords': 1e-3})
 
 
 if __name__ == "__main__":
