@@ -1650,8 +1650,11 @@ class Molecule(object):
         self._tempreps.remove()
 
     def _viewNGL(self, gui=False):
+        try:
+            import nglview
+        except ImportError:
+            raise ImportError('Optional package nglview not found. Please install it using `conda install nglview -c acellera`.')
         from nglview import HTMDTrajectory
-        import nglview
         traj = HTMDTrajectory(self)
         w = nglview.NGLWidget(traj, gui=gui)
 
