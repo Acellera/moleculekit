@@ -107,7 +107,7 @@ def _getPDBElement(name, element, lowersecond=True):
     nameelement = (name.strip(), element.upper().strip())
     if nameelement in _rename_elements:
         element = _rename_elements[nameelement]
-    return element
+    return element.capitalize()
 
 
 def checkTruncations(mol):

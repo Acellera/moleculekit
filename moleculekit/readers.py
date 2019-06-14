@@ -193,7 +193,7 @@ class MolFactory(object):
         issued_warnings = []  # Don't issue multiplt times the same warning for the same element renaming
 
         for i in range(mol.numAtoms):
-            el = mol.element[i].lower().capitalize()  # Standardize capitalization of elements
+            el = mol.element[i].capitalize()  # Standardize capitalization of elements
 
             if el in misnamed_element_map:  # Check if element has a common misnaming
                 if el not in issued_warnings:
@@ -1515,7 +1515,7 @@ def RTFread(filename, frame=None, topoloc=None):
     def _guessElement(name):
         import re
         name = re.sub('[0-9]*$', '', name)
-        name = name.lower().capitalize()
+        name = name.capitalize()
         return name
 
     def _guessMass(element):
@@ -1565,7 +1565,7 @@ def RTFread(filename, frame=None, topoloc=None):
         if atype not in allatomtypes:
             allatomtypes.append(atype)
 
-    topo.element = np.array([element_by_type[t].lower().capitalize() for t in topo.atomtype], dtype=object)
+    topo.element = np.array([element_by_type[t].capitalize() for t in topo.atomtype], dtype=object)
     topo.masses = np.array([mass_by_type[t] for t in topo.atomtype], dtype=np.float32)
     topo.bonds = np.vstack(bonds)
 
