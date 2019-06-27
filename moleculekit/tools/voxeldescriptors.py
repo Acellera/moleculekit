@@ -23,16 +23,32 @@ libdir = moleculekit.home.home(libDir=True)
 occupancylib = ctypes.cdll.LoadLibrary(os.path.join(libdir, "occupancy_ext.so"))
 
 
-def viewVoxelFeatures(features, centers, nvoxels, voxelsize=1, draw='wireframe'):
+def viewVoxelFeatures(features, centers, nvoxels, voxelsize=None, draw='wireframe'):
+    """ Visualize in VMD the voxel features produced by getVoxelDescriptors.
+
+    Parameters
+    ----------
+    features : np.ndarray
+        An array of (n_centers, n_features) shape containing the voxel features of each center
+    centers : np.ndarray
+        An array of (n_centers, 3) shape containing the coordinates of each voxel center
+    nvoxels : np.ndarray
+        An array of (3,) shape containing the number of voxels in each X, Y, Z dimension
+
+    Example
+    -------
+    >>> feats, centers, N = getVoxelDescriptors(mol)
+    >>> viewVoxelFeatures(feats, centers, N)
+    """
     from moleculekit.vmdgraphics import VMDIsosurface
     from moleculekit.vmdviewer import getCurrentViewer
 
-    if not isinstance(voxelsize, list) and not isinstance(voxelsize, np.ndarray):
-        voxelsize = [voxelsize, voxelsize, voxelsize]
+    if voxelsize is None:
+        voxelsize = abs(centers[0, 2] - centers[1, 2])
+        voxelsize = np.repeat(voxelsize, 3)
 
     features = features.reshape(list(nvoxels) + [len(_order),])
     centers = centers.reshape(list(nvoxels) + [3,])
-    voxelsize = np.array(voxelsize)
     loweredge = np.min(centers, axis=(0, 1, 2)) - (voxelsize / 2)
 
     for i, name in enumerate(_order):
