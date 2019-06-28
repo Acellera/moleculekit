@@ -47,6 +47,8 @@ def viewVoxelFeatures(features, centers, nvoxels, voxelsize=None, draw='wirefram
         voxelsize = abs(centers[0, 2] - centers[1, 2])
         voxelsize = np.repeat(voxelsize, 3)
 
+    voxelsize = np.array(voxelsize)
+
     features = features.reshape(list(nvoxels) + [len(_order),])
     centers = centers.reshape(list(nvoxels) + [3,])
     loweredge = np.min(centers, axis=(0, 1, 2)) - (voxelsize / 2)
