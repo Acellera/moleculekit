@@ -41,16 +41,13 @@ def sequenceStructureAlignment(mol, ref, molseg=None, refseg=None, maxalignments
     seqmol = mol.sequence()
     seqref = ref.sequence()
 
-    if len(seqmol) > 1:
+    if molseg is None and len(seqmol) > 1:
         logger.info('Multiple segments ({}) detected in `mol`. Alignment will be done on all. Otherwise please specify which segment to align.'.format(list(seqmol.keys())))
         seqmol = mol.sequence(noseg=True)
-    if len(seqref) > 1:
+        molseg = list(seqmol.keys())[0]
+    if refseg is None and len(seqref) > 1:
         logger.info('Multiple segments ({}) detected in `ref`. Alignment will be done on all. Otherwise please specify which segment to align.'.format(list(seqref.keys())))
         seqref = ref.sequence(noseg=True)
-
-    if molseg is None:
-        molseg = list(seqmol.keys())[0]
-    if refseg is None:
         refseg = list(seqref.keys())[0]
 
     def getSegIdx(m, mseg):
