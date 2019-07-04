@@ -35,6 +35,7 @@ def _convertMoleculeToRDKitMol(mol):
 
     from rdkit.Chem import MolFromMol2File
     import tempfile
+    import sys
 
     rdkit_mol = None
     with tempfile.TemporaryFile(mode='w+') as stderr:
@@ -149,9 +150,13 @@ def toRDKITmol(mol, protidx, sanitize=True, removeHs=False):
 
 if __name__ == '__main__':
     from moleculekit.molecule import Molecule
-    # # We don't use this yet. It's experimental. So no point in wasting time testing it.
 
-    # mol = Molecule('3PTB')
+    mol = Molecule('3PTB')
+    mol.filter('resname BEN')
+    res = _convertMoleculeToRDKitMol(mol)
+    assert res is not None
+
+    # # We don't use this yet. It's experimental. So no point in wasting time testing it.
     # protidx = mol.atomselect('protein', indexes=True)
 
     # rdmol = toRDKITmol(mol, protidx)
