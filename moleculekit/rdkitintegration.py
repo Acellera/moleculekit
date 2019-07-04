@@ -34,6 +34,7 @@ def _convertMoleculeToRDKitMol(mol):
     """
 
     from rdkit.Chem import MolFromMol2File
+    import tempfile
 
     rdkit_mol = None
     with tempfile.TemporaryFile(mode='w+') as stderr:
