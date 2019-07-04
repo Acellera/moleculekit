@@ -7,7 +7,7 @@ except Exception as e:
     print('Could not get version tag. Probably a PR or a branch. Defaulting to version 0')
     version = '0'
 
-with open('DEPENDENCIES', 'r') as f:
+with open('requirements.txt', 'r') as f:
     deps = f.readlines()
 
 
@@ -17,7 +17,6 @@ with open('setup.py', 'r') as f:
 
 text = text.replace('MOLECULEKIT_VERSION_PLACEHOLDER', version)
 text = text.replace('PYTHON_VERSION_PLACEHOLDER', os.getenv('CONDA_PY'))
-text = text.replace('DEPENDENCY_PLACEHOLDER', ''.join(["'{}',\n".format(dep.strip()) for dep in deps]))
 
 with open('setup.py', 'w') as f:
     f.write(text)

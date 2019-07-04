@@ -134,3 +134,13 @@ periodictable = {
     'Ts': _Element(symbol='Ts', name='tennessine', number=117, mass=294, vdw_radius=None),
     'Og': _Element(symbol='Og', name='oganesson', number=118, mass=294, vdw_radius=None),
 }
+
+
+import numpy as np
+# This of course fails for exotic elements like Bk-Cm Db-Lr Mc-Fl Og-Ts which have similar masses
+_elements = np.array([el for el in periodictable])
+_masses = np.array([periodictable[el].mass for el in periodictable])
+
+def elements_from_masses(masses):
+    from scipy.spatial.distance import cdist
+    return list(_elements[np.argmin(cdist(np.array(masses)[:, None], np.array(_masses)[:, None]), axis=1)])

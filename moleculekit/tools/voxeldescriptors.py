@@ -23,16 +23,34 @@ libdir = moleculekit.home.home(libDir=True)
 occupancylib = ctypes.cdll.LoadLibrary(os.path.join(libdir, "occupancy_ext.so"))
 
 
-def viewVoxelFeatures(features, centers, nvoxels, voxelsize=1, draw='wireframe'):
+def viewVoxelFeatures(features, centers, nvoxels, voxelsize=None, draw='wireframe'):
+    """ Visualize in VMD the voxel features produced by getVoxelDescriptors.
+
+    Parameters
+    ----------
+    features : np.ndarray
+        An array of (n_centers, n_features) shape containing the voxel features of each center
+    centers : np.ndarray
+        An array of (n_centers, 3) shape containing the coordinates of each voxel center
+    nvoxels : np.ndarray
+        An array of (3,) shape containing the number of voxels in each X, Y, Z dimension
+
+    Example
+    -------
+    >>> feats, centers, N = getVoxelDescriptors(mol)
+    >>> viewVoxelFeatures(feats, centers, N)
+    """
     from moleculekit.vmdgraphics import VMDIsosurface
     from moleculekit.vmdviewer import getCurrentViewer
 
-    if not isinstance(voxelsize, list) and not isinstance(voxelsize, np.ndarray):
-        voxelsize = [voxelsize, voxelsize, voxelsize]
+    if voxelsize is None:
+        voxelsize = abs(centers[0, 2] - centers[1, 2])
+        voxelsize = np.repeat(voxelsize, 3)
+
+    voxelsize = np.array(voxelsize)
 
     features = features.reshape(list(nvoxels) + [len(_order),])
     centers = centers.reshape(list(nvoxels) + [3,])
-    voxelsize = np.array(voxelsize)
     loweredge = np.min(centers, axis=(0, 1, 2)) - (voxelsize / 2)
 
     for i, name in enumerate(_order):
@@ -489,14 +507,14 @@ class _TestVoxel(unittest.TestCase):
 
     def test_radii(self):
         sigmas = _getChannelRadii(self.mol.element)
-        refsigmas = np.load(os.path.join(self.testf, '3PTB_sigmas.npy'))
+        refsigmas = np.load(os.path.join(self.testf, '3PTB_sigmas.npy'), allow_pickle=True)
         assert np.allclose(sigmas, refsigmas)
 
     def test_celecoxib(self):
         from moleculekit.smallmol.smallmol import SmallMol
         sm = SmallMol(os.path.join(self.testf, 'celecoxib.mol2'))
         features, centers, nvoxels = getVoxelDescriptors(sm, buffer=1, version=2)
-        reffeatures, refcenters, refnvoxels = np.load(os.path.join(self.testf, 'celecoxib_voxres.npy'))
+        reffeatures, refcenters, refnvoxels = np.load(os.path.join(self.testf, 'celecoxib_voxres.npy'), allow_pickle=True)
         assert np.allclose(features, reffeatures)
         assert np.array_equal(centers, refcenters)
         assert np.array_equal(nvoxels, refnvoxels)
@@ -505,7 +523,7 @@ class _TestVoxel(unittest.TestCase):
         from moleculekit.smallmol.smallmol import SmallMol
         sm = SmallMol(os.path.join(self.testf, 'ledipasvir.mol2'))
         features, centers, nvoxels = getVoxelDescriptors(sm, buffer=1, version=2)
-        reffeatures, refcenters, refnvoxels = np.load(os.path.join(self.testf, 'ledipasvir_voxres.npy'))
+        reffeatures, refcenters, refnvoxels = np.load(os.path.join(self.testf, 'ledipasvir_voxres.npy'), allow_pickle=True)
         assert np.allclose(features, reffeatures)
         assert np.array_equal(centers, refcenters)
         assert np.array_equal(nvoxels, refnvoxels)
@@ -515,30 +533,30 @@ class _TestVoxel(unittest.TestCase):
         mol = Molecule(os.path.join(self.testf, '3ptb.pdbqt'))
         mol.element[mol.element == 'CA'] = 'Ca'
         features, centers, nvoxels = getVoxelDescriptors(mol, buffer=8, voxelsize=1, version=1)
-        reffeatures, refcenters, refnvoxels = np.load(os.path.join(self.testf, '3PTB_voxres_old.npy'))
+        reffeatures, refcenters, refnvoxels = np.load(os.path.join(self.testf, '3PTB_voxres_old.npy'), allow_pickle=True)
         assert np.allclose(features, reffeatures)
         assert np.array_equal(centers, refcenters)
         assert np.array_equal(nvoxels, refnvoxels)
 
     def test_featC(self):
         features, centers, nvoxels = getVoxelDescriptors(self.mol, method='C', version=2)
-        reffeatures, refcenters, refnvoxels = np.load(os.path.join(self.testf, '3PTB_voxres.npy'))
+        reffeatures, refcenters, refnvoxels = np.load(os.path.join(self.testf, '3PTB_voxres.npy'), allow_pickle=True)
         assert np.allclose(features, reffeatures)
         assert np.array_equal(centers, refcenters)
         assert np.array_equal(nvoxels, refnvoxels)
 
     def test_featNUMBA(self):
         features, centers, nvoxels = getVoxelDescriptors(self.mol, method='NUMBA', version=2)
-        reffeatures, refcenters, refnvoxels = np.load(os.path.join(self.testf, '3PTB_voxres.npy'))
+        reffeatures, refcenters, refnvoxels = np.load(os.path.join(self.testf, '3PTB_voxres.npy'), allow_pickle=True)
         assert np.allclose(features, reffeatures)
         assert np.array_equal(centers, refcenters)
         assert np.array_equal(nvoxels, refnvoxels)
 
     def test_compare_c_numba(self):
         import numpy as np
-        centers = np.load(os.path.join(self.testf, '3PTB_centers_inp.npy'))
-        coords = np.load(os.path.join(self.testf, '3PTB_coords_inp.npy'))
-        sigmas = np.load(os.path.join(self.testf, '3PTB_channels_inp.npy'))
+        centers = np.load(os.path.join(self.testf, '3PTB_centers_inp.npy'), allow_pickle=True)
+        coords = np.load(os.path.join(self.testf, '3PTB_coords_inp.npy'), allow_pickle=True)
+        sigmas = np.load(os.path.join(self.testf, '3PTB_channels_inp.npy'), allow_pickle=True)
         centers = centers[::10, :].copy()
 
         res_C = _getOccupancyC(coords, centers, sigmas)

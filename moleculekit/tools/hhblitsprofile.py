@@ -7,6 +7,8 @@ import tempfile
 import os
 import re
 import numpy as np
+import subprocess
+from subprocess import check_output
 
 try:
     import pandas
@@ -14,7 +16,7 @@ except ImportError as e:
     print('Pandas is not installed. Please install it with `conda install pandas`')()
 
 
-def getProfile(sequence, hhblits, hhblitsdb, ncpu=6, niter=4):
+def getSequenceProfile(sequence, hhblits, hhblitsdb, ncpu=6, niter=4):
     """ Calculates the sequence profile of a protein sequence using HHBlits
 
     File description and unit conversions taken from section 6 https://hpc.nih.gov/apps/hhsuite-userguide.pdf
@@ -26,7 +28,7 @@ def getProfile(sequence, hhblits, hhblitsdb, ncpu=6, niter=4):
     hhblits : str
         The path to the hhblits executable
     hhblitsdb : str
-        The path to the hhblits database that we want to search against
+        The path to the hhblits database that we want to search against. Should include the database name prefix, not just the folder.
     ncpu : int
         Number of CPUs to use for the search
     niter : int
@@ -44,14 +46,20 @@ def getProfile(sequence, hhblits, hhblitsdb, ncpu=6, niter=4):
     >>> hhb = '~/hhsuite-2.0.16-linux-x86_64/bin/hhblits'
     >>> hhbdb = '~/hhsuite-2.0.16-linux-x86_64/databases/uniprot20_2016_02/uniprot20_2016_02'
     >>> seq = 'MKVIFLKDVKGMGKKGEIKNVADGYANNFLFKQGLAIEA'
-    >>> df, prof = getProfile(seq, hhb, hhbdb)
+    >>> df, prof = getSequenceProfile(seq, hhb, hhbdb)
     """
     regex = re.compile('^\w\s\d+')
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(tmpdir + '/input.fasta', 'w') as fp:
             fp.write('>\n{}\n'.format(sequence))
 
-        os.system('{} -i {}/input.fasta -d {} -cpu {} -M first -n {} -ohhm {}/output.hhm -v 0'.format(hhblits, tmpdir, hhblitsdb, ncpu, niter, tmpdir))
+        try:
+            check_output('{} -i {}/input.fasta -d {} -cpu {} -M first -n {} -ohhm {}/output.hhm -v 0'.format(hhblits, tmpdir, hhblitsdb, ncpu, niter, tmpdir),
+                        stderr=subprocess.STDOUT,
+                        shell=True
+                        )
+        except subprocess.CalledProcessError as err:                                                                                                   
+            print('HHBlits errored out with code {} and ouput: \n--------------- ERROR LOG ---------------\n{}\n--------------- END OF LOG ---------------\n'.format(err.returncode, err.output.decode('utf-8')))
         
         data = []
         seq = []

@@ -5,7 +5,20 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def autoSegment(mol, sel='all', basename='P', spatial=True, spatialgap=4.0, field="segid", _logger=True):
+
+def _getChainAlphabet(mode):
+    if mode == 'numeric':
+        chain_alphabet = list(string.digits)
+    elif mode == 'alphabetic':
+        chain_alphabet = list(string.ascii_uppercase + string.ascii_lowercase)
+    elif mode == 'alphanumeric':
+        chain_alphabet = list(string.digits + string.ascii_uppercase + string.ascii_lowercase)
+    else:
+        raise RuntimeError('Invalid mode {}. Use \'numeric\', \'alphabetic\' or \'alphanumeric\''.format(mode))
+    return chain_alphabet
+
+
+def autoSegment(mol, sel='all', basename='P', spatial=True, spatialgap=4.0, field="segid", mode='alphanumeric', _logger=True):
     """ Detects resid gaps in a selection and assigns incrementing segid to each fragment
 
     !!!WARNING!!! If you want to use atom selections like 'protein' or 'fragment',
@@ -26,6 +39,10 @@ def autoSegment(mol, sel='all', basename='P', spatial=True, spatialgap=4.0, fiel
         The size of a spatial gap which validates a discontinuity (A)
     field : str
         Field to fix. Can be "segid" (default), "chain", or "both"
+    mode : str
+        If set to 'numeric' it will use numbers for segment IDs.
+        If set to 'alphabetic' it will use letters for segment IDs.
+        If set to 'alphanumeric' it will use both numbers and letters for segment IDs.
 
     Returns
     -------
@@ -40,13 +57,14 @@ def autoSegment(mol, sel='all', basename='P', spatial=True, spatialgap=4.0, fiel
     mol = mol.copy()
 
     idx = mol.atomselect(sel, indexes=True)
-    rid = mol.get('resid', sel)
+    rid = mol.resid[idx].copy()
     residiff = np.diff(rid)
     gappos = np.where((residiff != 1) & (residiff != 0))[0]  # Points to the index before the gap!
 
     # Letters to be used for chains, if free: 0123456789abcd...ABCD..., minus chain symbols already used
     used_chains = set(mol.chain)
-    chain_alphabet = list(string.digits + string.ascii_letters)
+    chain_alphabet = _getChainAlphabet(mode)
+
     available_chains = [x for x in chain_alphabet if x not in used_chains]
 
     idxstartseg = [idx[0]] + idx[gappos + 1].tolist()
@@ -55,19 +73,21 @@ def autoSegment(mol, sel='all', basename='P', spatial=True, spatialgap=4.0, fiel
     mol.set('segid', basename, sel)
 
     if len(gappos) == 0:
-        mol.set('segid', basename+'0', sel)
+        mol.set('segid', basename+chain_alphabet[0], sel)
         return mol
 
     if spatial:
-        residbackup = mol.get('resid')
+        residbackup = mol.resid.copy()
         mol.set('resid', sequenceID(mol.resid))  # Assigning unique resids to be able to do the distance selection
 
         todelete = []
         i = 0
         for s, e in zip(idxstartseg[1:], idxendseg[:-1]):
-            coords = mol.get('coords', sel='resid "{}" "{}" and name CA'.format(mol.resid[e], mol.resid[s]))
-            if np.shape(coords) == (2, 3):
-                dist = np.sqrt(np.sum((coords[0, :] - coords[1, :]) ** 2))
+            # Get the carbon alphas of both residues  ('coords', sel='resid "{}" "{}" and name CA'.format(mol.resid[e], mol.resid[s]))
+            ca1coor = mol.coords[(mol.resid == mol.resid[e]) & (mol.name == 'CA')]
+            ca2coor = mol.coords[(mol.resid == mol.resid[s]) & (mol.name == 'CA')]
+            if len(ca1coor) and len(ca2coor):
+                dist = np.sqrt(np.sum((ca1coor.squeeze() - ca2coor.squeeze()) ** 2))
                 if dist < spatialgap:
                     todelete.append(i)
             i += 1
@@ -98,7 +118,7 @@ def autoSegment(mol, sel='all', basename='P', spatial=True, spatialgap=4.0, fiel
     return mol
 
 
-def autoSegment2(mol, sel='(protein or resname ACE NME)', basename='P', fields=('segid',), residgaps=False, residgaptol=1, chaingaps=True, _logger=True):
+def autoSegment2(mol, sel='(protein or resname ACE NME)', basename='P', fields=('segid',), residgaps=False, residgaptol=1, chaingaps=True, mode='alphanumeric', _logger=True):
     """ Detects bonded segments in a selection and assigns incrementing segid to each segment
 
     Parameters
@@ -119,6 +139,10 @@ def autoSegment2(mol, sel='(protein or resname ACE NME)', basename='P', fields=(
         default to 2 because in many PDBs single residues are missing in the proteins without any gaps.
     chaingaps : bool
         Set to True to consider changes in chains as structural gaps. Set to False to ignore chains
+    mode : str
+        If set to 'numeric' it will use numbers for segment IDs.
+        If set to 'alphabetic' it will use letters for segment IDs.
+        If set to 'alphanumeric' it will use both numbers and letters for segment IDs.
 
     Returns
     -------
@@ -175,7 +199,7 @@ def autoSegment2(mol, sel='(protein or resname ACE NME)', basename='P', fields=(
 
     # Letters to be used for chains, if free: 0123456789abcd...ABCD..., minus chain symbols already used
     used_chains = set(mol.chain)
-    chain_alphabet = list(string.digits + string.ascii_letters)
+    chain_alphabet = _getChainAlphabet(mode)
     available_chains = [x for x in chain_alphabet if x not in used_chains]
 
     mol = mol.copy()

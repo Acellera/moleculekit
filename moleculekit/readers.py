@@ -7,6 +7,7 @@ import ctypes as ct
 import numpy as np
 from moleculekit.support import pack_double_buffer, pack_int_buffer, pack_string_buffer, pack_ulong_buffer, xtc_lib
 from moleculekit.util import sequenceID
+from moleculekit.periodictable import elements_from_masses
 import os
 import re
 import logging
@@ -125,7 +126,7 @@ class TopologyInconsistencyError(Exception):
 class MolFactory(object):
     """ This class converts Topology and Trajectory data into Molecule objects """
     @staticmethod
-    def construct(topos, trajs, filename, frame):
+    def construct(topos, trajs, filename, frame, validateElements=True):
         from moleculekit.molecule import Molecule
 
         topos = ensurelist(topos)
@@ -141,7 +142,7 @@ class MolFactory(object):
             mol = Molecule()
             if topo is not None:
                 mol._emptyTopo(natoms)
-                MolFactory._parseTopology(mol, topo, filename)
+                MolFactory._parseTopology(mol, topo, filename, validateElements=validateElements)
             if traj is not None:
                 mol._emptyTraj(natoms)
                 MolFactory._parseTraj(mol, traj, filename, frame)
@@ -192,7 +193,7 @@ class MolFactory(object):
         issued_warnings = []  # Don't issue multiplt times the same warning for the same element renaming
 
         for i in range(mol.numAtoms):
-            el = mol.element[i].lower().capitalize()  # Standardize capitalization of elements
+            el = mol.element[i].capitalize()  # Standardize capitalization of elements
 
             if el in misnamed_element_map:  # Check if element has a common misnaming
                 if el not in issued_warnings:
@@ -202,12 +203,13 @@ class MolFactory(object):
                 el = misnamed_element_map[el]
 
             if el not in periodictable:  # If it's still not in the periodic table of elements throw error
-                raise RuntimeError('Element {} was read in file {} but was not found in the periodictable.'.format(el, filename))
+                raise RuntimeError('Element {} was read in file {} but was not found in the periodictable. ' \
+                                   'To disable this check, pass `validateElements=False` to the Molecule constructor or read method.'.format(el, filename))
 
             mol.element[i] = el  # Set standardized element
 
     @staticmethod
-    def _parseTopology(mol, topo, filename):
+    def _parseTopology(mol, topo, filename, validateElements=True):
         from moleculekit.molecule import Molecule
         for field in topo.__dict__:
             if field == 'crystalinfo':
@@ -239,7 +241,8 @@ class MolFactory(object):
             mol.bondtype[:] = 'un'
 
         mol.element = mol._guessMissingElements()
-        MolFactory._elementChecks(mol, filename)
+        if validateElements:
+            MolFactory._elementChecks(mol, filename)
 
         if os.path.exists(filename):
             filename = os.path.abspath(filename)
@@ -638,7 +641,7 @@ def pdbGuessElementByName(elements, names, onlymissing=True):
     return noelem, newelements[noelem]
 
 
-def PDBread(filename, mode='pdb', frame=None, topoloc=None):
+def PDBread(filename, mode='pdb', frame=None, topoloc=None, validateElements=True):
     from pandas import read_fwf
     import io
 
@@ -910,7 +913,7 @@ def PDBread(filename, mode='pdb', frame=None, topoloc=None):
 
     topo.crystalinfo = crystalinfo
     traj = Trajectory(coords=coords)
-    return MolFactory.construct(topo, traj, filename, frame)
+    return MolFactory.construct(topo, traj, filename, frame, validateElements=validateElements)
 
 
 def PDBQTread(filename, frame=None, topoloc=None):
@@ -970,7 +973,7 @@ def PRMTOPread(filename, frame=None, topoloc=None):
             elif section == 'masses':
                 fieldlen = 16
                 topo.masses += [float(line[i:i + fieldlen].strip()) for i in range(0, len(line), fieldlen)
-                           if len(line[i:i + fieldlen].strip()) != 0]  # 18.2223 = Scaling factor for charges
+                           if len(line[i:i + fieldlen].strip()) != 0]
             elif section == 'resname':
                 fieldlen = 4
                 uqresnames += [line[i:i + fieldlen].strip() for i in range(0, len(line), fieldlen)
@@ -1032,10 +1035,13 @@ def PRMTOPread(filename, frame=None, topoloc=None):
         else:
             atoms[3] = abs(atoms[3])
             topo.impropers.append(atoms)
+
+    # Elements from masses
+    topo.element = elements_from_masses(topo.masses)
     return MolFactory.construct(topo, None, filename, frame)
 
 
-def PSFread(filename, frame=None, topoloc=None):
+def PSFread(filename, frame=None, topoloc=None, validateElements=True):
     import re
     residinsertion = re.compile(r'(\d+)([a-zA-Z])')
 
@@ -1093,7 +1099,10 @@ def PSFread(filename, frame=None, topoloc=None):
                 mode = 'dihedral'
             elif '!NIMPHI' in line:
                 mode = 'improper'
-    return MolFactory.construct(topo, None, filename, frame)
+
+    # Elements from masses
+    topo.element = elements_from_masses(topo.masses)
+    return MolFactory.construct(topo, None, filename, frame, validateElements=validateElements)
 
 
 def XTCread(filename, frame=None, topoloc=None):
@@ -1506,7 +1515,7 @@ def RTFread(filename, frame=None, topoloc=None):
     def _guessElement(name):
         import re
         name = re.sub('[0-9]*$', '', name)
-        name = name.lower().capitalize()
+        name = name.capitalize()
         return name
 
     def _guessMass(element):
@@ -1556,7 +1565,7 @@ def RTFread(filename, frame=None, topoloc=None):
         if atype not in allatomtypes:
             allatomtypes.append(atype)
 
-    topo.element = np.array([element_by_type[t].lower().capitalize() for t in topo.atomtype], dtype=object)
+    topo.element = np.array([element_by_type[t].capitalize() for t in topo.atomtype], dtype=object)
     topo.masses = np.array([mass_by_type[t] for t in topo.atomtype], dtype=np.float32)
     topo.bonds = np.vstack(bonds)
 

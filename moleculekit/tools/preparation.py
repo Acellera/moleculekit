@@ -124,7 +124,7 @@ def _buildResAndMol(pdb2pqr_protein):
             segid.append(atom.segID)
             # Fixup element fields for added H (routines.addHydrogens)
             elt = "H" if atom.added and atom.name.startswith("H") else atom.element
-            element.append(elt)
+            element.append(elt.capitalize())
             occupancy.append(0.0 if atom.added else atom.occupancy)
             beta.append(99.0 if atom.added else atom.tempFactor)
             charge.append(atom.charge)

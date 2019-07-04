@@ -641,6 +641,8 @@ class Molecule(object):
         else:
             s = sel
 
+        s = np.atleast_1d(s)
+
         if indexes and s.dtype == bool:
             return np.array(np.where(s)[0], dtype=np.int32)
         else:
@@ -1384,16 +1386,6 @@ class Molecule(object):
                 self.fileloc = [self.fileloc[i] for i in keep]
         self.frame = 0  # Reset to 0 since the frames changed indexes
 
-    def viewCrystalPacking(self, viewerhandle=None):
-        """
-        If the Molecule was read from a crystallographic PDB structure it shows the crystal packing of the molecule.
-        """
-        from moleculekit.tools.crystalpacking import viewCrystalPacking
-        from moleculekit.vmdviewer import getCurrentViewer
-        if viewerhandle is None:
-            viewerhandle = getCurrentViewer()
-        viewCrystalPacking(self, viewerhandle=viewerhandle)
-
     def _guessBabelElements(self):
         babel_elements = ['Cr', 'Pt', 'Mn', 'Np', 'Be', 'Co', 'Rn', 'C', 'Ag', 'Xe', 'D', 'Th', 'Sb', 'Al', 'Ir', 'In', 'Te', 'Tl', 'K', 'Tb', 'Br', 'Eu', 'Ne', 'Rb', 'Ar', 'Sm', 'Xx', 'Fe', 'Lr', 'S', 'H', 'He', 'At', 'Li', 'Cs', 'Rh', 'Nb', 'Pr', 'Fm', 'Cu', 'Ru', 'Ga', 'Er', 'Hg', 'Nd', 'Ba', 'Ta', 'Pu', 'O', 'Pb', 'Yb', 'Bk', 'Pd', 'F', 'Gd', 'Y', 'Ac', 'Au', 'Hf', 'Ra', 'V', 'I', 'Ge', 'Re', 'Fr', 'Cm', 'Kr', 'Sr', 'Sn', 'Pm', 'Ca', 'No', 'Si', 'Es', 'U', 'Am', 'Sc', 'Md', 'As', 'Na', 'N', 'Dy', 'Os', 'Po', 'Se', 'Lu', 'Mo', 'Zn', 'Cd', 'Mg', 'Tm', 'Cl', 'P', 'B', 'W', 'Tc', 'Cf', 'Bi', 'Ni', 'Ti', 'Pa', 'La', 'Ce', 'Zr', 'Ho']
         guess_babel_elements = ['D', 'M', 'V', 'A', 'X', 'R', 'F', 'Z', 'T', 'E', 'G', 'L']
@@ -1605,7 +1597,7 @@ class Molecule(object):
         retval = None
         if viewer is None:
             try:
-                from moleculekit.config import _config
+                from htmd.config import _config
                 viewer = _config['viewer']
             except:
                 from moleculekit.config import _config
@@ -1658,8 +1650,11 @@ class Molecule(object):
         self._tempreps.remove()
 
     def _viewNGL(self, gui=False):
+        try:
+            import nglview
+        except ImportError:
+            raise ImportError('Optional package nglview not found. Please install it using `conda install nglview -c acellera`.')
         from nglview import HTMDTrajectory
-        import nglview
         traj = HTMDTrajectory(self)
         w = nglview.NGLWidget(traj, gui=gui)
 
@@ -1836,7 +1831,35 @@ class UniqueResidueID:
                + self.__str__()
 
 
-def mol_equal(mol1, mol2, checkFields=Molecule._atom_and_coord_fields, exceptFields=None, _logger=True):
+def mol_equal(mol1, mol2, checkFields=Molecule._atom_and_coord_fields, exceptFields=None, fieldPrecision=None, _logger=True):
+    """ Compare two Molecules for equality.
+
+    Parameters
+    ----------
+    mol1 : Molecule
+        The first molecule to compare
+    mol2 : Molecule
+        The second molecule to compare to the first
+    checkFields : list
+        A list of fields to compare. By default compares all atom information and coordinates in the molecule
+    exceptFields : list
+        A list of fields to not compare.
+    fieldPrecision : dict
+        A dictionary of `field`, `precision` key-value pairs which defines the numerical precision of the value comparisons of two arrays
+    _logger : bool
+        Set to False to disable the printing of the differences in the two Molecules
+
+    Returns
+    -------
+    equal : bool
+        Returns True if the molecules are equal or False if they are not.
+
+    Examples
+    --------
+    >>> mol_equal(mol1, mol2, checkFields=['resname', 'resid', 'segid'])
+    >>> mol_equal(mol1, mol2, exceptFields=['record', 'name'])
+    >>> mol_equal(mol1, mol2, fieldPrecision={'coords': 1e-5})
+    """
     difffields = []
     checkFields = list(checkFields)
     if exceptFields is not None:
@@ -1844,12 +1867,24 @@ def mol_equal(mol1, mol2, checkFields=Molecule._atom_and_coord_fields, exceptFie
     for field in checkFields:
         field1 = field
         field2 = field
+
         if not hasattr(mol1, field) and hasattr(mol1, '_'+field):
             field1 = '_'+field
             if _logger: logger.warning('Could not find attribute {f} in mol1. Using attribute _{f}'.format(f=field))
         if not hasattr(mol2, field) and hasattr(mol2, '_'+field):
             field2 = '_'+field
             if _logger: logger.warning('Could not find attribute {f} in mol2. Using attribute _{f}'.format(f=field))
+
+        
+        if fieldPrecision is not None:
+            precision = None
+            if field1 in fieldPrecision:
+                precision = fieldPrecision[field1]
+            if field2 in fieldPrecision:
+                precision = fieldPrecision[field2]
+            if precision is not None and np.allclose(mol1.__getattribute__(field1), mol2.__getattribute__(field2), atol=precision):
+                continue
+                
         if not np.array_equal(mol1.__getattribute__(field1), mol2.__getattribute__(field2)):
             difffields += [field]
 
@@ -2080,7 +2115,7 @@ class _TestMolecule(TestCase):
         mol = Molecule(path.join(home(dataDir='test-molecule'), 'a1e.prmtop'))
         mol.read(path.join(home(dataDir='test-molecule'), 'a1e.pdb'))
         _ = mol.filter('not water')
-        bb, bt, di, im, an = np.load(path.join(home(dataDir='test-molecule'), 'updatebondsanglesdihedrals_nowater.npy'))
+        bb, bt, di, im, an = np.load(path.join(home(dataDir='test-molecule'), 'updatebondsanglesdihedrals_nowater.npy'), allow_pickle=True)
         assert np.array_equal(bb, mol.bonds)
         assert np.array_equal(bt, mol.bondtype)
         assert np.array_equal(di, mol.dihedrals)
@@ -2088,7 +2123,7 @@ class _TestMolecule(TestCase):
         assert np.array_equal(an, mol.angles)
         _ = mol.filter('not index 8 18')
         bb, bt, di, im, an = np.load(
-            path.join(home(dataDir='test-molecule'), 'updatebondsanglesdihedrals_remove8_18.npy'))
+            path.join(home(dataDir='test-molecule'), 'updatebondsanglesdihedrals_remove8_18.npy'), allow_pickle=True)
         assert np.array_equal(bb, mol.bonds)
         assert np.array_equal(bt, mol.bondtype)
         assert np.array_equal(di, mol.dihedrals)
@@ -2144,7 +2179,7 @@ class _TestMolecule(TestCase):
         mol = self.trajmollig.copy()
         mol.align('noh')
 
-        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-selfalign-mol.npy'))
+        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-selfalign-mol.npy'), allow_pickle=True)
 
         assert np.allclose(mol.coords, refcoords, atol=1E-3)
 
@@ -2160,7 +2195,7 @@ class _TestMolecule(TestCase):
 
         mol.align('noh', refmol=mol2)
 
-        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-align-refmol.npy'))
+        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-align-refmol.npy'), allow_pickle=True)
 
         assert np.allclose(mol.coords, refcoords, atol=1E-3)
         assert np.allclose(mol.coords[mol.atomselect('noh'), :, 3], mol2.coords[:, :, 0], atol=1E-3)
@@ -2176,7 +2211,7 @@ class _TestMolecule(TestCase):
 
         mol.align('noh', refmol=mol2, matchingframes=True)
 
-        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-align-refmol-matchingframes.npy'))
+        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-align-refmol-matchingframes.npy'), allow_pickle=True)
 
         assert np.allclose(mol.coords, refcoords, atol=1E-3)
 
@@ -2194,7 +2229,7 @@ class _TestMolecule(TestCase):
 
         mol.align('noh', refmol=mol2, frames=[0, 1, 2, 3])
 
-        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-align-refmol-selectedframes.npy'))
+        refcoords = np.load(path.join(home(dataDir='test-molecule'), 'test-align-refmol-selectedframes.npy'), allow_pickle=True)
 
         assert np.allclose(originalcoords[:, :, 4:], mol.coords[:, :, 4:], atol=1E-3)
         assert np.allclose(mol.coords, refcoords, atol=1E-3)
@@ -2234,7 +2269,7 @@ class _TestMolecule(TestCase):
         from moleculekit.home import home
         mol = self.mol3PTB.copy()
         mapping = mol.renumberResidues(returnMapping=True)
-        refres = np.load(os.path.join(home(dataDir='test-molecule'), 'renumberedresidues.npy'))
+        refres = np.load(os.path.join(home(dataDir='test-molecule'), 'renumberedresidues.npy'), allow_pickle=True)
         assert np.array_equal(mol.resid, refres)
 
     def test_str_repr(self):
@@ -2244,6 +2279,13 @@ class _TestMolecule(TestCase):
     def test_mol_equal(self):
         assert mol_equal(self.mol3PTB, self.mol3PTB)
         assert not mol_equal(self.mol3PTB, self.trajmol)
+
+    def test_mol_equal_precision(self):
+        mol1 = self.mol3PTB
+        mol2 = self.mol3PTB.copy()
+        mol2.coords += 0.001
+        assert mol_equal(mol1, mol2, fieldPrecision={'coords': 1e-2})
+        assert not mol_equal(mol1, mol2, fieldPrecision={'coords': 1e-4})
 
 
 
