@@ -23,17 +23,20 @@ help:
 
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
-%: Makefile
-	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+# %: Makefile
+# 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 # Rule for building .rst from .ipynb
 $(TUTORIALSDIR)/%.rst: ../tutorials/%.ipynb
 	mkdir -p $(TUTORIALSDIR)
-	$(IPYTHON) nbconvert $< --to rst --output-dir=$(TUTORIALSDIR)/
+	jupyter-nbconvert $< --to rst --output-dir=$(TUTORIALSDIR)/
 
-tutorials: $(TUT_RST_FILES)
+writeversion:
+	echo "$(GITTAG)" > source/version
 
-rst: tutorials
+tutorials: writeversion $(TUT_RST_FILES)
+
+rst: writeversion tutorials
 	$(SPHINXAPIDOC) --force --separate -o $(SOURCEDIR) ../moleculekit/ >/dev/null
 	echo "$(GITTAG)" > source/version
 	@echo
