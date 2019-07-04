@@ -11,6 +11,63 @@ import os
 import numpy as np
 
 
+def _convertMoleculeToRDKitMol(mol):
+    """
+    Convert Molecule to RDKit Mol
+    Note: sometimes RDKit fails just writing a warning message to stderr, rather than raising an exception.
+    Parameters
+    ----------
+    mol: Molecule
+        Molecule to convert
+    Return
+    ------
+    results: RDKit Mol
+        RDKit Mol object
+    Examples
+    --------
+    >>> from htmd.home import home
+    >>> from moleculekit.molecule import Molecule
+    >>> molFile = os.path.join(home('test-charge'), 'H2O.mol2')
+    >>> mol = Molecule(molFile)
+    >>> type(_convertMoleculeToRDKitMol(mol))
+    <class 'rdkit.Chem.rdchem.Mol'>
+    """
+
+    from rdkit.Chem import MolFromMol2File
+
+    rdkit_mol = None
+    with tempfile.TemporaryFile(mode='w+') as stderr:
+
+        # Redirect stderr to a file
+        temp_fileno = os.dup(sys.stderr.fileno())
+        os.dup2(stderr.fileno(), sys.stderr.fileno()) # Change process stderr
+        sys.stderr = stderr # Change Python stderr
+
+        # Convert Molecule to RDKit Mol
+        with tempfile.TemporaryDirectory() as tmpDir:
+            filename = os.path.join(tmpDir, 'mol.mol2')
+            mol.write(filename)
+            rdkit_mol = MolFromMol2File(filename, removeHs=False)
+
+        # Reset stderr
+        os.dup2(temp_fileno, sys.__stderr__.fileno())
+        os.close(temp_fileno)
+        sys.stderr = sys.__stderr__
+
+        # Read RDKit warnings
+        stderr.flush()
+        stderr.seek(0)
+        message = stderr.read()
+
+    if rdkit_mol is None:
+        raise RuntimeError(f'RDKit error\n{message}\n')
+
+    if rdkit_mol.GetNumAtoms() != mol.numAtoms:
+        raise RuntimeError(f'RDKit error: incorrect number of atoms.\n{message}\n')
+
+    return rdkit_mol
+
+
 def StandardPDBResidueChirality(rdmol):
     for a in rdmol.GetAtoms():
         if a.GetChiralTag() != rdkit.Chem.rdchem.CHI_UNSPECIFIED:
@@ -91,11 +148,13 @@ def toRDKITmol(mol, protidx, sanitize=True, removeHs=False):
 
 if __name__ == '__main__':
     from moleculekit.molecule import Molecule
-    mol = Molecule('3PTB')
-    protidx = mol.atomselect('protein', indexes=True)
+    # # We don't use this yet. It's experimental. So no point in wasting time testing it.
 
-    rdmol = toRDKITmol(mol, protidx)
+    # mol = Molecule('3PTB')
+    # protidx = mol.atomselect('protein', indexes=True)
 
-    fdefName = os.path.join(RDConfig.RDDataDir,'BaseFeatures.fdef')
-    factory = ChemicalFeatures.BuildFeatureFactory(fdefName)
-    feats = factory.GetFeaturesForMol(rdmol)
+    # rdmol = toRDKITmol(mol, protidx)
+
+    # fdefName = os.path.join(RDConfig.RDDataDir,'BaseFeatures.fdef')
+    # factory = ChemicalFeatures.BuildFeatureFactory(fdefName)
+    # feats = factory.GetFeaturesForMol(rdmol)
