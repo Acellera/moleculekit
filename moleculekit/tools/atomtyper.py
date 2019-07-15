@@ -137,8 +137,8 @@ def atomtypingValidityChecks(mol):
         resnames = np.unique(mol.resname[~protsel])
         raise RuntimeError('Found non-protein atoms with resnames {} in the Molecule. Please make sure to only pass protein atoms.'.format(resnames))
 
-    if mol.bonds.shape[0] < mol.numAtoms:
-        raise ValueError('The protein has less bonds than atoms. This seems incorrect. Assign them with `mol.bonds = mol._getBonds()`')
+    if mol.bonds.shape[0] < (mol.numAtoms - 1):
+        raise ValueError('The protein has less bonds than (number of atoms - 1). This seems incorrect. You can assign bonds with `mol.bonds = mol._getBonds()`')
 
     if np.all(mol.segid == '') or np.all(mol.chain == ''):
         raise RuntimeError('Please assign segments to the segid and chain fields of the molecule using autoSegment2')
