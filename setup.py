@@ -30,7 +30,7 @@ if __name__ == '__main__':
         packages=setuptools.find_packages(include=['moleculekit*'], exclude=['test-data', '*test*', ]),
 
         package_data={
-            'moleculekit': ['lib/*/*', 'vmd_wrapper'],
+            'moleculekit': ['lib/*/*', 'vmd_wrapper', 'logging.ini'],
         },
 
         test_suite='setup.my_test_suite',
