@@ -19,6 +19,10 @@ class MetricSasa(Projection):
     sel : str
         Atom selection string for atoms or residues for which to calculate the SASA.
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+    filtersel : str
+        Keep only the selected atoms in the system. All other atoms will be removed and will
+        not contribute to the SASA calculation. Keep in mind that the SASA of an atom or residue
+        is affected by the presence of other atoms around it so this will change the SASA of the remaining atoms.
     probeRadius : float
         The radius of the probe, in Angstrom.
     numSpherePoints : int
@@ -31,34 +35,50 @@ class MetricSasa(Projection):
     -------
     metr : MetricSasa object
     """
-    def __init__(self, sel='protein', probeRadius=1.4, numSpherePoints=960, mode='atom'):
+    def __init__(self, sel='protein', filtersel='all', probeRadius=1.4, numSpherePoints=960, mode='atom'):
         super().__init__()
 
         self._probeRadius = probeRadius
         self._numSpherePoints = numSpherePoints
         self._mode = mode
         self._sel = sel
+        self._filtersel = filtersel
 
     def _calculateMolProp(self, mol, props='all'):
-        props = ('radii', 'atom_mapping', 'sel') if props == 'all' else props
+        props = ('radii', 'atom_mapping', 'sel', 'filtersel', 'tokeep') if props == 'all' else props
         res = {}
 
         sel = mol.atomselect(self._sel)
+        selidx = np.where(sel)[0]
         if 'sel' in props:
             res['sel'] = sel
+        
+        filtersel = mol.atomselect(self._filtersel)
+        filterselidx = np.where(filtersel)[0]
+        if 'filtersel' in props:
+            res['filtersel'] = filtersel
+
+        if len(np.setdiff1d(selidx, filterselidx)) != 0:
+            raise RuntimeError('Some atoms selected by `sel` are not selected by `filtersel` and thus would not be calculated. Make sure `sel` is a subset of `filtersel`.')
+
+        if 'tokeep' in props:
+            filterselmod = filtersel.copy().astype(int)
+            filterselmod[filterselmod == 0] = -1
+            filterselmod[filtersel] = np.arange(np.count_nonzero(filtersel))
+            res['tokeep'] = filterselmod[sel]
 
         if 'radii' in props:
             _ATOMIC_RADII = {'C': 1.5, 'F': 1.2, 'H': 0.4, 'N': 1.10, 'O': 1.05, 'S': 1.6, 'P': 1.6}
-            elements = [n[0] for n in mol.name[sel]]
+            elements = [n[0] for n in mol.name[filtersel]]
             atom_radii = np.vectorize(_ATOMIC_RADII.__getitem__)(elements)
             res['radii'] = np.array(atom_radii, np.float32) + self._probeRadius
 
         if 'atom_mapping' in props:
             if self._mode == 'atom':
-                res['atom_mapping'] = np.arange(np.sum(sel), dtype=np.int32)
+                res['atom_mapping'] = np.arange(np.sum(filtersel), dtype=np.int32)
             elif self._mode == 'residue':
                 from moleculekit.util import sequenceID
-                res['atom_mapping'] = sequenceID((mol.resid[sel], mol.chain[sel], mol.segid[sel])).astype(np.int32)
+                res['atom_mapping'] = sequenceID((mol.resid[filtersel], mol.chain[filtersel], mol.segid[filtersel])).astype(np.int32)
             else:
                 raise ValueError('mode must be one of "residue", "atom". "{}" supplied'.format(self._mode))
 
@@ -81,8 +101,11 @@ class MetricSasa(Projection):
         radii = getMolProp('radii')
         atom_mapping = getMolProp('atom_mapping')
         sel = getMolProp('sel')
+        filtersel = getMolProp('filtersel')
+        tokeep = getMolProp('tokeep')
+        tokeep = np.unique(atom_mapping[tokeep])
 
-        xyz = np.swapaxes(np.swapaxes(np.atleast_3d(mol.coords[sel, :, :]), 1, 2), 0, 1)
+        xyz = np.swapaxes(np.swapaxes(np.atleast_3d(mol.coords[filtersel, :, :]), 1, 2), 0, 1)
         xyz = np.array(xyz.copy(), dtype=np.float32) / 10  # converting to nm
 
         try:
@@ -92,7 +115,7 @@ class MetricSasa(Projection):
 
         out = np.zeros((mol.numFrames, atom_mapping.max() + 1), dtype=np.float32)
         sasa(xyz, radii / 10, int(self._numSpherePoints), atom_mapping, out)  # Divide radii by 10 for nm
-        return out
+        return out[:, tokeep]
 
     def getMapping(self, mol):
         """ Returns the description of each projected dimension.
@@ -160,6 +183,30 @@ class _TestMetricSasa(unittest.TestCase):
         sasaR = metr.project(self.mol.copy())
         sasaR_ref = np.load(path.join(home(dataDir='test-projections'), 'metricsasa', 'sasa_residue.npy'))
         assert np.allclose(sasaR, sasaR_ref, atol=3e-3)
+
+    def test_set_diff_error(self):
+        try:
+            metr = MetricSasa(mode='atom', sel='index 3000', filtersel='not index 3000')
+            metr._calculateMolProp(self.mol.copy())
+        except RuntimeError:
+            print('Correctly threw a runtime error for bad selections')
+        else:
+            raise AssertionError('This should throw an error as the selected atom does not exist in the filtered system')
+     
+
+    def test_selection_and_filtering(self):
+        from os import path
+        from moleculekit.home import home
+
+        sasaR_ref = np.load(path.join(home(dataDir='test-projections'), 'metricsasa', 'sasa_atom.npy'))
+
+        metr = MetricSasa(mode='atom', sel='index 3000') # Get just the SASA of the 3000th atom
+        sasaR = metr.project(self.mol.copy())
+        assert np.allclose(sasaR, sasaR_ref[:, [3000]], atol=3e-3), 'SASA atom selection failed to give same results as without selection'
+
+        metr = MetricSasa(mode='atom', sel='index 3000', filtersel='index 3000') # Get just the SASA of the 3000th atom, remove all else
+        sasaR = metr.project(self.mol.copy())
+        assert not np.allclose(sasaR, sasaR_ref[:, [3000]], atol=3e-3), 'SASA filtering gave same results as without filtering. Bad.'
 
 
 if __name__ == '__main__':
