@@ -7,11 +7,16 @@ matrix:
       python:
         - '3.6'
       env: OSNAME=Linux CONDA_PY=3.6
-    # - os: linux
+    - os: linux
+      language: python
+      python:
+        - '3.7'
+      env: OSNAME=Linux CONDA_PY=3.7
+    # - os: osx
     #   language: python
     #   python:
-    #     - '3.7'
-    #   env: OSNAME=Linux CONDA_PY=3.7
+    #     - '3.6'
+    #   env: OSNAME=Darwin CONDA_PY=3.6
 
 
 env:
@@ -27,8 +32,8 @@ script:
   - pip install --user --upgrade -q setuptools wheel twine
   # Insert version number and dependencies into pip and conda recipes
   - python ci/travis/insert_placeholder_values.py
-  # Clone and compile the private htmdlib repo
-  - bash -x ./ci/travis/compile_htmdlib.sh
+  # Clone and compile the private htmdlib repo - Disabled due to 2FA not allowing cloning without ssh keys
+  # - bash -x ./ci/travis/compile_htmdlib.sh
   # Install the library locally
   - pip install .
   # Run tests
