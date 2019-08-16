@@ -64,6 +64,10 @@ jobs:
       condition: succeededOrFailed()
       displayName: Run tests
 
+    - script: |
+        python setup.py bdist_wheel
+      displayName: Building PyPI package
+
     - task: TwineAuthenticate@1
       displayName: 'Twine Authenticate'
       inputs:
