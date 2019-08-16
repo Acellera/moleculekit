@@ -64,6 +64,15 @@ jobs:
       condition: succeededOrFailed()
       displayName: Run tests
 
+    - task: TwineAuthenticate@1
+      displayName: 'Twine Authenticate'
+      inputs:
+        pythonUploadServiceConnection: pypitest
+
+    - script: |
+        python -m twine upload -r "pypitest" --config-file $(PYPIRC_PATH) dist/*.whl
+      displayName: Uploading to PyPI
+
   - job: macOS
     displayName: Mac OSX build
     pool:
