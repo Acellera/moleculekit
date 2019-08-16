@@ -36,12 +36,12 @@ jobs:
         pip install twine codecov coverage
       displayName: Install pip packages
 
-    - bash: bash -x ./ci/travis/compile_htmdlib.sh
-      displayName: Clone and compile the private htmdlib repo
-      env:
-        GITHUB_HTMDLIB_USERNAME: $(GITHUB_HTMDLIB_USERNAME)
-        GITHUB_HTMDLIB_PASSWORD: $(GITHUB_HTMDLIB_PASSWORD)
-        OSNAME: 'Linux'
+    # - bash: bash -x ./ci/travis/compile_htmdlib.sh
+    #   displayName: Clone and compile the private htmdlib repo - Disabled due to 2FA not allowing cloning without ssh keys
+    #   env:
+    #     GITHUB_HTMDLIB_USERNAME: $(GITHUB_HTMDLIB_USERNAME)
+    #     GITHUB_HTMDLIB_PASSWORD: $(GITHUB_HTMDLIB_PASSWORD)
+    #     OSNAME: 'Linux'
 
     - bash: |
         source activate test
@@ -100,12 +100,12 @@ jobs:
         pip install twine codecov coverage
       displayName: Install pip packages
 
-    - bash: bash -x ./ci/travis/compile_htmdlib.sh
-      displayName: Clone and compile the private htmdlib repo
-      env:
-        GITHUB_HTMDLIB_USERNAME: $(GITHUB_HTMDLIB_USERNAME)
-        GITHUB_HTMDLIB_PASSWORD: $(GITHUB_HTMDLIB_PASSWORD)
-        OSNAME: 'Darwin'
+    # - bash: bash -x ./ci/travis/compile_htmdlib.sh
+    #   displayName: Clone and compile the private htmdlib repo - Disabled due to 2FA not allowing cloning without ssh keys
+    #   env:
+    #     GITHUB_HTMDLIB_USERNAME: $(GITHUB_HTMDLIB_USERNAME)
+    #     GITHUB_HTMDLIB_PASSWORD: $(GITHUB_HTMDLIB_PASSWORD)
+    #     OSNAME: 'Darwin'
 
     - bash: |
         source activate test
