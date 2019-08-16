@@ -2,8 +2,8 @@ variables:
   - group: secrets
 
 jobs:
-  - job: TestMoleculeKit
-    displayName: Test MoleculeKit
+  - job: TestLinux
+    displayName: Linux build
     pool:    
       vmImage: 'Ubuntu-16.04'
 
@@ -64,20 +64,7 @@ jobs:
       condition: succeededOrFailed()
       displayName: Run tests
 
-    - script: |
-        python setup.py bdist_wheel
-      displayName: Building PyPI package
-
-    - task: TwineAuthenticate@1
-      displayName: 'Twine Authenticate'
-      inputs:
-        pythonUploadServiceConnection: pypitest
-
-    - script: |
-        python -m twine upload -r "pypitest" --config-file $(PYPIRC_PATH) dist/*.whl
-      displayName: Uploading to PyPI
-
-  - job: macOS
+  - job: TestMacOSX
     displayName: Mac OSX build
     pool:
       vmImage: 'macOS-latest'
@@ -140,3 +127,47 @@ jobs:
         coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
       condition: succeededOrFailed()
       displayName: Run tests
+
+  - job: PublishPyPI
+    dependsOn:
+      - TestMacOSX
+      - TestLinux
+    condition: and(succeeded('TestMacOSX'), succeeded('TestLinux'), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+    pool:
+      vmImage: "ubuntu-16.04"
+
+    steps:
+      - task: UsePythonVersion@0
+        displayName: "Use Python 3.6"
+        inputs:
+          versionSpec: 3.6
+          addToPath: true
+          architecture: "x64"
+        
+      - script: |
+          pip install setuptools
+          pip install wheel
+          pushd $(BUILD.REPOSITORY.LOCALPATH)
+          python setup.py bdist_wheel
+          popd
+        displayName: "Build drop file"
+
+      - task: CopyFiles@2
+        inputs:
+          SourceFolder: $(BUILD.REPOSITORY.LOCALPATH)/dist
+          TargetFolder: $(Build.ArtifactStagingDirectory)
+        displayName: "Copy Files to: build artifact staging directory"
+
+      - task: PublishBuildArtifacts@1
+        inputs:
+          pathtoPublish: $(Build.ArtifactStagingDirectory)
+          artifactName: build-artifact-drop
+
+      - task: TwineAuthenticate@1
+        displayName: 'Twine Authenticate'
+        inputs:
+          externalFeeds: pypitest
+
+      - script: |
+          python -m twine upload -r "pypitest" --config-file $(PYPIRC_PATH) dist/*.whl
+        displayName: Uploading to PyPI
