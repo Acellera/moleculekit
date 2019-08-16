@@ -83,8 +83,8 @@ jobs:
     - bash: echo "##vso[task.prependpath]$CONDA/bin"
       displayName: Add conda to PATH
 
-    - bash: sudo chown -R $USER /usr/share/miniconda
-      displayName: Take ownership of conda installation
+    # - bash: sudo chown -R $USER /usr/share/miniconda
+    #   displayName: Take ownership of conda installation
 
     - bash:  conda install -y -q conda-build=3
       displayName: Installing conda-build
