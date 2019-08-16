@@ -5,6 +5,7 @@ from glob import glob
 from moleculekit.home import home
 from moleculekit.smallmol.smallmol import SmallMol
 from moleculekit.smallmol.smallmollib import SmallMolLib
+import rdkit
 from pandas import core
 
 
@@ -114,7 +115,7 @@ class _TestSmallMol(unittest.TestCase):
 
         self.assertEqual(ligname_99, ref_ligname, msg="The ligand name found is not the expected one")
 
-
+    @unittest.skipIf(rdkit.__version__ == '2019.03.4', "new rdkit versions break 2D depiction")
     def test_depict(self):
         import IPython
         refimg = os.path.join(self.dataDir, 'sdf.svg')

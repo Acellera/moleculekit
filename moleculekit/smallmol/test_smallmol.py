@@ -152,6 +152,7 @@ class _TestSmallMol(unittest.TestCase):
 
         self.assertListEqual(sm._bondtype.tolist(), BENZAMIDINE_BONDTYPES, msg="The bonds type are not the same of the reference")
 
+    @unittest.skipIf(rdkit.__version__ == '2019.03.4', "new rdkit versions break 2D depiction")
     def test_depict(self):
         import IPython
         refimg = os.path.join(self.dataDir, 'benzamidine.svg')
