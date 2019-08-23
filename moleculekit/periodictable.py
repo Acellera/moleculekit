@@ -136,19 +136,20 @@ periodictable = {
 }
 
 # Add indexes as well by atomic number
-periodictable.update({periodictable[el].number: val for el, val in periodictable.items()})
+periodictable_by_number = {periodictable[el].number: val for el, val in periodictable.items()}
 
 import numpy as np
 # This of course fails for exotic elements like Bk-Cm Db-Lr Mc-Fl Og-Ts which have similar masses
-_elements = np.array([el for el in periodictable])
-_masses = np.array([periodictable[el].mass for el in periodictable])
+_all_elements = np.unique([el for el in periodictable])
+_all_masses = np.unique([periodictable[el].mass for el in periodictable])
 
 def elements_from_masses(masses):
     from moleculekit.util import ensurelist
     from scipy.spatial.distance import cdist
 
     masses = ensurelist(masses)
-    elements = list(_elements[np.argmin(cdist(np.array(masses)[:, None], np.array(_masses)[:, None]), axis=1)])
+    elements = list(_all_elements[np.argmin(cdist(np.array(masses)[:, None], np.array(_all_masses)[:, None]), axis=1)])
     if len(elements) == 1:
         return elements[0]
     return elements
+

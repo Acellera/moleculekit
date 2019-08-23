@@ -382,8 +382,6 @@ def GJFread(filename, frame=None, topoloc=None):
 
 def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
     from moleculekit.periodictable import periodictable
-    element_symbols = periodictable.keys()
-    assert len(element_symbols) == 118
 
     topologies = []  # Allow reading of multi-mol MOL2 files
     topologies.append(Topology())
@@ -431,7 +429,7 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
                     topo.charge.append(float(pieces[8]))
 
                 element = pieces[5].split('.')[0]
-                if element in element_symbols:
+                if element in periodictable:
                     topo.element.append(element)
                 else:
                     unguessed.append(pieces[5])
