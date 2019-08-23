@@ -1,4 +1,7 @@
 from collections import namedtuple
+import logging
+
+logger = logging.getLogger(__file__)
 
 # from periodictable import elements  # the python package called periodictable, not this file
 # for el in elements:
@@ -140,16 +143,30 @@ periodictable_by_number = {periodictable[el].number: val for el, val in periodic
 
 import numpy as np
 # This of course fails for exotic elements like Bk-Cm Db-Lr Mc-Fl Og-Ts which have similar masses
-_all_elements = np.unique([el for el in periodictable])
-_all_masses = np.unique([periodictable[el].mass for el in periodictable])
+_all_elements = np.array([el for el in periodictable])
+_all_masses = np.array([periodictable[el].mass for el in periodictable])
 
 def elements_from_masses(masses):
     from moleculekit.util import ensurelist
     from scipy.spatial.distance import cdist
 
-    masses = ensurelist(masses)
-    elements = list(_all_elements[np.argmin(cdist(np.array(masses)[:, None], np.array(_all_masses)[:, None]), axis=1)])
+    masses = np.array(ensurelist(masses))
+    if np.any(masses > 140):
+        logger.warning('Guessing element for atoms with mass > 140. This can lead to inaccurate element guesses.')
+    elements = list(_all_elements[np.argmin(cdist(masses[:, None], np.array(_all_masses)[:, None]), axis=1)])
     if len(elements) == 1:
         return elements[0]
     return elements
 
+
+import unittest
+class _TestPeriodicTable(unittest.TestCase):
+    def test_elements_from_masses(self):
+        # Only test lower masses. The high ones are not very exact
+        masses_to_test = _all_masses[_all_masses < 140]
+        elements_to_test = _all_elements[_all_masses < 140]
+        assert np.array_equal(elements_to_test, elements_from_masses(masses_to_test))
+        assert np.array_equal(elements_to_test, elements_from_masses(masses_to_test + 0.05))
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
