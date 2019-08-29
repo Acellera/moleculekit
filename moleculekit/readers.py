@@ -443,11 +443,6 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
                 topo.bonds.append([int(pieces[1]) - 1, int(pieces[2]) - 1])
                 topo.bondtype.append(pieces[3])
 
-
-    if len(unguessed) != 0:
-        logger.warning('Could not guess elements for {} atoms with MOL2 atomtypes '
-                       '({}).'.format(len(unguessed), ', '.join(np.unique(unguessed))))
-
     trajectories = []
     for cc in coordinates:
         trajectories.append(Trajectory(coords=np.vstack(cc)[:, :, np.newaxis]))
