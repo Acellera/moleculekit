@@ -32,11 +32,11 @@ class MetricDistance(Projection):
     metric : ['distances','contacts'], optional
         Set to 'contacts' to calculate contacts instead of distances
     threshold : float, optional
-        The threshold under which a distance is considered in contact
+        The threshold under which a distance is considered in contact. Units in Angstrom.
     pbc : bool, optional
         Set to false to disable distance calculations using periodic distances
     truncate : float, optional
-        Set all distances larger than `truncate` to `truncate`
+        Set all distances larger than `truncate` to `truncate`. Units in Angstrom.
     update :
         Not functional yet
 

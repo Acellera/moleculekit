@@ -1,0 +1,173 @@
+variables:
+  - group: secrets
+
+jobs:
+  - job: TestLinux
+    displayName: Linux build
+    pool:    
+      vmImage: 'Ubuntu-16.04'
+
+    continueOnError: false
+    
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+        Python37:
+          python.version: '3.7'
+      maxParallel: 2
+
+    steps:
+    - bash: echo "##vso[task.prependpath]$CONDA/bin"
+      displayName: Add conda to PATH
+
+    - bash: sudo chown -R $USER /usr/share/miniconda
+      displayName: Take ownership of conda installation
+
+    - bash:  conda install -y -q conda-build=3
+      displayName: Installing conda-build
+
+    - bash: conda create -y -q --name test python=$(python.version)
+      displayName: Create Anaconda test environment
+
+    - bash: |
+        source activate test
+        python -m pip install --upgrade pip setuptools wheel
+        pip install twine codecov coverage
+      displayName: Install pip packages
+
+    # - bash: bash -x ./ci/travis/compile_htmdlib.sh
+    #   displayName: Clone and compile the private htmdlib repo - Disabled due to 2FA not allowing cloning without ssh keys
+    #   env:
+    #     GITHUB_HTMDLIB_USERNAME: $(GITHUB_HTMDLIB_USERNAME)
+    #     GITHUB_HTMDLIB_PASSWORD: $(GITHUB_HTMDLIB_PASSWORD)
+    #     OSNAME: 'Linux'
+
+    - bash: |
+        source activate test
+        conda install -y -q tqdm ipython matplotlib joblib scikit-learn rdkit mdtraj htmd-pdb2pqr propka openbabel -c acellera  # Installing extra dependencies for tests
+      displayName: Install Anaconda packages
+
+    - bash: python ci/travis/insert_placeholder_values.py
+      displayName: Insert version number and dependencies into pip and conda recipes
+      env:
+        CONDA_PY: $(python.version)
+
+    - bash: |
+        source activate test
+        pip install .
+      displayName: Install moleculekit locally
+
+    - bash: |
+        source activate test
+        coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
+      condition: succeededOrFailed()
+      displayName: Run tests
+
+  - job: TestMacOSX
+    displayName: Mac OSX build
+    pool:
+      vmImage: 'macOS-latest'
+    
+    continueOnError: false
+    
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+        Python37:
+          python.version: '3.7'
+      maxParallel: 2
+
+    steps:
+    - bash: echo "##vso[task.prependpath]$CONDA/bin"
+      displayName: Add conda to PATH
+
+    # On Hosted macOS, the agent user doesn't have ownership of Miniconda's installation directory/
+    # We need to take ownership if we want to update conda or install packages globally
+    - bash: sudo chown -R $USER $CONDA
+      displayName: Take ownership of conda installation
+
+    - bash:  conda install -y -q conda-build=3
+      displayName: Installing conda-build
+
+    - bash: conda create -y -q --name test python=$(python.version)
+      displayName: Create Anaconda test environment
+
+    - bash: |
+        source activate test
+        python -m pip install --upgrade pip setuptools wheel
+        pip install twine codecov coverage
+      displayName: Install pip packages
+
+    # - bash: bash -x ./ci/travis/compile_htmdlib.sh
+    #   displayName: Clone and compile the private htmdlib repo - Disabled due to 2FA not allowing cloning without ssh keys
+    #   env:
+    #     GITHUB_HTMDLIB_USERNAME: $(GITHUB_HTMDLIB_USERNAME)
+    #     GITHUB_HTMDLIB_PASSWORD: $(GITHUB_HTMDLIB_PASSWORD)
+    #     OSNAME: 'Darwin'
+
+    - bash: |
+        source activate test
+        conda install -y -q tqdm ipython matplotlib joblib scikit-learn rdkit mdtraj htmd-pdb2pqr propka openbabel -c acellera  # Installing extra dependencies for tests
+      displayName: Install Anaconda packages
+
+    - bash: python ci/travis/insert_placeholder_values.py
+      displayName: Insert version number and dependencies into pip and conda recipes
+      env:
+        CONDA_PY: $(python.version)
+
+    - bash: |
+        source activate test
+        pip install .
+      displayName: Install moleculekit locally
+
+    - bash: |
+        source activate test
+        coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
+      condition: succeededOrFailed()
+      displayName: Run tests
+
+  - job: PublishPyPI
+    dependsOn:
+      - TestMacOSX
+      - TestLinux
+    condition: and(succeeded('TestMacOSX'), succeeded('TestLinux'), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+    pool:
+      vmImage: "ubuntu-16.04"
+
+    steps:
+      - task: UsePythonVersion@0
+        displayName: "Use Python 3.6"
+        inputs:
+          versionSpec: 3.6
+          addToPath: true
+          architecture: "x64"
+        
+      - script: |
+          pip install setuptools
+          pip install wheel
+          pushd $(BUILD.REPOSITORY.LOCALPATH)
+          python setup.py bdist_wheel
+          popd
+        displayName: "Build drop file"
+
+      - task: CopyFiles@2
+        inputs:
+          SourceFolder: $(BUILD.REPOSITORY.LOCALPATH)/dist
+          TargetFolder: $(Build.ArtifactStagingDirectory)
+        displayName: "Copy Files to: build artifact staging directory"
+
+      - task: PublishBuildArtifacts@1
+        inputs:
+          pathtoPublish: $(Build.ArtifactStagingDirectory)
+          artifactName: build-artifact-drop
+
+      - task: TwineAuthenticate@1
+        displayName: 'Twine Authenticate'
+        inputs:
+          externalFeeds: pypitest
+
+      - script: |
+          python -m twine upload -r "pypitest" --config-file $(PYPIRC_PATH) dist/*.whl
+        displayName: Uploading to PyPI
