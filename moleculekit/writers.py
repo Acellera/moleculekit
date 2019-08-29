@@ -21,7 +21,8 @@ _Pair = collections.namedtuple('Atom', 'resname name')
 # These attributes are used to deduce how to format the atom name.
 _ions = ('FE', 'AS', 'ZN', 'MG', 'MN', 'CO', 'BR',
          'CU', 'TA', 'MO', 'AL', 'BE', 'SE', 'PT',
-         'EU', 'NI', 'IR', 'RH', 'AU', 'GD', 'RU', 'XE')
+         'EU', 'NI', 'IR', 'RH', 'AU', 'GD', 'RU', 
+         'XE', 'RB', 'LU', 'GA')
 # Mercurial can be confused for hydrogen gamma. Yet, mercurial is
 # rather rare in the PDB. Here are all the residues that contain
 # mercurial.
