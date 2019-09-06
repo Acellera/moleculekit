@@ -4,5 +4,12 @@ steps:
     conda build package/moleculekit/
   displayName: Building conda package
 
-- publish: $CONDA/conda-bld/*/moleculekit-[0-9]*.tar.bz2
-  artifact: moleculekit_conda
+- task: CopyFiles@2
+  displayName: 'Copy Files to: $(Build.ArtifactStagingDirectory)'
+  inputs:
+    Contents: |
+      $CONDA/conda-bld/*/moleculekit-[0-9]*.tar.bz2
+    targetFolder: $(Build.ArtifactStagingDirectory)
+
+- publish: $(Build.ArtifactStagingDirectory)
+  artifact: moleculekit_conda_$(OS)_$(python.version)

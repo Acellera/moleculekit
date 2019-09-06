@@ -17,6 +17,9 @@ jobs:
           python.version: '3.7'
       maxParallel: 2
 
+    variables:
+      OS: 'linux'
+
     steps:
     - template: templates/conda_config.yml
     - template: templates/run_tests.yml
@@ -38,6 +41,9 @@ jobs:
         Python37:
           python.version: '3.7'
       maxParallel: 2
+
+    variables:
+      OS: 'mac'
 
     steps:
     - template: templates/conda_config.yml

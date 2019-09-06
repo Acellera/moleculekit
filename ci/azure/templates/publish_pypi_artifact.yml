@@ -13,5 +13,5 @@ steps:
     targetFolder: $(Build.ArtifactStagingDirectory)
 
 - publish: $(Build.ArtifactStagingDirectory)
-  artifact: moleculekit_pypi
+  artifact: moleculekit_pypi_$(OS)_$(python.version)
 
