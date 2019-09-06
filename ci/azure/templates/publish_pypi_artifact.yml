@@ -4,6 +4,14 @@ steps:
     python setup.py bdist bdist_wheel
   displayName: Building PyPI package
 
-- publish: $(System.DefaultWorkingDirectory)/dist/moleculekit-*.*.tar.gz
+- task: CopyFiles@2
+  displayName: 'Copy Files to: $(Build.ArtifactStagingDirectory)'
+  inputs:
+    Contents: |
+      dist/moleculekit-*.tar.gz
+      dist/moleculekit-*.whl
+    targetFolder: $(Build.ArtifactStagingDirectory)
+
+- publish: $(Build.ArtifactStagingDirectory)
   artifact: moleculekit_pypi
 
