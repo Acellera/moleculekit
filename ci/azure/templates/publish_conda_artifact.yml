@@ -1,6 +1,8 @@
 steps:
-- bash: conda build package/moleculekit/
+- bash: |
+  source activate test
+  conda build package/moleculekit/
   displayName: Building conda package
 
 - publish: $CONDA/conda-bld/*/moleculekit-[0-9]*.tar.bz2
-  artifact: moleculekit
+  artifact: moleculekit_conda

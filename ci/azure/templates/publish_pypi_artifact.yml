@@ -1,0 +1,9 @@
+steps:
+- bash: |
+  source activate test
+  python setup.py bdist bdist_wheel
+  displayName: Building PyPI package
+
+- publish: $(System.DefaultWorkingDirectory)/dist/moleculekit-*.*.tar.gz
+  artifact: moleculekit_pypi
+
