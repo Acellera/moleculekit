@@ -161,7 +161,7 @@ class Dihedral:
         return uqresname[0]
 
     @staticmethod
-    def proteinDihedrals(mol, sel='protein', dih=('psi', 'phi')):
+    def proteinDihedrals(mol, sel='protein', dih=('psi', 'phi'), ff='amber'):
         """ Returns a list of tuples containing the four resid/atom pairs for each dihedral of the protein
 
         Parameters
@@ -201,29 +201,29 @@ class Dihedral:
                 resid, ins, chain, segid = residues[r]
                 if 'psi' in dih and r != len(residues)-1:  # No psi angle for last residue
                     resid2, ins2, _, _ = residues[r+1]
-                    dihedrals.append(Dihedral.psi(mol, resid, resid2, segid, chain, ins, ins2))
+                    dihedrals.append(Dihedral.psi(mol, resid, resid2, segid, chain, ins, ins2, ff))
                 if 'phi' in dih and r != 0:  # No phi angle for first residue
                     resid1neg, ins1neg, _, _ = residues[r-1]
-                    dihedrals.append(Dihedral.phi(mol, resid1neg, resid, segid, chain, ins1neg, ins))
+                    dihedrals.append(Dihedral.phi(mol, resid1neg, resid, segid, chain, ins1neg, ins, ff))
                 if 'omega' in dih and r != len(residues)-1:
                     resid2, ins2, _, _ = residues[r + 1]
-                    dihedrals.append(Dihedral.omega(mol, resid, resid2, segid, chain, ins, ins2))
+                    dihedrals.append(Dihedral.omega(mol, resid, resid2, segid, chain, ins, ins2, ff))
                 if 'chi1' in dih:
-                    dihedrals.append(Dihedral.chi1(mol, resid, segid, chain, ins))
+                    dihedrals.append(Dihedral.chi1(mol, resid, segid, chain, ins, ff))
                 if 'chi2' in dih:
-                    dihedrals.append(Dihedral.chi2(mol, resid, segid, chain, ins))
+                    dihedrals.append(Dihedral.chi2(mol, resid, segid, chain, ins, ff))
                 if 'chi3' in dih:
-                    dihedrals.append(Dihedral.chi3(mol, resid, segid, chain, ins))
+                    dihedrals.append(Dihedral.chi3(mol, resid, segid, chain, ins, ff))
                 if 'chi4' in dih:
-                    dihedrals.append(Dihedral.chi4(mol, resid, segid, chain, ins))
+                    dihedrals.append(Dihedral.chi4(mol, resid, segid, chain, ins, ff))
                 if 'chi5' in dih:
-                    dihedrals.append(Dihedral.chi5(mol, resid, segid, chain, ins))
+                    dihedrals.append(Dihedral.chi5(mol, resid, segid, chain, ins, ff))
         return [d for d in dihedrals if d is not None]
 
     # Sidechain dihedral atoms taken from
     # http://www.ccp14.ac.uk/ccp/web-mirrors/garlic/garlic/commands/dihedrals.html
     @staticmethod
-    def phi(mol, res1, res2, segid=None, chain=None, insertion1=None, insertion2=None):
+    def phi(mol, res1, res2, segid=None, chain=None, insertion1=None, insertion2=None, ff='amber'):
         """ Constructs a Dihedral object corresponding to the phi angle of res1 and res2
 
         Parameters
@@ -258,7 +258,7 @@ class Dihedral:
                         check_valid=False)
 
     @staticmethod
-    def psi(mol, res1, res2, segid=None, chain=None, insertion1=None, insertion2=None):
+    def psi(mol, res1, res2, segid=None, chain=None, insertion1=None, insertion2=None, ff='amber'):
         """ Constructs a Dihedral object corresponding to the psi angle of res1 and res2
 
         Parameters
@@ -293,7 +293,7 @@ class Dihedral:
                         check_valid=False)
 
     @staticmethod
-    def omega(mol, res1, res2, segid=None, chain=None, insertion1=None, insertion2=None):
+    def omega(mol, res1, res2, segid=None, chain=None, insertion1=None, insertion2=None, ff='amber'):
         """ Constructs a Dihedral object corresponding to the omega angle of res1 and res2
 
         Parameters
@@ -328,7 +328,7 @@ class Dihedral:
                         check_valid=False)
 
     @staticmethod
-    def chi1(mol, res, segid=None, chain=None, insertion=None):
+    def chi1(mol, res, segid=None, chain=None, insertion=None, ff='amber'):
         """ Constructs a Dihedral object corresponding to the chi1 angle of a residue
 
         Parameters
@@ -368,7 +368,7 @@ class Dihedral:
                         check_valid=False)
 
     @staticmethod
-    def chi2(mol, res, segid=None, chain=None, insertion=None):
+    def chi2(mol, res, segid=None, chain=None, insertion=None, ff='amber'):
         """ Constructs a Dihedral object corresponding to the chi2 angle of a residue
 
         Parameters
@@ -389,12 +389,20 @@ class Dihedral:
         dihedral : :class:`Dihedral <moleculekit.projections.metricdihedral.Dihedral>` object
             A Dihedral object
         """
-        chi2std = ('CA', 'CB', 'CG', 'CD')
-        chi2 = {'ARG': chi2std, 'ASN': ('CA', 'CB', 'CG', 'OD1'), 'ASP': ('CA', 'CB', 'CG', 'OD1'), 'GLN': chi2std,
-                'GLU': chi2std, 'HIS': ('CA', 'CB', 'CG', 'ND1'), 'ILE': ('CA', 'CB', 'CG1', 'CD1'),
-                'LEU': ('CA', 'CB', 'CG', 'CD1'), 'LYS': chi2std,
-                'MET': ('CA', 'CB', 'CG', 'SD'), 'PHE': ('CA', 'CB', 'CG', 'CD1'), 'PRO': chi2std,
-                'TRP': ('CA', 'CB', 'CG', 'CD1'), 'TYR': ('CA', 'CB', 'CG', 'CD1')}
+        if ff.lower() == 'amber':
+            chi2std = ('CA', 'CB', 'CG', 'CD')
+            chi2 = {'ARG': chi2std, 'ASN': ('CA', 'CB', 'CG', 'OD1'), 'ASP': ('CA', 'CB', 'CG', 'OD1'), 'GLN': chi2std,
+                    'GLU': chi2std, 'HIS': ('CA', 'CB', 'CG', 'ND1'), 'ILE': ('CA', 'CB', 'CG1', 'CD1'),
+                    'LEU': ('CA', 'CB', 'CG', 'CD1'), 'LYS': chi2std,
+                    'MET': ('CA', 'CB', 'CG', 'SD'), 'PHE': ('CA', 'CB', 'CG', 'CD1'), 'PRO': chi2std,
+                    'TRP': ('CA', 'CB', 'CG', 'CD1'), 'TYR': ('CA', 'CB', 'CG', 'CD1')}
+        if ff.lower() == 'charmm':
+            chi2std = ('CA', 'CB', 'CG', 'CD')
+            chi2 = {'ARG': chi2std, 'ASN': ('CA', 'CB', 'CG', 'OD1'), 'ASP': ('CA', 'CB', 'CG', 'OD1'), 'GLN': chi2std,
+                    'GLU': chi2std, 'HIS': ('CA', 'CB', 'CG', 'ND1'), 'ILE': ('CA', 'CB', 'CG1', 'CD'),
+                    'LEU': ('CA', 'CB', 'CG', 'CD1'), 'LYS': chi2std,
+                    'MET': ('CA', 'CB', 'CG', 'SD'), 'PHE': ('CA', 'CB', 'CG', 'CD1'), 'PRO': chi2std,
+                    'TRP': ('CA', 'CB', 'CG', 'CD1'), 'TYR': ('CA', 'CB', 'CG', 'CD1')}            
 
         resdict = Dihedral._findResidue(mol, res, insertion, chain, segid)
         resname = Dihedral._findResname(mol, resdict)
@@ -409,7 +417,7 @@ class Dihedral:
                         check_valid=False)
 
     @staticmethod
-    def chi3(mol, res, segid=None, chain=None, insertion=None):
+    def chi3(mol, res, segid=None, chain=None, insertion=None, ff='amber'):
         """ Constructs a Dihedral object corresponding to the chi3 angle of a residue
 
         Parameters
@@ -446,7 +454,7 @@ class Dihedral:
                         check_valid=False)
 
     @staticmethod
-    def chi4(mol, res, segid=None, chain=None, insertion=None):
+    def chi4(mol, res, segid=None, chain=None, insertion=None, ff='amber'):
         """ Constructs a Dihedral object corresponding to the chi4 angle of a residue
 
         Parameters
@@ -482,7 +490,7 @@ class Dihedral:
                         check_valid=False)
 
     @staticmethod
-    def chi5(mol, res, segid=None, chain=None, insertion=None):
+    def chi5(mol, res, segid=None, chain=None, insertion=None, ff='amber'):
         """ Constructs a Dihedral object corresponding to the chi5 angle of a residue
 
         Parameters

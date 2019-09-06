@@ -1,0 +1,85 @@
+variables:
+  - group: secrets
+
+jobs:
+  - job: TestLinux
+    displayName: Linux build
+    pool:    
+      vmImage: 'Ubuntu-16.04'
+
+    continueOnError: false
+    
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+        Python37:
+          python.version: '3.7'
+      maxParallel: 2
+
+    steps:
+    - template: templates/conda_config.yml
+    - template: templates/run_tests.yml
+
+  - job: TestMacOSX
+    displayName: Mac OSX build
+    pool:
+      vmImage: 'macOS-latest'
+    
+    continueOnError: false
+    
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+        Python37:
+          python.version: '3.7'
+      maxParallel: 2
+
+    steps:
+    - template: templates/conda_config.yml
+    - template: templates/run_tests.yml
+
+  # - job: PublishPyPI
+  #   dependsOn:
+  #     - TestMacOSX
+  #     - TestLinux
+  #   condition: and(succeeded('TestMacOSX'), succeeded('TestLinux'), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+  #   pool:
+  #     vmImage: "ubuntu-16.04"
+
+  #   steps:
+  #     - task: UsePythonVersion@0
+  #       displayName: "Use Python 3.6"
+  #       inputs:
+  #         versionSpec: 3.6
+  #         addToPath: true
+  #         architecture: "x64"
+        
+  #     - script: |
+  #         pip install setuptools
+  #         pip install wheel
+  #         pushd $(BUILD.REPOSITORY.LOCALPATH)
+  #         python setup.py bdist_wheel
+  #         popd
+  #       displayName: "Build drop file"
+
+  #     - task: CopyFiles@2
+  #       inputs:
+  #         SourceFolder: $(BUILD.REPOSITORY.LOCALPATH)/dist
+  #         TargetFolder: $(Build.ArtifactStagingDirectory)
+  #       displayName: "Copy Files to: build artifact staging directory"
+
+  #     - task: PublishBuildArtifacts@1
+  #       inputs:
+  #         pathtoPublish: $(Build.ArtifactStagingDirectory)
+  #         artifactName: build-artifact-drop
+
+  #     - task: TwineAuthenticate@1
+  #       displayName: 'Twine Authenticate'
+  #       inputs:
+  #         externalFeeds: pypitest
+
+  #     - script: |
+  #         python -m twine upload -r "pypitest" --config-file $(PYPIRC_PATH) dist/*.whl
+  #       displayName: Uploading to PyPI
