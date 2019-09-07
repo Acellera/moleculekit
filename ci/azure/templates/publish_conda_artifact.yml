@@ -1,7 +1,5 @@
 steps:
-- bash: |
-    source activate test
-    conda build package/moleculekit/
+- bash: conda build --python $(python.version) package/moleculekit/
   displayName: Building conda package
 
 - task: CopyFiles@2
