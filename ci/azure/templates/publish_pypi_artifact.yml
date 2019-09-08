@@ -11,7 +11,3 @@ steps:
       dist/moleculekit-*.tar.gz
       dist/moleculekit-*.whl
     targetFolder: $(Build.ArtifactStagingDirectory)
-
-- publish: $(Build.ArtifactStagingDirectory)
-  artifact: moleculekit_pypi_$(OS)_$(python.version)
-

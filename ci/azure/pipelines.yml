@@ -25,6 +25,8 @@ jobs:
     - template: templates/run_tests.yml
     - template: templates/publish_pypi_artifact.yml  # TODO: Move this to tag-conditional section
     - template: templates/publish_conda_artifact.yml  # TODO: Move this to tag-conditional section
+    - publish: $(Build.ArtifactStagingDirectory)
+      artifact: moleculekit_$(OS)_$(python.version)
 
 
   - job: TestMacOSX
