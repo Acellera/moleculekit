@@ -22,8 +22,8 @@ _Pair = collections.namedtuple('Atom', 'resname name')
 _ions_metals = ('FE', 'AS', 'ZN', 'MG', 'MN', 'CO', 'BR',
                 'CU', 'TA', 'MO', 'AL', 'BE', 'SE', 'PT',
                 'EU', 'NI', 'IR', 'RH', 'AU', 'GD', 'RU', 
-                'XE', 'RB', 'LU', 'GA', 'BA', 'CD', 'CS',
-                'HO', 'PB', 'SM', 'SR', 'YB', 'Y')
+                'XE', 'RB', 'LU', 'GA', 'BA', 'CS', 'Y',
+                'PB', 'SM', 'SR', 'YB')
 
 # Mercurial can be confused for hydrogen gamma. Yet, mercurial is
 # rather rare in the PDB. Here are all the residues that contain
