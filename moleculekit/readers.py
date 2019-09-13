@@ -391,7 +391,6 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
     section = None
 
     molnum = 0
-    unguessed = []
     with open(filename, "r") as f:
         for line in f:
             if line.startswith('@<TRIPOS>MOLECULE'):
@@ -429,10 +428,12 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
                     topo.charge.append(float(pieces[8]))
 
                 element = pieces[5].split('.')[0]
-                if element in periodictable:
+                if element == 'Du':  # Corina, SYBYL and Tripos dummy atoms. Don't catch Du.C which is a dummy carbon and should be recognized as carbon
+                    topo.name[-1] = '{:<4}'.format(topo.name[-1])  # We are using the PDB convention of left aligning the name in 4 spaces to signify ion/metal
+                    topo.element.append('')
+                elif element in periodictable:
                     topo.element.append(element)
                 else:
-                    unguessed.append(pieces[5])
                     topo.element.append('')
             elif section == 'bond':
                 pieces = line.strip().split()
@@ -1887,6 +1888,10 @@ class _TestReaders(unittest.TestCase):
 
         mol = Molecule(os.path.join(self.testfolder(), 'cl_na_element.pdb'))
         refelem = np.array(['Cl', 'Na'], dtype=object)
+        assert np.array_equal(mol.element, refelem)
+
+        mol = Molecule(os.path.join(self.testfolder(), 'dummy_atoms.mol2'))
+        refelem = np.array(['Cd', 'Co', 'Ca', 'Xe', 'Rb', 'Lu', 'Ga', 'Ba', 'Cs', 'Ho', 'Pb', 'Sr', 'Yb', 'Y'], dtype=object)
         assert np.array_equal(mol.element, refelem)
 
 
