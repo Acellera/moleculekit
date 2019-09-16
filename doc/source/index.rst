@@ -28,7 +28,7 @@ Contents
    The SmallMol class <moleculekit.smallmol.smallmol>
    Molecule tools <moleculetools>
    Projections <projections>
-
+   Tutorials <tutorials>
 
 **Indices and tables**
 
