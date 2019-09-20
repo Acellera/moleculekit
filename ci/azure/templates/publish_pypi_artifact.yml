@@ -6,9 +6,9 @@ steps:
 
 - task: CopyFiles@2
   displayName: 'Copy pypi files to: $(Build.ArtifactStagingDirectory)'
-  flattenFolders: true
   inputs:
     Contents: |
       dist/moleculekit-*.tar.gz
       dist/moleculekit-*.whl
     targetFolder: $(Build.ArtifactStagingDirectory)/pypi/
+    flattenFolders: true
