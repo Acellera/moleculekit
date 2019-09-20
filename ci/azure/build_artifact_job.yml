@@ -12,7 +12,7 @@ jobs:
       vmImage: ${{ parameters.vmImage }}
 
     dependsOn: ${{ parameters.dependsOn }}
-    condition: and(succeeded(${{ parameters.dependsOn }})) #, startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+    # condition: and(succeeded(${{ parameters.dependsOn }})) #, startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
 
     continueOnError: false
     
