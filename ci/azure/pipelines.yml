@@ -1,63 +1,39 @@
 variables:
   - group: secrets
 
-jobs:
-  - job: TestLinux
-    displayName: Linux build
-    pool:    
-      vmImage: 'Ubuntu-16.04'
+stages:
+  - stage: Test
+    jobs:
+      - template: test_job.yml
+        parameters:
+          name: TestLinux
+          displayName: Linux tests
+          vmImage: 'ubuntu-16.04'
+          OS: linux
 
-    continueOnError: false
-    
-    strategy:
-      matrix:
-        Python36:
-          python.version: '3.6'
-        Python37:
-          python.version: '3.7'
-      maxParallel: 2
+      - template: test_job.yml
+        parameters:
+          name: TestMacOSX
+          displayName: Mac OSX tests
+          vmImage: 'macOS-latest'
+          OS: mac
 
-    variables:
-      OS: 'linux'
+  - stage: Build
+    jobs:
+      - template: build_artifact_job.yml
+        parameters:
+          name: BuildLinuxArtifacts
+          displayName: Build Linux Artifacts
+          vmImage: 'ubuntu-16.04'
+          OS: linux
 
-    steps:
-    - template: templates/conda_config.yml
-    - template: templates/run_tests.yml
-    - template: templates/publish_pypi_artifact.yml  # TODO: Move this to tag-conditional section
-      condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
-    - template: templates/publish_conda_artifact.yml  # TODO: Move this to tag-conditional section
-      condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
-    - publish: $(Build.ArtifactStagingDirectory)
-      condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
-      artifact: moleculekit_$(OS)_$(python.version)
+      - template: build_artifact_job.yml
+        parameters:
+          name: BuildOSXArtifacts
+          displayName: Build OSX Artifacts
+          vmImage: 'macOS-latest'
+          OS: mac
 
-
-  - job: TestMacOSX
-    displayName: Mac OSX build
-    pool:
-      vmImage: 'macOS-latest'
-    
-    continueOnError: false
-    
-    strategy:
-      matrix:
-        Python36:
-          python.version: '3.6'
-        Python37:
-          python.version: '3.7'
-      maxParallel: 2
-
-    variables:
-      OS: 'mac'
-
-    steps:
-    - template: templates/conda_config.yml
-    - template: templates/run_tests.yml
-    - template: templates/publish_conda_artifact.yml  # No PyPI since it's not platform specific
-      condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
-    - publish: $(Build.ArtifactStagingDirectory)
-      condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
-      artifact: moleculekit_$(OS)_$(python.version)
 
   # - job: PublishPyPI
   #   dependsOn:

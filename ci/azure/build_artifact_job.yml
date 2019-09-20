@@ -1,0 +1,45 @@
+parameters:
+  name: ''  # defaults for any parameters that aren't specified
+  displayName: ''
+  vmImage: ''
+  OS: ''
+  dependsOn: ''
+
+jobs:
+  - job: ${{ parameters.name }}
+    displayName: ${{ parameters.displayName }}
+    pool:    
+      vmImage: ${{ parameters.vmImage }}
+
+    dependsOn: ${{ parameters.dependsOn }}
+    condition: and(succeeded(${{ parameters.dependsOn }})) #, startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+
+    continueOnError: false
+    
+    strategy:
+      matrix:
+        Python36:
+          python.version: '3.6'
+        Python37:
+          python.version: '3.7'
+      maxParallel: 2
+
+    variables:
+      OS: ${{ parameters.OS }}
+
+    steps:
+    - template: templates/conda_config.yml
+
+    - bash:  conda install -y -q conda-build=3
+      displayName: Installing conda-build
+
+    - bash: python ci/travis/insert_placeholder_values.py
+      displayName: Insert version number and dependencies into pip and conda recipes
+      env:
+        CONDA_PY: $(python.version)
+    
+    - ${{ if eq(parameters.OS, 'linux') }}:  # Don't build pypi for OSX. It's platform independent
+      - template: templates/publish_pypi_artifact.yml
+    - template: templates/publish_conda_artifact.yml
+    - publish: $(Build.ArtifactStagingDirectory)
+      artifact: moleculekit_$(OS)_$(python.version)
