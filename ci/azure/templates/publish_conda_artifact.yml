@@ -1,9 +1,9 @@
 steps:
-- bash: conda build --python $(python.version) package/moleculekit/
+- bash: conda build --python $(python.version) package/moleculekit/ --output-folder $(Build.ArtifactStagingDirectory) --no-anaconda-upload
   displayName: Building conda package
 
-- task: CopyFiles@2
-  displayName: 'Copy conda builds to: $(Build.ArtifactStagingDirectory)'
-  inputs:
-    Contents: $CONDA/conda-bld/*/moleculekit-[0-9]*.tar.bz2
-    targetFolder: $(Build.ArtifactStagingDirectory)
+# - task: CopyFiles@2
+#   displayName: 'Copy conda builds to: $(Build.ArtifactStagingDirectory)'
+#   inputs:
+#     Contents: $CONDA/conda-bld/*/moleculekit-[0-9]*.tar.bz2
+#     targetFolder: $(Build.ArtifactStagingDirectory)
