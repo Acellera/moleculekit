@@ -21,17 +21,16 @@ Contents
 --------
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
    
    Installation <installation>
    The Molecule class <moleculekit.molecule>
    The SmallMol class <moleculekit.smallmol.smallmol>
    Molecule tools <moleculetools>
    Projections <projections>
+   Tutorials <tutorials>
 
-
-Indices and tables
-------------------
+**Indices and tables**
 
 * :ref:`genindex`
 * :ref:`modindex`
