@@ -24,8 +24,11 @@ jobs:
     - template: templates/conda_config.yml
     - template: templates/run_tests.yml
     - template: templates/publish_pypi_artifact.yml  # TODO: Move this to tag-conditional section
+      condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
     - template: templates/publish_conda_artifact.yml  # TODO: Move this to tag-conditional section
+      condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
     - publish: $(Build.ArtifactStagingDirectory)
+      condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
       artifact: moleculekit_$(OS)_$(python.version)
 
 
@@ -50,6 +53,11 @@ jobs:
     steps:
     - template: templates/conda_config.yml
     - template: templates/run_tests.yml
+    - template: templates/publish_conda_artifact.yml  # No PyPI since it's not platform specific
+      condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+    - publish: $(Build.ArtifactStagingDirectory)
+      condition: and(startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+      artifact: moleculekit_$(OS)_$(python.version)
 
   # - job: PublishPyPI
   #   dependsOn:
