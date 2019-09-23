@@ -19,10 +19,12 @@ _Pair = collections.namedtuple('Atom', 'resname name')
 # Some programs like AutoDock require this strict formatting to guess atom types.
 
 # These attributes are used to deduce how to format the atom name.
-_ions = ('FE', 'AS', 'ZN', 'MG', 'MN', 'CO', 'BR',
-         'CU', 'TA', 'MO', 'AL', 'BE', 'SE', 'PT',
-         'EU', 'NI', 'IR', 'RH', 'AU', 'GD', 'RU', 
-         'XE', 'RB', 'LU', 'GA')
+_ions_metals = ('FE', 'AS', 'ZN', 'MG', 'MN', 'CO', 'BR',
+                'CU', 'TA', 'MO', 'AL', 'BE', 'SE', 'PT',
+                'EU', 'NI', 'IR', 'RH', 'AU', 'GD', 'RU', 
+                'XE', 'RB', 'LU', 'GA', 'BA', 'CS', 'Y',
+                'PB', 'SM', 'SR', 'YB')
+
 # Mercurial can be confused for hydrogen gamma. Yet, mercurial is
 # rather rare in the PDB. Here are all the residues that contain
 # mercurial.
@@ -64,7 +66,7 @@ def _deduce_PDB_atom_name(name, resname):
     elif len(name) == 1:
         return ' {}  '.format(name)
     elif ((resname == name
-           or name[:2] in _ions
+           or name[:2] in _ions_metals
            or name == 'UNK'
            or (resname in _special_hg and name[:2] == 'HG')
            or (resname in _special_cl and name[:2] == 'CL')
