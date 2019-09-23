@@ -172,8 +172,8 @@ class MetricDistance(Projection):
                     indexes += [[atm1, atm2]]
                     description += [desc]
         else:
-            for j in range(numatoms2):
-                for i in range(numatoms1):
+            for i in range(numatoms1):
+                for j in range(numatoms2):
                     atm1 = protatoms[i]
                     atm2 = ligatoms[j]
                     desc = '{} between {} {} {} and {} {} {}'.format(self.metric[:-1],
@@ -425,6 +425,12 @@ class _TestMetricDistance(unittest.TestCase):
         assert np.array_equal(refdata['newmapping'], newmapping)
         assert np.array_equal(refdata['uqAtomGroups'], uqAtomGroups)
 
+    def test_description(self):
+        metr = MetricDistance('protein and noh', 'resname MOL and noh', truncate=3)
+        data = metr.project(self.mol)
+        atomIndexes = metr.getMapping(self.mol).atomIndexes.values
+        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'description.npy'))
+        assert np.array_equal(refdata, atomIndexes)
 
 
 
