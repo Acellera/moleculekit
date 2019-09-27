@@ -109,7 +109,7 @@ def prepareProteinForAtomtyping(mol, guessBonds=True, protonate=True, pH=7, segm
     """
     mol = mol.copy()
     protsel = mol.atomselect('protein')
-    metals = mol.atomselect('resname {}'.format(' '.join(metal_atypes)))
+    metals = mol.atomselect('element {}'.format(' '.join(metal_atypes)))
     notallowed = ~(protsel | metals)
 
     if not np.any(protsel):
@@ -131,7 +131,7 @@ def prepareProteinForAtomtyping(mol, guessBonds=True, protonate=True, pH=7, segm
         from moleculekit.tools.autosegment import autoSegment2
         mol = autoSegment2(mol, fields=('segid', 'chain'), _logger=verbose) 
 
-        metals = mol.atomselect('resname {}'.format(' '.join(metal_atypes)))  # Redo atomselection after protein has been prepared!
+        metals = mol.atomselect('element {}'.format(' '.join(metal_atypes)))  # Redo atomselection after protein has been prepared!
 
         # Assign separate segment to the metals just in case pybel takes that into account
         if np.any(mol.chain == 'Z') or np.any(mol.segid == 'ME'):
@@ -149,7 +149,7 @@ def atomtypingValidityChecks(mol):
                 'Most of these checks can be passed by using the moleculekit.atomtyper.prepareProteinForAtomtyping function. ' \
                 'But make sure you understand what you are doing.')
     protsel = mol.atomselect('protein')
-    metals = mol.atomselect('resname {}'.format(' '.join(metal_atypes)))
+    metals = mol.atomselect('element {}'.format(' '.join(metal_atypes)))
     notallowed = ~(protsel | metals)
 
     if not np.any(protsel):
