@@ -93,6 +93,9 @@ def _getGridCenters(x, y, z, resolution):
 def getChannels(mol, aromaticNitrogen=False, version=2, validitychecks=True):
     from moleculekit.smallmol.smallmol import SmallMol
     from moleculekit.molecule import Molecule
+
+    mol = mol.copy()
+
     if isinstance(mol, SmallMol):
             channels = _getPropertiesRDkit(mol)
     elif isinstance(mol, Molecule):
@@ -182,6 +185,13 @@ def getVoxelDescriptors(mol, boxsize=None, voxelsize=1, buffer=0, center=None, u
     usercoords : np.ndarray
         A numpy array containing the molecule coordinates. You can use this with userchannels and usercenters instead 
         of passing a `mol` object (set it to None if that's the case). 
+    aromaticNitrogen : bool
+        Set to True if you want nitrogens in aromatic rings to be added to the aromatic channel.
+    method : str
+        Voxel descriptors can be calculated either with our C implementation or CUDA or NUMBA implementations.
+    version : int
+        Setting version to 1 will use the old voxelization code which requires you to first obtain pdbqt atom types for the protein.
+        By default it uses version 2 which does the atom typing internally.
     validitychecks : bool
         Set to False to disable validity checks for atomtyping. This improves performance but only use it if you
         are sure you have properly prepared your molecules.
@@ -195,8 +205,6 @@ def getVoxelDescriptors(mol, boxsize=None, voxelsize=1, buffer=0, center=None, u
     N : np.ndarray
         Is returned only when no user centers are passed. It corresponds to the number of centers in each of the x,y,z
         dimensions
-    method : str
-        Voxel descriptors can be calculated either with our C implementation or CUDA or NUMBA implementations.
 
     Examples
     --------
@@ -565,6 +573,24 @@ class _TestVoxel(unittest.TestCase):
 
         # assert np.abs(res_C - res_cuda).max() < 1e-4
         assert np.abs(res_C - res_numba).max() < 1e-4
+
+    def test_channels_with_metals(self):
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule, mol_equal
+        from os.path import join
+
+        ref_channels = np.load(join(home(dataDir='test-voxeldescriptors'), '1ATL_channels.npy'))
+
+        ref_mol = Molecule(join(home(dataDir='test-voxeldescriptors'), '1ATL_atomtyped.psf'))  # Need PSF to store the atomtypes!
+        ref_mol.read(join(home(dataDir='test-voxeldescriptors'), '1ATL_atomtyped.pdb'))
+
+        mol = Molecule(join(home(dataDir='test-voxeldescriptors'), '1ATL_prepared.psf'))  # Need PSF to store the correct charges!
+        mol.read(join(home(dataDir='test-voxeldescriptors'), '1ATL_prepared.pdb'))
+
+        channels, mol_atomtyped = getChannels(mol)
+ 
+        assert np.array_equal(ref_channels, channels)
+        assert mol_equal(mol_atomtyped, ref_mol)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
