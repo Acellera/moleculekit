@@ -43,6 +43,7 @@ class MetricShell(Projection):
         super().__init__()
 
         from moleculekit.projections.metricdistance import MetricDistance
+        self.symmetrical = sel1 == sel2
         self.metricdistance = MetricDistance(sel1=sel1, sel2=sel2, groupsel1=None, groupsel2=None, metric='distances', threshold=8, pbc=pbc, truncate=truncate)
 
         self.numshells = numshells
@@ -51,14 +52,19 @@ class MetricShell(Projection):
         self.shellcenters = None
 
     def _calculateMolProp(self, mol, props='all'):
-        props = ('shellcenters', 'map') if props == 'all' else props
+        props = ('map', 'shellcenters', 'shelledges', 'shellvol') if props == 'all' else props
         res = {}
 
         mapping = np.vstack(self.metricdistance.getMapping(mol).atomIndexes)
         if 'map' in props:
             res['map'] = mapping
         if 'shellcenters' in props:
-            res['shellcenters'] = np.unique(mapping[:, 0])
+            res['shellcenters'] = np.unique(mapping[:, 0]) if not self.symmetrical else np.unique(mapping)
+        if 'shelledges' in props:
+            res['shelledges'] = np.arange(self.shellwidth*(self.numshells+1), step=self.shellwidth)
+        if 'shellvol' in props:
+            res['shellvol'] = 4/3 * np.pi * (res['shelledges'][1:] ** 3 - res['shelledges'][:-1] ** 3)
+
         return res
 
     def project(self, mol):
@@ -77,10 +83,13 @@ class MetricShell(Projection):
             An array containing the projected data.
         """
         molprops = self._getMolProp(mol, 'all')
+
         distances = self.metricdistance.project(mol)
         if distances.ndim == 1:
             distances = distances[np.newaxis, :]
-        return _shells(distances, molprops['map'][:, 0], molprops['shellcenters'], self.numshells, self.shellwidth)
+
+        return _shells(distances, molprops['map'], molprops['shellcenters'], self.numshells, molprops['shelledges'], 
+                       molprops['shellvol'], self.symmetrical)
 
     def getMapping(self, mol):
         """ Returns the description of each projected dimension.
@@ -95,13 +104,13 @@ class MetricShell(Projection):
         map : :class:`DataFrame <pandas.core.frame.DataFrame>` object
             A DataFrame containing the descriptions of each dimension
         """
-        shellcenters = self.metricdistance._getMolProp(mol, 'sel1')
+        shellcenters = self._getMolProp(mol, 'shellcenters')
 
         from pandas import DataFrame
         types = []
         indexes = []
         description = []
-        for i in np.where(shellcenters)[0]:
+        for i in shellcenters:
             for n in range(self.numshells):
                 types += ['shell']
                 indexes += [i]
@@ -110,14 +119,17 @@ class MetricShell(Projection):
         return DataFrame({'type': types, 'atomIndexes': indexes, 'description': description})
 
 
-def _shells(distances, map, shellcenters, numshells, shellwidth):
-    shelledges = np.arange(shellwidth*(numshells+1), step=shellwidth)
-    shellvol = 4/3 * np.pi * (shelledges[1:] ** 3 - shelledges[:-1] ** 3)
+def _shells(distances, mapping, shellcenters, numshells, shelledges, shellvol, symmetrical):
+    shellcenters = np.unique(mapping[:, 0]) if not symmetrical else np.unique(mapping)
 
     shellmetric = np.ones((np.size(distances, 0), len(shellcenters) * numshells)) * -1
 
     for i in range(len(shellcenters)):
-        cols = map == shellcenters[i]
+        if symmetrical:
+            cols = np.any(mapping == shellcenters[i], axis=1)
+        else:
+            cols = mapping[:, 0] == shellcenters[i]
+
         for e in range(len(shelledges)-1):
             inshell = (distances[:, cols] > shelledges[e]) & (distances[:, cols] <= shelledges[e+1])
             shellmetric[:, (i*numshells)+e] = np.sum(inshell, axis=1) / shellvol[e]
@@ -138,11 +150,36 @@ class _TestMetricShell(unittest.TestCase):
         metr = MetricShell('protein and name CA', 'resname MOL and noh')
         data = metr.project(mol)
 
-        densities = np.array([0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
-                            0.00095589,  0.        ,  0.        ,  0.        ,  0.00023897,
-                            0.        ,  0.        ,  0.        ,  0.00191177,  0.        ,
-                            0.        ,  0.        ,  0.        ,  0.        ,  0.        ])
-        assert np.all(np.abs(data[193, 750:770] - densities) < 0.001), 'Shell density calculation is broken'
+        refdata = np.load(path.join(home(dataDir='test-projections'), 'metricshell', 'refdata.npy'))
+
+        assert np.allclose(data, refdata), 'Shell density calculation is broken'
+
+    def test_metricshell_simple(self):
+        from moleculekit.molecule import Molecule
+        from moleculekit.home import home
+        from os import path
+        import numpy as np
+
+        mol = Molecule().empty(3)
+        mol.name[:] = 'CL'
+        mol.resname[:] = 'CL'
+        mol.resid[:] = np.arange(3)
+        mol.coords = np.zeros((3, 3, 1), dtype=np.float32)
+        
+        mol.coords[0, :, 0] = [0, 0, 0]
+        mol.coords[1, :, 0] = [0.5, 0, 0]
+        mol.coords[2, :, 0] = [0, 1.5, 0]
+
+        metr = MetricShell('name CL', 'name CL', pbc=False)
+        data = metr.project(mol)
+        refdata = np.array([[0.01768388256576615, 0.0, 0.0, 0.0, 0.01768388256576615, 0.0, 0.0, 0.0, 0.01768388256576615, 0.0, 0.0, 0.0]])
+        assert np.allclose(data, refdata)
+
+        metr = MetricShell('name CL', 'name CL', numshells=2, shellwidth=1, pbc=False)
+        data = metr.project(mol)
+        refdata = np.array([[ 0.23873241,  0.03410463,  0.23873241,  0.03410463,  0., 0.06820926]])
+        assert np.allclose(data, refdata)
+
 
 
 if __name__ == "__main__":
