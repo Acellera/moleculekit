@@ -62,7 +62,7 @@ def getPDBQTAtomType(atype, aidx, mol, aromaticNitrogen=False):
             bond = np.where(mol.bonds == aidx)[0][0]
         except Exception as e:
             raise RuntimeError(f'Could not atomtype hydrogen atom with index {aidx} due to no bonding partners.')
-            
+
         oidx = [a for a in mol.bonds[bond] if a != aidx][0]
         if mol.element[oidx] not in ['C', 'A']:
             tmptype += 'D'
@@ -115,6 +115,7 @@ def prepareProteinForAtomtyping(mol, guessBonds=True, protonate=True, pH=7, segm
 
     mol = mol.copy()
     if guessBonds:  # Need to guess bonds at the start for atom selection and for autoSegment
+        mol.bondtype = np.array([], dtype=object)
         mol.bonds = mol._guessBonds()
 
     protsel = mol.atomselect('protein')
