@@ -1063,7 +1063,7 @@ def PSFread(filename, frame=None, topoloc=None, validateElements=True):
                 topo.insertion.append(insertion)
                 topo.resname.append(l[3])
                 topo.name.append(l[4])
-                topo.atomtype.append(l[5])
+                topo.atomtype.append(l[5] if l[5] != 'NULL' else '')
                 topo.charge.append(float(l[6]))
                 topo.masses.append(float(l[7]))
             elif mode == 'bond':
