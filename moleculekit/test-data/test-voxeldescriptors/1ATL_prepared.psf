@@ -2,7 +2,7 @@ PSF NAMD
 
        0 !NTITLE
 
-    3204 !NATOM
+    3205 !NATOM
        1 P0   3    LEU  N    NULL             0.0       0.0           0
        2 P0   3    LEU  CA   NULL             0.0       0.0           0
        3 P0   3    LEU  C    NULL             0.0       0.0           0
@@ -2356,861 +2356,862 @@ PSF NAMD
     2351 P0   151  GLU  HB3  NULL             0.0       0.0           0
     2352 P0   151  GLU  HG2  NULL             0.0       0.0           0
     2353 P0   151  GLU  HG3  NULL             0.0       0.0           0
-    2354 P0   152  HID  N    NULL             0.0       0.0           0
-    2355 P0   152  HID  CA   NULL             0.0       0.0           0
-    2356 P0   152  HID  C    NULL             0.0       0.0           0
-    2357 P0   152  HID  O    NULL             0.0       0.0           0
-    2358 P0   152  HID  CB   NULL             0.0       0.0           0
-    2359 P0   152  HID  CG   NULL             0.0       0.0           0
-    2360 P0   152  HID  H    NULL             0.0       0.0           0
-    2361 P0   152  HID  HA   NULL             0.0       0.0           0
-    2362 P0   152  HID  HB2  NULL             0.0       0.0           0
-    2363 P0   152  HID  HB3  NULL             0.0       0.0           0
-    2364 P0   152  HID  ND1  NULL             0.0       0.0           0
-    2365 P0   152  HID  CD2  NULL             0.0       0.0           0
-    2366 P0   152  HID  CE1  NULL             0.0       0.0           0
-    2367 P0   152  HID  NE2  NULL             0.0       0.0           0
-    2368 P0   152  HID  HD1  NULL             0.0       0.0           0
-    2369 P0   152  HID  HD2  NULL             0.0       0.0           0
-    2370 P0   152  HID  HE1  NULL             0.0       0.0           0
-    2371 P0   153  ASP  N    NULL             0.0       0.0           0
-    2372 P0   153  ASP  CA   NULL             0.0       0.0           0
-    2373 P0   153  ASP  C    NULL             0.0       0.0           0
-    2374 P0   153  ASP  O    NULL             0.0       0.0           0
-    2375 P0   153  ASP  CB   NULL             0.0       0.0           0
-    2376 P0   153  ASP  CG   NULL             0.0       0.0           0
-    2377 P0   153  ASP  OD1  NULL             0.0       0.0           0
-    2378 P0   153  ASP  OD2  NULL             0.0       0.0           0
-    2379 P0   153  ASP  H    NULL             0.0       0.0           0
-    2380 P0   153  ASP  HA   NULL             0.0       0.0           0
-    2381 P0   153  ASP  HB2  NULL             0.0       0.0           0
-    2382 P0   153  ASP  HB3  NULL             0.0       0.0           0
-    2383 P0   154  GLY  N    NULL             0.0       0.0           0
-    2384 P0   154  GLY  CA   NULL             0.0       0.0           0
-    2385 P0   154  GLY  C    NULL             0.0       0.0           0
-    2386 P0   154  GLY  O    NULL             0.0       0.0           0
-    2387 P0   154  GLY  H    NULL             0.0       0.0           0
-    2388 P0   154  GLY  HA2  NULL             0.0       0.0           0
-    2389 P0   154  GLY  HA3  NULL             0.0       0.0           0
-    2390 P0   155  LYS  N    NULL             0.0       0.0           0
-    2391 P0   155  LYS  CA   NULL             0.0       0.0           0
-    2392 P0   155  LYS  C    NULL             0.0       0.0           0
-    2393 P0   155  LYS  O    NULL             0.0       0.0           0
-    2394 P0   155  LYS  CB   NULL             0.0       0.0           0
-    2395 P0   155  LYS  CG   NULL             0.0       0.0           0
-    2396 P0   155  LYS  CD   NULL             0.0       0.0           0
-    2397 P0   155  LYS  CE   NULL             0.0       0.0           0
-    2398 P0   155  LYS  NZ   NULL             0.0       0.0           0
-    2399 P0   155  LYS  H    NULL             0.0       0.0           0
-    2400 P0   155  LYS  HA   NULL             0.0       0.0           0
-    2401 P0   155  LYS  HB2  NULL             0.0       0.0           0
-    2402 P0   155  LYS  HB3  NULL             0.0       0.0           0
-    2403 P0   155  LYS  HG2  NULL             0.0       0.0           0
-    2404 P0   155  LYS  HG3  NULL             0.0       0.0           0
-    2405 P0   155  LYS  HD2  NULL             0.0       0.0           0
-    2406 P0   155  LYS  HD3  NULL             0.0       0.0           0
-    2407 P0   155  LYS  HE2  NULL             0.0       0.0           0
-    2408 P0   155  LYS  HE3  NULL             0.0       0.0           0
-    2409 P0   155  LYS  HZ1  NULL             0.0       0.0           0
-    2410 P0   155  LYS  HZ2  NULL             0.0       0.0           0
-    2411 P0   155  LYS  HZ3  NULL             0.0       0.0           0
-    2412 P0   156  ASP  N    NULL             0.0       0.0           0
-    2413 P0   156  ASP  CA   NULL             0.0       0.0           0
-    2414 P0   156  ASP  C    NULL             0.0       0.0           0
-    2415 P0   156  ASP  O    NULL             0.0       0.0           0
-    2416 P0   156  ASP  CB   NULL             0.0       0.0           0
-    2417 P0   156  ASP  CG   NULL             0.0       0.0           0
-    2418 P0   156  ASP  OD1  NULL             0.0       0.0           0
-    2419 P0   156  ASP  OD2  NULL             0.0       0.0           0
-    2420 P0   156  ASP  H    NULL             0.0       0.0           0
-    2421 P0   156  ASP  HA   NULL             0.0       0.0           0
-    2422 P0   156  ASP  HB2  NULL             0.0       0.0           0
-    2423 P0   156  ASP  HB3  NULL             0.0       0.0           0
-    2424 P0   157  CYX  N    NULL             0.0       0.0           0
-    2425 P0   157  CYX  CA   NULL             0.0       0.0           0
-    2426 P0   157  CYX  C    NULL             0.0       0.0           0
-    2427 P0   157  CYX  O    NULL             0.0       0.0           0
-    2428 P0   157  CYX  CB   NULL             0.0       0.0           0
-    2429 P0   157  CYX  SG   NULL             0.0       0.0           0
-    2430 P0   157  CYX  H    NULL             0.0       0.0           0
-    2431 P0   157  CYX  HA   NULL             0.0       0.0           0
-    2432 P0   157  CYX  HB2  NULL             0.0       0.0           0
-    2433 P0   157  CYX  HB3  NULL             0.0       0.0           0
-    2434 P0   158  LEU  N    NULL             0.0       0.0           0
-    2435 P0   158  LEU  CA   NULL             0.0       0.0           0
-    2436 P0   158  LEU  C    NULL             0.0       0.0           0
-    2437 P0   158  LEU  O    NULL             0.0       0.0           0
-    2438 P0   158  LEU  CB   NULL             0.0       0.0           0
-    2439 P0   158  LEU  CG   NULL             0.0       0.0           0
-    2440 P0   158  LEU  CD1  NULL             0.0       0.0           0
-    2441 P0   158  LEU  CD2  NULL             0.0       0.0           0
-    2442 P0   158  LEU  H    NULL             0.0       0.0           0
-    2443 P0   158  LEU  HA   NULL             0.0       0.0           0
-    2444 P0   158  LEU  HB2  NULL             0.0       0.0           0
-    2445 P0   158  LEU  HB3  NULL             0.0       0.0           0
-    2446 P0   158  LEU  HG   NULL             0.0       0.0           0
-    2447 P0   158  LEU  HD11 NULL             0.0       0.0           0
-    2448 P0   158  LEU  HD12 NULL             0.0       0.0           0
-    2449 P0   158  LEU  HD13 NULL             0.0       0.0           0
-    2450 P0   158  LEU  HD21 NULL             0.0       0.0           0
-    2451 P0   158  LEU  HD22 NULL             0.0       0.0           0
-    2452 P0   158  LEU  HD23 NULL             0.0       0.0           0
-    2453 P0   159  ARG  N    NULL             0.0       0.0           0
-    2454 P0   159  ARG  CA   NULL             0.0       0.0           0
-    2455 P0   159  ARG  C    NULL             0.0       0.0           0
-    2456 P0   159  ARG  O    NULL             0.0       0.0           0
-    2457 P0   159  ARG  CB   NULL             0.0       0.0           0
-    2458 P0   159  ARG  CG   NULL             0.0       0.0           0
-    2459 P0   159  ARG  CD   NULL             0.0       0.0           0
-    2460 P0   159  ARG  NE   NULL             0.0       0.0           0
-    2461 P0   159  ARG  CZ   NULL             0.0       0.0           0
-    2462 P0   159  ARG  NH1  NULL             0.0       0.0           0
-    2463 P0   159  ARG  NH2  NULL             0.0       0.0           0
-    2464 P0   159  ARG  H    NULL             0.0       0.0           0
-    2465 P0   159  ARG  HA   NULL             0.0       0.0           0
-    2466 P0   159  ARG  HB2  NULL             0.0       0.0           0
-    2467 P0   159  ARG  HB3  NULL             0.0       0.0           0
-    2468 P0   159  ARG  HG2  NULL             0.0       0.0           0
-    2469 P0   159  ARG  HG3  NULL             0.0       0.0           0
-    2470 P0   159  ARG  HD2  NULL             0.0       0.0           0
-    2471 P0   159  ARG  HD3  NULL             0.0       0.0           0
-    2472 P0   159  ARG  HE   NULL             0.0       0.0           0
-    2473 P0   159  ARG  HH11 NULL             0.0       0.0           0
-    2474 P0   159  ARG  HH12 NULL             0.0       0.0           0
-    2475 P0   159  ARG  HH21 NULL             0.0       0.0           0
-    2476 P0   159  ARG  HH22 NULL             0.0       0.0           0
-    2477 P0   160  GLY  N    NULL             0.0       0.0           0
-    2478 P0   160  GLY  CA   NULL             0.0       0.0           0
-    2479 P0   160  GLY  C    NULL             0.0       0.0           0
-    2480 P0   160  GLY  O    NULL             0.0       0.0           0
-    2481 P0   160  GLY  H    NULL             0.0       0.0           0
-    2482 P0   160  GLY  HA2  NULL             0.0       0.0           0
-    2483 P0   160  GLY  HA3  NULL             0.0       0.0           0
-    2484 P0   161  ALA  N    NULL             0.0       0.0           0
-    2485 P0   161  ALA  CA   NULL             0.0       0.0           0
-    2486 P0   161  ALA  C    NULL             0.0       0.0           0
-    2487 P0   161  ALA  O    NULL             0.0       0.0           0
-    2488 P0   161  ALA  CB   NULL             0.0       0.0           0
-    2489 P0   161  ALA  H    NULL             0.0       0.0           0
-    2490 P0   161  ALA  HA   NULL             0.0       0.0           0
-    2491 P0   161  ALA  HB1  NULL             0.0       0.0           0
-    2492 P0   161  ALA  HB2  NULL             0.0       0.0           0
-    2493 P0   161  ALA  HB3  NULL             0.0       0.0           0
-    2494 P0   162  SER  N    NULL             0.0       0.0           0
-    2495 P0   162  SER  CA   NULL             0.0       0.0           0
-    2496 P0   162  SER  C    NULL             0.0       0.0           0
-    2497 P0   162  SER  O    NULL             0.0       0.0           0
-    2498 P0   162  SER  CB   NULL             0.0       0.0           0
-    2499 P0   162  SER  OG   NULL             0.0       0.0           0
-    2500 P0   162  SER  H    NULL             0.0       0.0           0
-    2501 P0   162  SER  HA   NULL             0.0       0.0           0
-    2502 P0   162  SER  HB2  NULL             0.0       0.0           0
-    2503 P0   162  SER  HB3  NULL             0.0       0.0           0
-    2504 P0   162  SER  HG   NULL             0.0       0.0           0
-    2505 P0   163  LEU  N    NULL             0.0       0.0           0
-    2506 P0   163  LEU  CA   NULL             0.0       0.0           0
-    2507 P0   163  LEU  C    NULL             0.0       0.0           0
-    2508 P0   163  LEU  O    NULL             0.0       0.0           0
-    2509 P0   163  LEU  CB   NULL             0.0       0.0           0
-    2510 P0   163  LEU  CG   NULL             0.0       0.0           0
-    2511 P0   163  LEU  CD1  NULL             0.0       0.0           0
-    2512 P0   163  LEU  CD2  NULL             0.0       0.0           0
-    2513 P0   163  LEU  H    NULL             0.0       0.0           0
-    2514 P0   163  LEU  HA   NULL             0.0       0.0           0
-    2515 P0   163  LEU  HB2  NULL             0.0       0.0           0
-    2516 P0   163  LEU  HB3  NULL             0.0       0.0           0
-    2517 P0   163  LEU  HG   NULL             0.0       0.0           0
-    2518 P0   163  LEU  HD11 NULL             0.0       0.0           0
-    2519 P0   163  LEU  HD12 NULL             0.0       0.0           0
-    2520 P0   163  LEU  HD13 NULL             0.0       0.0           0
-    2521 P0   163  LEU  HD21 NULL             0.0       0.0           0
-    2522 P0   163  LEU  HD22 NULL             0.0       0.0           0
-    2523 P0   163  LEU  HD23 NULL             0.0       0.0           0
-    2524 P0   164  CYX  N    NULL             0.0       0.0           0
-    2525 P0   164  CYX  CA   NULL             0.0       0.0           0
-    2526 P0   164  CYX  C    NULL             0.0       0.0           0
-    2527 P0   164  CYX  O    NULL             0.0       0.0           0
-    2528 P0   164  CYX  CB   NULL             0.0       0.0           0
-    2529 P0   164  CYX  SG   NULL             0.0       0.0           0
-    2530 P0   164  CYX  H    NULL             0.0       0.0           0
-    2531 P0   164  CYX  HA   NULL             0.0       0.0           0
-    2532 P0   164  CYX  HB2  NULL             0.0       0.0           0
-    2533 P0   164  CYX  HB3  NULL             0.0       0.0           0
-    2534 P0   165  ILE  N    NULL             0.0       0.0           0
-    2535 P0   165  ILE  CA   NULL             0.0       0.0           0
-    2536 P0   165  ILE  C    NULL             0.0       0.0           0
-    2537 P0   165  ILE  O    NULL             0.0       0.0           0
-    2538 P0   165  ILE  CB   NULL             0.0       0.0           0
-    2539 P0   165  ILE  CG1  NULL             0.0       0.0           0
-    2540 P0   165  ILE  CG2  NULL             0.0       0.0           0
-    2541 P0   165  ILE  CD1  NULL             0.0       0.0           0
-    2542 P0   165  ILE  H    NULL             0.0       0.0           0
-    2543 P0   165  ILE  HA   NULL             0.0       0.0           0
-    2544 P0   165  ILE  HB   NULL             0.0       0.0           0
-    2545 P0   165  ILE  HG12 NULL             0.0       0.0           0
-    2546 P0   165  ILE  HG13 NULL             0.0       0.0           0
-    2547 P0   165  ILE  HG21 NULL             0.0       0.0           0
-    2548 P0   165  ILE  HG22 NULL             0.0       0.0           0
-    2549 P0   165  ILE  HG23 NULL             0.0       0.0           0
-    2550 P0   165  ILE  HD11 NULL             0.0       0.0           0
-    2551 P0   165  ILE  HD12 NULL             0.0       0.0           0
-    2552 P0   165  ILE  HD13 NULL             0.0       0.0           0
-    2553 P0   166  MET  N    NULL             0.0       0.0           0
-    2554 P0   166  MET  CA   NULL             0.0       0.0           0
-    2555 P0   166  MET  C    NULL             0.0       0.0           0
-    2556 P0   166  MET  O    NULL             0.0       0.0           0
-    2557 P0   166  MET  CB   NULL             0.0       0.0           0
-    2558 P0   166  MET  CG   NULL             0.0       0.0           0
-    2559 P0   166  MET  SD   NULL             0.0       0.0           0
-    2560 P0   166  MET  CE   NULL             0.0       0.0           0
-    2561 P0   166  MET  H    NULL             0.0       0.0           0
-    2562 P0   166  MET  HA   NULL             0.0       0.0           0
-    2563 P0   166  MET  HB2  NULL             0.0       0.0           0
-    2564 P0   166  MET  HB3  NULL             0.0       0.0           0
-    2565 P0   166  MET  HG2  NULL             0.0       0.0           0
-    2566 P0   166  MET  HG3  NULL             0.0       0.0           0
-    2567 P0   166  MET  HE1  NULL             0.0       0.0           0
-    2568 P0   166  MET  HE2  NULL             0.0       0.0           0
-    2569 P0   166  MET  HE3  NULL             0.0       0.0           0
-    2570 P0   167  ARG  N    NULL             0.0       0.0           0
-    2571 P0   167  ARG  CA   NULL             0.0       0.0           0
-    2572 P0   167  ARG  C    NULL             0.0       0.0           0
-    2573 P0   167  ARG  O    NULL             0.0       0.0           0
-    2574 P0   167  ARG  CB   NULL             0.0       0.0           0
-    2575 P0   167  ARG  CG   NULL             0.0       0.0           0
-    2576 P0   167  ARG  CD   NULL             0.0       0.0           0
-    2577 P0   167  ARG  NE   NULL             0.0       0.0           0
-    2578 P0   167  ARG  CZ   NULL             0.0       0.0           0
-    2579 P0   167  ARG  NH1  NULL             0.0       0.0           0
-    2580 P0   167  ARG  NH2  NULL             0.0       0.0           0
-    2581 P0   167  ARG  H    NULL             0.0       0.0           0
-    2582 P0   167  ARG  HA   NULL             0.0       0.0           0
-    2583 P0   167  ARG  HB2  NULL             0.0       0.0           0
-    2584 P0   167  ARG  HB3  NULL             0.0       0.0           0
-    2585 P0   167  ARG  HG2  NULL             0.0       0.0           0
-    2586 P0   167  ARG  HG3  NULL             0.0       0.0           0
-    2587 P0   167  ARG  HD2  NULL             0.0       0.0           0
-    2588 P0   167  ARG  HD3  NULL             0.0       0.0           0
-    2589 P0   167  ARG  HE   NULL             0.0       0.0           0
-    2590 P0   167  ARG  HH11 NULL             0.0       0.0           0
-    2591 P0   167  ARG  HH12 NULL             0.0       0.0           0
-    2592 P0   167  ARG  HH21 NULL             0.0       0.0           0
-    2593 P0   167  ARG  HH22 NULL             0.0       0.0           0
-    2594 P0   168  PRO  N    NULL             0.0       0.0           0
-    2595 P0   168  PRO  CA   NULL             0.0       0.0           0
-    2596 P0   168  PRO  C    NULL             0.0       0.0           0
-    2597 P0   168  PRO  O    NULL             0.0       0.0           0
-    2598 P0   168  PRO  CB   NULL             0.0       0.0           0
-    2599 P0   168  PRO  CG   NULL             0.0       0.0           0
-    2600 P0   168  PRO  CD   NULL             0.0       0.0           0
-    2601 P0   168  PRO  HA   NULL             0.0       0.0           0
-    2602 P0   168  PRO  HB2  NULL             0.0       0.0           0
-    2603 P0   168  PRO  HB3  NULL             0.0       0.0           0
-    2604 P0   168  PRO  HG2  NULL             0.0       0.0           0
-    2605 P0   168  PRO  HG3  NULL             0.0       0.0           0
-    2606 P0   168  PRO  HD2  NULL             0.0       0.0           0
-    2607 P0   168  PRO  HD3  NULL             0.0       0.0           0
-    2608 P0   169  GLY  N    NULL             0.0       0.0           0
-    2609 P0   169  GLY  CA   NULL             0.0       0.0           0
-    2610 P0   169  GLY  C    NULL             0.0       0.0           0
-    2611 P0   169  GLY  O    NULL             0.0       0.0           0
-    2612 P0   169  GLY  H    NULL             0.0       0.0           0
-    2613 P0   169  GLY  HA2  NULL             0.0       0.0           0
-    2614 P0   169  GLY  HA3  NULL             0.0       0.0           0
-    2615 P0   170  LEU  N    NULL             0.0       0.0           0
-    2616 P0   170  LEU  CA   NULL             0.0       0.0           0
-    2617 P0   170  LEU  C    NULL             0.0       0.0           0
-    2618 P0   170  LEU  O    NULL             0.0       0.0           0
-    2619 P0   170  LEU  CB   NULL             0.0       0.0           0
-    2620 P0   170  LEU  CG   NULL             0.0       0.0           0
-    2621 P0   170  LEU  CD1  NULL             0.0       0.0           0
-    2622 P0   170  LEU  CD2  NULL             0.0       0.0           0
-    2623 P0   170  LEU  H    NULL             0.0       0.0           0
-    2624 P0   170  LEU  HA   NULL             0.0       0.0           0
-    2625 P0   170  LEU  HB2  NULL             0.0       0.0           0
-    2626 P0   170  LEU  HB3  NULL             0.0       0.0           0
-    2627 P0   170  LEU  HG   NULL             0.0       0.0           0
-    2628 P0   170  LEU  HD11 NULL             0.0       0.0           0
-    2629 P0   170  LEU  HD12 NULL             0.0       0.0           0
-    2630 P0   170  LEU  HD13 NULL             0.0       0.0           0
-    2631 P0   170  LEU  HD21 NULL             0.0       0.0           0
-    2632 P0   170  LEU  HD22 NULL             0.0       0.0           0
-    2633 P0   170  LEU  HD23 NULL             0.0       0.0           0
-    2634 P0   171  THR  N    NULL             0.0       0.0           0
-    2635 P0   171  THR  CA   NULL             0.0       0.0           0
-    2636 P0   171  THR  C    NULL             0.0       0.0           0
-    2637 P0   171  THR  O    NULL             0.0       0.0           0
-    2638 P0   171  THR  CB   NULL             0.0       0.0           0
-    2639 P0   171  THR  OG1  NULL             0.0       0.0           0
-    2640 P0   171  THR  CG2  NULL             0.0       0.0           0
-    2641 P0   171  THR  H    NULL             0.0       0.0           0
-    2642 P0   171  THR  HA   NULL             0.0       0.0           0
-    2643 P0   171  THR  HB   NULL             0.0       0.0           0
-    2644 P0   171  THR  HG21 NULL             0.0       0.0           0
-    2645 P0   171  THR  HG22 NULL             0.0       0.0           0
-    2646 P0   171  THR  HG23 NULL             0.0       0.0           0
-    2647 P0   171  THR  HG1  NULL             0.0       0.0           0
-    2648 P0   172  LYS  N    NULL             0.0       0.0           0
-    2649 P0   172  LYS  CA   NULL             0.0       0.0           0
-    2650 P0   172  LYS  C    NULL             0.0       0.0           0
-    2651 P0   172  LYS  O    NULL             0.0       0.0           0
-    2652 P0   172  LYS  CB   NULL             0.0       0.0           0
-    2653 P0   172  LYS  CG   NULL             0.0       0.0           0
-    2654 P0   172  LYS  CD   NULL             0.0       0.0           0
-    2655 P0   172  LYS  CE   NULL             0.0       0.0           0
-    2656 P0   172  LYS  NZ   NULL             0.0       0.0           0
-    2657 P0   172  LYS  H    NULL             0.0       0.0           0
-    2658 P0   172  LYS  HA   NULL             0.0       0.0           0
-    2659 P0   172  LYS  HB2  NULL             0.0       0.0           0
-    2660 P0   172  LYS  HB3  NULL             0.0       0.0           0
-    2661 P0   172  LYS  HG2  NULL             0.0       0.0           0
-    2662 P0   172  LYS  HG3  NULL             0.0       0.0           0
-    2663 P0   172  LYS  HD2  NULL             0.0       0.0           0
-    2664 P0   172  LYS  HD3  NULL             0.0       0.0           0
-    2665 P0   172  LYS  HE2  NULL             0.0       0.0           0
-    2666 P0   172  LYS  HE3  NULL             0.0       0.0           0
-    2667 P0   172  LYS  HZ1  NULL             0.0       0.0           0
-    2668 P0   172  LYS  HZ2  NULL             0.0       0.0           0
-    2669 P0   172  LYS  HZ3  NULL             0.0       0.0           0
-    2670 P0   173  GLY  N    NULL             0.0       0.0           0
-    2671 P0   173  GLY  CA   NULL             0.0       0.0           0
-    2672 P0   173  GLY  C    NULL             0.0       0.0           0
-    2673 P0   173  GLY  O    NULL             0.0       0.0           0
-    2674 P0   173  GLY  H    NULL             0.0       0.0           0
-    2675 P0   173  GLY  HA2  NULL             0.0       0.0           0
-    2676 P0   173  GLY  HA3  NULL             0.0       0.0           0
-    2677 P0   174  ARG  N    NULL             0.0       0.0           0
-    2678 P0   174  ARG  CA   NULL             0.0       0.0           0
-    2679 P0   174  ARG  C    NULL             0.0       0.0           0
-    2680 P0   174  ARG  O    NULL             0.0       0.0           0
-    2681 P0   174  ARG  CB   NULL             0.0       0.0           0
-    2682 P0   174  ARG  CG   NULL             0.0       0.0           0
-    2683 P0   174  ARG  CD   NULL             0.0       0.0           0
-    2684 P0   174  ARG  NE   NULL             0.0       0.0           0
-    2685 P0   174  ARG  CZ   NULL             0.0       0.0           0
-    2686 P0   174  ARG  NH1  NULL             0.0       0.0           0
-    2687 P0   174  ARG  NH2  NULL             0.0       0.0           0
-    2688 P0   174  ARG  H    NULL             0.0       0.0           0
-    2689 P0   174  ARG  HA   NULL             0.0       0.0           0
-    2690 P0   174  ARG  HB2  NULL             0.0       0.0           0
-    2691 P0   174  ARG  HB3  NULL             0.0       0.0           0
-    2692 P0   174  ARG  HG2  NULL             0.0       0.0           0
-    2693 P0   174  ARG  HG3  NULL             0.0       0.0           0
-    2694 P0   174  ARG  HD2  NULL             0.0       0.0           0
-    2695 P0   174  ARG  HD3  NULL             0.0       0.0           0
-    2696 P0   174  ARG  HE   NULL             0.0       0.0           0
-    2697 P0   174  ARG  HH11 NULL             0.0       0.0           0
-    2698 P0   174  ARG  HH12 NULL             0.0       0.0           0
-    2699 P0   174  ARG  HH21 NULL             0.0       0.0           0
-    2700 P0   174  ARG  HH22 NULL             0.0       0.0           0
-    2701 P0   175  SER  N    NULL             0.0       0.0           0
-    2702 P0   175  SER  CA   NULL             0.0       0.0           0
-    2703 P0   175  SER  C    NULL             0.0       0.0           0
-    2704 P0   175  SER  O    NULL             0.0       0.0           0
-    2705 P0   175  SER  CB   NULL             0.0       0.0           0
-    2706 P0   175  SER  OG   NULL             0.0       0.0           0
-    2707 P0   175  SER  H    NULL             0.0       0.0           0
-    2708 P0   175  SER  HA   NULL             0.0       0.0           0
-    2709 P0   175  SER  HB2  NULL             0.0       0.0           0
-    2710 P0   175  SER  HB3  NULL             0.0       0.0           0
-    2711 P0   175  SER  HG   NULL             0.0       0.0           0
-    2712 P0   176  TYR  N    NULL             0.0       0.0           0
-    2713 P0   176  TYR  CA   NULL             0.0       0.0           0
-    2714 P0   176  TYR  C    NULL             0.0       0.0           0
-    2715 P0   176  TYR  O    NULL             0.0       0.0           0
-    2716 P0   176  TYR  CB   NULL             0.0       0.0           0
-    2717 P0   176  TYR  CG   NULL             0.0       0.0           0
-    2718 P0   176  TYR  CD1  NULL             0.0       0.0           0
-    2719 P0   176  TYR  CD2  NULL             0.0       0.0           0
-    2720 P0   176  TYR  CE1  NULL             0.0       0.0           0
-    2721 P0   176  TYR  CE2  NULL             0.0       0.0           0
-    2722 P0   176  TYR  CZ   NULL             0.0       0.0           0
-    2723 P0   176  TYR  OH   NULL             0.0       0.0           0
-    2724 P0   176  TYR  H    NULL             0.0       0.0           0
-    2725 P0   176  TYR  HA   NULL             0.0       0.0           0
-    2726 P0   176  TYR  HB2  NULL             0.0       0.0           0
-    2727 P0   176  TYR  HB3  NULL             0.0       0.0           0
-    2728 P0   176  TYR  HD1  NULL             0.0       0.0           0
-    2729 P0   176  TYR  HD2  NULL             0.0       0.0           0
-    2730 P0   176  TYR  HE1  NULL             0.0       0.0           0
-    2731 P0   176  TYR  HE2  NULL             0.0       0.0           0
-    2732 P0   176  TYR  HH   NULL             0.0       0.0           0
-    2733 P0   177  GLU  N    NULL             0.0       0.0           0
-    2734 P0   177  GLU  CA   NULL             0.0       0.0           0
-    2735 P0   177  GLU  C    NULL             0.0       0.0           0
-    2736 P0   177  GLU  O    NULL             0.0       0.0           0
-    2737 P0   177  GLU  CB   NULL             0.0       0.0           0
-    2738 P0   177  GLU  CG   NULL             0.0       0.0           0
-    2739 P0   177  GLU  CD   NULL             0.0       0.0           0
-    2740 P0   177  GLU  OE1  NULL             0.0       0.0           0
-    2741 P0   177  GLU  OE2  NULL             0.0       0.0           0
-    2742 P0   177  GLU  H    NULL             0.0       0.0           0
-    2743 P0   177  GLU  HA   NULL             0.0       0.0           0
-    2744 P0   177  GLU  HB2  NULL             0.0       0.0           0
-    2745 P0   177  GLU  HB3  NULL             0.0       0.0           0
-    2746 P0   177  GLU  HG2  NULL             0.0       0.0           0
-    2747 P0   177  GLU  HG3  NULL             0.0       0.0           0
-    2748 P0   178  PHE  N    NULL             0.0       0.0           0
-    2749 P0   178  PHE  CA   NULL             0.0       0.0           0
-    2750 P0   178  PHE  C    NULL             0.0       0.0           0
-    2751 P0   178  PHE  O    NULL             0.0       0.0           0
-    2752 P0   178  PHE  CB   NULL             0.0       0.0           0
-    2753 P0   178  PHE  CG   NULL             0.0       0.0           0
-    2754 P0   178  PHE  CD1  NULL             0.0       0.0           0
-    2755 P0   178  PHE  CD2  NULL             0.0       0.0           0
-    2756 P0   178  PHE  CE1  NULL             0.0       0.0           0
-    2757 P0   178  PHE  CE2  NULL             0.0       0.0           0
-    2758 P0   178  PHE  CZ   NULL             0.0       0.0           0
-    2759 P0   178  PHE  H    NULL             0.0       0.0           0
-    2760 P0   178  PHE  HA   NULL             0.0       0.0           0
-    2761 P0   178  PHE  HB2  NULL             0.0       0.0           0
-    2762 P0   178  PHE  HB3  NULL             0.0       0.0           0
-    2763 P0   178  PHE  HD1  NULL             0.0       0.0           0
-    2764 P0   178  PHE  HD2  NULL             0.0       0.0           0
-    2765 P0   178  PHE  HE1  NULL             0.0       0.0           0
-    2766 P0   178  PHE  HE2  NULL             0.0       0.0           0
-    2767 P0   178  PHE  HZ   NULL             0.0       0.0           0
-    2768 P0   179  SER  N    NULL             0.0       0.0           0
-    2769 P0   179  SER  CA   NULL             0.0       0.0           0
-    2770 P0   179  SER  C    NULL             0.0       0.0           0
-    2771 P0   179  SER  O    NULL             0.0       0.0           0
-    2772 P0   179  SER  CB   NULL             0.0       0.0           0
-    2773 P0   179  SER  OG   NULL             0.0       0.0           0
-    2774 P0   179  SER  H    NULL             0.0       0.0           0
-    2775 P0   179  SER  HA   NULL             0.0       0.0           0
-    2776 P0   179  SER  HB2  NULL             0.0       0.0           0
-    2777 P0   179  SER  HB3  NULL             0.0       0.0           0
-    2778 P0   179  SER  HG   NULL             0.0       0.0           0
-    2779 P0   180  ASP  N    NULL             0.0       0.0           0
-    2780 P0   180  ASP  CA   NULL             0.0       0.0           0
-    2781 P0   180  ASP  C    NULL             0.0       0.0           0
-    2782 P0   180  ASP  O    NULL             0.0       0.0           0
-    2783 P0   180  ASP  CB   NULL             0.0       0.0           0
-    2784 P0   180  ASP  CG   NULL             0.0       0.0           0
-    2785 P0   180  ASP  OD1  NULL             0.0       0.0           0
-    2786 P0   180  ASP  OD2  NULL             0.0       0.0           0
-    2787 P0   180  ASP  H    NULL             0.0       0.0           0
-    2788 P0   180  ASP  HA   NULL             0.0       0.0           0
-    2789 P0   180  ASP  HB2  NULL             0.0       0.0           0
-    2790 P0   180  ASP  HB3  NULL             0.0       0.0           0
-    2791 P0   181  ASP  N    NULL             0.0       0.0           0
-    2792 P0   181  ASP  CA   NULL             0.0       0.0           0
-    2793 P0   181  ASP  C    NULL             0.0       0.0           0
-    2794 P0   181  ASP  O    NULL             0.0       0.0           0
-    2795 P0   181  ASP  CB   NULL             0.0       0.0           0
-    2796 P0   181  ASP  CG   NULL             0.0       0.0           0
-    2797 P0   181  ASP  OD1  NULL             0.0       0.0           0
-    2798 P0   181  ASP  OD2  NULL             0.0       0.0           0
-    2799 P0   181  ASP  H    NULL             0.0       0.0           0
-    2800 P0   181  ASP  HA   NULL             0.0       0.0           0
-    2801 P0   181  ASP  HB2  NULL             0.0       0.0           0
-    2802 P0   181  ASP  HB3  NULL             0.0       0.0           0
-    2803 P0   182  SER  N    NULL             0.0       0.0           0
-    2804 P0   182  SER  CA   NULL             0.0       0.0           0
-    2805 P0   182  SER  C    NULL             0.0       0.0           0
-    2806 P0   182  SER  O    NULL             0.0       0.0           0
-    2807 P0   182  SER  CB   NULL             0.0       0.0           0
-    2808 P0   182  SER  OG   NULL             0.0       0.0           0
-    2809 P0   182  SER  H    NULL             0.0       0.0           0
-    2810 P0   182  SER  HA   NULL             0.0       0.0           0
-    2811 P0   182  SER  HB2  NULL             0.0       0.0           0
-    2812 P0   182  SER  HB3  NULL             0.0       0.0           0
-    2813 P0   182  SER  HG   NULL             0.0       0.0           0
-    2814 P0   183  MET  N    NULL             0.0       0.0           0
-    2815 P0   183  MET  CA   NULL             0.0       0.0           0
-    2816 P0   183  MET  C    NULL             0.0       0.0           0
-    2817 P0   183  MET  O    NULL             0.0       0.0           0
-    2818 P0   183  MET  CB   NULL             0.0       0.0           0
-    2819 P0   183  MET  CG   NULL             0.0       0.0           0
-    2820 P0   183  MET  SD   NULL             0.0       0.0           0
-    2821 P0   183  MET  CE   NULL             0.0       0.0           0
-    2822 P0   183  MET  H    NULL             0.0       0.0           0
-    2823 P0   183  MET  HA   NULL             0.0       0.0           0
-    2824 P0   183  MET  HB2  NULL             0.0       0.0           0
-    2825 P0   183  MET  HB3  NULL             0.0       0.0           0
-    2826 P0   183  MET  HG2  NULL             0.0       0.0           0
-    2827 P0   183  MET  HG3  NULL             0.0       0.0           0
-    2828 P0   183  MET  HE1  NULL             0.0       0.0           0
-    2829 P0   183  MET  HE2  NULL             0.0       0.0           0
-    2830 P0   183  MET  HE3  NULL             0.0       0.0           0
-    2831 P0   184  HID  N    NULL             0.0       0.0           0
-    2832 P0   184  HID  CA   NULL             0.0       0.0           0
-    2833 P0   184  HID  C    NULL             0.0       0.0           0
-    2834 P0   184  HID  O    NULL             0.0       0.0           0
-    2835 P0   184  HID  CB   NULL             0.0       0.0           0
-    2836 P0   184  HID  CG   NULL             0.0       0.0           0
-    2837 P0   184  HID  ND1  NULL             0.0       0.0           0
-    2838 P0   184  HID  CD2  NULL             0.0       0.0           0
-    2839 P0   184  HID  CE1  NULL             0.0       0.0           0
-    2840 P0   184  HID  NE2  NULL             0.0       0.0           0
-    2841 P0   184  HID  H    NULL             0.0       0.0           0
-    2842 P0   184  HID  HA   NULL             0.0       0.0           0
-    2843 P0   184  HID  HB2  NULL             0.0       0.0           0
-    2844 P0   184  HID  HB3  NULL             0.0       0.0           0
-    2845 P0   184  HID  HD1  NULL             0.0       0.0           0
-    2846 P0   184  HID  HD2  NULL             0.0       0.0           0
-    2847 P0   184  HID  HE1  NULL             0.0       0.0           0
-    2848 P0   185  TYR  N    NULL             0.0       0.0           0
-    2849 P0   185  TYR  CA   NULL             0.0       0.0           0
-    2850 P0   185  TYR  C    NULL             0.0       0.0           0
-    2851 P0   185  TYR  O    NULL             0.0       0.0           0
-    2852 P0   185  TYR  CB   NULL             0.0       0.0           0
-    2853 P0   185  TYR  CG   NULL             0.0       0.0           0
-    2854 P0   185  TYR  CD1  NULL             0.0       0.0           0
-    2855 P0   185  TYR  CD2  NULL             0.0       0.0           0
-    2856 P0   185  TYR  CE1  NULL             0.0       0.0           0
-    2857 P0   185  TYR  CE2  NULL             0.0       0.0           0
-    2858 P0   185  TYR  CZ   NULL             0.0       0.0           0
-    2859 P0   185  TYR  OH   NULL             0.0       0.0           0
-    2860 P0   185  TYR  H    NULL             0.0       0.0           0
-    2861 P0   185  TYR  HA   NULL             0.0       0.0           0
-    2862 P0   185  TYR  HB2  NULL             0.0       0.0           0
-    2863 P0   185  TYR  HB3  NULL             0.0       0.0           0
-    2864 P0   185  TYR  HD1  NULL             0.0       0.0           0
-    2865 P0   185  TYR  HD2  NULL             0.0       0.0           0
-    2866 P0   185  TYR  HE1  NULL             0.0       0.0           0
-    2867 P0   185  TYR  HE2  NULL             0.0       0.0           0
-    2868 P0   185  TYR  HH   NULL             0.0       0.0           0
-    2869 P0   186  TYR  N    NULL             0.0       0.0           0
-    2870 P0   186  TYR  CA   NULL             0.0       0.0           0
-    2871 P0   186  TYR  C    NULL             0.0       0.0           0
-    2872 P0   186  TYR  O    NULL             0.0       0.0           0
-    2873 P0   186  TYR  CB   NULL             0.0       0.0           0
-    2874 P0   186  TYR  CG   NULL             0.0       0.0           0
-    2875 P0   186  TYR  CD1  NULL             0.0       0.0           0
-    2876 P0   186  TYR  CD2  NULL             0.0       0.0           0
-    2877 P0   186  TYR  CE1  NULL             0.0       0.0           0
-    2878 P0   186  TYR  CE2  NULL             0.0       0.0           0
-    2879 P0   186  TYR  CZ   NULL             0.0       0.0           0
-    2880 P0   186  TYR  OH   NULL             0.0       0.0           0
-    2881 P0   186  TYR  H    NULL             0.0       0.0           0
-    2882 P0   186  TYR  HA   NULL             0.0       0.0           0
-    2883 P0   186  TYR  HB2  NULL             0.0       0.0           0
-    2884 P0   186  TYR  HB3  NULL             0.0       0.0           0
-    2885 P0   186  TYR  HD1  NULL             0.0       0.0           0
-    2886 P0   186  TYR  HD2  NULL             0.0       0.0           0
-    2887 P0   186  TYR  HE1  NULL             0.0       0.0           0
-    2888 P0   186  TYR  HE2  NULL             0.0       0.0           0
-    2889 P0   186  TYR  HH   NULL             0.0       0.0           0
-    2890 P0   187  GLU  N    NULL             0.0       0.0           0
-    2891 P0   187  GLU  CA   NULL             0.0       0.0           0
-    2892 P0   187  GLU  C    NULL             0.0       0.0           0
-    2893 P0   187  GLU  O    NULL             0.0       0.0           0
-    2894 P0   187  GLU  CB   NULL             0.0       0.0           0
-    2895 P0   187  GLU  CG   NULL             0.0       0.0           0
-    2896 P0   187  GLU  CD   NULL             0.0       0.0           0
-    2897 P0   187  GLU  OE1  NULL             0.0       0.0           0
-    2898 P0   187  GLU  OE2  NULL             0.0       0.0           0
-    2899 P0   187  GLU  H    NULL             0.0       0.0           0
-    2900 P0   187  GLU  HA   NULL             0.0       0.0           0
-    2901 P0   187  GLU  HB2  NULL             0.0       0.0           0
-    2902 P0   187  GLU  HB3  NULL             0.0       0.0           0
-    2903 P0   187  GLU  HG2  NULL             0.0       0.0           0
-    2904 P0   187  GLU  HG3  NULL             0.0       0.0           0
-    2905 P0   188  ARG  N    NULL             0.0       0.0           0
-    2906 P0   188  ARG  CA   NULL             0.0       0.0           0
-    2907 P0   188  ARG  C    NULL             0.0       0.0           0
-    2908 P0   188  ARG  O    NULL             0.0       0.0           0
-    2909 P0   188  ARG  CB   NULL             0.0       0.0           0
-    2910 P0   188  ARG  CG   NULL             0.0       0.0           0
-    2911 P0   188  ARG  CD   NULL             0.0       0.0           0
-    2912 P0   188  ARG  NE   NULL             0.0       0.0           0
-    2913 P0   188  ARG  CZ   NULL             0.0       0.0           0
-    2914 P0   188  ARG  NH1  NULL             0.0       0.0           0
-    2915 P0   188  ARG  NH2  NULL             0.0       0.0           0
-    2916 P0   188  ARG  H    NULL             0.0       0.0           0
-    2917 P0   188  ARG  HA   NULL             0.0       0.0           0
-    2918 P0   188  ARG  HB2  NULL             0.0       0.0           0
-    2919 P0   188  ARG  HB3  NULL             0.0       0.0           0
-    2920 P0   188  ARG  HG2  NULL             0.0       0.0           0
-    2921 P0   188  ARG  HG3  NULL             0.0       0.0           0
-    2922 P0   188  ARG  HD2  NULL             0.0       0.0           0
-    2923 P0   188  ARG  HD3  NULL             0.0       0.0           0
-    2924 P0   188  ARG  HE   NULL             0.0       0.0           0
-    2925 P0   188  ARG  HH11 NULL             0.0       0.0           0
-    2926 P0   188  ARG  HH12 NULL             0.0       0.0           0
-    2927 P0   188  ARG  HH21 NULL             0.0       0.0           0
-    2928 P0   188  ARG  HH22 NULL             0.0       0.0           0
-    2929 P0   189  PHE  N    NULL             0.0       0.0           0
-    2930 P0   189  PHE  CA   NULL             0.0       0.0           0
-    2931 P0   189  PHE  C    NULL             0.0       0.0           0
-    2932 P0   189  PHE  O    NULL             0.0       0.0           0
-    2933 P0   189  PHE  CB   NULL             0.0       0.0           0
-    2934 P0   189  PHE  CG   NULL             0.0       0.0           0
-    2935 P0   189  PHE  CD1  NULL             0.0       0.0           0
-    2936 P0   189  PHE  CD2  NULL             0.0       0.0           0
-    2937 P0   189  PHE  CE1  NULL             0.0       0.0           0
-    2938 P0   189  PHE  CE2  NULL             0.0       0.0           0
-    2939 P0   189  PHE  CZ   NULL             0.0       0.0           0
-    2940 P0   189  PHE  H    NULL             0.0       0.0           0
-    2941 P0   189  PHE  HA   NULL             0.0       0.0           0
-    2942 P0   189  PHE  HB2  NULL             0.0       0.0           0
-    2943 P0   189  PHE  HB3  NULL             0.0       0.0           0
-    2944 P0   189  PHE  HD1  NULL             0.0       0.0           0
-    2945 P0   189  PHE  HD2  NULL             0.0       0.0           0
-    2946 P0   189  PHE  HE1  NULL             0.0       0.0           0
-    2947 P0   189  PHE  HE2  NULL             0.0       0.0           0
-    2948 P0   189  PHE  HZ   NULL             0.0       0.0           0
-    2949 P0   190  LEU  N    NULL             0.0       0.0           0
-    2950 P0   190  LEU  CA   NULL             0.0       0.0           0
-    2951 P0   190  LEU  C    NULL             0.0       0.0           0
-    2952 P0   190  LEU  O    NULL             0.0       0.0           0
-    2953 P0   190  LEU  CB   NULL             0.0       0.0           0
-    2954 P0   190  LEU  CG   NULL             0.0       0.0           0
-    2955 P0   190  LEU  CD1  NULL             0.0       0.0           0
-    2956 P0   190  LEU  CD2  NULL             0.0       0.0           0
-    2957 P0   190  LEU  H    NULL             0.0       0.0           0
-    2958 P0   190  LEU  HA   NULL             0.0       0.0           0
-    2959 P0   190  LEU  HB2  NULL             0.0       0.0           0
-    2960 P0   190  LEU  HB3  NULL             0.0       0.0           0
-    2961 P0   190  LEU  HG   NULL             0.0       0.0           0
-    2962 P0   190  LEU  HD11 NULL             0.0       0.0           0
-    2963 P0   190  LEU  HD12 NULL             0.0       0.0           0
-    2964 P0   190  LEU  HD13 NULL             0.0       0.0           0
-    2965 P0   190  LEU  HD21 NULL             0.0       0.0           0
-    2966 P0   190  LEU  HD22 NULL             0.0       0.0           0
-    2967 P0   190  LEU  HD23 NULL             0.0       0.0           0
-    2968 P0   191  LYS  N    NULL             0.0       0.0           0
-    2969 P0   191  LYS  CA   NULL             0.0       0.0           0
-    2970 P0   191  LYS  C    NULL             0.0       0.0           0
-    2971 P0   191  LYS  O    NULL             0.0       0.0           0
-    2972 P0   191  LYS  CB   NULL             0.0       0.0           0
-    2973 P0   191  LYS  CG   NULL             0.0       0.0           0
-    2974 P0   191  LYS  CD   NULL             0.0       0.0           0
-    2975 P0   191  LYS  CE   NULL             0.0       0.0           0
-    2976 P0   191  LYS  NZ   NULL             0.0       0.0           0
-    2977 P0   191  LYS  H    NULL             0.0       0.0           0
-    2978 P0   191  LYS  HA   NULL             0.0       0.0           0
-    2979 P0   191  LYS  HB2  NULL             0.0       0.0           0
-    2980 P0   191  LYS  HB3  NULL             0.0       0.0           0
-    2981 P0   191  LYS  HG2  NULL             0.0       0.0           0
-    2982 P0   191  LYS  HG3  NULL             0.0       0.0           0
-    2983 P0   191  LYS  HD2  NULL             0.0       0.0           0
-    2984 P0   191  LYS  HD3  NULL             0.0       0.0           0
-    2985 P0   191  LYS  HE2  NULL             0.0       0.0           0
-    2986 P0   191  LYS  HE3  NULL             0.0       0.0           0
-    2987 P0   191  LYS  HZ1  NULL             0.0       0.0           0
-    2988 P0   191  LYS  HZ2  NULL             0.0       0.0           0
-    2989 P0   191  LYS  HZ3  NULL             0.0       0.0           0
-    2990 P0   192  GLN  N    NULL             0.0       0.0           0
-    2991 P0   192  GLN  CA   NULL             0.0       0.0           0
-    2992 P0   192  GLN  C    NULL             0.0       0.0           0
-    2993 P0   192  GLN  O    NULL             0.0       0.0           0
-    2994 P0   192  GLN  CB   NULL             0.0       0.0           0
-    2995 P0   192  GLN  CG   NULL             0.0       0.0           0
-    2996 P0   192  GLN  CD   NULL             0.0       0.0           0
-    2997 P0   192  GLN  H    NULL             0.0       0.0           0
-    2998 P0   192  GLN  HA   NULL             0.0       0.0           0
-    2999 P0   192  GLN  HB2  NULL             0.0       0.0           0
-    3000 P0   192  GLN  HB3  NULL             0.0       0.0           0
-    3001 P0   192  GLN  HG2  NULL             0.0       0.0           0
-    3002 P0   192  GLN  HG3  NULL             0.0       0.0           0
-    3003 P0   192  GLN  OE1  NULL             0.0       0.0           0
-    3004 P0   192  GLN  NE2  NULL             0.0       0.0           0
-    3005 P0   192  GLN  HE21 NULL             0.0       0.0           0
-    3006 P0   192  GLN  HE22 NULL             0.0       0.0           0
-    3007 P0   193  TYR  N    NULL             0.0       0.0           0
-    3008 P0   193  TYR  CA   NULL             0.0       0.0           0
-    3009 P0   193  TYR  C    NULL             0.0       0.0           0
-    3010 P0   193  TYR  O    NULL             0.0       0.0           0
-    3011 P0   193  TYR  CB   NULL             0.0       0.0           0
-    3012 P0   193  TYR  CG   NULL             0.0       0.0           0
-    3013 P0   193  TYR  CD1  NULL             0.0       0.0           0
-    3014 P0   193  TYR  CD2  NULL             0.0       0.0           0
-    3015 P0   193  TYR  CE1  NULL             0.0       0.0           0
-    3016 P0   193  TYR  CE2  NULL             0.0       0.0           0
-    3017 P0   193  TYR  CZ   NULL             0.0       0.0           0
-    3018 P0   193  TYR  OH   NULL             0.0       0.0           0
-    3019 P0   193  TYR  H    NULL             0.0       0.0           0
-    3020 P0   193  TYR  HA   NULL             0.0       0.0           0
-    3021 P0   193  TYR  HB2  NULL             0.0       0.0           0
-    3022 P0   193  TYR  HB3  NULL             0.0       0.0           0
-    3023 P0   193  TYR  HD1  NULL             0.0       0.0           0
-    3024 P0   193  TYR  HD2  NULL             0.0       0.0           0
-    3025 P0   193  TYR  HE1  NULL             0.0       0.0           0
-    3026 P0   193  TYR  HE2  NULL             0.0       0.0           0
-    3027 P0   193  TYR  HH   NULL             0.0       0.0           0
-    3028 P0   194  LYS  N    NULL             0.0       0.0           0
-    3029 P0   194  LYS  CA   NULL             0.0       0.0           0
-    3030 P0   194  LYS  C    NULL             0.0       0.0           0
-    3031 P0   194  LYS  O    NULL             0.0       0.0           0
-    3032 P0   194  LYS  CB   NULL             0.0       0.0           0
-    3033 P0   194  LYS  CG   NULL             0.0       0.0           0
-    3034 P0   194  LYS  CD   NULL             0.0       0.0           0
-    3035 P0   194  LYS  CE   NULL             0.0       0.0           0
-    3036 P0   194  LYS  NZ   NULL             0.0       0.0           0
-    3037 P0   194  LYS  H    NULL             0.0       0.0           0
-    3038 P0   194  LYS  HA   NULL             0.0       0.0           0
-    3039 P0   194  LYS  HB2  NULL             0.0       0.0           0
-    3040 P0   194  LYS  HB3  NULL             0.0       0.0           0
-    3041 P0   194  LYS  HG2  NULL             0.0       0.0           0
-    3042 P0   194  LYS  HG3  NULL             0.0       0.0           0
-    3043 P0   194  LYS  HD2  NULL             0.0       0.0           0
-    3044 P0   194  LYS  HD3  NULL             0.0       0.0           0
-    3045 P0   194  LYS  HE2  NULL             0.0       0.0           0
-    3046 P0   194  LYS  HE3  NULL             0.0       0.0           0
-    3047 P0   194  LYS  HZ1  NULL             0.0       0.0           0
-    3048 P0   194  LYS  HZ2  NULL             0.0       0.0           0
-    3049 P0   194  LYS  HZ3  NULL             0.0       0.0           0
-    3050 P0   195  PRO  N    NULL             0.0       0.0           0
-    3051 P0   195  PRO  CA   NULL             0.0       0.0           0
-    3052 P0   195  PRO  C    NULL             0.0       0.0           0
-    3053 P0   195  PRO  O    NULL             0.0       0.0           0
-    3054 P0   195  PRO  CB   NULL             0.0       0.0           0
-    3055 P0   195  PRO  CG   NULL             0.0       0.0           0
-    3056 P0   195  PRO  CD   NULL             0.0       0.0           0
-    3057 P0   195  PRO  HA   NULL             0.0       0.0           0
-    3058 P0   195  PRO  HB2  NULL             0.0       0.0           0
-    3059 P0   195  PRO  HB3  NULL             0.0       0.0           0
-    3060 P0   195  PRO  HG2  NULL             0.0       0.0           0
-    3061 P0   195  PRO  HG3  NULL             0.0       0.0           0
-    3062 P0   195  PRO  HD2  NULL             0.0       0.0           0
-    3063 P0   195  PRO  HD3  NULL             0.0       0.0           0
-    3064 P0   196  GLN  N    NULL             0.0       0.0           0
-    3065 P0   196  GLN  CA   NULL             0.0       0.0           0
-    3066 P0   196  GLN  C    NULL             0.0       0.0           0
-    3067 P0   196  GLN  O    NULL             0.0       0.0           0
-    3068 P0   196  GLN  CB   NULL             0.0       0.0           0
-    3069 P0   196  GLN  CG   NULL             0.0       0.0           0
-    3070 P0   196  GLN  CD   NULL             0.0       0.0           0
-    3071 P0   196  GLN  H    NULL             0.0       0.0           0
-    3072 P0   196  GLN  HA   NULL             0.0       0.0           0
-    3073 P0   196  GLN  HB2  NULL             0.0       0.0           0
-    3074 P0   196  GLN  HB3  NULL             0.0       0.0           0
-    3075 P0   196  GLN  HG2  NULL             0.0       0.0           0
-    3076 P0   196  GLN  HG3  NULL             0.0       0.0           0
-    3077 P0   196  GLN  OE1  NULL             0.0       0.0           0
-    3078 P0   196  GLN  NE2  NULL             0.0       0.0           0
-    3079 P0   196  GLN  HE21 NULL             0.0       0.0           0
-    3080 P0   196  GLN  HE22 NULL             0.0       0.0           0
-    3081 P0   197  CYX  N    NULL             0.0       0.0           0
-    3082 P0   197  CYX  CA   NULL             0.0       0.0           0
-    3083 P0   197  CYX  C    NULL             0.0       0.0           0
-    3084 P0   197  CYX  O    NULL             0.0       0.0           0
-    3085 P0   197  CYX  CB   NULL             0.0       0.0           0
-    3086 P0   197  CYX  SG   NULL             0.0       0.0           0
-    3087 P0   197  CYX  H    NULL             0.0       0.0           0
-    3088 P0   197  CYX  HA   NULL             0.0       0.0           0
-    3089 P0   197  CYX  HB2  NULL             0.0       0.0           0
-    3090 P0   197  CYX  HB3  NULL             0.0       0.0           0
-    3091 P0   198  ILE  N    NULL             0.0       0.0           0
-    3092 P0   198  ILE  CA   NULL             0.0       0.0           0
-    3093 P0   198  ILE  C    NULL             0.0       0.0           0
-    3094 P0   198  ILE  O    NULL             0.0       0.0           0
-    3095 P0   198  ILE  CB   NULL             0.0       0.0           0
-    3096 P0   198  ILE  CG1  NULL             0.0       0.0           0
-    3097 P0   198  ILE  CG2  NULL             0.0       0.0           0
-    3098 P0   198  ILE  CD1  NULL             0.0       0.0           0
-    3099 P0   198  ILE  H    NULL             0.0       0.0           0
-    3100 P0   198  ILE  HA   NULL             0.0       0.0           0
-    3101 P0   198  ILE  HB   NULL             0.0       0.0           0
-    3102 P0   198  ILE  HG12 NULL             0.0       0.0           0
-    3103 P0   198  ILE  HG13 NULL             0.0       0.0           0
-    3104 P0   198  ILE  HG21 NULL             0.0       0.0           0
-    3105 P0   198  ILE  HG22 NULL             0.0       0.0           0
-    3106 P0   198  ILE  HG23 NULL             0.0       0.0           0
-    3107 P0   198  ILE  HD11 NULL             0.0       0.0           0
-    3108 P0   198  ILE  HD12 NULL             0.0       0.0           0
-    3109 P0   198  ILE  HD13 NULL             0.0       0.0           0
-    3110 P0   199  LEU  N    NULL             0.0       0.0           0
-    3111 P0   199  LEU  CA   NULL             0.0       0.0           0
-    3112 P0   199  LEU  C    NULL             0.0       0.0           0
-    3113 P0   199  LEU  O    NULL             0.0       0.0           0
-    3114 P0   199  LEU  CB   NULL             0.0       0.0           0
-    3115 P0   199  LEU  CG   NULL             0.0       0.0           0
-    3116 P0   199  LEU  CD1  NULL             0.0       0.0           0
-    3117 P0   199  LEU  CD2  NULL             0.0       0.0           0
-    3118 P0   199  LEU  H    NULL             0.0       0.0           0
-    3119 P0   199  LEU  HA   NULL             0.0       0.0           0
-    3120 P0   199  LEU  HB2  NULL             0.0       0.0           0
-    3121 P0   199  LEU  HB3  NULL             0.0       0.0           0
-    3122 P0   199  LEU  HG   NULL             0.0       0.0           0
-    3123 P0   199  LEU  HD11 NULL             0.0       0.0           0
-    3124 P0   199  LEU  HD12 NULL             0.0       0.0           0
-    3125 P0   199  LEU  HD13 NULL             0.0       0.0           0
-    3126 P0   199  LEU  HD21 NULL             0.0       0.0           0
-    3127 P0   199  LEU  HD22 NULL             0.0       0.0           0
-    3128 P0   199  LEU  HD23 NULL             0.0       0.0           0
-    3129 P0   200  ASN  N    NULL             0.0       0.0           0
-    3130 P0   200  ASN  CA   NULL             0.0       0.0           0
-    3131 P0   200  ASN  C    NULL             0.0       0.0           0
-    3132 P0   200  ASN  O    NULL             0.0       0.0           0
-    3133 P0   200  ASN  CB   NULL             0.0       0.0           0
-    3134 P0   200  ASN  CG   NULL             0.0       0.0           0
-    3135 P0   200  ASN  H    NULL             0.0       0.0           0
-    3136 P0   200  ASN  HA   NULL             0.0       0.0           0
-    3137 P0   200  ASN  HB2  NULL             0.0       0.0           0
-    3138 P0   200  ASN  HB3  NULL             0.0       0.0           0
-    3139 P0   200  ASN  OD1  NULL             0.0       0.0           0
-    3140 P0   200  ASN  ND2  NULL             0.0       0.0           0
-    3141 P0   200  ASN  HD21 NULL             0.0       0.0           0
-    3142 P0   200  ASN  HD22 NULL             0.0       0.0           0
-    3143 P0   201  LYS  N    NULL             0.0       0.0           0
-    3144 P0   201  LYS  CA   NULL             0.0       0.0           0
-    3145 P0   201  LYS  C    NULL             0.0       0.0           0
-    3146 P0   201  LYS  O    NULL             0.0       0.0           0
-    3147 P0   201  LYS  CB   NULL             0.0       0.0           0
-    3148 P0   201  LYS  CG   NULL             0.0       0.0           0
-    3149 P0   201  LYS  CD   NULL             0.0       0.0           0
-    3150 P0   201  LYS  CE   NULL             0.0       0.0           0
-    3151 P0   201  LYS  NZ   NULL             0.0       0.0           0
-    3152 P0   201  LYS  H    NULL             0.0       0.0           0
-    3153 P0   201  LYS  HA   NULL             0.0       0.0           0
-    3154 P0   201  LYS  HB2  NULL             0.0       0.0           0
-    3155 P0   201  LYS  HB3  NULL             0.0       0.0           0
-    3156 P0   201  LYS  HG2  NULL             0.0       0.0           0
-    3157 P0   201  LYS  HG3  NULL             0.0       0.0           0
-    3158 P0   201  LYS  HD2  NULL             0.0       0.0           0
-    3159 P0   201  LYS  HD3  NULL             0.0       0.0           0
-    3160 P0   201  LYS  HE2  NULL             0.0       0.0           0
-    3161 P0   201  LYS  HE3  NULL             0.0       0.0           0
-    3162 P0   201  LYS  HZ1  NULL             0.0       0.0           0
-    3163 P0   201  LYS  HZ2  NULL             0.0       0.0           0
-    3164 P0   201  LYS  HZ3  NULL             0.0       0.0           0
-    3165 P0   202  PRO  N    NULL             0.0       0.0           0
-    3166 P0   202  PRO  CA   NULL             0.0       0.0           0
-    3167 P0   202  PRO  C    NULL             0.0       0.0           0
-    3168 P0   202  PRO  O    NULL             0.0       0.0           0
-    3169 P0   202  PRO  CB   NULL             0.0       0.0           0
-    3170 P0   202  PRO  CG   NULL             0.0       0.0           0
-    3171 P0   202  PRO  CD   NULL             0.0       0.0           0
-    3172 P0   202  PRO  OXT  NULL             0.0       0.0           0
-    3173 P0   202  PRO  HA   NULL             0.0       0.0           0
-    3174 P0   202  PRO  HB2  NULL             0.0       0.0           0
-    3175 P0   202  PRO  HB3  NULL             0.0       0.0           0
-    3176 P0   202  PRO  HG2  NULL             0.0       0.0           0
-    3177 P0   202  PRO  HG3  NULL             0.0       0.0           0
-    3178 P0   202  PRO  HD2  NULL             0.0       0.0           0
-    3179 P0   202  PRO  HD3  NULL             0.0       0.0           0
-    3180 ME   405  ZN   ZN   NULL             0.0       0.0           0
-    3181 ME   407  CA   CA   NULL             0.0       0.0           0
-    3182 P1   311  0QI  N    NULL             0.0       0.0           0
-    3183 P1   311  0QI  CA   NULL             0.0       0.0           0
-    3184 P1   311  0QI  C    NULL             0.0       0.0           0
-    3185 P1   311  0QI  O    NULL             0.0       0.0           0
-    3186 P1   311  0QI  C1   NULL             0.0       0.0           0
-    3187 P1   311  0QI  O1   NULL             0.0       0.0           0
-    3188 P1   311  0QI  C2   NULL             0.0       0.0           0
-    3189 P1   311  0QI  CH   NULL             0.0       0.0           0
-    3190 P1   311  0QI  S    NULL             0.0       0.0           0
-    3191 P1   311  0QI  C3   NULL             0.0       0.0           0
-    3192 P1   311  0QI  C4   NULL             0.0       0.0           0
-    3193 P1   311  0QI  CM   NULL             0.0       0.0           0
-    3194 P1   311  0QI  C5   NULL             0.0       0.0           0
-    3195 P1   311  0QI  CB   NULL             0.0       0.0           0
-    3196 P1   311  0QI  CG   NULL             0.0       0.0           0
-    3197 P1   311  0QI  CD1  NULL             0.0       0.0           0
-    3198 P1   311  0QI  CD2  NULL             0.0       0.0           0
-    3199 P1   311  0QI  CE1  NULL             0.0       0.0           0
-    3200 P1   311  0QI  CE2  NULL             0.0       0.0           0
-    3201 P1   311  0QI  CZ   NULL             0.0       0.0           0
-    3202 P1   311  0QI  OH   NULL             0.0       0.0           0
-    3203 P1   311  0QI  OXT  NULL             0.0       0.0           0
-    3204 P1   311  0QI  C6   NULL             0.0       0.0           0
+    2354 P0   152  HIP  N    NULL             0.0       0.0           0
+    2355 P0   152  HIP  CA   NULL             0.0       0.0           0
+    2356 P0   152  HIP  C    NULL             0.0       0.0           0
+    2357 P0   152  HIP  O    NULL             0.0       0.0           0
+    2358 P0   152  HIP  CB   NULL             0.0       0.0           0
+    2359 P0   152  HIP  CG   NULL             0.0       0.0           0
+    2360 P0   152  HIP  H    NULL             0.0       0.0           0
+    2361 P0   152  HIP  HA   NULL             0.0       0.0           0
+    2362 P0   152  HIP  HB2  NULL             0.0       0.0           0
+    2363 P0   152  HIP  HB3  NULL             0.0       0.0           0
+    2364 P0   152  HIP  ND1  NULL             0.0       0.0           0
+    2365 P0   152  HIP  CD2  NULL             0.0       0.0           0
+    2366 P0   152  HIP  CE1  NULL             0.0       0.0           0
+    2367 P0   152  HIP  NE2  NULL             0.0       0.0           0
+    2368 P0   152  HIP  HD1  NULL             0.0       0.0           0
+    2369 P0   152  HIP  HD2  NULL             0.0       0.0           0
+    2370 P0   152  HIP  HE1  NULL             0.0       0.0           0
+    2371 P0   152  HIP  HE2  NULL             0.0       0.0           0
+    2372 P0   153  ASP  N    NULL             0.0       0.0           0
+    2373 P0   153  ASP  CA   NULL             0.0       0.0           0
+    2374 P0   153  ASP  C    NULL             0.0       0.0           0
+    2375 P0   153  ASP  O    NULL             0.0       0.0           0
+    2376 P0   153  ASP  CB   NULL             0.0       0.0           0
+    2377 P0   153  ASP  CG   NULL             0.0       0.0           0
+    2378 P0   153  ASP  OD1  NULL             0.0       0.0           0
+    2379 P0   153  ASP  OD2  NULL             0.0       0.0           0
+    2380 P0   153  ASP  H    NULL             0.0       0.0           0
+    2381 P0   153  ASP  HA   NULL             0.0       0.0           0
+    2382 P0   153  ASP  HB2  NULL             0.0       0.0           0
+    2383 P0   153  ASP  HB3  NULL             0.0       0.0           0
+    2384 P0   154  GLY  N    NULL             0.0       0.0           0
+    2385 P0   154  GLY  CA   NULL             0.0       0.0           0
+    2386 P0   154  GLY  C    NULL             0.0       0.0           0
+    2387 P0   154  GLY  O    NULL             0.0       0.0           0
+    2388 P0   154  GLY  H    NULL             0.0       0.0           0
+    2389 P0   154  GLY  HA2  NULL             0.0       0.0           0
+    2390 P0   154  GLY  HA3  NULL             0.0       0.0           0
+    2391 P0   155  LYS  N    NULL             0.0       0.0           0
+    2392 P0   155  LYS  CA   NULL             0.0       0.0           0
+    2393 P0   155  LYS  C    NULL             0.0       0.0           0
+    2394 P0   155  LYS  O    NULL             0.0       0.0           0
+    2395 P0   155  LYS  CB   NULL             0.0       0.0           0
+    2396 P0   155  LYS  CG   NULL             0.0       0.0           0
+    2397 P0   155  LYS  CD   NULL             0.0       0.0           0
+    2398 P0   155  LYS  CE   NULL             0.0       0.0           0
+    2399 P0   155  LYS  NZ   NULL             0.0       0.0           0
+    2400 P0   155  LYS  H    NULL             0.0       0.0           0
+    2401 P0   155  LYS  HA   NULL             0.0       0.0           0
+    2402 P0   155  LYS  HB2  NULL             0.0       0.0           0
+    2403 P0   155  LYS  HB3  NULL             0.0       0.0           0
+    2404 P0   155  LYS  HG2  NULL             0.0       0.0           0
+    2405 P0   155  LYS  HG3  NULL             0.0       0.0           0
+    2406 P0   155  LYS  HD2  NULL             0.0       0.0           0
+    2407 P0   155  LYS  HD3  NULL             0.0       0.0           0
+    2408 P0   155  LYS  HE2  NULL             0.0       0.0           0
+    2409 P0   155  LYS  HE3  NULL             0.0       0.0           0
+    2410 P0   155  LYS  HZ1  NULL             0.0       0.0           0
+    2411 P0   155  LYS  HZ2  NULL             0.0       0.0           0
+    2412 P0   155  LYS  HZ3  NULL             0.0       0.0           0
+    2413 P0   156  ASP  N    NULL             0.0       0.0           0
+    2414 P0   156  ASP  CA   NULL             0.0       0.0           0
+    2415 P0   156  ASP  C    NULL             0.0       0.0           0
+    2416 P0   156  ASP  O    NULL             0.0       0.0           0
+    2417 P0   156  ASP  CB   NULL             0.0       0.0           0
+    2418 P0   156  ASP  CG   NULL             0.0       0.0           0
+    2419 P0   156  ASP  OD1  NULL             0.0       0.0           0
+    2420 P0   156  ASP  OD2  NULL             0.0       0.0           0
+    2421 P0   156  ASP  H    NULL             0.0       0.0           0
+    2422 P0   156  ASP  HA   NULL             0.0       0.0           0
+    2423 P0   156  ASP  HB2  NULL             0.0       0.0           0
+    2424 P0   156  ASP  HB3  NULL             0.0       0.0           0
+    2425 P0   157  CYX  N    NULL             0.0       0.0           0
+    2426 P0   157  CYX  CA   NULL             0.0       0.0           0
+    2427 P0   157  CYX  C    NULL             0.0       0.0           0
+    2428 P0   157  CYX  O    NULL             0.0       0.0           0
+    2429 P0   157  CYX  CB   NULL             0.0       0.0           0
+    2430 P0   157  CYX  SG   NULL             0.0       0.0           0
+    2431 P0   157  CYX  H    NULL             0.0       0.0           0
+    2432 P0   157  CYX  HA   NULL             0.0       0.0           0
+    2433 P0   157  CYX  HB2  NULL             0.0       0.0           0
+    2434 P0   157  CYX  HB3  NULL             0.0       0.0           0
+    2435 P0   158  LEU  N    NULL             0.0       0.0           0
+    2436 P0   158  LEU  CA   NULL             0.0       0.0           0
+    2437 P0   158  LEU  C    NULL             0.0       0.0           0
+    2438 P0   158  LEU  O    NULL             0.0       0.0           0
+    2439 P0   158  LEU  CB   NULL             0.0       0.0           0
+    2440 P0   158  LEU  CG   NULL             0.0       0.0           0
+    2441 P0   158  LEU  CD1  NULL             0.0       0.0           0
+    2442 P0   158  LEU  CD2  NULL             0.0       0.0           0
+    2443 P0   158  LEU  H    NULL             0.0       0.0           0
+    2444 P0   158  LEU  HA   NULL             0.0       0.0           0
+    2445 P0   158  LEU  HB2  NULL             0.0       0.0           0
+    2446 P0   158  LEU  HB3  NULL             0.0       0.0           0
+    2447 P0   158  LEU  HG   NULL             0.0       0.0           0
+    2448 P0   158  LEU  HD11 NULL             0.0       0.0           0
+    2449 P0   158  LEU  HD12 NULL             0.0       0.0           0
+    2450 P0   158  LEU  HD13 NULL             0.0       0.0           0
+    2451 P0   158  LEU  HD21 NULL             0.0       0.0           0
+    2452 P0   158  LEU  HD22 NULL             0.0       0.0           0
+    2453 P0   158  LEU  HD23 NULL             0.0       0.0           0
+    2454 P0   159  ARG  N    NULL             0.0       0.0           0
+    2455 P0   159  ARG  CA   NULL             0.0       0.0           0
+    2456 P0   159  ARG  C    NULL             0.0       0.0           0
+    2457 P0   159  ARG  O    NULL             0.0       0.0           0
+    2458 P0   159  ARG  CB   NULL             0.0       0.0           0
+    2459 P0   159  ARG  CG   NULL             0.0       0.0           0
+    2460 P0   159  ARG  CD   NULL             0.0       0.0           0
+    2461 P0   159  ARG  NE   NULL             0.0       0.0           0
+    2462 P0   159  ARG  CZ   NULL             0.0       0.0           0
+    2463 P0   159  ARG  NH1  NULL             0.0       0.0           0
+    2464 P0   159  ARG  NH2  NULL             0.0       0.0           0
+    2465 P0   159  ARG  H    NULL             0.0       0.0           0
+    2466 P0   159  ARG  HA   NULL             0.0       0.0           0
+    2467 P0   159  ARG  HB2  NULL             0.0       0.0           0
+    2468 P0   159  ARG  HB3  NULL             0.0       0.0           0
+    2469 P0   159  ARG  HG2  NULL             0.0       0.0           0
+    2470 P0   159  ARG  HG3  NULL             0.0       0.0           0
+    2471 P0   159  ARG  HD2  NULL             0.0       0.0           0
+    2472 P0   159  ARG  HD3  NULL             0.0       0.0           0
+    2473 P0   159  ARG  HE   NULL             0.0       0.0           0
+    2474 P0   159  ARG  HH11 NULL             0.0       0.0           0
+    2475 P0   159  ARG  HH12 NULL             0.0       0.0           0
+    2476 P0   159  ARG  HH21 NULL             0.0       0.0           0
+    2477 P0   159  ARG  HH22 NULL             0.0       0.0           0
+    2478 P0   160  GLY  N    NULL             0.0       0.0           0
+    2479 P0   160  GLY  CA   NULL             0.0       0.0           0
+    2480 P0   160  GLY  C    NULL             0.0       0.0           0
+    2481 P0   160  GLY  O    NULL             0.0       0.0           0
+    2482 P0   160  GLY  H    NULL             0.0       0.0           0
+    2483 P0   160  GLY  HA2  NULL             0.0       0.0           0
+    2484 P0   160  GLY  HA3  NULL             0.0       0.0           0
+    2485 P0   161  ALA  N    NULL             0.0       0.0           0
+    2486 P0   161  ALA  CA   NULL             0.0       0.0           0
+    2487 P0   161  ALA  C    NULL             0.0       0.0           0
+    2488 P0   161  ALA  O    NULL             0.0       0.0           0
+    2489 P0   161  ALA  CB   NULL             0.0       0.0           0
+    2490 P0   161  ALA  H    NULL             0.0       0.0           0
+    2491 P0   161  ALA  HA   NULL             0.0       0.0           0
+    2492 P0   161  ALA  HB1  NULL             0.0       0.0           0
+    2493 P0   161  ALA  HB2  NULL             0.0       0.0           0
+    2494 P0   161  ALA  HB3  NULL             0.0       0.0           0
+    2495 P0   162  SER  N    NULL             0.0       0.0           0
+    2496 P0   162  SER  CA   NULL             0.0       0.0           0
+    2497 P0   162  SER  C    NULL             0.0       0.0           0
+    2498 P0   162  SER  O    NULL             0.0       0.0           0
+    2499 P0   162  SER  CB   NULL             0.0       0.0           0
+    2500 P0   162  SER  OG   NULL             0.0       0.0           0
+    2501 P0   162  SER  H    NULL             0.0       0.0           0
+    2502 P0   162  SER  HA   NULL             0.0       0.0           0
+    2503 P0   162  SER  HB2  NULL             0.0       0.0           0
+    2504 P0   162  SER  HB3  NULL             0.0       0.0           0
+    2505 P0   162  SER  HG   NULL             0.0       0.0           0
+    2506 P0   163  LEU  N    NULL             0.0       0.0           0
+    2507 P0   163  LEU  CA   NULL             0.0       0.0           0
+    2508 P0   163  LEU  C    NULL             0.0       0.0           0
+    2509 P0   163  LEU  O    NULL             0.0       0.0           0
+    2510 P0   163  LEU  CB   NULL             0.0       0.0           0
+    2511 P0   163  LEU  CG   NULL             0.0       0.0           0
+    2512 P0   163  LEU  CD1  NULL             0.0       0.0           0
+    2513 P0   163  LEU  CD2  NULL             0.0       0.0           0
+    2514 P0   163  LEU  H    NULL             0.0       0.0           0
+    2515 P0   163  LEU  HA   NULL             0.0       0.0           0
+    2516 P0   163  LEU  HB2  NULL             0.0       0.0           0
+    2517 P0   163  LEU  HB3  NULL             0.0       0.0           0
+    2518 P0   163  LEU  HG   NULL             0.0       0.0           0
+    2519 P0   163  LEU  HD11 NULL             0.0       0.0           0
+    2520 P0   163  LEU  HD12 NULL             0.0       0.0           0
+    2521 P0   163  LEU  HD13 NULL             0.0       0.0           0
+    2522 P0   163  LEU  HD21 NULL             0.0       0.0           0
+    2523 P0   163  LEU  HD22 NULL             0.0       0.0           0
+    2524 P0   163  LEU  HD23 NULL             0.0       0.0           0
+    2525 P0   164  CYX  N    NULL             0.0       0.0           0
+    2526 P0   164  CYX  CA   NULL             0.0       0.0           0
+    2527 P0   164  CYX  C    NULL             0.0       0.0           0
+    2528 P0   164  CYX  O    NULL             0.0       0.0           0
+    2529 P0   164  CYX  CB   NULL             0.0       0.0           0
+    2530 P0   164  CYX  SG   NULL             0.0       0.0           0
+    2531 P0   164  CYX  H    NULL             0.0       0.0           0
+    2532 P0   164  CYX  HA   NULL             0.0       0.0           0
+    2533 P0   164  CYX  HB2  NULL             0.0       0.0           0
+    2534 P0   164  CYX  HB3  NULL             0.0       0.0           0
+    2535 P0   165  ILE  N    NULL             0.0       0.0           0
+    2536 P0   165  ILE  CA   NULL             0.0       0.0           0
+    2537 P0   165  ILE  C    NULL             0.0       0.0           0
+    2538 P0   165  ILE  O    NULL             0.0       0.0           0
+    2539 P0   165  ILE  CB   NULL             0.0       0.0           0
+    2540 P0   165  ILE  CG1  NULL             0.0       0.0           0
+    2541 P0   165  ILE  CG2  NULL             0.0       0.0           0
+    2542 P0   165  ILE  CD1  NULL             0.0       0.0           0
+    2543 P0   165  ILE  H    NULL             0.0       0.0           0
+    2544 P0   165  ILE  HA   NULL             0.0       0.0           0
+    2545 P0   165  ILE  HB   NULL             0.0       0.0           0
+    2546 P0   165  ILE  HG12 NULL             0.0       0.0           0
+    2547 P0   165  ILE  HG13 NULL             0.0       0.0           0
+    2548 P0   165  ILE  HG21 NULL             0.0       0.0           0
+    2549 P0   165  ILE  HG22 NULL             0.0       0.0           0
+    2550 P0   165  ILE  HG23 NULL             0.0       0.0           0
+    2551 P0   165  ILE  HD11 NULL             0.0       0.0           0
+    2552 P0   165  ILE  HD12 NULL             0.0       0.0           0
+    2553 P0   165  ILE  HD13 NULL             0.0       0.0           0
+    2554 P0   166  MET  N    NULL             0.0       0.0           0
+    2555 P0   166  MET  CA   NULL             0.0       0.0           0
+    2556 P0   166  MET  C    NULL             0.0       0.0           0
+    2557 P0   166  MET  O    NULL             0.0       0.0           0
+    2558 P0   166  MET  CB   NULL             0.0       0.0           0
+    2559 P0   166  MET  CG   NULL             0.0       0.0           0
+    2560 P0   166  MET  SD   NULL             0.0       0.0           0
+    2561 P0   166  MET  CE   NULL             0.0       0.0           0
+    2562 P0   166  MET  H    NULL             0.0       0.0           0
+    2563 P0   166  MET  HA   NULL             0.0       0.0           0
+    2564 P0   166  MET  HB2  NULL             0.0       0.0           0
+    2565 P0   166  MET  HB3  NULL             0.0       0.0           0
+    2566 P0   166  MET  HG2  NULL             0.0       0.0           0
+    2567 P0   166  MET  HG3  NULL             0.0       0.0           0
+    2568 P0   166  MET  HE1  NULL             0.0       0.0           0
+    2569 P0   166  MET  HE2  NULL             0.0       0.0           0
+    2570 P0   166  MET  HE3  NULL             0.0       0.0           0
+    2571 P0   167  ARG  N    NULL             0.0       0.0           0
+    2572 P0   167  ARG  CA   NULL             0.0       0.0           0
+    2573 P0   167  ARG  C    NULL             0.0       0.0           0
+    2574 P0   167  ARG  O    NULL             0.0       0.0           0
+    2575 P0   167  ARG  CB   NULL             0.0       0.0           0
+    2576 P0   167  ARG  CG   NULL             0.0       0.0           0
+    2577 P0   167  ARG  CD   NULL             0.0       0.0           0
+    2578 P0   167  ARG  NE   NULL             0.0       0.0           0
+    2579 P0   167  ARG  CZ   NULL             0.0       0.0           0
+    2580 P0   167  ARG  NH1  NULL             0.0       0.0           0
+    2581 P0   167  ARG  NH2  NULL             0.0       0.0           0
+    2582 P0   167  ARG  H    NULL             0.0       0.0           0
+    2583 P0   167  ARG  HA   NULL             0.0       0.0           0
+    2584 P0   167  ARG  HB2  NULL             0.0       0.0           0
+    2585 P0   167  ARG  HB3  NULL             0.0       0.0           0
+    2586 P0   167  ARG  HG2  NULL             0.0       0.0           0
+    2587 P0   167  ARG  HG3  NULL             0.0       0.0           0
+    2588 P0   167  ARG  HD2  NULL             0.0       0.0           0
+    2589 P0   167  ARG  HD3  NULL             0.0       0.0           0
+    2590 P0   167  ARG  HE   NULL             0.0       0.0           0
+    2591 P0   167  ARG  HH11 NULL             0.0       0.0           0
+    2592 P0   167  ARG  HH12 NULL             0.0       0.0           0
+    2593 P0   167  ARG  HH21 NULL             0.0       0.0           0
+    2594 P0   167  ARG  HH22 NULL             0.0       0.0           0
+    2595 P0   168  PRO  N    NULL             0.0       0.0           0
+    2596 P0   168  PRO  CA   NULL             0.0       0.0           0
+    2597 P0   168  PRO  C    NULL             0.0       0.0           0
+    2598 P0   168  PRO  O    NULL             0.0       0.0           0
+    2599 P0   168  PRO  CB   NULL             0.0       0.0           0
+    2600 P0   168  PRO  CG   NULL             0.0       0.0           0
+    2601 P0   168  PRO  CD   NULL             0.0       0.0           0
+    2602 P0   168  PRO  HA   NULL             0.0       0.0           0
+    2603 P0   168  PRO  HB2  NULL             0.0       0.0           0
+    2604 P0   168  PRO  HB3  NULL             0.0       0.0           0
+    2605 P0   168  PRO  HG2  NULL             0.0       0.0           0
+    2606 P0   168  PRO  HG3  NULL             0.0       0.0           0
+    2607 P0   168  PRO  HD2  NULL             0.0       0.0           0
+    2608 P0   168  PRO  HD3  NULL             0.0       0.0           0
+    2609 P0   169  GLY  N    NULL             0.0       0.0           0
+    2610 P0   169  GLY  CA   NULL             0.0       0.0           0
+    2611 P0   169  GLY  C    NULL             0.0       0.0           0
+    2612 P0   169  GLY  O    NULL             0.0       0.0           0
+    2613 P0   169  GLY  H    NULL             0.0       0.0           0
+    2614 P0   169  GLY  HA2  NULL             0.0       0.0           0
+    2615 P0   169  GLY  HA3  NULL             0.0       0.0           0
+    2616 P0   170  LEU  N    NULL             0.0       0.0           0
+    2617 P0   170  LEU  CA   NULL             0.0       0.0           0
+    2618 P0   170  LEU  C    NULL             0.0       0.0           0
+    2619 P0   170  LEU  O    NULL             0.0       0.0           0
+    2620 P0   170  LEU  CB   NULL             0.0       0.0           0
+    2621 P0   170  LEU  CG   NULL             0.0       0.0           0
+    2622 P0   170  LEU  CD1  NULL             0.0       0.0           0
+    2623 P0   170  LEU  CD2  NULL             0.0       0.0           0
+    2624 P0   170  LEU  H    NULL             0.0       0.0           0
+    2625 P0   170  LEU  HA   NULL             0.0       0.0           0
+    2626 P0   170  LEU  HB2  NULL             0.0       0.0           0
+    2627 P0   170  LEU  HB3  NULL             0.0       0.0           0
+    2628 P0   170  LEU  HG   NULL             0.0       0.0           0
+    2629 P0   170  LEU  HD11 NULL             0.0       0.0           0
+    2630 P0   170  LEU  HD12 NULL             0.0       0.0           0
+    2631 P0   170  LEU  HD13 NULL             0.0       0.0           0
+    2632 P0   170  LEU  HD21 NULL             0.0       0.0           0
+    2633 P0   170  LEU  HD22 NULL             0.0       0.0           0
+    2634 P0   170  LEU  HD23 NULL             0.0       0.0           0
+    2635 P0   171  THR  N    NULL             0.0       0.0           0
+    2636 P0   171  THR  CA   NULL             0.0       0.0           0
+    2637 P0   171  THR  C    NULL             0.0       0.0           0
+    2638 P0   171  THR  O    NULL             0.0       0.0           0
+    2639 P0   171  THR  CB   NULL             0.0       0.0           0
+    2640 P0   171  THR  OG1  NULL             0.0       0.0           0
+    2641 P0   171  THR  CG2  NULL             0.0       0.0           0
+    2642 P0   171  THR  H    NULL             0.0       0.0           0
+    2643 P0   171  THR  HA   NULL             0.0       0.0           0
+    2644 P0   171  THR  HB   NULL             0.0       0.0           0
+    2645 P0   171  THR  HG21 NULL             0.0       0.0           0
+    2646 P0   171  THR  HG22 NULL             0.0       0.0           0
+    2647 P0   171  THR  HG23 NULL             0.0       0.0           0
+    2648 P0   171  THR  HG1  NULL             0.0       0.0           0
+    2649 P0   172  LYS  N    NULL             0.0       0.0           0
+    2650 P0   172  LYS  CA   NULL             0.0       0.0           0
+    2651 P0   172  LYS  C    NULL             0.0       0.0           0
+    2652 P0   172  LYS  O    NULL             0.0       0.0           0
+    2653 P0   172  LYS  CB   NULL             0.0       0.0           0
+    2654 P0   172  LYS  CG   NULL             0.0       0.0           0
+    2655 P0   172  LYS  CD   NULL             0.0       0.0           0
+    2656 P0   172  LYS  CE   NULL             0.0       0.0           0
+    2657 P0   172  LYS  NZ   NULL             0.0       0.0           0
+    2658 P0   172  LYS  H    NULL             0.0       0.0           0
+    2659 P0   172  LYS  HA   NULL             0.0       0.0           0
+    2660 P0   172  LYS  HB2  NULL             0.0       0.0           0
+    2661 P0   172  LYS  HB3  NULL             0.0       0.0           0
+    2662 P0   172  LYS  HG2  NULL             0.0       0.0           0
+    2663 P0   172  LYS  HG3  NULL             0.0       0.0           0
+    2664 P0   172  LYS  HD2  NULL             0.0       0.0           0
+    2665 P0   172  LYS  HD3  NULL             0.0       0.0           0
+    2666 P0   172  LYS  HE2  NULL             0.0       0.0           0
+    2667 P0   172  LYS  HE3  NULL             0.0       0.0           0
+    2668 P0   172  LYS  HZ1  NULL             0.0       0.0           0
+    2669 P0   172  LYS  HZ2  NULL             0.0       0.0           0
+    2670 P0   172  LYS  HZ3  NULL             0.0       0.0           0
+    2671 P0   173  GLY  N    NULL             0.0       0.0           0
+    2672 P0   173  GLY  CA   NULL             0.0       0.0           0
+    2673 P0   173  GLY  C    NULL             0.0       0.0           0
+    2674 P0   173  GLY  O    NULL             0.0       0.0           0
+    2675 P0   173  GLY  H    NULL             0.0       0.0           0
+    2676 P0   173  GLY  HA2  NULL             0.0       0.0           0
+    2677 P0   173  GLY  HA3  NULL             0.0       0.0           0
+    2678 P0   174  ARG  N    NULL             0.0       0.0           0
+    2679 P0   174  ARG  CA   NULL             0.0       0.0           0
+    2680 P0   174  ARG  C    NULL             0.0       0.0           0
+    2681 P0   174  ARG  O    NULL             0.0       0.0           0
+    2682 P0   174  ARG  CB   NULL             0.0       0.0           0
+    2683 P0   174  ARG  CG   NULL             0.0       0.0           0
+    2684 P0   174  ARG  CD   NULL             0.0       0.0           0
+    2685 P0   174  ARG  NE   NULL             0.0       0.0           0
+    2686 P0   174  ARG  CZ   NULL             0.0       0.0           0
+    2687 P0   174  ARG  NH1  NULL             0.0       0.0           0
+    2688 P0   174  ARG  NH2  NULL             0.0       0.0           0
+    2689 P0   174  ARG  H    NULL             0.0       0.0           0
+    2690 P0   174  ARG  HA   NULL             0.0       0.0           0
+    2691 P0   174  ARG  HB2  NULL             0.0       0.0           0
+    2692 P0   174  ARG  HB3  NULL             0.0       0.0           0
+    2693 P0   174  ARG  HG2  NULL             0.0       0.0           0
+    2694 P0   174  ARG  HG3  NULL             0.0       0.0           0
+    2695 P0   174  ARG  HD2  NULL             0.0       0.0           0
+    2696 P0   174  ARG  HD3  NULL             0.0       0.0           0
+    2697 P0   174  ARG  HE   NULL             0.0       0.0           0
+    2698 P0   174  ARG  HH11 NULL             0.0       0.0           0
+    2699 P0   174  ARG  HH12 NULL             0.0       0.0           0
+    2700 P0   174  ARG  HH21 NULL             0.0       0.0           0
+    2701 P0   174  ARG  HH22 NULL             0.0       0.0           0
+    2702 P0   175  SER  N    NULL             0.0       0.0           0
+    2703 P0   175  SER  CA   NULL             0.0       0.0           0
+    2704 P0   175  SER  C    NULL             0.0       0.0           0
+    2705 P0   175  SER  O    NULL             0.0       0.0           0
+    2706 P0   175  SER  CB   NULL             0.0       0.0           0
+    2707 P0   175  SER  OG   NULL             0.0       0.0           0
+    2708 P0   175  SER  H    NULL             0.0       0.0           0
+    2709 P0   175  SER  HA   NULL             0.0       0.0           0
+    2710 P0   175  SER  HB2  NULL             0.0       0.0           0
+    2711 P0   175  SER  HB3  NULL             0.0       0.0           0
+    2712 P0   175  SER  HG   NULL             0.0       0.0           0
+    2713 P0   176  TYR  N    NULL             0.0       0.0           0
+    2714 P0   176  TYR  CA   NULL             0.0       0.0           0
+    2715 P0   176  TYR  C    NULL             0.0       0.0           0
+    2716 P0   176  TYR  O    NULL             0.0       0.0           0
+    2717 P0   176  TYR  CB   NULL             0.0       0.0           0
+    2718 P0   176  TYR  CG   NULL             0.0       0.0           0
+    2719 P0   176  TYR  CD1  NULL             0.0       0.0           0
+    2720 P0   176  TYR  CD2  NULL             0.0       0.0           0
+    2721 P0   176  TYR  CE1  NULL             0.0       0.0           0
+    2722 P0   176  TYR  CE2  NULL             0.0       0.0           0
+    2723 P0   176  TYR  CZ   NULL             0.0       0.0           0
+    2724 P0   176  TYR  OH   NULL             0.0       0.0           0
+    2725 P0   176  TYR  H    NULL             0.0       0.0           0
+    2726 P0   176  TYR  HA   NULL             0.0       0.0           0
+    2727 P0   176  TYR  HB2  NULL             0.0       0.0           0
+    2728 P0   176  TYR  HB3  NULL             0.0       0.0           0
+    2729 P0   176  TYR  HD1  NULL             0.0       0.0           0
+    2730 P0   176  TYR  HD2  NULL             0.0       0.0           0
+    2731 P0   176  TYR  HE1  NULL             0.0       0.0           0
+    2732 P0   176  TYR  HE2  NULL             0.0       0.0           0
+    2733 P0   176  TYR  HH   NULL             0.0       0.0           0
+    2734 P0   177  GLU  N    NULL             0.0       0.0           0
+    2735 P0   177  GLU  CA   NULL             0.0       0.0           0
+    2736 P0   177  GLU  C    NULL             0.0       0.0           0
+    2737 P0   177  GLU  O    NULL             0.0       0.0           0
+    2738 P0   177  GLU  CB   NULL             0.0       0.0           0
+    2739 P0   177  GLU  CG   NULL             0.0       0.0           0
+    2740 P0   177  GLU  CD   NULL             0.0       0.0           0
+    2741 P0   177  GLU  OE1  NULL             0.0       0.0           0
+    2742 P0   177  GLU  OE2  NULL             0.0       0.0           0
+    2743 P0   177  GLU  H    NULL             0.0       0.0           0
+    2744 P0   177  GLU  HA   NULL             0.0       0.0           0
+    2745 P0   177  GLU  HB2  NULL             0.0       0.0           0
+    2746 P0   177  GLU  HB3  NULL             0.0       0.0           0
+    2747 P0   177  GLU  HG2  NULL             0.0       0.0           0
+    2748 P0   177  GLU  HG3  NULL             0.0       0.0           0
+    2749 P0   178  PHE  N    NULL             0.0       0.0           0
+    2750 P0   178  PHE  CA   NULL             0.0       0.0           0
+    2751 P0   178  PHE  C    NULL             0.0       0.0           0
+    2752 P0   178  PHE  O    NULL             0.0       0.0           0
+    2753 P0   178  PHE  CB   NULL             0.0       0.0           0
+    2754 P0   178  PHE  CG   NULL             0.0       0.0           0
+    2755 P0   178  PHE  CD1  NULL             0.0       0.0           0
+    2756 P0   178  PHE  CD2  NULL             0.0       0.0           0
+    2757 P0   178  PHE  CE1  NULL             0.0       0.0           0
+    2758 P0   178  PHE  CE2  NULL             0.0       0.0           0
+    2759 P0   178  PHE  CZ   NULL             0.0       0.0           0
+    2760 P0   178  PHE  H    NULL             0.0       0.0           0
+    2761 P0   178  PHE  HA   NULL             0.0       0.0           0
+    2762 P0   178  PHE  HB2  NULL             0.0       0.0           0
+    2763 P0   178  PHE  HB3  NULL             0.0       0.0           0
+    2764 P0   178  PHE  HD1  NULL             0.0       0.0           0
+    2765 P0   178  PHE  HD2  NULL             0.0       0.0           0
+    2766 P0   178  PHE  HE1  NULL             0.0       0.0           0
+    2767 P0   178  PHE  HE2  NULL             0.0       0.0           0
+    2768 P0   178  PHE  HZ   NULL             0.0       0.0           0
+    2769 P0   179  SER  N    NULL             0.0       0.0           0
+    2770 P0   179  SER  CA   NULL             0.0       0.0           0
+    2771 P0   179  SER  C    NULL             0.0       0.0           0
+    2772 P0   179  SER  O    NULL             0.0       0.0           0
+    2773 P0   179  SER  CB   NULL             0.0       0.0           0
+    2774 P0   179  SER  OG   NULL             0.0       0.0           0
+    2775 P0   179  SER  H    NULL             0.0       0.0           0
+    2776 P0   179  SER  HA   NULL             0.0       0.0           0
+    2777 P0   179  SER  HB2  NULL             0.0       0.0           0
+    2778 P0   179  SER  HB3  NULL             0.0       0.0           0
+    2779 P0   179  SER  HG   NULL             0.0       0.0           0
+    2780 P0   180  ASP  N    NULL             0.0       0.0           0
+    2781 P0   180  ASP  CA   NULL             0.0       0.0           0
+    2782 P0   180  ASP  C    NULL             0.0       0.0           0
+    2783 P0   180  ASP  O    NULL             0.0       0.0           0
+    2784 P0   180  ASP  CB   NULL             0.0       0.0           0
+    2785 P0   180  ASP  CG   NULL             0.0       0.0           0
+    2786 P0   180  ASP  OD1  NULL             0.0       0.0           0
+    2787 P0   180  ASP  OD2  NULL             0.0       0.0           0
+    2788 P0   180  ASP  H    NULL             0.0       0.0           0
+    2789 P0   180  ASP  HA   NULL             0.0       0.0           0
+    2790 P0   180  ASP  HB2  NULL             0.0       0.0           0
+    2791 P0   180  ASP  HB3  NULL             0.0       0.0           0
+    2792 P0   181  ASP  N    NULL             0.0       0.0           0
+    2793 P0   181  ASP  CA   NULL             0.0       0.0           0
+    2794 P0   181  ASP  C    NULL             0.0       0.0           0
+    2795 P0   181  ASP  O    NULL             0.0       0.0           0
+    2796 P0   181  ASP  CB   NULL             0.0       0.0           0
+    2797 P0   181  ASP  CG   NULL             0.0       0.0           0
+    2798 P0   181  ASP  OD1  NULL             0.0       0.0           0
+    2799 P0   181  ASP  OD2  NULL             0.0       0.0           0
+    2800 P0   181  ASP  H    NULL             0.0       0.0           0
+    2801 P0   181  ASP  HA   NULL             0.0       0.0           0
+    2802 P0   181  ASP  HB2  NULL             0.0       0.0           0
+    2803 P0   181  ASP  HB3  NULL             0.0       0.0           0
+    2804 P0   182  SER  N    NULL             0.0       0.0           0
+    2805 P0   182  SER  CA   NULL             0.0       0.0           0
+    2806 P0   182  SER  C    NULL             0.0       0.0           0
+    2807 P0   182  SER  O    NULL             0.0       0.0           0
+    2808 P0   182  SER  CB   NULL             0.0       0.0           0
+    2809 P0   182  SER  OG   NULL             0.0       0.0           0
+    2810 P0   182  SER  H    NULL             0.0       0.0           0
+    2811 P0   182  SER  HA   NULL             0.0       0.0           0
+    2812 P0   182  SER  HB2  NULL             0.0       0.0           0
+    2813 P0   182  SER  HB3  NULL             0.0       0.0           0
+    2814 P0   182  SER  HG   NULL             0.0       0.0           0
+    2815 P0   183  MET  N    NULL             0.0       0.0           0
+    2816 P0   183  MET  CA   NULL             0.0       0.0           0
+    2817 P0   183  MET  C    NULL             0.0       0.0           0
+    2818 P0   183  MET  O    NULL             0.0       0.0           0
+    2819 P0   183  MET  CB   NULL             0.0       0.0           0
+    2820 P0   183  MET  CG   NULL             0.0       0.0           0
+    2821 P0   183  MET  SD   NULL             0.0       0.0           0
+    2822 P0   183  MET  CE   NULL             0.0       0.0           0
+    2823 P0   183  MET  H    NULL             0.0       0.0           0
+    2824 P0   183  MET  HA   NULL             0.0       0.0           0
+    2825 P0   183  MET  HB2  NULL             0.0       0.0           0
+    2826 P0   183  MET  HB3  NULL             0.0       0.0           0
+    2827 P0   183  MET  HG2  NULL             0.0       0.0           0
+    2828 P0   183  MET  HG3  NULL             0.0       0.0           0
+    2829 P0   183  MET  HE1  NULL             0.0       0.0           0
+    2830 P0   183  MET  HE2  NULL             0.0       0.0           0
+    2831 P0   183  MET  HE3  NULL             0.0       0.0           0
+    2832 P0   184  HID  N    NULL             0.0       0.0           0
+    2833 P0   184  HID  CA   NULL             0.0       0.0           0
+    2834 P0   184  HID  C    NULL             0.0       0.0           0
+    2835 P0   184  HID  O    NULL             0.0       0.0           0
+    2836 P0   184  HID  CB   NULL             0.0       0.0           0
+    2837 P0   184  HID  CG   NULL             0.0       0.0           0
+    2838 P0   184  HID  ND1  NULL             0.0       0.0           0
+    2839 P0   184  HID  CD2  NULL             0.0       0.0           0
+    2840 P0   184  HID  CE1  NULL             0.0       0.0           0
+    2841 P0   184  HID  NE2  NULL             0.0       0.0           0
+    2842 P0   184  HID  H    NULL             0.0       0.0           0
+    2843 P0   184  HID  HA   NULL             0.0       0.0           0
+    2844 P0   184  HID  HB2  NULL             0.0       0.0           0
+    2845 P0   184  HID  HB3  NULL             0.0       0.0           0
+    2846 P0   184  HID  HD1  NULL             0.0       0.0           0
+    2847 P0   184  HID  HD2  NULL             0.0       0.0           0
+    2848 P0   184  HID  HE1  NULL             0.0       0.0           0
+    2849 P0   185  TYR  N    NULL             0.0       0.0           0
+    2850 P0   185  TYR  CA   NULL             0.0       0.0           0
+    2851 P0   185  TYR  C    NULL             0.0       0.0           0
+    2852 P0   185  TYR  O    NULL             0.0       0.0           0
+    2853 P0   185  TYR  CB   NULL             0.0       0.0           0
+    2854 P0   185  TYR  CG   NULL             0.0       0.0           0
+    2855 P0   185  TYR  CD1  NULL             0.0       0.0           0
+    2856 P0   185  TYR  CD2  NULL             0.0       0.0           0
+    2857 P0   185  TYR  CE1  NULL             0.0       0.0           0
+    2858 P0   185  TYR  CE2  NULL             0.0       0.0           0
+    2859 P0   185  TYR  CZ   NULL             0.0       0.0           0
+    2860 P0   185  TYR  OH   NULL             0.0       0.0           0
+    2861 P0   185  TYR  H    NULL             0.0       0.0           0
+    2862 P0   185  TYR  HA   NULL             0.0       0.0           0
+    2863 P0   185  TYR  HB2  NULL             0.0       0.0           0
+    2864 P0   185  TYR  HB3  NULL             0.0       0.0           0
+    2865 P0   185  TYR  HD1  NULL             0.0       0.0           0
+    2866 P0   185  TYR  HD2  NULL             0.0       0.0           0
+    2867 P0   185  TYR  HE1  NULL             0.0       0.0           0
+    2868 P0   185  TYR  HE2  NULL             0.0       0.0           0
+    2869 P0   185  TYR  HH   NULL             0.0       0.0           0
+    2870 P0   186  TYR  N    NULL             0.0       0.0           0
+    2871 P0   186  TYR  CA   NULL             0.0       0.0           0
+    2872 P0   186  TYR  C    NULL             0.0       0.0           0
+    2873 P0   186  TYR  O    NULL             0.0       0.0           0
+    2874 P0   186  TYR  CB   NULL             0.0       0.0           0
+    2875 P0   186  TYR  CG   NULL             0.0       0.0           0
+    2876 P0   186  TYR  CD1  NULL             0.0       0.0           0
+    2877 P0   186  TYR  CD2  NULL             0.0       0.0           0
+    2878 P0   186  TYR  CE1  NULL             0.0       0.0           0
+    2879 P0   186  TYR  CE2  NULL             0.0       0.0           0
+    2880 P0   186  TYR  CZ   NULL             0.0       0.0           0
+    2881 P0   186  TYR  OH   NULL             0.0       0.0           0
+    2882 P0   186  TYR  H    NULL             0.0       0.0           0
+    2883 P0   186  TYR  HA   NULL             0.0       0.0           0
+    2884 P0   186  TYR  HB2  NULL             0.0       0.0           0
+    2885 P0   186  TYR  HB3  NULL             0.0       0.0           0
+    2886 P0   186  TYR  HD1  NULL             0.0       0.0           0
+    2887 P0   186  TYR  HD2  NULL             0.0       0.0           0
+    2888 P0   186  TYR  HE1  NULL             0.0       0.0           0
+    2889 P0   186  TYR  HE2  NULL             0.0       0.0           0
+    2890 P0   186  TYR  HH   NULL             0.0       0.0           0
+    2891 P0   187  GLU  N    NULL             0.0       0.0           0
+    2892 P0   187  GLU  CA   NULL             0.0       0.0           0
+    2893 P0   187  GLU  C    NULL             0.0       0.0           0
+    2894 P0   187  GLU  O    NULL             0.0       0.0           0
+    2895 P0   187  GLU  CB   NULL             0.0       0.0           0
+    2896 P0   187  GLU  CG   NULL             0.0       0.0           0
+    2897 P0   187  GLU  CD   NULL             0.0       0.0           0
+    2898 P0   187  GLU  OE1  NULL             0.0       0.0           0
+    2899 P0   187  GLU  OE2  NULL             0.0       0.0           0
+    2900 P0   187  GLU  H    NULL             0.0       0.0           0
+    2901 P0   187  GLU  HA   NULL             0.0       0.0           0
+    2902 P0   187  GLU  HB2  NULL             0.0       0.0           0
+    2903 P0   187  GLU  HB3  NULL             0.0       0.0           0
+    2904 P0   187  GLU  HG2  NULL             0.0       0.0           0
+    2905 P0   187  GLU  HG3  NULL             0.0       0.0           0
+    2906 P0   188  ARG  N    NULL             0.0       0.0           0
+    2907 P0   188  ARG  CA   NULL             0.0       0.0           0
+    2908 P0   188  ARG  C    NULL             0.0       0.0           0
+    2909 P0   188  ARG  O    NULL             0.0       0.0           0
+    2910 P0   188  ARG  CB   NULL             0.0       0.0           0
+    2911 P0   188  ARG  CG   NULL             0.0       0.0           0
+    2912 P0   188  ARG  CD   NULL             0.0       0.0           0
+    2913 P0   188  ARG  NE   NULL             0.0       0.0           0
+    2914 P0   188  ARG  CZ   NULL             0.0       0.0           0
+    2915 P0   188  ARG  NH1  NULL             0.0       0.0           0
+    2916 P0   188  ARG  NH2  NULL             0.0       0.0           0
+    2917 P0   188  ARG  H    NULL             0.0       0.0           0
+    2918 P0   188  ARG  HA   NULL             0.0       0.0           0
+    2919 P0   188  ARG  HB2  NULL             0.0       0.0           0
+    2920 P0   188  ARG  HB3  NULL             0.0       0.0           0
+    2921 P0   188  ARG  HG2  NULL             0.0       0.0           0
+    2922 P0   188  ARG  HG3  NULL             0.0       0.0           0
+    2923 P0   188  ARG  HD2  NULL             0.0       0.0           0
+    2924 P0   188  ARG  HD3  NULL             0.0       0.0           0
+    2925 P0   188  ARG  HE   NULL             0.0       0.0           0
+    2926 P0   188  ARG  HH11 NULL             0.0       0.0           0
+    2927 P0   188  ARG  HH12 NULL             0.0       0.0           0
+    2928 P0   188  ARG  HH21 NULL             0.0       0.0           0
+    2929 P0   188  ARG  HH22 NULL             0.0       0.0           0
+    2930 P0   189  PHE  N    NULL             0.0       0.0           0
+    2931 P0   189  PHE  CA   NULL             0.0       0.0           0
+    2932 P0   189  PHE  C    NULL             0.0       0.0           0
+    2933 P0   189  PHE  O    NULL             0.0       0.0           0
+    2934 P0   189  PHE  CB   NULL             0.0       0.0           0
+    2935 P0   189  PHE  CG   NULL             0.0       0.0           0
+    2936 P0   189  PHE  CD1  NULL             0.0       0.0           0
+    2937 P0   189  PHE  CD2  NULL             0.0       0.0           0
+    2938 P0   189  PHE  CE1  NULL             0.0       0.0           0
+    2939 P0   189  PHE  CE2  NULL             0.0       0.0           0
+    2940 P0   189  PHE  CZ   NULL             0.0       0.0           0
+    2941 P0   189  PHE  H    NULL             0.0       0.0           0
+    2942 P0   189  PHE  HA   NULL             0.0       0.0           0
+    2943 P0   189  PHE  HB2  NULL             0.0       0.0           0
+    2944 P0   189  PHE  HB3  NULL             0.0       0.0           0
+    2945 P0   189  PHE  HD1  NULL             0.0       0.0           0
+    2946 P0   189  PHE  HD2  NULL             0.0       0.0           0
+    2947 P0   189  PHE  HE1  NULL             0.0       0.0           0
+    2948 P0   189  PHE  HE2  NULL             0.0       0.0           0
+    2949 P0   189  PHE  HZ   NULL             0.0       0.0           0
+    2950 P0   190  LEU  N    NULL             0.0       0.0           0
+    2951 P0   190  LEU  CA   NULL             0.0       0.0           0
+    2952 P0   190  LEU  C    NULL             0.0       0.0           0
+    2953 P0   190  LEU  O    NULL             0.0       0.0           0
+    2954 P0   190  LEU  CB   NULL             0.0       0.0           0
+    2955 P0   190  LEU  CG   NULL             0.0       0.0           0
+    2956 P0   190  LEU  CD1  NULL             0.0       0.0           0
+    2957 P0   190  LEU  CD2  NULL             0.0       0.0           0
+    2958 P0   190  LEU  H    NULL             0.0       0.0           0
+    2959 P0   190  LEU  HA   NULL             0.0       0.0           0
+    2960 P0   190  LEU  HB2  NULL             0.0       0.0           0
+    2961 P0   190  LEU  HB3  NULL             0.0       0.0           0
+    2962 P0   190  LEU  HG   NULL             0.0       0.0           0
+    2963 P0   190  LEU  HD11 NULL             0.0       0.0           0
+    2964 P0   190  LEU  HD12 NULL             0.0       0.0           0
+    2965 P0   190  LEU  HD13 NULL             0.0       0.0           0
+    2966 P0   190  LEU  HD21 NULL             0.0       0.0           0
+    2967 P0   190  LEU  HD22 NULL             0.0       0.0           0
+    2968 P0   190  LEU  HD23 NULL             0.0       0.0           0
+    2969 P0   191  LYS  N    NULL             0.0       0.0           0
+    2970 P0   191  LYS  CA   NULL             0.0       0.0           0
+    2971 P0   191  LYS  C    NULL             0.0       0.0           0
+    2972 P0   191  LYS  O    NULL             0.0       0.0           0
+    2973 P0   191  LYS  CB   NULL             0.0       0.0           0
+    2974 P0   191  LYS  CG   NULL             0.0       0.0           0
+    2975 P0   191  LYS  CD   NULL             0.0       0.0           0
+    2976 P0   191  LYS  CE   NULL             0.0       0.0           0
+    2977 P0   191  LYS  NZ   NULL             0.0       0.0           0
+    2978 P0   191  LYS  H    NULL             0.0       0.0           0
+    2979 P0   191  LYS  HA   NULL             0.0       0.0           0
+    2980 P0   191  LYS  HB2  NULL             0.0       0.0           0
+    2981 P0   191  LYS  HB3  NULL             0.0       0.0           0
+    2982 P0   191  LYS  HG2  NULL             0.0       0.0           0
+    2983 P0   191  LYS  HG3  NULL             0.0       0.0           0
+    2984 P0   191  LYS  HD2  NULL             0.0       0.0           0
+    2985 P0   191  LYS  HD3  NULL             0.0       0.0           0
+    2986 P0   191  LYS  HE2  NULL             0.0       0.0           0
+    2987 P0   191  LYS  HE3  NULL             0.0       0.0           0
+    2988 P0   191  LYS  HZ1  NULL             0.0       0.0           0
+    2989 P0   191  LYS  HZ2  NULL             0.0       0.0           0
+    2990 P0   191  LYS  HZ3  NULL             0.0       0.0           0
+    2991 P0   192  GLN  N    NULL             0.0       0.0           0
+    2992 P0   192  GLN  CA   NULL             0.0       0.0           0
+    2993 P0   192  GLN  C    NULL             0.0       0.0           0
+    2994 P0   192  GLN  O    NULL             0.0       0.0           0
+    2995 P0   192  GLN  CB   NULL             0.0       0.0           0
+    2996 P0   192  GLN  CG   NULL             0.0       0.0           0
+    2997 P0   192  GLN  CD   NULL             0.0       0.0           0
+    2998 P0   192  GLN  H    NULL             0.0       0.0           0
+    2999 P0   192  GLN  HA   NULL             0.0       0.0           0
+    3000 P0   192  GLN  HB2  NULL             0.0       0.0           0
+    3001 P0   192  GLN  HB3  NULL             0.0       0.0           0
+    3002 P0   192  GLN  HG2  NULL             0.0       0.0           0
+    3003 P0   192  GLN  HG3  NULL             0.0       0.0           0
+    3004 P0   192  GLN  OE1  NULL             0.0       0.0           0
+    3005 P0   192  GLN  NE2  NULL             0.0       0.0           0
+    3006 P0   192  GLN  HE21 NULL             0.0       0.0           0
+    3007 P0   192  GLN  HE22 NULL             0.0       0.0           0
+    3008 P0   193  TYR  N    NULL             0.0       0.0           0
+    3009 P0   193  TYR  CA   NULL             0.0       0.0           0
+    3010 P0   193  TYR  C    NULL             0.0       0.0           0
+    3011 P0   193  TYR  O    NULL             0.0       0.0           0
+    3012 P0   193  TYR  CB   NULL             0.0       0.0           0
+    3013 P0   193  TYR  CG   NULL             0.0       0.0           0
+    3014 P0   193  TYR  CD1  NULL             0.0       0.0           0
+    3015 P0   193  TYR  CD2  NULL             0.0       0.0           0
+    3016 P0   193  TYR  CE1  NULL             0.0       0.0           0
+    3017 P0   193  TYR  CE2  NULL             0.0       0.0           0
+    3018 P0   193  TYR  CZ   NULL             0.0       0.0           0
+    3019 P0   193  TYR  OH   NULL             0.0       0.0           0
+    3020 P0   193  TYR  H    NULL             0.0       0.0           0
+    3021 P0   193  TYR  HA   NULL             0.0       0.0           0
+    3022 P0   193  TYR  HB2  NULL             0.0       0.0           0
+    3023 P0   193  TYR  HB3  NULL             0.0       0.0           0
+    3024 P0   193  TYR  HD1  NULL             0.0       0.0           0
+    3025 P0   193  TYR  HD2  NULL             0.0       0.0           0
+    3026 P0   193  TYR  HE1  NULL             0.0       0.0           0
+    3027 P0   193  TYR  HE2  NULL             0.0       0.0           0
+    3028 P0   193  TYR  HH   NULL             0.0       0.0           0
+    3029 P0   194  LYS  N    NULL             0.0       0.0           0
+    3030 P0   194  LYS  CA   NULL             0.0       0.0           0
+    3031 P0   194  LYS  C    NULL             0.0       0.0           0
+    3032 P0   194  LYS  O    NULL             0.0       0.0           0
+    3033 P0   194  LYS  CB   NULL             0.0       0.0           0
+    3034 P0   194  LYS  CG   NULL             0.0       0.0           0
+    3035 P0   194  LYS  CD   NULL             0.0       0.0           0
+    3036 P0   194  LYS  CE   NULL             0.0       0.0           0
+    3037 P0   194  LYS  NZ   NULL             0.0       0.0           0
+    3038 P0   194  LYS  H    NULL             0.0       0.0           0
+    3039 P0   194  LYS  HA   NULL             0.0       0.0           0
+    3040 P0   194  LYS  HB2  NULL             0.0       0.0           0
+    3041 P0   194  LYS  HB3  NULL             0.0       0.0           0
+    3042 P0   194  LYS  HG2  NULL             0.0       0.0           0
+    3043 P0   194  LYS  HG3  NULL             0.0       0.0           0
+    3044 P0   194  LYS  HD2  NULL             0.0       0.0           0
+    3045 P0   194  LYS  HD3  NULL             0.0       0.0           0
+    3046 P0   194  LYS  HE2  NULL             0.0       0.0           0
+    3047 P0   194  LYS  HE3  NULL             0.0       0.0           0
+    3048 P0   194  LYS  HZ1  NULL             0.0       0.0           0
+    3049 P0   194  LYS  HZ2  NULL             0.0       0.0           0
+    3050 P0   194  LYS  HZ3  NULL             0.0       0.0           0
+    3051 P0   195  PRO  N    NULL             0.0       0.0           0
+    3052 P0   195  PRO  CA   NULL             0.0       0.0           0
+    3053 P0   195  PRO  C    NULL             0.0       0.0           0
+    3054 P0   195  PRO  O    NULL             0.0       0.0           0
+    3055 P0   195  PRO  CB   NULL             0.0       0.0           0
+    3056 P0   195  PRO  CG   NULL             0.0       0.0           0
+    3057 P0   195  PRO  CD   NULL             0.0       0.0           0
+    3058 P0   195  PRO  HA   NULL             0.0       0.0           0
+    3059 P0   195  PRO  HB2  NULL             0.0       0.0           0
+    3060 P0   195  PRO  HB3  NULL             0.0       0.0           0
+    3061 P0   195  PRO  HG2  NULL             0.0       0.0           0
+    3062 P0   195  PRO  HG3  NULL             0.0       0.0           0
+    3063 P0   195  PRO  HD2  NULL             0.0       0.0           0
+    3064 P0   195  PRO  HD3  NULL             0.0       0.0           0
+    3065 P0   196  GLN  N    NULL             0.0       0.0           0
+    3066 P0   196  GLN  CA   NULL             0.0       0.0           0
+    3067 P0   196  GLN  C    NULL             0.0       0.0           0
+    3068 P0   196  GLN  O    NULL             0.0       0.0           0
+    3069 P0   196  GLN  CB   NULL             0.0       0.0           0
+    3070 P0   196  GLN  CG   NULL             0.0       0.0           0
+    3071 P0   196  GLN  CD   NULL             0.0       0.0           0
+    3072 P0   196  GLN  H    NULL             0.0       0.0           0
+    3073 P0   196  GLN  HA   NULL             0.0       0.0           0
+    3074 P0   196  GLN  HB2  NULL             0.0       0.0           0
+    3075 P0   196  GLN  HB3  NULL             0.0       0.0           0
+    3076 P0   196  GLN  HG2  NULL             0.0       0.0           0
+    3077 P0   196  GLN  HG3  NULL             0.0       0.0           0
+    3078 P0   196  GLN  OE1  NULL             0.0       0.0           0
+    3079 P0   196  GLN  NE2  NULL             0.0       0.0           0
+    3080 P0   196  GLN  HE21 NULL             0.0       0.0           0
+    3081 P0   196  GLN  HE22 NULL             0.0       0.0           0
+    3082 P0   197  CYX  N    NULL             0.0       0.0           0
+    3083 P0   197  CYX  CA   NULL             0.0       0.0           0
+    3084 P0   197  CYX  C    NULL             0.0       0.0           0
+    3085 P0   197  CYX  O    NULL             0.0       0.0           0
+    3086 P0   197  CYX  CB   NULL             0.0       0.0           0
+    3087 P0   197  CYX  SG   NULL             0.0       0.0           0
+    3088 P0   197  CYX  H    NULL             0.0       0.0           0
+    3089 P0   197  CYX  HA   NULL             0.0       0.0           0
+    3090 P0   197  CYX  HB2  NULL             0.0       0.0           0
+    3091 P0   197  CYX  HB3  NULL             0.0       0.0           0
+    3092 P0   198  ILE  N    NULL             0.0       0.0           0
+    3093 P0   198  ILE  CA   NULL             0.0       0.0           0
+    3094 P0   198  ILE  C    NULL             0.0       0.0           0
+    3095 P0   198  ILE  O    NULL             0.0       0.0           0
+    3096 P0   198  ILE  CB   NULL             0.0       0.0           0
+    3097 P0   198  ILE  CG1  NULL             0.0       0.0           0
+    3098 P0   198  ILE  CG2  NULL             0.0       0.0           0
+    3099 P0   198  ILE  CD1  NULL             0.0       0.0           0
+    3100 P0   198  ILE  H    NULL             0.0       0.0           0
+    3101 P0   198  ILE  HA   NULL             0.0       0.0           0
+    3102 P0   198  ILE  HB   NULL             0.0       0.0           0
+    3103 P0   198  ILE  HG12 NULL             0.0       0.0           0
+    3104 P0   198  ILE  HG13 NULL             0.0       0.0           0
+    3105 P0   198  ILE  HG21 NULL             0.0       0.0           0
+    3106 P0   198  ILE  HG22 NULL             0.0       0.0           0
+    3107 P0   198  ILE  HG23 NULL             0.0       0.0           0
+    3108 P0   198  ILE  HD11 NULL             0.0       0.0           0
+    3109 P0   198  ILE  HD12 NULL             0.0       0.0           0
+    3110 P0   198  ILE  HD13 NULL             0.0       0.0           0
+    3111 P0   199  LEU  N    NULL             0.0       0.0           0
+    3112 P0   199  LEU  CA   NULL             0.0       0.0           0
+    3113 P0   199  LEU  C    NULL             0.0       0.0           0
+    3114 P0   199  LEU  O    NULL             0.0       0.0           0
+    3115 P0   199  LEU  CB   NULL             0.0       0.0           0
+    3116 P0   199  LEU  CG   NULL             0.0       0.0           0
+    3117 P0   199  LEU  CD1  NULL             0.0       0.0           0
+    3118 P0   199  LEU  CD2  NULL             0.0       0.0           0
+    3119 P0   199  LEU  H    NULL             0.0       0.0           0
+    3120 P0   199  LEU  HA   NULL             0.0       0.0           0
+    3121 P0   199  LEU  HB2  NULL             0.0       0.0           0
+    3122 P0   199  LEU  HB3  NULL             0.0       0.0           0
+    3123 P0   199  LEU  HG   NULL             0.0       0.0           0
+    3124 P0   199  LEU  HD11 NULL             0.0       0.0           0
+    3125 P0   199  LEU  HD12 NULL             0.0       0.0           0
+    3126 P0   199  LEU  HD13 NULL             0.0       0.0           0
+    3127 P0   199  LEU  HD21 NULL             0.0       0.0           0
+    3128 P0   199  LEU  HD22 NULL             0.0       0.0           0
+    3129 P0   199  LEU  HD23 NULL             0.0       0.0           0
+    3130 P0   200  ASN  N    NULL             0.0       0.0           0
+    3131 P0   200  ASN  CA   NULL             0.0       0.0           0
+    3132 P0   200  ASN  C    NULL             0.0       0.0           0
+    3133 P0   200  ASN  O    NULL             0.0       0.0           0
+    3134 P0   200  ASN  CB   NULL             0.0       0.0           0
+    3135 P0   200  ASN  CG   NULL             0.0       0.0           0
+    3136 P0   200  ASN  H    NULL             0.0       0.0           0
+    3137 P0   200  ASN  HA   NULL             0.0       0.0           0
+    3138 P0   200  ASN  HB2  NULL             0.0       0.0           0
+    3139 P0   200  ASN  HB3  NULL             0.0       0.0           0
+    3140 P0   200  ASN  OD1  NULL             0.0       0.0           0
+    3141 P0   200  ASN  ND2  NULL             0.0       0.0           0
+    3142 P0   200  ASN  HD21 NULL             0.0       0.0           0
+    3143 P0   200  ASN  HD22 NULL             0.0       0.0           0
+    3144 P0   201  LYS  N    NULL             0.0       0.0           0
+    3145 P0   201  LYS  CA   NULL             0.0       0.0           0
+    3146 P0   201  LYS  C    NULL             0.0       0.0           0
+    3147 P0   201  LYS  O    NULL             0.0       0.0           0
+    3148 P0   201  LYS  CB   NULL             0.0       0.0           0
+    3149 P0   201  LYS  CG   NULL             0.0       0.0           0
+    3150 P0   201  LYS  CD   NULL             0.0       0.0           0
+    3151 P0   201  LYS  CE   NULL             0.0       0.0           0
+    3152 P0   201  LYS  NZ   NULL             0.0       0.0           0
+    3153 P0   201  LYS  H    NULL             0.0       0.0           0
+    3154 P0   201  LYS  HA   NULL             0.0       0.0           0
+    3155 P0   201  LYS  HB2  NULL             0.0       0.0           0
+    3156 P0   201  LYS  HB3  NULL             0.0       0.0           0
+    3157 P0   201  LYS  HG2  NULL             0.0       0.0           0
+    3158 P0   201  LYS  HG3  NULL             0.0       0.0           0
+    3159 P0   201  LYS  HD2  NULL             0.0       0.0           0
+    3160 P0   201  LYS  HD3  NULL             0.0       0.0           0
+    3161 P0   201  LYS  HE2  NULL             0.0       0.0           0
+    3162 P0   201  LYS  HE3  NULL             0.0       0.0           0
+    3163 P0   201  LYS  HZ1  NULL             0.0       0.0           0
+    3164 P0   201  LYS  HZ2  NULL             0.0       0.0           0
+    3165 P0   201  LYS  HZ3  NULL             0.0       0.0           0
+    3166 P0   202  PRO  N    NULL             0.0       0.0           0
+    3167 P0   202  PRO  CA   NULL             0.0       0.0           0
+    3168 P0   202  PRO  C    NULL             0.0       0.0           0
+    3169 P0   202  PRO  O    NULL             0.0       0.0           0
+    3170 P0   202  PRO  CB   NULL             0.0       0.0           0
+    3171 P0   202  PRO  CG   NULL             0.0       0.0           0
+    3172 P0   202  PRO  CD   NULL             0.0       0.0           0
+    3173 P0   202  PRO  OXT  NULL             0.0       0.0           0
+    3174 P0   202  PRO  HA   NULL             0.0       0.0           0
+    3175 P0   202  PRO  HB2  NULL             0.0       0.0           0
+    3176 P0   202  PRO  HB3  NULL             0.0       0.0           0
+    3177 P0   202  PRO  HG2  NULL             0.0       0.0           0
+    3178 P0   202  PRO  HG3  NULL             0.0       0.0           0
+    3179 P0   202  PRO  HD2  NULL             0.0       0.0           0
+    3180 P0   202  PRO  HD3  NULL             0.0       0.0           0
+    3181 P1   311  0QI  N    NULL             0.0       0.0           0
+    3182 P1   311  0QI  CA   NULL             0.0       0.0           0
+    3183 P1   311  0QI  C    NULL             0.0       0.0           0
+    3184 P1   311  0QI  O    NULL             0.0       0.0           0
+    3185 P1   311  0QI  C1   NULL             0.0       0.0           0
+    3186 P1   311  0QI  O1   NULL             0.0       0.0           0
+    3187 P1   311  0QI  C2   NULL             0.0       0.0           0
+    3188 P1   311  0QI  CH   NULL             0.0       0.0           0
+    3189 P1   311  0QI  S    NULL             0.0       0.0           0
+    3190 P1   311  0QI  C3   NULL             0.0       0.0           0
+    3191 P1   311  0QI  C4   NULL             0.0       0.0           0
+    3192 P1   311  0QI  CM   NULL             0.0       0.0           0
+    3193 P1   311  0QI  C5   NULL             0.0       0.0           0
+    3194 P1   311  0QI  CB   NULL             0.0       0.0           0
+    3195 P1   311  0QI  CG   NULL             0.0       0.0           0
+    3196 P1   311  0QI  CD1  NULL             0.0       0.0           0
+    3197 P1   311  0QI  CD2  NULL             0.0       0.0           0
+    3198 P1   311  0QI  CE1  NULL             0.0       0.0           0
+    3199 P1   311  0QI  CE2  NULL             0.0       0.0           0
+    3200 P1   311  0QI  CZ   NULL             0.0       0.0           0
+    3201 P1   311  0QI  OH   NULL             0.0       0.0           0
+    3202 P1   311  0QI  OXT  NULL             0.0       0.0           0
+    3203 P1   311  0QI  C6   NULL             0.0       0.0           0
+    3204 ME   312  ZN   ZN   NULL             0.0       0.0           0
+    3205 ME   314  CA   CA   NULL             0.0       0.0           0
 
 
 
-     3236 !NBOND: bonds
+     3237 !NBOND: bonds
          1         9         1         2         1        20         1        21
          2        10         2         3         2         5         3        22
          3         4         5        11         5         6         5        12
@@ -3676,7 +3677,7 @@ PSF NAMD
       1824      1831      1824      1832      1834      1835      1834      1840
       1835      1838      1835      1841      1835      1836      1836      1844
       1836      1837      1838      1842      1838      1839      1838      1843
-      1839      3086      1844      1852      1844      1845      1845      1853
+      1839      3087      1844      1852      1844      1845      1845      1853
       1845      1848      1845      1846      1846      1856      1846      1847
       1848      1854      1848      1855      1848      1849      1849      1851
       1849      1850      1856      1862      1856      1857      1857      1863
@@ -3806,220 +3807,221 @@ PSF NAMD
       2343      2344      2343      2350      2343      2351      2344      2345
       2344      2353      2344      2352      2345      2347      2345      2346
       2354      2355      2354      2360      2355      2356      2355      2361
-      2355      2358      2356      2357      2356      2371      2358      2362
+      2355      2358      2356      2357      2356      2372      2358      2362
       2358      2363      2358      2359      2359      2364      2359      2365
       2364      2368      2364      2366      2365      2369      2365      2367
-      2366      2367      2366      2370      2371      2372      2371      2379
-      2372      2380      2372      2375      2372      2373      2373      2383
-      2373      2374      2375      2376      2375      2382      2375      2381
-      2376      2377      2376      2378      2383      2384      2383      2387
-      2384      2389      2384      2385      2384      2388      2385      2386
-      2385      2390      2390      2399      2390      2391      2391      2392
-      2391      2394      2391      2400      2392      2412      2392      2393
-      2394      2395      2394      2402      2394      2401      2395      2403
-      2395      2396      2395      2404      2396      2397      2396      2405
-      2396      2406      2397      2407      2397      2408      2397      2398
-      2398      2411      2398      2409      2398      2410      2412      2420
-      2412      2413      2413      2414      2413      2416      2413      2421
-      2414      2415      2414      2424      2416      2422      2416      2423
-      2416      2417      2417      2419      2417      2418      2424      2425
-      2424      2430      2425      2431      2425      2426      2425      2428
-      2426      2434      2426      2427      2428      2429      2428      2432
-      2428      2433      2429      2529      2434      2442      2434      2435
-      2435      2436      2435      2438      2435      2443      2436      2437
-      2436      2453      2438      2444      2438      2445      2438      2439
-      2439      2446      2439      2441      2439      2440      2440      2447
-      2440      2449      2440      2448      2441      2451      2441      2450
-      2441      2452      2453      2454      2453      2464      2454      2465
-      2454      2455      2454      2457      2455      2477      2455      2456
-      2457      2458      2457      2467      2457      2466      2458      2468
-      2458      2469      2458      2459      2459      2460      2459      2470
-      2459      2471      2460      2461      2460      2472      2461      2463
-      2461      2462      2462      2474      2462      2473      2463      2476
-      2463      2475      2477      2478      2477      2481      2478      2482
-      2478      2483      2478      2479      2479      2480      2479      2484
-      2484      2489      2484      2485      2485      2490      2485      2488
-      2485      2486      2486      2487      2486      2494      2488      2491
-      2488      2492      2488      2493      2494      2500      2494      2495
-      2495      2501      2495      2498      2495      2496      2496      2497
-      2496      2505      2498      2499      2498      2502      2498      2503
-      2499      2504      2505      2513      2505      2506      2506      2514
-      2506      2509      2506      2507      2507      2524      2507      2508
-      2509      2510      2509      2515      2509      2516      2510      2517
-      2510      2511      2510      2512      2511      2518      2511      2520
-      2511      2519      2512      2521      2512      2523      2512      2522
-      2524      2530      2524      2525      2525      2528      2525      2531
-      2525      2526      2526      2534      2526      2527      2528      2529
-      2528      2532      2528      2533      2534      2542      2534      2535
-      2535      2543      2535      2536      2535      2538      2536      2553
-      2536      2537      2538      2544      2538      2539      2538      2540
-      2539      2546      2539      2541      2539      2545      2540      2547
-      2540      2548      2540      2549      2541      2552      2541      2550
-      2541      2551      2553      2561      2553      2554      2554      2557
-      2554      2555      2554      2562      2555      2556      2555      2570
-      2557      2558      2557      2563      2557      2564      2558      2565
-      2558      2559      2558      2566      2559      2560      2560      2568
-      2560      2567      2560      2569      2570      2571      2570      2581
-      2571      2574      2571      2582      2571      2572      2572      2594
-      2572      2573      2574      2575      2574      2584      2574      2583
-      2575      2586      2575      2585      2575      2576      2576      2577
-      2576      2588      2576      2587      2577      2578      2577      2589
-      2578      2580      2578      2579      2579      2591      2579      2590
-      2580      2592      2580      2593      2594      2600      2594      2595
-      2595      2598      2595      2601      2595      2596      2596      2608
-      2596      2597      2598      2603      2598      2599      2598      2602
-      2599      2600      2599      2605      2599      2604      2600      2607
-      2600      2606      2608      2612      2608      2609      2609      2610
-      2609      2614      2609      2613      2610      2611      2610      2615
-      2615      2616      2615      2623      2616      2624      2616      2619
-      2616      2617      2617      2634      2617      2618      2619      2620
-      2619      2626      2619      2625      2620      2621      2620      2627
-      2620      2622      2621      2630      2621      2628      2621      2629
-      2622      2633      2622      2632      2622      2631      2634      2635
-      2634      2641      2635      2638      2635      2642      2635      2636
-      2636      2637      2636      2648      2638      2643      2638      2640
-      2638      2639      2639      2647      2640      2646      2640      2644
-      2640      2645      2648      2657      2648      2649      2649      2650
-      2649      2658      2649      2652      2650      2651      2650      2670
-      2652      2659      2652      2660      2652      2653      2653      2661
-      2653      2662      2653      2654      2654      2663      2654      2664
-      2654      2655      2655      2665      2655      2666      2655      2656
-      2656      2668      2656      2669      2656      2667      2670      2671
-      2670      2674      2671      2675      2671      2676      2671      2672
-      2672      2677      2672      2673      2677      2688      2677      2678
-      2678      2679      2678      2689      2678      2681      2679      2701
-      2679      2680      2681      2690      2681      2691      2681      2682
-      2682      2692      2682      2693      2682      2683      2683      2694
-      2683      2684      2683      2695      2684      2685      2684      2696
-      2685      2686      2685      2687      2686      2698      2686      2697
-      2687      2700      2687      2699      2701      2702      2701      2707
-      2702      2705      2702      2703      2702      2708      2703      2704
-      2703      2712      2705      2710      2705      2706      2705      2709
-      2706      2711      2712      2713      2712      2724      2713      2725
-      2713      2714      2713      2716      2714      2733      2714      2715
-      2716      2717      2716      2726      2716      2727      2717      2719
-      2717      2718      2718      2728      2718      2720      2719      2721
-      2719      2729      2720      2722      2720      2730      2721      2722
-      2721      2731      2722      2723      2723      2732      2733      2734
-      2733      2742      2734      2737      2734      2743      2734      2735
-      2735      2736      2735      2748      2737      2738      2737      2744
-      2737      2745      2738      2739      2738      2746      2738      2747
-      2739      2740      2739      2741      2748      2759      2748      2749
-      2749      2750      2749      2760      2749      2752      2750      2751
-      2750      2768      2752      2761      2752      2762      2752      2753
-      2753      2755      2753      2754      2754      2763      2754      2756
-      2755      2764      2755      2757      2756      2758      2756      2765
-      2757      2766      2757      2758      2758      2767      2768      2769
-      2768      2774      2769      2770      2769      2775      2769      2772
-      2770      2779      2770      2771      2772      2776      2772      2777
-      2772      2773      2773      2778      2779      2780      2779      2787
-      2780      2783      2780      2788      2780      2781      2781      2782
-      2781      2791      2783      2784      2783      2789      2783      2790
-      2784      2786      2784      2785      2791      2792      2791      2799
-      2792      2800      2792      2795      2792      2793      2793      2794
-      2793      2803      2795      2796      2795      2802      2795      2801
-      2796      2797      2796      2798      2803      2809      2803      2804
-      2804      2805      2804      2807      2804      2810      2805      2814
-      2805      2806      2807      2811      2807      2812      2807      2808
-      2808      2813      2814      2822      2814      2815      2815      2818
-      2815      2816      2815      2823      2816      2831      2816      2817
-      2818      2824      2818      2819      2818      2825      2819      2820
-      2819      2827      2819      2826      2820      2821      2821      2828
-      2821      2830      2821      2829      2831      2832      2831      2841
-      2832      2842      2832      2835      2832      2833      2833      2834
-      2833      2848      2835      2836      2835      2843      2835      2844
-      2836      2838      2836      2837      2837      2839      2837      2845
-      2838      2840      2838      2846      2839      2840      2839      2847
-      2848      2860      2848      2849      2849      2861      2849      2850
-      2849      2852      2850      2869      2850      2851      2852      2853
-      2852      2862      2852      2863      2853      2854      2853      2855
-      2854      2864      2854      2856      2855      2857      2855      2865
-      2856      2866      2856      2858      2857      2867      2857      2858
-      2858      2859      2859      2868      2869      2881      2869      2870
-      2870      2873      2870      2871      2870      2882      2871      2890
-      2871      2872      2873      2883      2873      2884      2873      2874
-      2874      2876      2874      2875      2875      2877      2875      2885
-      2876      2886      2876      2878      2877      2879      2877      2887
-      2878      2879      2878      2888      2879      2880      2880      2889
-      2890      2899      2890      2891      2891      2894      2891      2900
-      2891      2892      2892      2905      2892      2893      2894      2895
-      2894      2902      2894      2901      2895      2896      2895      2904
-      2895      2903      2896      2898      2896      2897      2905      2916
-      2905      2906      2906      2917      2906      2907      2906      2909
-      2907      2908      2907      2929      2909      2918      2909      2910
-      2909      2919      2910      2911      2910      2920      2910      2921
-      2911      2912      2911      2922      2911      2923      2912      2924
-      2912      2913      2913      2914      2913      2915      2914      2926
-      2914      2925      2915      2928      2915      2927      2929      2940
-      2929      2930      2930      2941      2930      2931      2930      2933
-      2931      2949      2931      2932      2933      2942      2933      2943
-      2933      2934      2934      2936      2934      2935      2935      2944
-      2935      2937      2936      2945      2936      2938      2937      2939
-      2937      2946      2938      2939      2938      2947      2939      2948
-      2949      2957      2949      2950      2950      2951      2950      2953
-      2950      2958      2951      2968      2951      2952      2953      2960
-      2953      2954      2953      2959      2954      2956      2954      2961
-      2954      2955      2955      2963      2955      2964      2955      2962
-      2956      2965      2956      2966      2956      2967      2968      2977
-      2968      2969      2969      2972      2969      2970      2969      2978
-      2970      2971      2970      2990      2972      2980      2972      2973
-      2972      2979      2973      2974      2973      2981      2973      2982
-      2974      2983      2974      2984      2974      2975      2975      2985
-      2975      2986      2975      2976      2976      2988      2976      2989
-      2976      2987      2990      2997      2990      2991      2991      2998
-      2991      2992      2991      2994      2992      3007      2992      2993
-      2994      2999      2994      2995      2994      3000      2995      3002
-      2995      3001      2995      2996      2996      3003      2996      3004
-      3004      3005      3004      3006      3007      3019      3007      3008
-      3008      3009      3008      3011      3008      3020      3009      3028
-      3009      3010      3011      3021      3011      3022      3011      3012
-      3012      3013      3012      3014      3013      3023      3013      3015
-      3014      3024      3014      3016      3015      3017      3015      3025
-      3016      3026      3016      3017      3017      3018      3018      3027
-      3028      3037      3028      3029      3029      3038      3029      3032
-      3029      3030      3030      3050      3030      3031      3032      3033
-      3032      3039      3032      3040      3033      3034      3033      3041
-      3033      3042      3034      3043      3034      3044      3034      3035
-      3035      3046      3035      3036      3035      3045      3036      3047
-      3036      3048      3036      3049      3050      3056      3050      3051
-      3051      3052      3051      3057      3051      3054      3052      3053
-      3052      3064      3054      3055      3054      3059      3054      3058
-      3055      3056      3055      3060      3055      3061      3056      3062
-      3056      3063      3064      3065      3064      3071      3065      3068
-      3065      3066      3065      3072      3066      3067      3066      3081
-      3068      3074      3068      3073      3068      3069      3069      3075
-      3069      3076      3069      3070      3070      3078      3070      3077
-      3078      3080      3078      3079      3081      3087      3081      3082
-      3082      3088      3082      3083      3082      3085      3083      3091
-      3083      3084      3085      3090      3085      3089      3085      3086
-      3091      3099      3091      3092      3092      3093      3092      3095
-      3092      3100      3093      3094      3093      3110      3095      3096
-      3095      3101      3095      3097      3096      3103      3096      3098
-      3096      3102      3097      3104      3097      3106      3097      3105
-      3098      3109      3098      3108      3098      3107      3110      3111
-      3110      3118      3111      3114      3111      3119      3111      3112
-      3112      3113      3112      3129      3114      3115      3114      3121
-      3114      3120      3115      3122      3115      3117      3115      3116
-      3116      3124      3116      3125      3116      3123      3117      3127
-      3117      3126      3117      3128      3129      3135      3129      3130
-      3130      3136      3130      3131      3130      3133      3131      3143
-      3131      3132      3133      3137      3133      3138      3133      3134
-      3134      3139      3134      3140      3140      3141      3140      3142
-      3143      3152      3143      3144      3144      3147      3144      3153
-      3144      3145      3145      3165      3145      3146      3147      3154
-      3147      3148      3147      3155      3148      3157      3148      3149
-      3148      3156      3149      3158      3149      3159      3149      3150
-      3150      3161      3150      3160      3150      3151      3151      3163
-      3151      3164      3151      3162      3165      3171      3165      3166
-      3166      3167      3166      3169      3166      3173      3167      3168
-      3167      3172      3169      3170      3169      3175      3169      3174
-      3170      3171      3170      3177      3170      3176      3171      3179
-      3171      3178      3182      3186      3182      3183      3183      3184
-      3183      3195      3184      3203      3184      3185      3186      3188
-      3186      3187      3188      3189      3188      3191      3189      3190
-      3191      3192      3192      3194      3192      3193      3195      3196
-      3196      3197      3196      3198      3197      3199      3198      3200
-      3199      3201      3200      3201      3201      3202      3202      3204
+      2366      2367      2366      2370      2367      2371      2372      2373
+      2372      2380      2373      2381      2373      2376      2373      2374
+      2374      2384      2374      2375      2376      2377      2376      2383
+      2376      2382      2377      2378      2377      2379      2384      2385
+      2384      2388      2385      2390      2385      2386      2385      2389
+      2386      2387      2386      2391      2391      2400      2391      2392
+      2392      2393      2392      2395      2392      2401      2393      2413
+      2393      2394      2395      2396      2395      2403      2395      2402
+      2396      2404      2396      2397      2396      2405      2397      2398
+      2397      2406      2397      2407      2398      2408      2398      2409
+      2398      2399      2399      2412      2399      2410      2399      2411
+      2413      2421      2413      2414      2414      2415      2414      2417
+      2414      2422      2415      2416      2415      2425      2417      2423
+      2417      2424      2417      2418      2418      2420      2418      2419
+      2425      2426      2425      2431      2426      2432      2426      2427
+      2426      2429      2427      2435      2427      2428      2429      2430
+      2429      2433      2429      2434      2430      2530      2435      2443
+      2435      2436      2436      2437      2436      2439      2436      2444
+      2437      2438      2437      2454      2439      2445      2439      2446
+      2439      2440      2440      2447      2440      2442      2440      2441
+      2441      2448      2441      2450      2441      2449      2442      2452
+      2442      2451      2442      2453      2454      2455      2454      2465
+      2455      2466      2455      2456      2455      2458      2456      2478
+      2456      2457      2458      2459      2458      2468      2458      2467
+      2459      2469      2459      2470      2459      2460      2460      2461
+      2460      2471      2460      2472      2461      2462      2461      2473
+      2462      2464      2462      2463      2463      2475      2463      2474
+      2464      2477      2464      2476      2478      2479      2478      2482
+      2479      2483      2479      2484      2479      2480      2480      2481
+      2480      2485      2485      2490      2485      2486      2486      2491
+      2486      2489      2486      2487      2487      2488      2487      2495
+      2489      2492      2489      2493      2489      2494      2495      2501
+      2495      2496      2496      2502      2496      2499      2496      2497
+      2497      2498      2497      2506      2499      2500      2499      2503
+      2499      2504      2500      2505      2506      2514      2506      2507
+      2507      2515      2507      2510      2507      2508      2508      2525
+      2508      2509      2510      2511      2510      2516      2510      2517
+      2511      2518      2511      2512      2511      2513      2512      2519
+      2512      2521      2512      2520      2513      2522      2513      2524
+      2513      2523      2525      2531      2525      2526      2526      2529
+      2526      2532      2526      2527      2527      2535      2527      2528
+      2529      2530      2529      2533      2529      2534      2535      2543
+      2535      2536      2536      2544      2536      2537      2536      2539
+      2537      2554      2537      2538      2539      2545      2539      2540
+      2539      2541      2540      2547      2540      2542      2540      2546
+      2541      2548      2541      2549      2541      2550      2542      2553
+      2542      2551      2542      2552      2554      2562      2554      2555
+      2555      2558      2555      2556      2555      2563      2556      2557
+      2556      2571      2558      2559      2558      2564      2558      2565
+      2559      2566      2559      2560      2559      2567      2560      2561
+      2561      2569      2561      2568      2561      2570      2571      2572
+      2571      2582      2572      2575      2572      2583      2572      2573
+      2573      2595      2573      2574      2575      2576      2575      2585
+      2575      2584      2576      2587      2576      2586      2576      2577
+      2577      2578      2577      2589      2577      2588      2578      2579
+      2578      2590      2579      2581      2579      2580      2580      2592
+      2580      2591      2581      2593      2581      2594      2595      2601
+      2595      2596      2596      2599      2596      2602      2596      2597
+      2597      2609      2597      2598      2599      2604      2599      2600
+      2599      2603      2600      2601      2600      2606      2600      2605
+      2601      2608      2601      2607      2609      2613      2609      2610
+      2610      2611      2610      2615      2610      2614      2611      2612
+      2611      2616      2616      2617      2616      2624      2617      2625
+      2617      2620      2617      2618      2618      2635      2618      2619
+      2620      2621      2620      2627      2620      2626      2621      2622
+      2621      2628      2621      2623      2622      2631      2622      2629
+      2622      2630      2623      2634      2623      2633      2623      2632
+      2635      2636      2635      2642      2636      2639      2636      2643
+      2636      2637      2637      2638      2637      2649      2639      2644
+      2639      2641      2639      2640      2640      2648      2641      2647
+      2641      2645      2641      2646      2649      2658      2649      2650
+      2650      2651      2650      2659      2650      2653      2651      2652
+      2651      2671      2653      2660      2653      2661      2653      2654
+      2654      2662      2654      2663      2654      2655      2655      2664
+      2655      2665      2655      2656      2656      2666      2656      2667
+      2656      2657      2657      2669      2657      2670      2657      2668
+      2671      2672      2671      2675      2672      2676      2672      2677
+      2672      2673      2673      2678      2673      2674      2678      2689
+      2678      2679      2679      2680      2679      2690      2679      2682
+      2680      2702      2680      2681      2682      2691      2682      2692
+      2682      2683      2683      2693      2683      2694      2683      2684
+      2684      2695      2684      2685      2684      2696      2685      2686
+      2685      2697      2686      2687      2686      2688      2687      2699
+      2687      2698      2688      2701      2688      2700      2702      2703
+      2702      2708      2703      2706      2703      2704      2703      2709
+      2704      2705      2704      2713      2706      2711      2706      2707
+      2706      2710      2707      2712      2713      2714      2713      2725
+      2714      2726      2714      2715      2714      2717      2715      2734
+      2715      2716      2717      2718      2717      2727      2717      2728
+      2718      2720      2718      2719      2719      2729      2719      2721
+      2720      2722      2720      2730      2721      2723      2721      2731
+      2722      2723      2722      2732      2723      2724      2724      2733
+      2734      2735      2734      2743      2735      2738      2735      2744
+      2735      2736      2736      2737      2736      2749      2738      2739
+      2738      2745      2738      2746      2739      2740      2739      2747
+      2739      2748      2740      2741      2740      2742      2749      2760
+      2749      2750      2750      2751      2750      2761      2750      2753
+      2751      2752      2751      2769      2753      2762      2753      2763
+      2753      2754      2754      2756      2754      2755      2755      2764
+      2755      2757      2756      2765      2756      2758      2757      2759
+      2757      2766      2758      2767      2758      2759      2759      2768
+      2769      2770      2769      2775      2770      2771      2770      2776
+      2770      2773      2771      2780      2771      2772      2773      2777
+      2773      2778      2773      2774      2774      2779      2780      2781
+      2780      2788      2781      2784      2781      2789      2781      2782
+      2782      2783      2782      2792      2784      2785      2784      2790
+      2784      2791      2785      2787      2785      2786      2792      2793
+      2792      2800      2793      2801      2793      2796      2793      2794
+      2794      2795      2794      2804      2796      2797      2796      2803
+      2796      2802      2797      2798      2797      2799      2804      2810
+      2804      2805      2805      2806      2805      2808      2805      2811
+      2806      2815      2806      2807      2808      2812      2808      2813
+      2808      2809      2809      2814      2815      2823      2815      2816
+      2816      2819      2816      2817      2816      2824      2817      2832
+      2817      2818      2819      2825      2819      2820      2819      2826
+      2820      2821      2820      2828      2820      2827      2821      2822
+      2822      2829      2822      2831      2822      2830      2832      2833
+      2832      2842      2833      2843      2833      2836      2833      2834
+      2834      2835      2834      2849      2836      2837      2836      2844
+      2836      2845      2837      2839      2837      2838      2838      2840
+      2838      2846      2839      2841      2839      2847      2840      2841
+      2840      2848      2849      2861      2849      2850      2850      2862
+      2850      2851      2850      2853      2851      2870      2851      2852
+      2853      2854      2853      2863      2853      2864      2854      2855
+      2854      2856      2855      2865      2855      2857      2856      2858
+      2856      2866      2857      2867      2857      2859      2858      2868
+      2858      2859      2859      2860      2860      2869      2870      2882
+      2870      2871      2871      2874      2871      2872      2871      2883
+      2872      2891      2872      2873      2874      2884      2874      2885
+      2874      2875      2875      2877      2875      2876      2876      2878
+      2876      2886      2877      2887      2877      2879      2878      2880
+      2878      2888      2879      2880      2879      2889      2880      2881
+      2881      2890      2891      2900      2891      2892      2892      2895
+      2892      2901      2892      2893      2893      2906      2893      2894
+      2895      2896      2895      2903      2895      2902      2896      2897
+      2896      2905      2896      2904      2897      2899      2897      2898
+      2906      2917      2906      2907      2907      2918      2907      2908
+      2907      2910      2908      2909      2908      2930      2910      2919
+      2910      2911      2910      2920      2911      2912      2911      2921
+      2911      2922      2912      2913      2912      2923      2912      2924
+      2913      2925      2913      2914      2914      2915      2914      2916
+      2915      2927      2915      2926      2916      2929      2916      2928
+      2930      2941      2930      2931      2931      2942      2931      2932
+      2931      2934      2932      2950      2932      2933      2934      2943
+      2934      2944      2934      2935      2935      2937      2935      2936
+      2936      2945      2936      2938      2937      2946      2937      2939
+      2938      2940      2938      2947      2939      2940      2939      2948
+      2940      2949      2950      2958      2950      2951      2951      2952
+      2951      2954      2951      2959      2952      2969      2952      2953
+      2954      2961      2954      2955      2954      2960      2955      2957
+      2955      2962      2955      2956      2956      2964      2956      2965
+      2956      2963      2957      2966      2957      2967      2957      2968
+      2969      2978      2969      2970      2970      2973      2970      2971
+      2970      2979      2971      2972      2971      2991      2973      2981
+      2973      2974      2973      2980      2974      2975      2974      2982
+      2974      2983      2975      2984      2975      2985      2975      2976
+      2976      2986      2976      2987      2976      2977      2977      2989
+      2977      2990      2977      2988      2991      2998      2991      2992
+      2992      2999      2992      2993      2992      2995      2993      3008
+      2993      2994      2995      3000      2995      2996      2995      3001
+      2996      3003      2996      3002      2996      2997      2997      3004
+      2997      3005      3005      3006      3005      3007      3008      3020
+      3008      3009      3009      3010      3009      3012      3009      3021
+      3010      3029      3010      3011      3012      3022      3012      3023
+      3012      3013      3013      3014      3013      3015      3014      3024
+      3014      3016      3015      3025      3015      3017      3016      3018
+      3016      3026      3017      3027      3017      3018      3018      3019
+      3019      3028      3029      3038      3029      3030      3030      3039
+      3030      3033      3030      3031      3031      3051      3031      3032
+      3033      3034      3033      3040      3033      3041      3034      3035
+      3034      3042      3034      3043      3035      3044      3035      3045
+      3035      3036      3036      3047      3036      3037      3036      3046
+      3037      3048      3037      3049      3037      3050      3051      3057
+      3051      3052      3052      3053      3052      3058      3052      3055
+      3053      3054      3053      3065      3055      3056      3055      3060
+      3055      3059      3056      3057      3056      3061      3056      3062
+      3057      3063      3057      3064      3065      3066      3065      3072
+      3066      3069      3066      3067      3066      3073      3067      3068
+      3067      3082      3069      3075      3069      3074      3069      3070
+      3070      3076      3070      3077      3070      3071      3071      3079
+      3071      3078      3079      3081      3079      3080      3082      3088
+      3082      3083      3083      3089      3083      3084      3083      3086
+      3084      3092      3084      3085      3086      3091      3086      3090
+      3086      3087      3092      3100      3092      3093      3093      3094
+      3093      3096      3093      3101      3094      3095      3094      3111
+      3096      3097      3096      3102      3096      3098      3097      3104
+      3097      3099      3097      3103      3098      3105      3098      3107
+      3098      3106      3099      3110      3099      3109      3099      3108
+      3111      3112      3111      3119      3112      3115      3112      3120
+      3112      3113      3113      3114      3113      3130      3115      3116
+      3115      3122      3115      3121      3116      3123      3116      3118
+      3116      3117      3117      3125      3117      3126      3117      3124
+      3118      3128      3118      3127      3118      3129      3130      3136
+      3130      3131      3131      3137      3131      3132      3131      3134
+      3132      3144      3132      3133      3134      3138      3134      3139
+      3134      3135      3135      3140      3135      3141      3141      3142
+      3141      3143      3144      3153      3144      3145      3145      3148
+      3145      3154      3145      3146      3146      3166      3146      3147
+      3148      3155      3148      3149      3148      3156      3149      3158
+      3149      3150      3149      3157      3150      3159      3150      3160
+      3150      3151      3151      3162      3151      3161      3151      3152
+      3152      3164      3152      3165      3152      3163      3166      3172
+      3166      3167      3167      3168      3167      3170      3167      3174
+      3168      3169      3168      3173      3170      3171      3170      3176
+      3170      3175      3171      3172      3171      3178      3171      3177
+      3172      3180      3172      3179      3181      3185      3181      3182
+      3182      3183      3182      3194      3183      3202      3183      3184
+      3185      3187      3185      3186      3187      3188      3187      3190
+      3188      3189      3190      3191      3191      3193      3191      3192
+      3194      3195      3195      3196      3195      3197      3196      3198
+      3197      3199      3198      3200      3199      3200      3200      3201
+      3201      3203
 
 
          0 !NTHETA: angles

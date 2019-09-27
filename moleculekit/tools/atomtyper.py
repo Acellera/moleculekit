@@ -355,7 +355,7 @@ class _TestVoxel(unittest.TestCase):
         mol = Molecule(path.join(home(dataDir='test-voxeldescriptors'), '1ATL.pdb'))
         ref = Molecule(path.join(home(dataDir='test-voxeldescriptors'), '1ATL_prepared.pdb'))
         mol2 = prepareProteinForAtomtyping(mol, verbose=False)
-      
+   
         assert mol_equal(mol2, ref, exceptFields=('coords',))
 
 if __name__ == '__main__':
