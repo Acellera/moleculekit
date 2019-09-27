@@ -429,7 +429,7 @@ class _TestMetricDistance(unittest.TestCase):
         metr = MetricDistance('protein and noh', 'resname MOL and noh', truncate=3)
         data = metr.project(self.mol)
         atomIndexes = metr.getMapping(self.mol).atomIndexes.values
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'description.npy'))
+        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'description.npy'), allow_pickle=True)
         assert np.array_equal(refdata, atomIndexes)
 
 
