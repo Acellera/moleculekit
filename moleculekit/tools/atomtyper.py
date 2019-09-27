@@ -16,6 +16,9 @@ metal_atypes = ('MG', 'ZN', 'MN', 'CA', 'FE', 'HG', 'CD', 'NI', 'CO', 'CU', 'K',
 
 
 def getPDBQTAtomType(atype, aidx, mol, aromaticNitrogen=False):
+    if atype in metal_atypes:  # Save metals from treated as protein atoms
+        return atype
+
     tmptype = ''
     # carbons
     if atype == 'Car':
@@ -55,13 +58,14 @@ def getPDBQTAtomType(atype, aidx, mol, aromaticNitrogen=False):
         tmptype = 'H'
         # print(aidx)
         # print(np.where(mol.bonds == aidx))
-        bond = np.where(mol.bonds == aidx)[0][0]
+        try:
+            bond = np.where(mol.bonds == aidx)[0][0]
+        except Exception as e:
+            raise RuntimeError(f'Could not atomtype hydrogen atom with index {aidx} due to no bonding partners.')
+            
         oidx = [a for a in mol.bonds[bond] if a != aidx][0]
         if mol.element[oidx] not in ['C', 'A']:
             tmptype += 'D'
-
-    if atype in metal_atypes:  # Save metals from being reduced to first letter
-        tmptype = atype
 
     if tmptype == '':
         tmptype = atype[0]
@@ -107,10 +111,15 @@ def prepareProteinForAtomtyping(mol, guessBonds=True, protonate=True, pH=7, segm
     mol : Molecule object
         The prepared Molecule
     """
+    from moleculekit.tools.autosegment import autoSegment2
+
     mol = mol.copy()
+    if guessBonds:  # Need to guess bonds at the start for atom selection and for autoSegment
+        mol.bonds = mol._guessBonds()
+
     protsel = mol.atomselect('protein')
-    metals = mol.atomselect('element {}'.format(' '.join(metal_atypes)))
-    notallowed = ~(protsel | metals)
+    metalsel = mol.atomselect('element {}'.format(' '.join(metal_atypes)))
+    notallowed = ~(protsel | metalsel)
 
     if not np.any(protsel):
         raise RuntimeError('No protein atoms found in Molecule')
@@ -119,27 +128,33 @@ def prepareProteinForAtomtyping(mol, guessBonds=True, protonate=True, pH=7, segm
         resnames = np.unique(mol.resname[notallowed])
         raise RuntimeError('Found atoms with resnames {} in the Molecule which can cause issues with the voxelization. Please make sure to only pass protein atoms and metals.'.format(resnames))
 
+    protmol = mol.copy()
+    protmol.filter(protsel, _logger=False)
+    metalmol = mol.copy()
+    metalmol.filter(metalsel, _logger=False)
+
     if protonate:
         from moleculekit.tools.preparation import proteinPrepare
-        mol = proteinPrepare(mol, pH=pH, verbose=verbose, _loggerLevel='INFO' if verbose else 'ERROR')
+        if np.all(protmol.segid == '') and np.all(protmol.chain == ''):
+            protmol = autoSegment2(protmol, fields=('segid', 'chain'), basename='K', _logger=verbose)  # We need segments to prepare the protein
+        protmol = proteinPrepare(protmol, pH=pH, verbose=verbose, _loggerLevel='INFO' if verbose else 'ERROR')
 
     if guessBonds:
-        mol.bonds = mol._guessBonds()
+        protmol.bonds = protmol._guessBonds()
         # TODO: Should we remove bonds between metals and protein? Should we remove metals before guessing bonds and add them back in? Might crash otherwise?
 
     if segment:
-        from moleculekit.tools.autosegment import autoSegment2
-        mol = autoSegment2(mol, fields=('segid', 'chain'), _logger=verbose) 
-
-        metals = mol.atomselect('element {}'.format(' '.join(metal_atypes)))  # Redo atomselection after protein has been prepared!
+        protmol = autoSegment2(protmol, fields=('segid', 'chain'), _logger=verbose)  # Reassign segments after preparation
 
         # Assign separate segment to the metals just in case pybel takes that into account
-        if np.any(mol.chain == 'Z') or np.any(mol.segid == 'ME'):
+        if np.any(protmol.chain == 'Z') or np.any(protmol.segid == 'ME'):
             raise AssertionError('Report this issue on the moleculekit github issue tracker. Too many chains in the protein.')
-        mol.segid[metals] = 'ME'
-        mol.chain[metals] = 'Z'
-        mol.resid[metals] = np.arange(metals.sum()) * 2 + mol.resid.max() + 1 # Just in case, let's put a residue gap between the metals so that they are considered separate chains no matter what happens
+        metalmol.segid[:] = 'ME'
+        metalmol.chain[:] = 'Z'
+        metalmol.resid[:] = np.arange(metalmol.numAtoms) * 2 + protmol.resid.max() + 1 # Just in case, let's put a residue gap between the metals so that they are considered separate chains no matter what happens
 
+    mol = protmol.copy()
+    mol.append(metalmol)
     return mol
 
 
