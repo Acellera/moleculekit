@@ -90,6 +90,9 @@ def _checkChainAndSegid(mol, _loggerLevel):
 
     if _loggerLevel is None or _loggerLevel == 'INFO':
         chainids = np.unique(mol.chain)
+        if np.any([len(cc) > 1 for cc in chainids]):
+            raise RuntimeError('The chain field should only contain a single character.')
+            
         print('\n---- Molecule chain report ----')
         for c in chainids:
             chainatoms = np.where(mol.chain == c)[0]
