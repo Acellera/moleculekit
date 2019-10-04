@@ -126,7 +126,7 @@ class TopologyInconsistencyError(Exception):
 class MolFactory(object):
     """ This class converts Topology and Trajectory data into Molecule objects """
     @staticmethod
-    def construct(topos, trajs, filename, frame, validateElements=True):
+    def construct(topos, trajs, filename, frame, validateElements=True, uniqueBonds=False):
         from moleculekit.molecule import Molecule
 
         topos = ensurelist(topos)
@@ -142,7 +142,7 @@ class MolFactory(object):
             mol = Molecule()
             if topo is not None:
                 mol._emptyTopo(natoms)
-                MolFactory._parseTopology(mol, topo, filename, validateElements=validateElements)
+                MolFactory._parseTopology(mol, topo, filename, validateElements=validateElements, uniqueBonds=uniqueBonds)
             if traj is not None:
                 mol._emptyTraj(natoms)
                 MolFactory._parseTraj(mol, traj, filename, frame)
@@ -209,7 +209,18 @@ class MolFactory(object):
             mol.element[i] = el  # Set standardized element
 
     @staticmethod
-    def _parseTopology(mol, topo, filename, validateElements=True):
+    def _keepUniqueBonds(bonds, bondtype):
+        print('uq bonds')
+        # First sort all rows of the bonds array, then combine with bond types and find the unique rows [idx1, idx2, bondtype]
+        unique_sorted = np.array(list(set(tuple(bb + [bt]) for bb, bt in zip(np.sort(bonds, axis=1).tolist(), bondtype.tolist()))))
+        bonds = unique_sorted[:, :2].astype(np.uint32)
+        bondtypes = unique_sorted[:, 2].astype(object)
+        # Sort both arrays for prettiness by the first bond index
+        sortidx = np.argsort(bonds[:, 0])
+        return bonds[sortidx], bondtypes[sortidx]
+
+    @staticmethod
+    def _parseTopology(mol, topo, filename, validateElements=True, uniqueBonds=True):
         from moleculekit.molecule import Molecule
         for field in topo.__dict__:
             if field == 'crystalinfo':
@@ -243,6 +254,9 @@ class MolFactory(object):
         mol.element = mol._guessMissingElements()
         if validateElements:
             MolFactory._elementChecks(mol, filename)
+
+        if uniqueBonds:
+            mol.bonds, mol.bondtype = MolFactory._keepUniqueBonds(mol.bonds, mol.bondtype)
 
         if os.path.exists(filename):
             filename = os.path.abspath(filename)
@@ -907,7 +921,7 @@ def PDBread(filename, mode='pdb', frame=None, topoloc=None, validateElements=Tru
 
     topo.crystalinfo = crystalinfo
     traj = Trajectory(coords=coords)
-    return MolFactory.construct(topo, traj, filename, frame, validateElements=validateElements)
+    return MolFactory.construct(topo, traj, filename, frame, validateElements=validateElements, uniqueBonds=True)
 
 
 def PDBQTread(filename, frame=None, topoloc=None):
