@@ -209,17 +209,6 @@ class MolFactory(object):
             mol.element[i] = el  # Set standardized element
 
     @staticmethod
-    def _keepUniqueBonds(bonds, bondtype):
-        print('uq bonds')
-        # First sort all rows of the bonds array, then combine with bond types and find the unique rows [idx1, idx2, bondtype]
-        unique_sorted = np.array(list(set(tuple(bb + [bt]) for bb, bt in zip(np.sort(bonds, axis=1).tolist(), bondtype.tolist()))))
-        bonds = unique_sorted[:, :2].astype(np.uint32)
-        bondtypes = unique_sorted[:, 2].astype(object)
-        # Sort both arrays for prettiness by the first bond index
-        sortidx = np.argsort(bonds[:, 0])
-        return bonds[sortidx], bondtypes[sortidx]
-
-    @staticmethod
     def _parseTopology(mol, topo, filename, validateElements=True, uniqueBonds=True):
         from moleculekit.molecule import Molecule
         for field in topo.__dict__:
@@ -256,7 +245,8 @@ class MolFactory(object):
             MolFactory._elementChecks(mol, filename)
 
         if uniqueBonds:
-            mol.bonds, mol.bondtype = MolFactory._keepUniqueBonds(mol.bonds, mol.bondtype)
+            from moleculekit.molecule import calculateUniqueBonds
+            mol.bonds, mol.bondtype = calculateUniqueBonds(mol.bonds, mol.bondtype)
 
         if os.path.exists(filename):
             filename = os.path.abspath(filename)
@@ -649,7 +639,7 @@ def pdbGuessElementByName(elements, names, onlymissing=True):
     return noelem, newelements[noelem]
 
 
-def PDBread(filename, mode='pdb', frame=None, topoloc=None, validateElements=True):
+def PDBread(filename, mode='pdb', frame=None, topoloc=None, validateElements=True, uniqueBonds=True):
     from pandas import read_fwf
     import io
 
@@ -921,7 +911,7 @@ def PDBread(filename, mode='pdb', frame=None, topoloc=None, validateElements=Tru
 
     topo.crystalinfo = crystalinfo
     traj = Trajectory(coords=coords)
-    return MolFactory.construct(topo, traj, filename, frame, validateElements=validateElements, uniqueBonds=True)
+    return MolFactory.construct(topo, traj, filename, frame, validateElements=validateElements, uniqueBonds=uniqueBonds)
 
 
 def PDBQTread(filename, frame=None, topoloc=None):

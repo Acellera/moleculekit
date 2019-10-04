@@ -178,6 +178,11 @@ def atomtypingValidityChecks(mol):
     if mol.bonds.shape[0] < (mol.numAtoms - 1):
         raise ValueError('The protein has less bonds than (number of atoms - 1). This seems incorrect. You can assign bonds with `mol.bonds = mol._getBonds()`')
 
+    from moleculekit.molecule import calculateUniqueBonds
+    uqbonds, _ = calculateUniqueBonds(mol.bonds, mol.bondtype)
+    if uqbonds.shape[0] != mol.bonds.shape[0]:
+        raise RuntimeError('The protein has duplicate bond information. This will mess up atom typing. Please keep only unique bonds in the molecule. If you want you can use moleculekit.molecule.calculateUniqueBonds for this.')
+
     if np.all(mol.segid == '') or np.all(mol.chain == ''):
         raise RuntimeError('Please assign segments to the segid and chain fields of the molecule using autoSegment2')
 
