@@ -352,7 +352,7 @@ def parallel(func, listobj, n_cpus=-1, *args):
 
 
 import unittest
-class _TestVoxel(unittest.TestCase):
+class _TestAtomTyper(unittest.TestCase):
     def test_preparation(self):
         from moleculekit.home import home
         from moleculekit.molecule import Molecule, mol_equal

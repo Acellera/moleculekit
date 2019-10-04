@@ -1936,14 +1936,20 @@ def calculateUniqueBonds(bonds, bondtype):
     >>> mol = Molecule('3PTB')
     >>> mol.bonds, mol.bondtype = calculateUniqueBonds(mol.bonds, mol.bondtype)  # Overwrite the bonds and bondtypes with the unique ones
     """
+    if bondtype is not None and len(bondtype):
+        assert len(bondtype) == bonds.shape[0]
+        # First sort all rows of the bonds array, then combine with bond types and find the unique rows [idx1, idx2, bondtype]
+        unique_sorted = np.array(list(set(tuple(bb + [bt]) for bb, bt in zip(np.sort(bonds, axis=1).tolist(), bondtype.tolist()))))
+        bonds = unique_sorted[:, :2].astype(np.uint32)
+        bondtypes = unique_sorted[:, 2].astype(object)
+        # Sort both arrays for prettiness by the first bond index
+        sortidx = np.argsort(bonds[:, 0])
+        return bonds[sortidx].copy(), bondtypes[sortidx].copy()
+    else:
+        bonds = np.array(list(set(tuple(bb) for bb in np.sort(bonds, axis=1).tolist())))
+        sortidx = np.argsort(bonds[:, 0]) # Sort array for prettiness by the first bond index
+        return bonds[sortidx].astype(np.uint32).copy(), None
     
-    # First sort all rows of the bonds array, then combine with bond types and find the unique rows [idx1, idx2, bondtype]
-    unique_sorted = np.array(list(set(tuple(bb + [bt]) for bb, bt in zip(np.sort(bonds, axis=1).tolist(), bondtype.tolist()))))
-    bonds = unique_sorted[:, :2].astype(np.uint32)
-    bondtypes = unique_sorted[:, 2].astype(object)
-    # Sort both arrays for prettiness by the first bond index
-    sortidx = np.argsort(bonds[:, 0])
-    return bonds[sortidx], bondtypes[sortidx]
 
 
 class Representations:

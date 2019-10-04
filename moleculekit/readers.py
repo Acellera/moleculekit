@@ -244,7 +244,7 @@ class MolFactory(object):
         if validateElements:
             MolFactory._elementChecks(mol, filename)
 
-        if uniqueBonds:
+        if uniqueBonds and len(mol.bonds):
             from moleculekit.molecule import calculateUniqueBonds
             mol.bonds, mol.bondtype = calculateUniqueBonds(mol.bonds, mol.bondtype)
 
