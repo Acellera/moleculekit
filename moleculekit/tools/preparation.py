@@ -68,6 +68,43 @@ def _warnIfContainsDUM(mol):
     if any(mol.atomselect("resname DUM")):
         logger.warning("OPM's DUM residues must be filtered out before preparation. Continuing, but crash likely.")
 
+def _checkChainAndSegid(mol, _loggerLevel):
+    from moleculekit.util import sequenceID
+    emptychains = mol.chain == ''
+    emptysegids = mol.segid == ''
+
+    if np.all(emptychains) and np.all(emptysegids):
+        raise RuntimeError('No chains or segments defined in Molecule.chain / Molecule.segid. Please assign either to continue with preparation.')
+
+    if np.all(emptychains) and np.any(~emptysegids):
+        logger.info('No chains defined in Molecule. Using segment IDs as chains for protein preparation.')
+        mol = mol.copy()
+        mol.chain = sequenceID(mol.segid)
+        
+    if np.any(~emptysegids) and np.any(~emptychains):
+        chainseq = sequenceID(mol.chain)
+        segidseq = sequenceID(mol.segid)
+        if not np.array_equal(chainseq, segidseq):
+            logger.warning('Both chains and segments are defined in Molecule.chain / Molecule.segid, however they are inconsistent. ' \
+                           'Protein preparation will use the chain information.')
+
+    if _loggerLevel is None or _loggerLevel == 'INFO':
+        chainids = np.unique(mol.chain)
+        if np.any([len(cc) > 1 for cc in chainids]):
+            raise RuntimeError('The chain field should only contain a single character.')
+            
+        print('\n---- Molecule chain report ----')
+        for c in chainids:
+            chainatoms = np.where(mol.chain == c)[0]
+            firstatom = chainatoms[0]
+            lastatom = chainatoms[-1]
+            print(f'Chain {c}:')
+            print(f'    First residue: {mol.resname[firstatom]}:{mol.resid[firstatom]}:{mol.insertion[firstatom]}')
+            print(f'    Final residue: {mol.resname[lastatom]}:{mol.resid[lastatom]}:{mol.insertion[lastatom]}')
+        print('---- End of chain report ----\n')
+    
+    return mol
+
 
 def _buildResAndMol(pdb2pqr_protein):
     # Here I parse the returned protein object and recreate a Molecule,
@@ -321,6 +358,8 @@ def proteinPrepare(mol_in,
 
     _warnIfContainsDUM(mol_in)
 
+    mol_in = _checkChainAndSegid(mol_in, _loggerLevel)
+
     # We could transform the molecule into an internal object, but for
     # now I prefer to rely on the strange internal parser to avoid
     # hidden quirks.
@@ -416,7 +455,7 @@ class _TestPreparation(unittest.TestCase):
         assert d.protonation[d.resid == 40].iloc[0] == 'HIE'
         assert d.protonation[d.resid == 57].iloc[0] == 'HIP'
         assert d.protonation[d.resid == 91].iloc[0] == 'HID'
-
+        
     @unittest.skipUnless(os.environ.get('HTMD_LONGTESTS') == 'yes', 'Too long')
     def test_proteinPrepareLong(self):
         from moleculekit.home import home

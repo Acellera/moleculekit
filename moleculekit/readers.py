@@ -126,7 +126,7 @@ class TopologyInconsistencyError(Exception):
 class MolFactory(object):
     """ This class converts Topology and Trajectory data into Molecule objects """
     @staticmethod
-    def construct(topos, trajs, filename, frame, validateElements=True):
+    def construct(topos, trajs, filename, frame, validateElements=True, uniqueBonds=False):
         from moleculekit.molecule import Molecule
 
         topos = ensurelist(topos)
@@ -142,7 +142,7 @@ class MolFactory(object):
             mol = Molecule()
             if topo is not None:
                 mol._emptyTopo(natoms)
-                MolFactory._parseTopology(mol, topo, filename, validateElements=validateElements)
+                MolFactory._parseTopology(mol, topo, filename, validateElements=validateElements, uniqueBonds=uniqueBonds)
             if traj is not None:
                 mol._emptyTraj(natoms)
                 MolFactory._parseTraj(mol, traj, filename, frame)
@@ -209,7 +209,7 @@ class MolFactory(object):
             mol.element[i] = el  # Set standardized element
 
     @staticmethod
-    def _parseTopology(mol, topo, filename, validateElements=True):
+    def _parseTopology(mol, topo, filename, validateElements=True, uniqueBonds=True):
         from moleculekit.molecule import Molecule
         for field in topo.__dict__:
             if field == 'crystalinfo':
@@ -243,6 +243,10 @@ class MolFactory(object):
         mol.element = mol._guessMissingElements()
         if validateElements:
             MolFactory._elementChecks(mol, filename)
+
+        if uniqueBonds and len(mol.bonds):
+            from moleculekit.molecule import calculateUniqueBonds
+            mol.bonds, mol.bondtype = calculateUniqueBonds(mol.bonds, mol.bondtype)
 
         if os.path.exists(filename):
             filename = os.path.abspath(filename)
@@ -382,8 +386,6 @@ def GJFread(filename, frame=None, topoloc=None):
 
 def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
     from moleculekit.periodictable import periodictable
-    element_symbols = periodictable.keys()
-    assert len(element_symbols) == 118
 
     topologies = []  # Allow reading of multi-mol MOL2 files
     topologies.append(Topology())
@@ -393,7 +395,6 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
     section = None
 
     molnum = 0
-    unguessed = []
     with open(filename, "r") as f:
         for line in f:
             if line.startswith('@<TRIPOS>MOLECULE'):
@@ -431,10 +432,12 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
                     topo.charge.append(float(pieces[8]))
 
                 element = pieces[5].split('.')[0]
-                if element in element_symbols:
+                if element == 'Du':  # Corina, SYBYL and Tripos dummy atoms. Don't catch Du.C which is a dummy carbon and should be recognized as carbon
+                    topo.name[-1] = '{:<4}'.format(topo.name[-1])  # We are using the PDB convention of left aligning the name in 4 spaces to signify ion/metal
+                    topo.element.append('')
+                elif element in periodictable:
                     topo.element.append(element)
                 else:
-                    unguessed.append(pieces[5])
                     topo.element.append('')
             elif section == 'bond':
                 pieces = line.strip().split()
@@ -442,11 +445,6 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
                     raise RuntimeError('Less than 4 values encountered in bonds definition in line {}'.format(line))
                 topo.bonds.append([int(pieces[1]) - 1, int(pieces[2]) - 1])
                 topo.bondtype.append(pieces[3])
-
-
-    if len(unguessed) != 0:
-        logger.warning('Could not guess elements for {} atoms with MOL2 atomtypes '
-                       '({}).'.format(len(unguessed), ', '.join(np.unique(unguessed))))
 
     trajectories = []
     for cc in coordinates:
@@ -641,7 +639,7 @@ def pdbGuessElementByName(elements, names, onlymissing=True):
     return noelem, newelements[noelem]
 
 
-def PDBread(filename, mode='pdb', frame=None, topoloc=None, validateElements=True):
+def PDBread(filename, mode='pdb', frame=None, topoloc=None, validateElements=True, uniqueBonds=True):
     from pandas import read_fwf
     import io
 
@@ -913,7 +911,7 @@ def PDBread(filename, mode='pdb', frame=None, topoloc=None, validateElements=Tru
 
     topo.crystalinfo = crystalinfo
     traj = Trajectory(coords=coords)
-    return MolFactory.construct(topo, traj, filename, frame, validateElements=validateElements)
+    return MolFactory.construct(topo, traj, filename, frame, validateElements=validateElements, uniqueBonds=uniqueBonds)
 
 
 def PDBQTread(filename, frame=None, topoloc=None):
@@ -1069,7 +1067,7 @@ def PSFread(filename, frame=None, topoloc=None, validateElements=True):
                 topo.insertion.append(insertion)
                 topo.resname.append(l[3])
                 topo.name.append(l[4])
-                topo.atomtype.append(l[5])
+                topo.atomtype.append(l[5] if l[5] != 'NULL' else '')
                 topo.charge.append(float(l[6]))
                 topo.masses.append(float(l[7]))
             elif mode == 'bond':
@@ -1894,6 +1892,10 @@ class _TestReaders(unittest.TestCase):
 
         mol = Molecule(os.path.join(self.testfolder(), 'cl_na_element.pdb'))
         refelem = np.array(['Cl', 'Na'], dtype=object)
+        assert np.array_equal(mol.element, refelem)
+
+        mol = Molecule(os.path.join(self.testfolder(), 'dummy_atoms.mol2'))
+        refelem = np.array(['Cd', 'Co', 'Ca', 'Xe', 'Rb', 'Lu', 'Ga', 'Ba', 'Cs', 'Ho', 'Pb', 'Sr', 'Yb', 'Y'], dtype=object)
         assert np.array_equal(mol.element, refelem)
 
 

@@ -19,9 +19,12 @@ _Pair = collections.namedtuple('Atom', 'resname name')
 # Some programs like AutoDock require this strict formatting to guess atom types.
 
 # These attributes are used to deduce how to format the atom name.
-_ions = ('FE', 'AS', 'ZN', 'MG', 'MN', 'CO', 'BR',
-         'CU', 'TA', 'MO', 'AL', 'BE', 'SE', 'PT',
-         'EU', 'NI', 'IR', 'RH', 'AU', 'GD', 'RU')
+_ions_metals = ('FE', 'AS', 'ZN', 'MG', 'MN', 'CO', 'BR',
+                'CU', 'TA', 'MO', 'AL', 'BE', 'SE', 'PT',
+                'EU', 'NI', 'IR', 'RH', 'AU', 'GD', 'RU', 
+                'XE', 'RB', 'LU', 'GA', 'BA', 'CS', 'Y',
+                'PB', 'SM', 'SR', 'YB')
+
 # Mercurial can be confused for hydrogen gamma. Yet, mercurial is
 # rather rare in the PDB. Here are all the residues that contain
 # mercurial.
@@ -63,7 +66,7 @@ def _deduce_PDB_atom_name(name, resname):
     elif len(name) == 1:
         return ' {}  '.format(name)
     elif ((resname == name
-           or name[:2] in _ions
+           or name[:2] in _ions_metals
            or name == 'UNK'
            or (resname in _special_hg and name[:2] == 'HG')
            or (resname in _special_cl and name[:2] == 'CL')
@@ -306,34 +309,28 @@ def PSFwrite(molecule, filename, explicitbonds=None):
     available_segids = [x for x in segid_alphabet if x not in used_segids]
 
     f = open(filename, 'w')
-    print("PSF\n", file=f)
+    print("PSF NAMD\n", file=f)  # Write NAMD in the header so that VMD will read it as space delimited format instead of FORTRAN
     print("%8d !NTITLE\n" % (0), file=f)
     print("%8d !NATOM" % (len(m.serial)), file=f)
     for i in range(len(m.serial)):
-        charge = 0
-        mass = 1
+        atomtype = m.atomtype[i] if m.atomtype[i] != '' else 'NULL' # Write default atomtype otherwise the PSF reader will fail to read correctly the PSF
+
         segid = available_segids[0]
-        atomtype = ""
-        if (m.masses is not None) and (i < len(m.masses)):
-            mass = m.masses[i]
-        if (m.charge is not None) and (i < len(m.charge)):
-            charge = m.charge[i]
-        if (m.atomtype is not None) and (i < len(m.atomtype)):
-            atomtype = m.atomtype[i]
-        if (m.segid is not None) and (i < len(m.segid)) and m.segid[i] != '':
+        if m.segid[i] != '':
             segid = m.segid[i]
         elif m.segid[i] == '' and m.chain[i] != '':
             segid = m.chain[i]
+            
         print("{!s:>8.8} {!s:4.4} {!s:5.5}{!s:4.4} {!s:4.4} {!s:6.6} {!s:2.2} {:10.6}  {:8.6}  {!s:>10.10}".format(
             int(m.serial[i]),
             segid,
             str(m.resid[i]) + str(m.insertion[i]),
-            (m.resname[i]),
+            m.resname[i],
             m.name[i],
             atomtype,
             "",  # m.element[i], # NAMD barfs if this is set
-            charge,
-            mass,
+            m.charge[i],
+            m.masses[i],
             0
         ), file=f)
 

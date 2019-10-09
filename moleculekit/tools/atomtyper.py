@@ -11,8 +11,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+metal_atypes = ('MG', 'ZN', 'MN', 'CA', 'FE', 'HG', 'CD', 'NI', 'CO', 'CU', 'K', 'LI', 
+                'Mg', 'Zn', 'Mn', 'Ca', 'Fe', 'Hg', 'Cd', 'Ni', 'Co', 'Cu', 'Li')
+
 
 def getPDBQTAtomType(atype, aidx, mol, aromaticNitrogen=False):
+    if atype in metal_atypes:  # Save metals from treated as protein atoms
+        return atype
+
     tmptype = ''
     # carbons
     if atype == 'Car':
@@ -52,10 +58,15 @@ def getPDBQTAtomType(atype, aidx, mol, aromaticNitrogen=False):
         tmptype = 'H'
         # print(aidx)
         # print(np.where(mol.bonds == aidx))
-        bond = np.where(mol.bonds == aidx)[0][0]
+        try:
+            bond = np.where(mol.bonds == aidx)[0][0]
+        except Exception as e:
+            raise RuntimeError(f'Could not atomtype hydrogen atom with index {aidx} due to no bonding partners.')
+
         oidx = [a for a in mol.bonds[bond] if a != aidx][0]
         if mol.element[oidx] not in ['C', 'A']:
             tmptype += 'D'
+
     if tmptype == '':
         tmptype = atype[0]
 
@@ -100,26 +111,51 @@ def prepareProteinForAtomtyping(mol, guessBonds=True, protonate=True, pH=7, segm
     mol : Molecule object
         The prepared Molecule
     """
+    from moleculekit.tools.autosegment import autoSegment2
+
     mol = mol.copy()
+    if guessBonds:  # Need to guess bonds at the start for atom selection and for autoSegment
+        mol.bondtype = np.array([], dtype=object)
+        mol.bonds = mol._guessBonds()
+
     protsel = mol.atomselect('protein')
+    metalsel = mol.atomselect('element {}'.format(' '.join(metal_atypes)))
+    notallowed = ~(protsel | metalsel)
 
     if not np.any(protsel):
         raise RuntimeError('No protein atoms found in Molecule')
 
-    if np.any(~protsel):
-        resnames = np.unique(mol.resname[~protsel])
-        raise RuntimeError('Found non-protein atoms with resnames {} in the Molecule. Please make sure to only pass protein atoms.'.format(resnames))
+    if np.any(notallowed):
+        resnames = np.unique(mol.resname[notallowed])
+        raise RuntimeError('Found atoms with resnames {} in the Molecule which can cause issues with the voxelization. Please make sure to only pass protein atoms and metals.'.format(resnames))
+
+    protmol = mol.copy()
+    protmol.filter(protsel, _logger=False)
+    metalmol = mol.copy()
+    metalmol.filter(metalsel, _logger=False)
 
     if protonate:
         from moleculekit.tools.preparation import proteinPrepare
-        mol = proteinPrepare(mol, pH=pH, verbose=verbose, _loggerLevel='INFO' if verbose else 'ERROR')
+        if np.all(protmol.segid == '') and np.all(protmol.chain == ''):
+            protmol = autoSegment2(protmol, fields=('segid', 'chain'), basename='K', _logger=verbose)  # We need segments to prepare the protein
+        protmol = proteinPrepare(protmol, pH=pH, verbose=verbose, _loggerLevel='INFO' if verbose else 'ERROR')
 
     if guessBonds:
-        mol.bonds = mol._guessBonds()
+        protmol.bonds = protmol._guessBonds()
+        # TODO: Should we remove bonds between metals and protein? Should we remove metals before guessing bonds and add them back in? Might crash otherwise?
 
     if segment:
-        from moleculekit.tools.autosegment import autoSegment2
-        mol = autoSegment2(mol, fields=('segid', 'chain'), _logger=verbose) 
+        protmol = autoSegment2(protmol, fields=('segid', 'chain'), _logger=verbose)  # Reassign segments after preparation
+
+        # Assign separate segment to the metals just in case pybel takes that into account
+        if np.any(protmol.chain == 'Z') or np.any(protmol.segid == 'ME'):
+            raise AssertionError('Report this issue on the moleculekit github issue tracker. Too many chains in the protein.')
+        metalmol.segid[:] = 'ME'
+        metalmol.chain[:] = 'Z'
+        metalmol.resid[:] = np.arange(metalmol.numAtoms) * 2 + protmol.resid.max() + 1 # Just in case, let's put a residue gap between the metals so that they are considered separate chains no matter what happens
+
+    mol = protmol.copy()
+    mol.append(metalmol)
     return mol
 
 
@@ -129,16 +165,23 @@ def atomtypingValidityChecks(mol):
                 'Most of these checks can be passed by using the moleculekit.atomtyper.prepareProteinForAtomtyping function. ' \
                 'But make sure you understand what you are doing.')
     protsel = mol.atomselect('protein')
+    metals = mol.atomselect('element {}'.format(' '.join(metal_atypes)))
+    notallowed = ~(protsel | metals)
 
     if not np.any(protsel):
         raise RuntimeError('No protein atoms found in Molecule')
 
-    if np.any(~protsel):
-        resnames = np.unique(mol.resname[~protsel])
-        raise RuntimeError('Found non-protein atoms with resnames {} in the Molecule. Please make sure to only pass protein atoms.'.format(resnames))
+    if np.any(notallowed):
+        resnames = np.unique(mol.resname[notallowed])
+        raise RuntimeError('Found atoms with resnames {} in the Molecule which can cause issues with the voxelization. Please make sure to only pass protein atoms and metals.'.format(resnames))
 
-    if mol.bonds.shape[0] < mol.numAtoms:
-        raise ValueError('The protein has less bonds than atoms. This seems incorrect. Assign them with `mol.bonds = mol._getBonds()`')
+    if mol.bonds.shape[0] < (mol.numAtoms - 1):
+        raise ValueError('The protein has less bonds than (number of atoms - 1). This seems incorrect. You can assign bonds with `mol.bonds = mol._getBonds()`')
+
+    from moleculekit.molecule import calculateUniqueBonds
+    uqbonds, _ = calculateUniqueBonds(mol.bonds, mol.bondtype)
+    if uqbonds.shape[0] != mol.bonds.shape[0]:
+        raise RuntimeError('The protein has duplicate bond information. This will mess up atom typing. Please keep only unique bonds in the molecule. If you want you can use moleculekit.molecule.calculateUniqueBonds for this.')
 
     if np.all(mol.segid == '') or np.all(mol.chain == ''):
         raise RuntimeError('Please assign segments to the segid and chain fields of the molecule using autoSegment2')
@@ -281,14 +324,7 @@ def _getOccupancy(elements):
 
 
 def _getMetals(atypes):
-    return (atypes == 'MG') | (atypes == 'ZN') | (atypes == 'MN') | \
-           (atypes == 'CA') | (atypes == 'FE') | (atypes == 'HG') | \
-           (atypes == 'CD') | (atypes == 'NI') | (atypes == 'CO') | \
-           (atypes == 'CU') | (atypes == 'K') | (atypes == 'LI') | \
-           (atypes == 'Mg') | (atypes == 'Zn') | (atypes == 'Mn') | \
-           (atypes == 'Ca') | (atypes == 'Fe') | (atypes == 'Hg') | \
-           (atypes == 'Cd') | (atypes == 'Ni') | (atypes == 'Co') | \
-           (atypes == 'Cu') | (atypes == 'Li')
+    return np.in1d(atypes, metal_atypes)
 
 
 def getFeatures(mol):
@@ -313,3 +349,19 @@ def parallel(func, listobj, n_cpus=-1, *args):
     results = Parallel(n_jobs=n_cpus)(delayed(func)(ob, *args)
                                       for ob in tqdm(listobj))
     return results
+
+
+import unittest
+class _TestAtomTyper(unittest.TestCase):
+    def test_preparation(self):
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule, mol_equal
+        from os import path
+        mol = Molecule(path.join(home(dataDir='test-voxeldescriptors'), '1ATL.pdb'))
+        ref = Molecule(path.join(home(dataDir='test-voxeldescriptors'), '1ATL_prepared.pdb'))
+        mol2 = prepareProteinForAtomtyping(mol, verbose=False)
+   
+        assert mol_equal(mol2, ref, exceptFields=('coords',))
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
