@@ -48,9 +48,7 @@ clean:
 	rm -rf $(TUTORIALSDIR)
 
 publish:
-	ssh www.acellera.com 'rm -rf ~/software.acellera.com/source/moleculekit/*'
-	scp -r source/* www.acellera.com:~/software.acellera.com/source/moleculekit/
-	ssh www.acellera.com 'chmod -R g+rwX software.acellera.com/'
-
-
+	ssh software.acellera.com 'rm -rf /var/www/software/source/moleculekit/*'
+	scp -r source/* software.acellera.com:/var/www/software/source/moleculekit/
+	ssh software.acellera.com 'chmod -R g+rwX /var/www/software/source/moleculekit/'
 
