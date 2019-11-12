@@ -17,8 +17,6 @@ of the molecular structures.
 The source code of Moleculekit is available under https://github.com/Acellera/moleculekit and you can use the issue tracker
 there to report any bugs or issues you encounter using the library.
 
-Contents
---------
 
 .. toctree::
    :maxdepth: 3
@@ -35,3 +33,4 @@ Contents
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
