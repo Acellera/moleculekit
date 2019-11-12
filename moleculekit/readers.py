@@ -1140,17 +1140,12 @@ def XTCread(filename, frame=None, topoloc=None):
     deltastep = pack_int_buffer([0])
 
     # This is fast, it's written in the header of the XTC
-    import time
-    t = time.time()
     natoms = lib['libxtc'].xtc_natoms(ct.c_char_p(filename.encode("ascii")))
-    print('Took {} for natoms'.format(time.time() - t))
 
     if givenframes is None:  # Read the whole XTC file at once
         # Read number of frames in XTC. This will waste some time the first time to read the whole trajectory and write an index file
         # Subsequent calls will get the number from an index file
-        t = time.time()
         nframes = lib['libxtc'].xtc_nframes(ct.c_char_p(filename.encode("ascii")))
-        print('Took {} for nframes'.format(time.time() - t))
 
         coords = np.zeros((natoms, 3, nframes), dtype=np.float32)
         box = np.zeros((3, nframes), dtype=np.float32)
@@ -1164,7 +1159,7 @@ def XTCread(filename, frame=None, topoloc=None):
             box.ctypes.data_as(ct.POINTER(ct.c_float)),
             time.ctypes.data_as(ct.POINTER(ct.c_float)),
             step.ctypes.data_as(ct.POINTER(ct.c_int)),
-            ct.c_int(natoms), deltat, deltastep
+            ct.c_int(natoms), ct.c_int(nframes), deltat, deltastep
         )
         step = step.astype(np.uint64) # Change dtype here
     else:
