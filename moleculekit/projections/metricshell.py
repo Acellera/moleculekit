@@ -226,10 +226,10 @@ class _TestMetricShell(unittest.TestCase):
 
         metr = MetricShell("name CL", "name CL", pbc=False)
         data = metr.project(mol)
-	    # fmt: off
+        # fmt: off
         refdata = np.array([[0.01768388256576615, 0.0, 0.0, 0.0, 0.01768388256576615, 0.0, 0.0, 0.0, 0.01768388256576615, 0.0, 0.0, 0.0]])
-	    # fmt: on
-	    assert np.allclose(data, refdata)
+        # fmt: on
+        assert np.allclose(data, refdata)
 
         metr = MetricShell("name CL", "name CL", numshells=2, shellwidth=1, pbc=False)
         data = metr.project(mol)
