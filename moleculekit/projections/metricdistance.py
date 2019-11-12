@@ -217,6 +217,9 @@ class MetricSelfDistance(MetricDistance):
 
 def contactVecToMatrix(vector, atomIndexes):
     from copy import deepcopy
+
+    if np.ndim(vector) != 1:
+        raise RuntimeError('Please pass a 1D vector to the contactVecToMatrix function.')
     # Calculating the unique atom groups in the mapping
     uqAtomGroups = []
     atomIndexes = deepcopy(list(atomIndexes))
@@ -273,9 +276,12 @@ def reconstructContactMap(vector, mapping, truecontacts=None, plot=True, figsize
     To use it with distances instead of contacts pass ones as the concat vector
     >>> reconstructContactMap(np.ones(dists.shape, dtype=bool), mapping, colors=dists)
     """
-
     from copy import deepcopy
     from matplotlib import cm as colormaps
+
+    if np.ndim(vector) != 1:
+        raise RuntimeError('Please pass a 1D vector to the reconstructContactMap function.')
+
     if truecontacts is None:
         truecontacts = np.zeros(len(vector), dtype=bool)
     if len(vector) != len(mapping):
@@ -363,10 +369,44 @@ class _TestMetricDistance(unittest.TestCase):
         self.mol_skipped.read(path.join(home(dataDir='test-projections'), 'trajectory', 'traj.xtc'), skip=10)
 
     def test_contacts(self):
-        metr = MetricDistance('protein and name CA', 'resname MOL and noh', metric='contacts')
+        metr = MetricDistance('protein and name CA', 'resname MOL and noh', metric='contacts', threshold=8)
         data = metr.project(self.mol)
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'contacts.npy'))
+        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'distances.npy')) < 8
+
         assert np.allclose(data, refdata, atol=1e-3), 'Contact calculation is broken'
+
+    def test_distances_trivial(self):
+        from moleculekit.molecule import Molecule
+        import numpy as np
+
+        mol = Molecule().empty(3)
+        mol.name[:] = 'C'
+        mol.element[:] = 'C'
+        mol.coords = np.zeros((3, 3, 2), dtype=np.float32) # Make two frames so we check if the code works for nframes
+        mol.coords[1, :, 0] = [3, 3, 3]
+        mol.coords[2, :, 0] = [5, 5, 5]
+        mol.coords[1, :, 1] = [7, 7, 7]
+        mol.coords[2, :, 1] = [6, 6, 6]
+
+        realdistances = np.linalg.norm(mol.coords[[1, 2], :, :], axis=1).T
+
+        metr = MetricDistance('index 0', 'index 1 2', metric='distances', pbc=False)
+        data = metr.project(mol)
+        assert np.allclose(data, realdistances), 'Trivial distance calculation is broken'
+
+        # Test wrapped distances
+        wrappedcoords = np.mod(mol.coords, 2)
+        wrappedrealdistances = np.linalg.norm(wrappedcoords[[1, 2], :, :], axis=1).T
+
+        mol.box = np.full((3, 2), 2, dtype=np.float32)  # Make box 2x2x2A large
+        metr = MetricDistance('index 0', 'index 1 2', metric='distances', pbc=True)
+        data = metr.project(mol)
+        assert np.allclose(data, wrappedrealdistances), 'Trivial wrapped distance calculation is broken'
+
+        # Test min distances
+        metr = MetricDistance('index 0', 'index 1 2', metric='distances', pbc=False, groupsel1='all', groupsel2='all')
+        data = metr.project(mol)
+        assert np.allclose(data.flatten(), np.min(realdistances, axis=1)), 'Trivial distance calculation is broken'
 
     def test_distances(self):
         metr = MetricDistance('protein and name CA', 'resname MOL and noh', metric='distances')
@@ -413,7 +453,7 @@ class _TestMetricDistance(unittest.TestCase):
         mol = Molecule('1yu8')
 
         metr = MetricSelfDistance('protein and name CA', metric='contacts', pbc=False)
-        data = metr.project(mol)
+        data = metr.project(mol)[0]
         mapping = metr.getMapping(mol)
 
         tmpfile = tempname(suffix='.svg')
