@@ -408,6 +408,26 @@ class _TestMetricDistance(unittest.TestCase):
         data = metr.project(mol)
         assert np.allclose(data.flatten(), np.min(realdistances, axis=1)), 'Trivial distance calculation is broken'
 
+        # Test ordering
+        mol = Molecule().empty(4)
+        mol.name[:] = 'C'
+        mol.element[:] = 'C'
+        mol.coords = np.zeros((4, 3, 2), dtype=np.float32) # Make two frames so we check if the code works for nframes
+        mol.coords[1, :, 0] = [1, 1, 1]
+        mol.coords[2, :, 0] = [3, 3, 3]
+        mol.coords[3, :, 0] = [5, 5, 5]
+        mol.coords[1, :, 1] = [1, 1, 1]
+        mol.coords[2, :, 1] = [7, 7, 7]
+        mol.coords[3, :, 1] = [6, 6, 6]
+
+        realdistances = np.linalg.norm(mol.coords[[2, 3], :, :] - mol.coords[0], axis=1).T
+        realdistances = np.hstack((realdistances, np.linalg.norm(mol.coords[[2, 3], :, :] - mol.coords[1], axis=1).T))
+
+        metr = MetricDistance('index 0 1', 'index 2 3', metric='distances', pbc=False)
+        data = metr.project(mol)
+        assert np.allclose(data, realdistances), 'Trivial distance calculation has broken ordering'
+
+
     def test_distances(self):
         metr = MetricDistance('protein and name CA', 'resname MOL and noh', metric='distances')
         data = metr.project(self.mol)
