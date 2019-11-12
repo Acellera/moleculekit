@@ -1159,6 +1159,7 @@ class Molecule(object):
     def _mergeTrajectories(self, newmols, skip=None, append=False):
         from collections import defaultdict
         trajinfo = defaultdict(list)
+
         if append and self._numAtomsTraj != 0:
             for field in Molecule._traj_fields:
                 trajinfo[field].append(self.__dict__[field])
@@ -1178,7 +1179,11 @@ class Molecule(object):
                 if field == 'fileloc':
                     self.__dict__[field] = trajinfo[field]
                 else:
-                    self.__dict__[field] = np.concatenate(trajinfo[field], axis=-1)
+                    # np.concatenate duplicates memory. Let's avoid it if it's only one array to not fill up all memory w large traj
+                    if len(trajinfo[field]) == 1:
+                        self.__dict__[field] = trajinfo[field][0]
+                    else:
+                        self.__dict__[field] = np.concatenate(trajinfo[field], axis=-1)
 
         if self._numAtomsTopo != 0 and self._numAtomsTraj == 0:
             self._emptyTraj(self._numAtomsTopo)

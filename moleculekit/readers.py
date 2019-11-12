@@ -262,18 +262,29 @@ class MolFactory(object):
         assert traj.coords.ndim == 3, '{} reader must return 3D coordinates array for file {}'.format(ext, filename)
         assert traj.coords.shape[1] == 3, '{} reader must return 3 values in 2nd dimension for file {}'.format(ext, filename)
 
-        mol.coords = traj.coords.astype(Molecule._dtypes['coords'])
+        
+        for field in ['coords', 'box', 'boxangles']:
+            # All necessary dtype conversions. Only perform if necessary since it otherwise reallocates memory!
+            if getattr(traj, field).dtype != Molecule._dtypes[field]:
+                setattr(traj, field, getattr(traj, field).astype(Molecule._dtypes['coords']))
+
+            # Check for array contiguity
+            if not getattr(traj, field).flags['C_CONTIGUOUS']:
+                setattr(traj, field, np.ascontiguousarray(getattr(traj, field)))
+
+        mol.coords = traj.coords
+
         if traj.box is None:
             mol.box = np.zeros((3, 1), dtype=Molecule._dtypes['box'])
         else:
-            mol.box = np.array(traj.box).astype(Molecule._dtypes['box'])
+            mol.box = np.array(traj.box)
             if mol.box.ndim == 1:
                 mol.box = mol.box[:, np.newaxis]
 
         if traj.boxangles is None:
             mol.boxangles = np.zeros((3, 1), dtype=Molecule._dtypes['boxangles'])
         else:
-            mol.boxangles = np.array(traj.boxangles).astype(Molecule._dtypes['boxangles'])
+            mol.boxangles = np.array(traj.boxangles)
             if mol.boxangles.ndim == 1:
                 mol.boxangles = mol.boxangles[:, np.newaxis]
 
@@ -1122,71 +1133,88 @@ def XTCread(filename, frame=None, topoloc=None):
     time : nd.array
     """
     givenframes = frame
-    class __xtc(ct.Structure):
-        _fields_ = [("box", (ct.c_float * 3)),
-                    ("natoms", ct.c_int),
-                    ("step", ct.c_ulong),
-                    ("time", ct.c_double),
-                    ("pos", ct.POINTER(ct.c_float))]
 
     lib = xtc_lib()
-    nframes = pack_ulong_buffer([0])
-    natoms = pack_int_buffer([0])
-    deltastep = pack_int_buffer([0])
+    natoms_r = pack_int_buffer([0])
     deltat = pack_double_buffer([0])
+    deltastep = pack_int_buffer([0])
 
-    lib['libxtc'].xtc_read.restype = ct.POINTER(__xtc)
-    lib['libxtc'].xtc_read_frame.restype = ct.POINTER(__xtc)
+    # This is fast, it's written in the header of the XTC
+    import time
+    t = time.time()
+    natoms = lib['libxtc'].xtc_natoms(ct.c_char_p(filename.encode("ascii")))
+    print('Took {} for natoms'.format(time.time() - t))
 
-    coords = None
     if givenframes is None:  # Read the whole XTC file at once
-        retval = lib['libxtc'].xtc_read(
+        # Read number of frames in XTC. This will waste some time the first time to read the whole trajectory and write an index file
+        # Subsequent calls will get the number from an index file
+        t = time.time()
+        nframes = lib['libxtc'].xtc_nframes(ct.c_char_p(filename.encode("ascii")))
+        print('Took {} for nframes'.format(time.time() - t))
+
+        coords = np.zeros((natoms, 3, nframes), dtype=np.float32)
+        box = np.zeros((3, nframes), dtype=np.float32)
+        time = np.zeros(nframes, dtype=np.float32)
+        step = np.zeros(nframes, dtype=int)
+        # void xtc_read_new(char *filename, float *coords_arr, float *box_arr, float *time_arr, int *step_arr, 
+        #                   int natoms, double *dt, int *dstep)
+        lib['libxtc'].xtc_read_new(
             ct.c_char_p(filename.encode("ascii")),
-            natoms,
-            nframes, deltat, deltastep)
-        if not retval:
-            raise IOError('XTC file {} possibly corrupt.'.format(filename))
-        nframes = nframes[0]
-        frames = range(nframes)
-        coords = np.zeros((natoms[0], 3, nframes), dtype=np.float32)
+            coords.ctypes.data_as(ct.POINTER(ct.c_float)),
+            box.ctypes.data_as(ct.POINTER(ct.c_float)),
+            time.ctypes.data_as(ct.POINTER(ct.c_float)),
+            step.ctypes.data_as(ct.POINTER(ct.c_int)),
+            ct.c_int(natoms), deltat, deltastep
+        )
+        step = step.astype(np.uint64) # Change dtype here
     else:
+        class __xtc(ct.Structure):
+            _fields_ = [("box", (ct.c_float * 3)),
+                        ("natoms", ct.c_int),
+                        ("step", ct.c_ulong),
+                        ("time", ct.c_double),
+                        ("pos", ct.POINTER(ct.c_float))]
+
+        lib['libxtc'].xtc_read.restype = ct.POINTER(__xtc)
+        lib['libxtc'].xtc_read_frame.restype = ct.POINTER(__xtc)
+
         if not isinstance(givenframes, list) and not isinstance(givenframes, np.ndarray):
             givenframes = [givenframes]
         nframes = len(givenframes)
         frames = givenframes
 
-    step = np.zeros(nframes, dtype=np.uint64)
-    time = np.zeros(nframes, dtype=np.float32)
-    box = np.zeros((3, nframes), dtype=np.float32)
-    boxangles = np.zeros((3, nframes), dtype=np.float32)
+        coords = None
+        step = np.zeros(nframes, dtype=np.uint64)
+        time = np.zeros(nframes, dtype=np.float32)
+        box = np.zeros((3, nframes), dtype=np.float32)
 
-    for i, f in enumerate(frames):
-        if givenframes is not None:  # If frames were given, read specific frame
-            retval = lib['libxtc'].xtc_read_frame(
-                ct.c_char_p(filename.encode("ascii")),
-                natoms,
-                ct.c_int(f))
-            if not retval:
-                raise IOError('XTC file {} possibly corrupt.'.format(filename))
-            if coords is None:
-                coords = np.zeros((natoms[0], 3, nframes), dtype=np.float32)
-            fidx = 0
-        else:
-            fidx = f
+        for i, f in enumerate(frames):
+            if givenframes is not None:  # If frames were given, read specific frame
+                retval = lib['libxtc'].xtc_read_frame(
+                    ct.c_char_p(filename.encode("ascii")),
+                    natoms_r,
+                    ct.c_int(f))
+                if not retval:
+                    raise IOError('XTC file {} possibly corrupt.'.format(filename))
+                if coords is None:
+                    coords = np.zeros((natoms_r[0], 3, nframes), dtype=np.float32)
+                fidx = 0
+            else:
+                fidx = f
 
-        step[i] = retval[fidx].step
-        time[i] = retval[fidx].time
-        box[:, i] = retval[fidx].box
-        coords[:, :, i] = np.ctypeslib.as_array(retval[fidx].pos, shape=(natoms[0], 3))
+            step[i] = retval[fidx].step
+            time[i] = retval[fidx].time
+            box[:, i] = retval[fidx].box
+            coords[:, :, i] = np.ctypeslib.as_array(retval[fidx].pos, shape=(natoms_r[0], 3))
 
-        if givenframes is not None:
-            lib['libc'].free(retval[0].pos)
+            if givenframes is not None:
+                lib['libc'].free(retval[0].pos)
+                lib['libc'].free(retval)
+
+        if givenframes is None:
+            for f in range(len(frames)):
+                lib['libc'].free(retval[f].pos)
             lib['libc'].free(retval)
-
-    if givenframes is None:
-        for f in range(len(frames)):
-            lib['libc'].free(retval[f].pos)
-        lib['libc'].free(retval)
 
     if np.size(coords, 2) == 0:
         raise NameError('Malformed XTC file. No frames read from: {}'.format(filename))
@@ -1200,7 +1228,7 @@ def XTCread(filename, frame=None, topoloc=None):
         step = np.arange(nframes)
     if len(time) != nframes or np.sum(time) == 0:
         time = np.zeros(nframes, dtype=np.float32)
-    return MolFactory.construct(None, Trajectory(coords=coords, box=box, boxangles=boxangles, step=step, time=time), filename, frame)
+    return MolFactory.construct(None, Trajectory(coords=coords, box=box, step=step, time=time), filename, frame)
 
 
 def CRDread(filename, frame=None, topoloc=None):
