@@ -38,7 +38,7 @@ script:
   - pip install .
   # Run tests
   - pip install -q codecov coverage
-  - conda install -q tqdm ipython matplotlib joblib scikit-learn rdkit mdtraj htmd-pdb2pqr propka openbabel -c acellera  # Installing extra dependencies for tests
+  - conda install -q --file extra_requirements.txt -c acellera  # Installing extra dependencies for tests
   - coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
   - echo "Finished tests"
 
