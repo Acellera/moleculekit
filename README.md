@@ -54,7 +54,7 @@ Now you can use the same above install commands to install into the new conda en
 Moleculekit has a small number of optional dependencies which are needed for some of it's functionalities. They were not added to the default dependencies to keep moleculekit a fast and small installation and to avoid unnecessary conflicts with other software. However if you want to leverage all of it's functionality you can install the rest of the dependencies with the following command:
 
 ```
-(moleculekit) user@computer:~$ wget https://github.com/Acellera/moleculekit/blob/master/extra_requirements.txt
+(moleculekit) user@computer:~$ wget https://raw.githubusercontent.com/Acellera/moleculekit/master/extra_requirements.txt
 (moleculekit) user@computer:~$ conda install --file extra_requirements.txt -c acellera
 ``` 
 
