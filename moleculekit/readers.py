@@ -1150,7 +1150,7 @@ def XTCread(filename, frame=None, topoloc=None):
         coords = np.zeros((natoms, 3, nframes), dtype=np.float32)
         box = np.zeros((3, nframes), dtype=np.float32)
         time = np.zeros(nframes, dtype=np.float32)
-        step = np.zeros(nframes, dtype=int)
+        step = np.zeros(nframes, dtype=np.int32)
         # void xtc_read_new(char *filename, float *coords_arr, float *box_arr, float *time_arr, int *step_arr, 
         #                   int natoms, double *dt, int *dstep)
         lib['libxtc'].xtc_read_new(
