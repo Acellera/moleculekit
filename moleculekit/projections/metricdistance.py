@@ -9,6 +9,7 @@ from moleculekit.projections.util import pp_calcDistances, pp_calcMinDistances
 from moleculekit.util import ensurelist
 import numpy as np
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -44,7 +45,18 @@ class MetricDistance(Projection):
     -------
     proj : MetricDistance object
     """
-    def __init__(self, sel1, sel2, groupsel1=None, groupsel2=None,  metric='distances', threshold=8, pbc=True, truncate=None):
+
+    def __init__(
+        self,
+        sel1,
+        sel2,
+        groupsel1=None,
+        groupsel2=None,
+        metric="distances",
+        threshold=8,
+        pbc=True,
+        truncate=None,
+    ):
         super().__init__()
 
         self.sel1 = sel1
@@ -70,40 +82,56 @@ class MetricDistance(Projection):
             An array containing the projected data.
         """
         getMolProp = lambda prop: self._getMolProp(mol, prop)
-        sel1 = getMolProp('sel1')
-        sel2 = getMolProp('sel2')
+        sel1 = getMolProp("sel1")
+        sel2 = getMolProp("sel2")
 
         if np.ndim(sel1) == 1 and np.ndim(sel2) == 1:  # normal distances
-            metric = pp_calcDistances(mol, sel1, sel2, self.metric, self.threshold, self.pbc, truncate=self.truncate)
+            metric = pp_calcDistances(
+                mol,
+                sel1,
+                sel2,
+                self.metric,
+                self.threshold,
+                self.pbc,
+                truncate=self.truncate,
+            )
         else:  # minimum distances by groups
-            metric = pp_calcMinDistances(mol, sel1, sel2, self.metric, self.threshold, pbc=self.pbc, truncate=self.truncate)
+            metric = pp_calcMinDistances(
+                mol,
+                sel1,
+                sel2,
+                self.metric,
+                self.threshold,
+                pbc=self.pbc,
+                truncate=self.truncate,
+            )
 
         return metric
 
-    def _calculateMolProp(self, mol, props='all'):
-        props = ('sel1', 'sel2') if props == 'all' else props
+    def _calculateMolProp(self, mol, props="all"):
+        props = ("sel1", "sel2") if props == "all" else props
         res = {}
-        if 'sel1' in props:
-            res['sel1'] = self._processSelection(mol, self.sel1, self.groupsel1)
-        if 'sel2' in props:
-            res['sel2'] = self._processSelection(mol, self.sel2, self.groupsel2)
+        if "sel1" in props:
+            res["sel1"] = self._processSelection(mol, self.sel1, self.groupsel1)
+        if "sel2" in props:
+            res["sel2"] = self._processSelection(mol, self.sel2, self.groupsel2)
         return res
 
     def _processSelection(self, mol, sel, groupsel):
         if isinstance(sel, str):  # If user passes simple string selections
             if groupsel is None:
                 sel = mol.atomselect(sel)
-            elif groupsel == 'all':
+            elif groupsel == "all":
                 sel = self._processMultiSelections(mol, [sel])
-            elif groupsel == 'residue':
+            elif groupsel == "residue":
                 sel = self._groupByResidue(mol, sel)
             else:
-                raise NameError('Invalid groupsel argument')
+                raise NameError("Invalid groupsel argument")
         else:  # If user passes his own sets of groups
             sel = self._processMultiSelections(mol, sel)
 
         if np.sum(sel) == 0:
-            raise NameError('Selection returned 0 atoms')
+            raise NameError("Selection returned 0 atoms")
         return sel
 
     def _processMultiSelections(self, mol, sel):
@@ -114,13 +142,16 @@ class MetricDistance(Projection):
 
     def _groupByResidue(self, mol, sel):
         import pandas as pd
+
         idx = mol.atomselect(sel, indexes=True)
-        df = pd.DataFrame({'a': mol.resid[idx]})
+        df = pd.DataFrame({"a": mol.resid[idx]})
         gg = df.groupby(by=df.a).groups  # Grouping by same resids
 
         newsel = np.zeros((len(gg), mol.numAtoms), dtype=bool)
         for i, res in enumerate(sorted(gg)):
-            newsel[i, idx[gg[res]]] = True  # Setting the selected indexes to True which correspond to the same residue
+            newsel[
+                i, idx[gg[res]]
+            ] = True  # Setting the selected indexes to True which correspond to the same residue
         return newsel
 
     def getMapping(self, mol):
@@ -137,8 +168,8 @@ class MetricDistance(Projection):
             A DataFrame containing the descriptions of each dimension
         """
         getMolProp = lambda prop: self._getMolProp(mol, prop)
-        sel1 = getMolProp('sel1')
-        sel2 = getMolProp('sel2')
+        sel1 = getMolProp("sel1")
+        sel2 = getMolProp("sel2")
 
         if np.ndim(sel1) == 2:
             protatoms = []
@@ -157,17 +188,24 @@ class MetricDistance(Projection):
         numatoms2 = len(ligatoms)
 
         from pandas import DataFrame
+
         types = []
         indexes = []
         description = []
         if np.array_equal(sel1, sel2):
             for i in range(numatoms1):
-                for j in range(i+1, numatoms1):
+                for j in range(i + 1, numatoms1):
                     atm1 = protatoms[i]
                     atm2 = protatoms[j]
-                    desc = '{} between {} {} {} and {} {} {}'.format(self.metric[:-1],
-                                                                     mol.resname[atm1], mol.resid[atm1], mol.name[atm1],
-                                                                     mol.resname[atm2], mol.resid[atm2], mol.name[atm2])
+                    desc = "{} between {} {} {} and {} {} {}".format(
+                        self.metric[:-1],
+                        mol.resname[atm1],
+                        mol.resid[atm1],
+                        mol.name[atm1],
+                        mol.resname[atm2],
+                        mol.resid[atm2],
+                        mol.name[atm2],
+                    )
                     types += [self.metric[:-1]]
                     indexes += [[atm1, atm2]]
                     description += [desc]
@@ -176,17 +214,33 @@ class MetricDistance(Projection):
                 for j in range(numatoms2):
                     atm1 = protatoms[i]
                     atm2 = ligatoms[j]
-                    desc = '{} between {} {} {} and {} {} {}'.format(self.metric[:-1],
-                                                                     mol.resname[atm1], mol.resid[atm1], mol.name[atm1],
-                                                                     mol.resname[atm2], mol.resid[atm2], mol.name[atm2])
+                    desc = "{} between {} {} {} and {} {} {}".format(
+                        self.metric[:-1],
+                        mol.resname[atm1],
+                        mol.resid[atm1],
+                        mol.name[atm1],
+                        mol.resname[atm2],
+                        mol.resid[atm2],
+                        mol.name[atm2],
+                    )
                     types += [self.metric[:-1]]
                     indexes += [[atm1, atm2]]
                     description += [desc]
-        return DataFrame({'type': types, 'atomIndexes': indexes, 'description': description})
+        return DataFrame(
+            {"type": types, "atomIndexes": indexes, "description": description}
+        )
 
 
 class MetricSelfDistance(MetricDistance):
-    def __init__(self, sel, groupsel=None, metric='distances', threshold=8, pbc=True, truncate=None):
+    def __init__(
+        self,
+        sel,
+        groupsel=None,
+        metric="distances",
+        threshold=8,
+        pbc=True,
+        truncate=None,
+    ):
         """ Creates a MetricSelfDistance object
 
         Parameters
@@ -219,7 +273,9 @@ def contactVecToMatrix(vector, atomIndexes):
     from copy import deepcopy
 
     if np.ndim(vector) != 1:
-        raise RuntimeError('Please pass a 1D vector to the contactVecToMatrix function.')
+        raise RuntimeError(
+            "Please pass a 1D vector to the contactVecToMatrix function."
+        )
     # Calculating the unique atom groups in the mapping
     uqAtomGroups = []
     atomIndexes = deepcopy(list(atomIndexes))
@@ -245,7 +301,17 @@ def contactVecToMatrix(vector, atomIndexes):
     return matrix, mapping, uqAtomGroups
 
 
-def reconstructContactMap(vector, mapping, truecontacts=None, plot=True, figsize=(7, 7), dpi=80, title=None, outfile=None, colors=None):
+def reconstructContactMap(
+    vector,
+    mapping,
+    truecontacts=None,
+    plot=True,
+    figsize=(7, 7),
+    dpi=80,
+    title=None,
+    outfile=None,
+    colors=None,
+):
     """ Plots a given vector as a contact map
 
     Parameters
@@ -280,20 +346,23 @@ def reconstructContactMap(vector, mapping, truecontacts=None, plot=True, figsize
     from matplotlib import cm as colormaps
 
     if np.ndim(vector) != 1:
-        raise RuntimeError('Please pass a 1D vector to the reconstructContactMap function.')
+        raise RuntimeError(
+            "Please pass a 1D vector to the reconstructContactMap function."
+        )
 
     if truecontacts is None:
         truecontacts = np.zeros(len(vector), dtype=bool)
     if len(vector) != len(mapping):
-        raise RuntimeError('Vector and map length must match.')
+        raise RuntimeError("Vector and map length must match.")
 
     # Checking if contacts or distances exist in the data
-    contactidx = mapping.type == 'contact'
+    contactidx = mapping.type == "contact"
     if not np.any(contactidx):
-        contactidx = mapping.type == 'distance'
+        contactidx = mapping.type == "distance"
         if not np.any(contactidx):
             raise RuntimeError(
-                'No contacts or distances found in the MetricData object. Check the `.map` property of the object for a description of your projection.')
+                "No contacts or distances found in the MetricData object. Check the `.map` property of the object for a description of your projection."
+            )
 
     # Creating the 2D contact maps
     cm, newmapping, uqAtomGroups = contactVecToMatrix(vector, mapping.atomIndexes)
@@ -302,16 +371,23 @@ def reconstructContactMap(vector, mapping, truecontacts=None, plot=True, figsize
 
     if plot:
         from matplotlib import pylab as plt
+
         f = plt.figure(figsize=figsize, dpi=dpi)
-        plt.imshow(cmtrue / 2, interpolation='none', vmin=0, vmax=1, aspect='equal',
-                   cmap='Greys')  # /2 to convert to gray from black
+        plt.imshow(
+            cmtrue / 2,
+            interpolation="none",
+            vmin=0,
+            vmax=1,
+            aspect="equal",
+            cmap="Greys",
+        )  # /2 to convert to gray from black
 
         rows, cols = np.where(cm)
         colorbar = False
         if colors is None:
             truecms = vector & truecontacts
-            colors = np.array(['r']*len(vector), dtype=object)
-            colors[truecms] = '#ffff00'
+            colors = np.array(["r"] * len(vector), dtype=object)
+            colors[truecms] = "#ffff00"
         elif isinstance(colors, np.ndarray) and isinstance(colors[0], float):
             mpbl = colormaps.ScalarMappable(cmap=colormaps.jet)
             mpbl.set_array(colors)
@@ -320,7 +396,7 @@ def reconstructContactMap(vector, mapping, truecontacts=None, plot=True, figsize
         if len(colors) == len(vector):
             colors = colors[newmapping[rows, cols]]
 
-        plt.scatter(rows, cols, s=figsize[0] * 5, marker='o', c=colors, lw=0)
+        plt.scatter(rows, cols, s=figsize[0] * 5, marker="o", c=colors, lw=0)
         if colorbar:
             plt.colorbar(mpbl)
 
@@ -331,58 +407,80 @@ def reconstructContactMap(vector, mapping, truecontacts=None, plot=True, figsize
 
         # Labels for major ticks
         ax.set_xticklabels([x[0] for x in uqAtomGroups])
-        ax.set_yticklabels([x[0] for x in uqAtomGroups], )
+        ax.set_yticklabels([x[0] for x in uqAtomGroups],)
 
         # Minor ticks
-        ax.set_xticks(np.arange(-.5, num, 1), minor=True)
-        ax.set_yticks(np.arange(-.5, num, 1), minor=True)
+        ax.set_xticks(np.arange(-0.5, num, 1), minor=True)
+        ax.set_yticks(np.arange(-0.5, num, 1), minor=True)
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
 
         # Gridlines based on minor ticks
-        ax.grid(which='minor', color='#969696', linestyle='-', linewidth=1)
-        ax.tick_params(axis='both', which='both', length=0)
-        plt.xlim([-.5, num - .5])
-        plt.ylim([-.5, num - .5])
-        plt.xlabel('Atom index')
-        plt.ylabel('Atom index')
+        ax.grid(which="minor", color="#969696", linestyle="-", linewidth=1)
+        ax.tick_params(axis="both", which="both", length=0)
+        plt.xlim([-0.5, num - 0.5])
+        plt.ylim([-0.5, num - 0.5])
+        plt.xlabel("Atom index")
+        plt.ylabel("Atom index")
         if title:
             plt.title(title)
         if outfile is not None:
-            plt.savefig(outfile, dpi=dpi, bbox_inches='tight', pad_inches=0.2)
+            plt.savefig(outfile, dpi=dpi, bbox_inches="tight", pad_inches=0.2)
             plt.close()
         else:
             plt.show()
     return cm
 
+
 import unittest
 from moleculekit.home import home
 import os
+
+
 class _TestMetricDistance(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         from moleculekit.molecule import Molecule
         from os import path
-        self.mol = Molecule(path.join(home(dataDir='test-projections'), 'trajectory', 'filtered.pdb'))
+
+        self.mol = Molecule(
+            path.join(home(dataDir="test-projections"), "trajectory", "filtered.pdb")
+        )
         self.mol_skipped = self.mol.copy()
 
-        self.mol.read(path.join(home(dataDir='test-projections'), 'trajectory', 'traj.xtc'))
-        self.mol_skipped.read(path.join(home(dataDir='test-projections'), 'trajectory', 'traj.xtc'), skip=10)
+        self.mol.read(
+            path.join(home(dataDir="test-projections"), "trajectory", "traj.xtc")
+        )
+        self.mol_skipped.read(
+            path.join(home(dataDir="test-projections"), "trajectory", "traj.xtc"),
+            skip=10,
+        )
 
     def test_contacts(self):
-        metr = MetricDistance('protein and name CA', 'resname MOL and noh', metric='contacts', threshold=8)
+        metr = MetricDistance(
+            "protein and name CA", "resname MOL and noh", metric="contacts", threshold=8
+        )
         data = metr.project(self.mol)
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'distances.npy')) < 8
+        refdata = (
+            np.load(
+                os.path.join(
+                    home(dataDir="test-projections"), "metricdistance", "distances.npy"
+                )
+            )
+            < 8
+        )
 
-        assert np.allclose(data, refdata, atol=1e-3), 'Contact calculation is broken'
+        assert np.allclose(data, refdata, atol=1e-3), "Contact calculation is broken"
 
     def test_distances_trivial(self):
         from moleculekit.molecule import Molecule
         import numpy as np
 
         mol = Molecule().empty(3)
-        mol.name[:] = 'C'
-        mol.element[:] = 'C'
-        mol.coords = np.zeros((3, 3, 2), dtype=np.float32) # Make two frames so we check if the code works for nframes
+        mol.name[:] = "C"
+        mol.element[:] = "C"
+        mol.coords = np.zeros(
+            (3, 3, 2), dtype=np.float32
+        )  # Make two frames so we check if the code works for nframes
         mol.coords[1, :, 0] = [3, 3, 3]
         mol.coords[2, :, 0] = [5, 5, 5]
         mol.coords[1, :, 1] = [7, 7, 7]
@@ -390,29 +488,44 @@ class _TestMetricDistance(unittest.TestCase):
 
         realdistances = np.linalg.norm(mol.coords[[1, 2], :, :], axis=1).T
 
-        metr = MetricDistance('index 0', 'index 1 2', metric='distances', pbc=False)
+        metr = MetricDistance("index 0", "index 1 2", metric="distances", pbc=False)
         data = metr.project(mol)
-        assert np.allclose(data, realdistances), 'Trivial distance calculation is broken'
+        assert np.allclose(
+            data, realdistances
+        ), "Trivial distance calculation is broken"
 
         # Test wrapped distances
         wrappedcoords = np.mod(mol.coords, 2)
         wrappedrealdistances = np.linalg.norm(wrappedcoords[[1, 2], :, :], axis=1).T
 
         mol.box = np.full((3, 2), 2, dtype=np.float32)  # Make box 2x2x2A large
-        metr = MetricDistance('index 0', 'index 1 2', metric='distances', pbc=True)
+        metr = MetricDistance("index 0", "index 1 2", metric="distances", pbc=True)
         data = metr.project(mol)
-        assert np.allclose(data, wrappedrealdistances), 'Trivial wrapped distance calculation is broken'
+        assert np.allclose(
+            data, wrappedrealdistances
+        ), "Trivial wrapped distance calculation is broken"
 
         # Test min distances
-        metr = MetricDistance('index 0', 'index 1 2', metric='distances', pbc=False, groupsel1='all', groupsel2='all')
+        metr = MetricDistance(
+            "index 0",
+            "index 1 2",
+            metric="distances",
+            pbc=False,
+            groupsel1="all",
+            groupsel2="all",
+        )
         data = metr.project(mol)
-        assert np.allclose(data.flatten(), np.min(realdistances, axis=1)), 'Trivial distance calculation is broken'
+        assert np.allclose(
+            data.flatten(), np.min(realdistances, axis=1)
+        ), "Trivial distance calculation is broken"
 
         # Test ordering
         mol = Molecule().empty(4)
-        mol.name[:] = 'C'
-        mol.element[:] = 'C'
-        mol.coords = np.zeros((4, 3, 2), dtype=np.float32) # Make two frames so we check if the code works for nframes
+        mol.name[:] = "C"
+        mol.element[:] = "C"
+        mol.coords = np.zeros(
+            (4, 3, 2), dtype=np.float32
+        )  # Make two frames so we check if the code works for nframes
         mol.coords[1, :, 0] = [1, 1, 1]
         mol.coords[2, :, 0] = [3, 3, 3]
         mol.coords[3, :, 0] = [5, 5, 5]
@@ -420,79 +533,158 @@ class _TestMetricDistance(unittest.TestCase):
         mol.coords[2, :, 1] = [7, 7, 7]
         mol.coords[3, :, 1] = [6, 6, 6]
 
-        realdistances = np.linalg.norm(mol.coords[[2, 3], :, :] - mol.coords[0], axis=1).T
-        realdistances = np.hstack((realdistances, np.linalg.norm(mol.coords[[2, 3], :, :] - mol.coords[1], axis=1).T))
+        realdistances = np.linalg.norm(
+            mol.coords[[2, 3], :, :] - mol.coords[0], axis=1
+        ).T
+        realdistances = np.hstack(
+            (
+                realdistances,
+                np.linalg.norm(mol.coords[[2, 3], :, :] - mol.coords[1], axis=1).T,
+            )
+        )
 
-        metr = MetricDistance('index 0 1', 'index 2 3', metric='distances', pbc=False)
+        metr = MetricDistance("index 0 1", "index 2 3", metric="distances", pbc=False)
         data = metr.project(mol)
-        assert np.allclose(data, realdistances), 'Trivial distance calculation has broken ordering'
-
+        assert np.allclose(
+            data, realdistances
+        ), "Trivial distance calculation has broken ordering"
 
     def test_distances(self):
-        metr = MetricDistance('protein and name CA', 'resname MOL and noh', metric='distances')
+        metr = MetricDistance(
+            "protein and name CA", "resname MOL and noh", metric="distances"
+        )
         data = metr.project(self.mol)
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'distances.npy'))
-        assert np.allclose(data, refdata, atol=1e-3), 'Distance calculation is broken'
+        refdata = np.load(
+            os.path.join(
+                home(dataDir="test-projections"), "metricdistance", "distances.npy"
+            )
+        )
+        assert np.allclose(data, refdata, atol=1e-3), "Distance calculation is broken"
 
     def test_mindistances(self):
-        metr = MetricDistance('protein and noh', 'resname MOL and noh', groupsel1='residue', groupsel2='all')
+        metr = MetricDistance(
+            "protein and noh",
+            "resname MOL and noh",
+            groupsel1="residue",
+            groupsel2="all",
+        )
         data = metr.project(self.mol)
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'mindistances.npy'))
-        assert np.allclose(data, refdata, atol=1e-3), 'Minimum distance calculation is broken'
+        refdata = np.load(
+            os.path.join(
+                home(dataDir="test-projections"), "metricdistance", "mindistances.npy"
+            )
+        )
+        assert np.allclose(
+            data, refdata, atol=1e-3
+        ), "Minimum distance calculation is broken"
 
     def test_mindistances_truncate(self):
-        metr = MetricDistance('protein and noh', 'resname MOL and noh', groupsel1='residue', groupsel2='all', truncate=3)
+        metr = MetricDistance(
+            "protein and noh",
+            "resname MOL and noh",
+            groupsel1="residue",
+            groupsel2="all",
+            truncate=3,
+        )
         data = metr.project(self.mol)
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'mindistances.npy'))
-        assert np.allclose(data, np.clip(refdata, 0, 3), atol=1e-3), 'Minimum distance calculation is broken'
+        refdata = np.load(
+            os.path.join(
+                home(dataDir="test-projections"), "metricdistance", "mindistances.npy"
+            )
+        )
+        assert np.allclose(
+            data, np.clip(refdata, 0, 3), atol=1e-3
+        ), "Minimum distance calculation is broken"
 
     def test_selfmindistance_manual(self):
-        metr = MetricDistance('protein and resid 1 to 50 and noh', 'protein and resid 1 to 50 and noh', groupsel1='residue', groupsel2='residue')
+        metr = MetricDistance(
+            "protein and resid 1 to 50 and noh",
+            "protein and resid 1 to 50 and noh",
+            groupsel1="residue",
+            groupsel2="residue",
+        )
         data = metr.project(self.mol)
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'selfmindistance.npy'))
-        assert np.allclose(data, refdata, atol=1e-3), 'Manual self-distance is broken'
+        refdata = np.load(
+            os.path.join(
+                home(dataDir="test-projections"),
+                "metricdistance",
+                "selfmindistance.npy",
+            )
+        )
+        assert np.allclose(data, refdata, atol=1e-3), "Manual self-distance is broken"
 
     def test_selfmindistance_auto(self):
-        metr = MetricSelfDistance('protein and resid 1 to 50 and noh', groupsel='residue')
+        metr = MetricSelfDistance(
+            "protein and resid 1 to 50 and noh", groupsel="residue"
+        )
         data = metr.project(self.mol)
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'selfmindistance.npy'))
-        assert np.allclose(data, refdata, atol=1e-3), 'Automatic self-distance is broken'
+        refdata = np.load(
+            os.path.join(
+                home(dataDir="test-projections"),
+                "metricdistance",
+                "selfmindistance.npy",
+            )
+        )
+        assert np.allclose(
+            data, refdata, atol=1e-3
+        ), "Automatic self-distance is broken"
 
     def test_mindistances_skip(self):
-        metr = MetricSelfDistance('protein and resid 1 to 50 and noh', groupsel='residue')
-        data = metr.project(self.mol_skipped)  
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'selfmindistance.npy'))
-        assert np.allclose(data, refdata[::10, :], atol=1e-3), 'Minimum distance calculation with skipping is broken'
+        metr = MetricSelfDistance(
+            "protein and resid 1 to 50 and noh", groupsel="residue"
+        )
+        data = metr.project(self.mol_skipped)
+        refdata = np.load(
+            os.path.join(
+                home(dataDir="test-projections"),
+                "metricdistance",
+                "selfmindistance.npy",
+            )
+        )
+        assert np.allclose(
+            data, refdata[::10, :], atol=1e-3
+        ), "Minimum distance calculation with skipping is broken"
 
     def test_reconstruct_contact_map(self):
         from moleculekit.util import tempname
         from moleculekit.molecule import Molecule
         import matplotlib
-        matplotlib.use('Agg')
-        
-        mol = Molecule('1yu8')
 
-        metr = MetricSelfDistance('protein and name CA', metric='contacts', pbc=False)
+        matplotlib.use("Agg")
+
+        mol = Molecule("1yu8")
+
+        metr = MetricSelfDistance("protein and name CA", metric="contacts", pbc=False)
         data = metr.project(mol)[0]
         mapping = metr.getMapping(mol)
 
-        tmpfile = tempname(suffix='.svg')
+        tmpfile = tempname(suffix=".svg")
         cm, newmapping, uqAtomGroups = contactVecToMatrix(data, mapping.atomIndexes)
         reconstructContactMap(data, mapping, outfile=tmpfile)
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'contactvectomatrix.npz'))
-        
-        assert np.array_equal(refdata['cm'], cm)
-        assert np.array_equal(refdata['newmapping'], newmapping)
-        assert np.array_equal(refdata['uqAtomGroups'], uqAtomGroups)
+        refdata = np.load(
+            os.path.join(
+                home(dataDir="test-projections"),
+                "metricdistance",
+                "contactvectomatrix.npz",
+            )
+        )
+
+        assert np.array_equal(refdata["cm"], cm)
+        assert np.array_equal(refdata["newmapping"], newmapping)
+        assert np.array_equal(refdata["uqAtomGroups"], uqAtomGroups)
 
     def test_description(self):
-        metr = MetricDistance('protein and noh', 'resname MOL and noh', truncate=3)
+        metr = MetricDistance("protein and noh", "resname MOL and noh", truncate=3)
         data = metr.project(self.mol)
         atomIndexes = metr.getMapping(self.mol).atomIndexes.values
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricdistance', 'description.npy'), allow_pickle=True)
+        refdata = np.load(
+            os.path.join(
+                home(dataDir="test-projections"), "metricdistance", "description.npy"
+            ),
+            allow_pickle=True,
+        )
         assert np.array_equal(refdata, atomIndexes)
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(verbosity=2)
