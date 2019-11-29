@@ -9,6 +9,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class AtomNotFoundException(Exception):
+    pass
+
 class Dihedral:
     """ Class to store atoms defining a dihedral angle.
 
@@ -146,7 +149,7 @@ class Dihedral:
     def _findAtom(mol, name, resdict):
         atomidx = resdict['idx'] & (mol.name == name)
         if np.sum(atomidx) == 0:
-            raise RuntimeError('No atoms found with description ({}) and name "{}".'.format(resdict, name))
+            raise AtomNotFoundException('No atoms found with description ({}) and name "{}".'.format(resdict, name))
         newresdict = {'name': name, 'resid': resdict['resid'], 'insertion': resdict['insertion'], 'chain': resdict['chain'], 'segid': resdict['segid']}
         return newresdict
 
@@ -161,7 +164,7 @@ class Dihedral:
         return uqresname[0]
 
     @staticmethod
-    def proteinDihedrals(mol, sel='protein', dih=('psi', 'phi'), ff='amber'):
+    def proteinDihedrals(mol, sel='protein or resname ACE NME', dih=('psi', 'phi'), ff='amber'):
         """ Returns a list of tuples containing the four resid/atom pairs for each dihedral of the protein
 
         Parameters
@@ -199,14 +202,16 @@ class Dihedral:
             residues = s
             for r in range(len(residues)):
                 resid, ins, chain, segid = residues[r]
-                if 'psi' in dih and r != len(residues)-1:  # No psi angle for last residue
+                starting = r == 0
+                ending = r == len(residues)-1
+                if 'phi' in dih and not starting:
+                    resid2, ins2, _, _ = residues[r-1]
+                    dihedrals.append(Dihedral.phi(mol, resid2, resid, segid, chain, ins2, ins, ff))
+                if 'psi' in dih and not ending:
                     resid2, ins2, _, _ = residues[r+1]
                     dihedrals.append(Dihedral.psi(mol, resid, resid2, segid, chain, ins, ins2, ff))
-                if 'phi' in dih and r != 0:  # No phi angle for first residue
-                    resid1neg, ins1neg, _, _ = residues[r-1]
-                    dihedrals.append(Dihedral.phi(mol, resid1neg, resid, segid, chain, ins1neg, ins, ff))
-                if 'omega' in dih and r != len(residues)-1:
-                    resid2, ins2, _, _ = residues[r + 1]
+                if 'omega' in dih and not ending:
+                    resid2, ins2, _, _ = residues[r+1]
                     dihedrals.append(Dihedral.omega(mol, resid, resid2, segid, chain, ins, ins2, ff))
                 if 'chi1' in dih:
                     dihedrals.append(Dihedral.chi1(mol, resid, segid, chain, ins, ff))
@@ -250,12 +255,16 @@ class Dihedral:
         """
         res1dict = Dihedral._findResidue(mol, res1, insertion1, chain, segid)
         res2dict = Dihedral._findResidue(mol, res2, insertion2, chain, segid)
-        return Dihedral(Dihedral._findAtom(mol, 'C', res1dict),
-                        Dihedral._findAtom(mol, 'N', res2dict),
-                        Dihedral._findAtom(mol, 'CA', res2dict),
-                        Dihedral._findAtom(mol, 'C', res2dict),
-                        dihedraltype='phi',
-                        check_valid=False)
+
+        a1 = Dihedral._findAtom(mol, 'C', res1dict)
+        try:  # Check if backbone atoms exist. Capped terminals don't have them all
+            a2 = Dihedral._findAtom(mol, 'N', res2dict)
+            a3 = Dihedral._findAtom(mol, 'CA', res2dict)
+            a4 = Dihedral._findAtom(mol, 'C', res2dict)
+        except AtomNotFoundException:
+            return None
+
+        return Dihedral(a1, a2, a3, a4, dihedraltype='phi', check_valid=False)
 
     @staticmethod
     def psi(mol, res1, res2, segid=None, chain=None, insertion1=None, insertion2=None, ff='amber'):
@@ -285,12 +294,17 @@ class Dihedral:
         """
         res1dict = Dihedral._findResidue(mol, res1, insertion1, chain, segid)
         res2dict = Dihedral._findResidue(mol, res2, insertion2, chain, segid)
-        return Dihedral(Dihedral._findAtom(mol, 'N', res1dict),
-                        Dihedral._findAtom(mol, 'CA', res1dict),
-                        Dihedral._findAtom(mol, 'C', res1dict),
-                        Dihedral._findAtom(mol, 'N', res2dict),
-                        dihedraltype='psi',
-                        check_valid=False)
+
+        try:  # Check if backbone atoms exist. Capped terminals don't have them all
+            a1 = Dihedral._findAtom(mol, 'N', res1dict)
+            a2 = Dihedral._findAtom(mol, 'CA', res1dict)
+            a3 = Dihedral._findAtom(mol, 'C', res1dict)
+        except AtomNotFoundException:
+            return None
+
+        a4 = Dihedral._findAtom(mol, 'N', res2dict)
+
+        return Dihedral(a1, a2, a3, a4, dihedraltype='psi', check_valid=False)
 
     @staticmethod
     def omega(mol, res1, res2, segid=None, chain=None, insertion1=None, insertion2=None, ff='amber'):
@@ -320,12 +334,16 @@ class Dihedral:
         """
         res1dict = Dihedral._findResidue(mol, res1, insertion1, chain, segid)
         res2dict = Dihedral._findResidue(mol, res2, insertion2, chain, segid)
-        return Dihedral(Dihedral._findAtom(mol, 'CA', res1dict),
-                        Dihedral._findAtom(mol, 'C', res1dict),
-                        Dihedral._findAtom(mol, 'N', res2dict),
-                        Dihedral._findAtom(mol, 'CA', res2dict),
-                        dihedraltype='omega',
-                        check_valid=False)
+
+        try:  # Check if backbone atoms exist. Capped terminals don't have them all
+            a1 = Dihedral._findAtom(mol, 'CA', res1dict)
+            a2 = Dihedral._findAtom(mol, 'C', res1dict)
+            a3 = Dihedral._findAtom(mol, 'N', res2dict)
+            a4 = Dihedral._findAtom(mol, 'CA', res2dict)
+        except AtomNotFoundException:
+            return None
+
+        return Dihedral(a1, a2, a3, a4, dihedraltype='omega', check_valid=False)
 
     @staticmethod
     def chi1(mol, res, segid=None, chain=None, insertion=None, ff='amber'):
@@ -560,7 +578,7 @@ class MetricDihedral(Projection):
     >>> met.project(mol)
     >>> met.getMapping(mol)
     """
-    def __init__(self, dih=None, sincos=True, protsel='protein'):
+    def __init__(self, dih=None, sincos=True, protsel='protein or resname ACE NME'):
         super().__init__()
 
         if dih is not None and not isinstance(dih[0], Dihedral):
@@ -672,10 +690,27 @@ class _TestMetricDihedral(unittest.TestCase):
         mol = Molecule('5MAT')
         mol.filter('not insertion A and not altloc A B', _logger=False)
         mol = autoSegment(mol, _logger=False)
+
         data = MetricDihedral().project(mol)
         dataref = np.load(path.join(home(dataDir='test-projections'), 'metricdihedral', '5mat.npy'))
         assert np.allclose(data, dataref, atol=1e-03), 'Diherdals calculation gave different results from reference'
 
+        ref_idx = np.load(path.join(home(dataDir='test-projections'), 'metricdihedral', '5mat_mapping_indexes.npy'))
+        mapping = MetricDihedral().getMapping(mol)
+        mapping_idx = np.vstack(mapping.atomIndexes.to_numpy())
+
+        assert np.array_equal(mapping_idx, ref_idx), 'Mapping of atom indexes has changed'
+
+    def test_dialanine_ace_nme(self):
+        from moleculekit.molecule import Molecule
+        from moleculekit.home import home
+        from os import path
+
+        mol = Molecule(path.join(home(dataDir='test-projections'), 'metricdihedral', 'dialanine-peptide.pdb'))
+        data = MetricDihedral().project(mol)
+        
+        refarray = np.array([[-0.71247578, -0.70169669,  0.27399951, -0.96172982]], dtype=np.float32)
+        assert np.allclose(refarray, data)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
