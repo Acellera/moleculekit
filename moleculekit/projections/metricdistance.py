@@ -478,6 +478,7 @@ class _TestMetricDistance(unittest.TestCase):
         mol = Molecule().empty(3)
         mol.name[:] = "C"
         mol.element[:] = "C"
+        mol.chain[:] = list(map(str, range(3)))  # If they are in the same chain, no wrapping is done for distances
         mol.coords = np.zeros(
             (3, 3, 2), dtype=np.float32
         )  # Make two frames so we check if the code works for nframes
@@ -523,6 +524,9 @@ class _TestMetricDistance(unittest.TestCase):
         mol = Molecule().empty(4)
         mol.name[:] = "C"
         mol.element[:] = "C"
+        mol.chain[:] = list(
+            map(str, range(4))
+        )  # If they are in the same chain, no wrapping is done for distances
         mol.coords = np.zeros(
             (4, 3, 2), dtype=np.float32
         )  # Make two frames so we check if the code works for nframes
