@@ -39,6 +39,9 @@ def pp_calcDistances(
             "Please ensure they both have the same number of frames"
         )
 
+    # Digitize chains to not do PBC calculations of the same chain
+    digitized_chains = np.unique(mol.chain, return_inverse=True)[1].astype(np.int32)
+
     # Running the actual calculations
     lib = ctypes.cdll.LoadLibrary(os.path.join(home(libDir=True), "dist_ext.so"))
     shape = (mol.numFrames, len(sel1) * len(sel2))
@@ -46,13 +49,12 @@ def pp_calcDistances(
         shape = (mol.numFrames, int((len(sel1) * (len(sel2) - 1)) / 2))
     results = np.zeros(shape, dtype=np.float32)
 
-    # import time
-    # t = time.time()
     lib.dist_trajectory(
         coords.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
         box.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
         sel1.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
         sel2.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        digitized_chains.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
         ctypes.c_int(len(sel1)),
         ctypes.c_int(len(sel2)),
         ctypes.c_int(mol.numAtoms),
@@ -61,7 +63,6 @@ def pp_calcDistances(
         ctypes.c_int(int(selfdist)),
         results.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
     )
-    # print(time.time() - t)
 
     if truncate is not None:
         results[results > truncate] = truncate
@@ -123,6 +124,9 @@ def pp_calcMinDistances(
 
     selfdist = np.array_equal(sel1, sel2)
 
+    # Digitize chains to not do PBC calculations of the same chain
+    digitized_chains = np.unique(mol.chain, return_inverse=True)[1].astype(np.int32)
+
     # Running the actual calculations
     lib = ctypes.cdll.LoadLibrary(os.path.join(home(libDir=True), "mindist_ext.so"))
     mindist = np.zeros(
@@ -141,6 +145,7 @@ def pp_calcMinDistances(
         box.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
         groups1.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
         groups2.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        digitized_chains.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
         ctypes.c_int(len(groups1)),
         ctypes.c_int(len(groups2)),
         ctypes.c_int(mol.numAtoms),

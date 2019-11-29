@@ -460,14 +460,10 @@ class _TestMetricDistance(unittest.TestCase):
             "protein and name CA", "resname MOL and noh", metric="contacts", threshold=8
         )
         data = metr.project(self.mol)
-        refdata = (
-            np.load(
-                os.path.join(
-                    home(dataDir="test-projections"), "metricdistance", "distances.npy"
-                )
-            )
-            < 8
+        reffile = os.path.join(
+            home(dataDir="test-projections"), "metricdistance", "distances.npy"
         )
+        refdata = np.load(reffile) < 8
 
         assert np.allclose(data, refdata, atol=1e-3), "Contact calculation is broken"
 
@@ -478,7 +474,9 @@ class _TestMetricDistance(unittest.TestCase):
         mol = Molecule().empty(3)
         mol.name[:] = "C"
         mol.element[:] = "C"
-        mol.chain[:] = list(map(str, range(3)))  # If they are in the same chain, no wrapping is done for distances
+        mol.chain[:] = list(
+            map(str, range(3))
+        )  # If they are in the same chain, no wrapping is done for distances
         mol.coords = np.zeros(
             (3, 3, 2), dtype=np.float32
         )  # Make two frames so we check if the code works for nframes
