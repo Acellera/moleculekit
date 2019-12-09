@@ -860,9 +860,9 @@ def PDBread(filename, mode='pdb', frame=None, topoloc=None, validateElements=Tru
     if parsedtopo.serial.dtype == 'object':
         logger.warning('Non-integer values were read from the PDB "serial" field. Dropping PDB values and assigning new ones.')
         if len(np.unique(parsedtopo.serial)) == len(parsedtopo.serial):
-            parsedtopo.serial = sequenceID(parsedtopo.serial)
+            parsedtopo.serial = sequenceID(parsedtopo.serial) + 1 # Indexes should start from 1 in PDB
         else:
-            parsedtopo.serial = np.arange(len(parsedtopo.serial))
+            parsedtopo.serial = np.arange(1, len(parsedtopo.serial)+1)
     if parsedtopo.resid.dtype == 'object':
         logger.warning('Non-integer values were read from the PDB "resid" field. Dropping PDB values and assigning new ones.')
         parsedtopo.resid = sequenceID(parsedtopo.resid)
@@ -897,18 +897,16 @@ def PDBread(filename, mode='pdb', frame=None, topoloc=None, validateElements=Tru
     if np.max(parsedbonds.max()) > np.max(serials):
         logger.info('Bond indexes in PDB file exceed atom indexes. For safety we will discard all bond information.')
     else:
-        mapserials = np.empty(np.max(serials)+1)
-        mapserials[:] = np.NAN
+        mapserials = np.full(np.max(serials)+1, -1, dtype=np.int64)
         mapserials[serials] = list(range(len(serials)))
         for i in range(len(parsedbonds)):
             row = parsedbonds.loc[i].tolist()
-            for b in range(1, 5):
-                if not np.isnan(row[b]):
-                    topo.bonds.append([int(row[0]), int(row[b])])
+            topo.bonds += [[int(row[0]), int(row[b])] for b in range(1, 5) if not np.isnan(row[b])]
+
         topo.bonds = np.array(topo.bonds, dtype=np.uint32)
         if topo.bonds.size != 0:
             mappedbonds = mapserials[topo.bonds[:]]
-            wrongidx, _ = np.where(np.isnan(mappedbonds))  # Some PDBs have bonds to non-existing serials... go figure
+            wrongidx, _ = np.where(mappedbonds == -1)  # Some PDBs have bonds to non-existing serials... go figure
             if len(wrongidx):
                 logger.info('Discarding {} bonds to non-existing indexes in the PDB file.'.format(len(wrongidx)))
             mappedbonds = np.delete(mappedbonds, wrongidx, axis=0)
