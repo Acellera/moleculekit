@@ -1953,7 +1953,7 @@ def calculateUniqueBonds(bonds, bondtype):
     else:
         bonds = np.array(list(set(tuple(bb) for bb in np.sort(bonds, axis=1).tolist())))
         sortidx = np.argsort(bonds[:, 0]) # Sort array for prettiness by the first bond index
-        return bonds[sortidx].astype(np.uint32).copy(), None if not len(bondtype) else bondtype
+        return bonds[sortidx].astype(np.uint32).copy(), None if not len(bondtype) else np.array([bondtype[0]] * bonds.shape[0], dtype=object)
     
 
 

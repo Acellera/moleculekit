@@ -1899,7 +1899,7 @@ class _TestReaders(unittest.TestCase):
 
     def test_star_indexes(self):
         mol = Molecule(os.path.join(self.testfolder(), 'errors.pdb'))
-        assert np.all(mol.serial == np.arange(mol.numAtoms))
+        assert np.all(mol.serial == np.arange(1, mol.numAtoms+1))
 
     def test_pdb_element_guessing(self):
         mol = Molecule(os.path.join(self.testfolder(), 'errors.pdb'))
