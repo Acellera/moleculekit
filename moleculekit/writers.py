@@ -8,6 +8,7 @@ import ctypes as ct
 import os
 from moleculekit.support import xtc_lib
 from moleculekit.util import ensurelist
+import networkx as nx
 import collections
 import logging
 import numbers
@@ -202,23 +203,15 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode='pdb'):
                 fh.write("TER\n")
 
         if writebonds and mol.bonds is not None and len(mol.bonds) != 0:
-            bondedatoms = np.unique(mol.bonds)
-            bondedatoms = bondedatoms[bondedatoms < 99998]  # Don't print bonds over 99999 as it overflows the field
-
-            for a in bondedatoms:
-                partners = mol.bonds[mol.bonds[:, 0] == a, 1]
-                partners = np.unique(np.append(partners, mol.bonds[mol.bonds[:, 1] == a, 0]))
-                partners = partners[partners < 99998] + 1  # Don't print bonds over 99999 as it overflows the field
-                # I need to support multi-line printing of atoms with more than 4 bonds
-                while len(partners) >= 3:  # Write bonds as long as they are more than 3 in fast more
-                    fh.write("CONECT%5d%5d%5d%5d\n" % (a + 1, partners[0], partners[1], partners[2]))
-                    partners = partners[3:]
-                if len(partners) > 0:  # Write the rest of the bonds
-                    line = "CONECT%5d" % (a + 1)
-                    for p in partners:
-                        line = "%s%5d" % (line, p)
-                    fh.write(line)
-                    fh.write('\n')
+            goodbonds = mol.bonds[np.all(mol.bonds < 99998, axis=1), :] # Bonds over 99999 cause issues with PDB fixedwidth format
+            bondgraph = nx.Graph()
+            bondgraph.add_edges_from(goodbonds + 1) # Add 1 for PDB 1-based indexing
+            for atom, neighbours in sorted(bondgraph.adj.items()):
+                neighbours = sorted(list(neighbours))
+                for ni in range(0, len(neighbours), 3):
+                    subneighs = neighbours[ni:min(ni+3, len(neighbours))]
+                    neighstring = ''.join('%5d' % sn for sn in subneighs)
+                    fh.write("CONECT{:5d}{}\n".format(atom, neighstring))
 
         fh.write("ENDMDL\n")
     fh.write("END\n")
