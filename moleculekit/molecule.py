@@ -826,24 +826,18 @@ class Molecule(object):
         >>> mol.setDihedral([0, 5, 8, 12], 0.16, bonds=bonds)
         >>> mol.setDihedral([18, 20, 24, 30], -1.8, bonds=bonds)
         """
-        import scipy.sparse.csgraph as sp
+        import networkx as nx
         from moleculekit.util import rotationMatrix
         from moleculekit.dihedral import dihedralAngle
+
         if bonds is None:
             bonds = self._getBonds()
 
-        # Now we have to make the lists of atoms that are on either side of the dihedral bond
-        natoms = self.numAtoms
-        conn = np.zeros((natoms, natoms), dtype=np.bool)
-        for b in bonds:
-            conn[b[0], b[1]] = True
-            conn[b[1], b[0]] = True
-
-        # disconnect the structure across the dihedral bond
-        conn[[atom_quad[1], atom_quad[2]]] = 0
-        conn[[atom_quad[2], atom_quad[1]]] = 0
-        left = np.unique(sp.breadth_first_tree(conn, atom_quad[1], directed=False).indices.flatten())
-        right = np.unique(sp.breadth_first_tree(conn, atom_quad[2], directed=False).indices.flatten())
+        protGraph = nx.Graph()
+        protGraph.add_edges_from(bonds)
+        protGraph.remove_edge(atom_quad[1], atom_quad[2])
+        left = np.array(list(nx.node_connected_component(protGraph, atom_quad[1])))
+        right = np.array(list(nx.node_connected_component(protGraph, atom_quad[2])))
 
         if (atom_quad[2] in left) or (atom_quad[1] in right):
             raise RuntimeError('Loop detected in molecule. Cannot change dihedral')
