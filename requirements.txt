@@ -1,6 +1,6 @@
-numpy
+numpy>=1.17
 scipy
 numba
-pandas==0.24.2
+pandas
 networkx
 tqdm
