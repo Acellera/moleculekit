@@ -8,3 +8,4 @@ mdtraj
 htmd-pdb2pqr
 propka
 openbabel
+pandas<=0.25.3
