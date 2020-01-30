@@ -51,6 +51,7 @@ def _fillMolecule(name, resname, chain, resid, insertion, coords, segid, element
     mol.element = np.array(element, dtype=mol._dtypes['element'])
     mol.occupancy = np.array(occupancy, dtype=mol._dtypes['occupancy'])
     mol.beta = np.array(beta, dtype=mol._dtypes['beta'])
+    mol.box = np.zeros((3, mol.coords.shape[2]), dtype=mol._dtypes['box'])
     # mol.charge = np.array(charge, dtype=mol._dtypes['charge'])
     # mol.record = np.array(record, dtype=mol._dtypes['record'])
     return mol
