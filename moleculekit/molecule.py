@@ -1222,7 +1222,7 @@ class Molecule(object):
         s = np.delete(s, remidx)
         self.set('resname', newres, sel=s)
 
-    def wrap(self, wrapsel=None, fileBonds=True, guessBonds=True):
+    def wrap(self, wrapsel=None, fileBonds=True, guessBonds=False):
         """ Wraps the coordinates of the molecule into the simulation box
 
         Parameters
@@ -1243,6 +1243,22 @@ class Molecule(object):
             centersel = self.atomselect(wrapsel, indexes=True)
         else:
             centersel = None
+
+        nbonds = self.bonds.shape[0]
+
+        if np.all(self.box == 0):
+            raise RuntimeError("Zero box size detected in `Molecule.box`. Cannot wrap simulation.")
+
+        if self.box.shape[1] != self.coords.shape[2]:
+            logger.warning("Detected different number of simulation frames in `Molecule.box` and `Molecule.coords`. "
+                           "This could mean that you have not read correctly the box information from the simulation.")
+        
+        if nbonds < (self.numAtoms / 2):
+            logger.warning(f"Wrapping detected {nbonds} bonds and {self.numAtoms} atoms. "
+                            "Ignore this message if you believe this is accurate, otherwise make sure you "
+                            "have loaded a topology containing all the bonds of the system before wrapping. "
+                            "The results may be inaccurate. If you want to use guessed bonds use the guessBonds argument.")
+                            
         self.coords = wrap(self.coords, self._getBonds(fileBonds, guessBonds), self.box, centersel=centersel)
 
     def _emptyTopo(self, numAtoms):
