@@ -134,6 +134,7 @@ class _TestMetricSphericalCoordinate(unittest.TestCase):
         mol = Molecule(path.join(home(dataDir='test-projections'), 'trajectory', 'filtered.pdb'))
         ref = mol.copy()
         mol.read(path.join(home(dataDir='test-projections'), 'trajectory', 'traj.xtc'))
+        mol.bonds = mol._guessBonds()
 
         res = MetricSphericalCoordinate(ref, 'resname MOL', 'within 8 of resid 98').project(mol)
         _ = MetricSphericalCoordinate(ref, 'resname MOL', 'within 8 of resid 98').getMapping(mol)
