@@ -41,12 +41,24 @@ def sequenceStructureAlignment(mol, ref, molseg=None, refseg=None, maxalignments
     seqmol = mol.sequence()
     seqref = ref.sequence()
 
-    if molseg is None and len(seqmol) > 1:
-        logger.info('Multiple segments ({}) detected in `mol`. Alignment will be done on all. Otherwise please specify which segment to align.'.format(list(seqmol.keys())))
+    if molseg is None:
+        msg = 'No segment was specified by the user for `mol`'
+        if len(seqmol) > 1:
+            msg += ' and multiple segments ({}) were detected. '.format(list(seqmol.keys()))
+        else:
+            msg += '. '
+        msg += 'Alignment will be done on all protein segments.'
+        logger.info(msg)
         seqmol = mol.sequence(noseg=True)
         molseg = list(seqmol.keys())[0]
-    if refseg is None and len(seqref) > 1:
-        logger.info('Multiple segments ({}) detected in `ref`. Alignment will be done on all. Otherwise please specify which segment to align.'.format(list(seqref.keys())))
+    if refseg is None:
+        msg = 'No segment was specified by the user for `ref`'
+        if len(seqref) > 1:
+            msg += ' and multiple segments ({}) were detected. '.format(list(seqref.keys()))
+        else:
+            msg += '. '
+        msg += 'Alignment will be done on all protein segments.'
+        logger.info(msg)
         seqref = ref.sequence(noseg=True)
         refseg = list(seqref.keys())[0]
 

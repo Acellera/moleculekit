@@ -257,6 +257,9 @@ def sequenceID(field, prepend=None):
     else:
         fieldlen = len(field)
 
+    if fieldlen == 0:
+        raise RuntimeError("An empty array was passed to sequenceID")
+
     if prepend is None:
         seq = np.zeros(fieldlen, dtype=int)
     else:
