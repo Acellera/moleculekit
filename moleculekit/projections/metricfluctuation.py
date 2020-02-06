@@ -6,6 +6,11 @@
 from moleculekit.projections.metriccoordinate import MetricCoordinate as _MetricCoordinate
 from moleculekit.util import sequenceID
 import numpy as np
+import logging
+
+
+logger = logging.getLogger(__name__)
+
 
 
 class MetricFluctuation(_MetricCoordinate):
@@ -78,7 +83,11 @@ class MetricFluctuation(_MetricCoordinate):
         if self._refmol is None:
             refcoords = np.mean(coords, axis=0)
         else:
-            refcoords = _MetricCoordinate(atomsel=self._atomsel, refmol=self._refmol).project(self._refmol)
+            _wrapref = True
+            if self._pbc and (self._refmol.box is None or len(self._refmol.box) == 0 or np.all(self._refmol.box == 0)):
+                logger.warning("refmol doesn't contain periodic box information and will not be wrapped.")
+                _wrapref = False
+            refcoords = _MetricCoordinate(atomsel=self._atomsel, refmol=self._refmol, pbc=_wrapref).project(self._refmol)
 
         mapping = super().getMapping(mol)
         xyzgroups = mapping.groupby('atomIndexes').groups
