@@ -176,7 +176,7 @@ def _buildResAndMol(pdb2pqr_protein):
                             occupancy, beta, charge, record)
     # mol_out.set("element", " ")
     # Re-calculating elements
-    mol_out.element[:] = ''
+    # mol_out.element[:] = ''
     mol_out.element = mol_out._guessMissingElements()
 
     prepData._importPKAs(pdb2pqr_protein.pka_protein)
