@@ -292,14 +292,24 @@ def BINCOORwrite(mol, filename):
     f.close()
 
 
-def PSFwrite(molecule, filename, explicitbonds=None):
-    m = molecule
-
+def PSFwrite(m, filename, explicitbonds=None):
     import string
+
+    segments = np.array([segid if segid != "" else chain for segid, chain in zip(m.segid, m.chain)])
+    used_segids = set(segments)
     # Letters to be used for default segids, if free: 0123456789abcd...ABCD..., minus chain symbols already used
-    used_segids = set(m.segid)
     segid_alphabet = list(string.digits + string.ascii_letters)
-    available_segids = [x for x in segid_alphabet if x not in used_segids]
+    available_segids = np.setdiff1d(segid_alphabet, used_segids)
+    segments[segments == ""] = available_segids[0]
+
+    fs = {
+    "serial": max( len(str(np.max(m.serial))), 10), 
+    "segid": max( len(max(segments, key=len)), 8), 
+    "resid": max( len(str(np.max(m.resid))) + len(max(m.insertion, key=len)), 8), 
+    "resname": max( len(max(m.resname, key=len)), 8), 
+    "name": max( len(max(m.name, key=len)), 8), 
+    "atomtype": max( len(max(m.atomtype, key=len)), 7), 
+    }
 
     f = open(filename, 'w')
     print("PSF NAMD\n", file=f)  # Write NAMD in the header so that VMD will read it as space delimited format instead of FORTRAN
@@ -313,19 +323,19 @@ def PSFwrite(molecule, filename, explicitbonds=None):
             segid = m.segid[i]
         elif m.segid[i] == '' and m.chain[i] != '':
             segid = m.chain[i]
-            
-        print("{!s:>8.8} {!s:4.4} {!s:5.5}{!s:4.4} {!s:4.4} {!s:6.6} {!s:2.2} {:10.6}  {:8.6}  {!s:>10.10}".format(
-            int(m.serial[i]),
-            segid,
-            str(m.resid[i]) + str(m.insertion[i]),
-            m.resname[i],
-            m.name[i],
-            atomtype,
-            "",  # m.element[i], # NAMD barfs if this is set
-            m.charge[i],
-            m.masses[i],
-            0
-        ), file=f)
+
+        string_format = (
+            f"{m.serial[i]:>{fs['serial']}} "
+            f"{segments[i]:<{fs['segid']}} "
+            f"{str(m.resid[i]) + str(m.insertion[i]):<{fs['resid']}} "
+            f"{m.resname[i]:<{fs['resname']}} "
+            f"{m.name[i]:<{fs['name']}} "
+            f"{atomtype:<{fs['atomtype']}} "
+            f"{m.charge[i]:>9.6f} "
+            f"{m.masses[i]:>13.4f} "
+            f"{0:>11} "
+        )
+        print(string_format, file=f)
 
     if explicitbonds is not None:
         bonds = explicitbonds
