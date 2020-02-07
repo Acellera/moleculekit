@@ -52,8 +52,15 @@ _exclude_pairs = (_Pair('C14', 'C14'), _Pair('C15', 'C15'),
 
 _rename_elements = {('SOD', 'SO'): 'Na'}
 
+# After scanning most of the PDB database these are the most common elements which start on position 12
+_position_12_elements = ['Se', 'Sr', 'Gd', 'Mn', 'Pt', 'Cs', 'Mg', 'Be', 'Sb', 'Bi', 'Th', 'Yb', 
+                         'Zn', 'Kr', 'Rb', 'Ar', 'Pa', 'Fe', 'Ag', 'In', 'Eu', 'Hg', 
+                         'Pr', 'Al', 'Ru', 'Sm', 'Ba', 'Lu', 'Re', 'Xe', 'Dy', 'Ti', 'As', 'Pu', 'Ir', 
+                         'Br', 'Li', 'Pd', 'Ce', 'Cr', 'Ho', 'La', 'Sn', 'Te', 'Cl', 'Hf', 'Ga', 
+                         'Co', 'Os', 'Tl', 'Au', 'Sc', 'Tb', 'Zr', 'Cu', 'Rh', 'Er', 'Mo', 'Si', 
+                         'Ca', 'Ta', 'Cm', 'Am', 'Na', 'Pb', 'Ni', 'Ne', 'Cd']
 
-def _deduce_PDB_atom_name(name, resname):
+def _deduce_PDB_atom_name(name, resname, element=None):
     """Deduce how the atom name should be aligned.
     Atom name format can be deduced from the atom type, yet atom type is
     not always available. This function uses the atom name and residue name
@@ -62,6 +69,8 @@ def _deduce_PDB_atom_name(name, resname):
     <https://gist.github.com/jbarnoud/37a524330f29b5b7b096> for more
     details.
     """
+    if element is not None and (element.strip().capitalize() in _position_12_elements) and (name[0:2].upper() == element[0:2].upper()):
+        return '{:<4}'.format(name)
     if len(name) >= 4:
         return name[:4]
     elif len(name) == 1:
@@ -169,7 +178,7 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode='pdb'):
     for f in range(numFrames):
         fh.write("MODEL    %5d\n" % (frames[f] + 1))
         for i in range(0, len(mol.record)):
-            name = _deduce_PDB_atom_name(mol.name[i], mol.resname[i])
+            name = _deduce_PDB_atom_name(mol.name[i], mol.resname[i], mol.element[i])
 
             if mode == 'pdb':
                 linefmt = "{!s:6.6}{!s:>5.5} {}{!s:>1.1}{!s:4.4}{!s:>1.1}{!s:>4.4}{!s:>1.1}   {}{}{}{}{}      {!s:4.4}{!s:>2.2}  \n"
