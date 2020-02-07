@@ -342,38 +342,44 @@ def PSFwrite(m, filename, explicitbonds=None):
     else:
         bonds = m.bonds
 
+    fieldlen = max(len(str(np.max(bonds))), 10) if bonds.shape[0] != 0 else 10
     print("\n\n", file=f)
-    print(" %8d !NBOND: bonds" % (bonds.shape[0]), file=f)
+    print(f"{bonds.shape[0]:{fieldlen}d} !NBOND: bonds", file=f)
     for i in range(bonds.shape[0]):
         if i and not (i % 4):
             print("", file=f)
-        print("%10d%10d" % (bonds[i, 0] + 1, bonds[i, 1] + 1), file=f, end="")
+        vals = bonds[i] + 1
+        print(f"{vals[0]:{fieldlen}d}{vals[1]:{fieldlen}d}", file=f, end="")
 
     if hasattr(m, 'angles'):
+        fieldlen = max(len(str(np.max(m.angles))), 10) if m.angles.shape[0] != 0 else 10
         print("\n\n", file=f)
-        print("%10d !NTHETA: angles" % (m.angles.shape[0]), file=f)
+        print(f"{m.angles.shape[0]:{fieldlen}d} !NTHETA: angles", file=f)
         for i in range(m.angles.shape[0]):
             if i and not (i % 3):
                 print("", file=f)
-            print("%10d%10d%10d" % (m.angles[i, 0] + 1, m.angles[i, 1] + 1, m.angles[i, 2] + 1), file=f, end="")
+            vals = m.angles[i] + 1
+            print(f"{vals[0]:{fieldlen}d}{vals[1]:{fieldlen}d}{vals[2]:{fieldlen}d}", file=f, end="")
 
     if hasattr(m, 'dihedrals'):
+        fieldlen = max(len(str(np.max(m.dihedrals))), 10) if m.dihedrals.shape[0] != 0 else 10
         print("\n\n", file=f)
-        print("%10d !NPHI: dihedrals" % (m.dihedrals.shape[0]), file=f)
+        print(f"{m.dihedrals.shape[0]:{fieldlen}d} !NPHI: dihedrals", file=f)
         for i in range(m.dihedrals.shape[0]):
             if i and not (i % 2):
                 print("", file=f)
-            print("%10d%10d%10d%10d" % (
-            m.dihedrals[i, 0] + 1, m.dihedrals[i, 1] + 1, m.dihedrals[i, 2] + 1, m.dihedrals[i, 3] + 1), file=f, end="")
+            vals = m.dihedrals[i] + 1
+            print(f"{vals[0]:{fieldlen}d}{vals[1]:{fieldlen}d}{vals[2]:{fieldlen}d}{vals[3]:{fieldlen}d}", file=f, end="")
 
     if hasattr(m, 'impropers'):
+        fieldlen = max(len(str(np.max(m.impropers))), 10) if m.impropers.shape[0] != 0 else 10
         print("\n\n", file=f)
-        print("%10d !NIMPHI: impropers" % (m.impropers.shape[0]), file=f)
+        print(f"{m.impropers.shape[0]:{fieldlen}d} !NIMPHI: impropers", file=f)
         for i in range(m.impropers.shape[0]):
             if i and not (i % 2):
                 print("", file=f)
-            print("%10d%10d%10d%10d" % (
-            m.impropers[i, 0] + 1, m.impropers[i, 1] + 1, m.impropers[i, 2] + 1, m.impropers[i, 3] + 1), file=f, end="")
+            vals = m.impropers[i] + 1
+            print(f"{vals[0]:{fieldlen}d}{vals[1]:{fieldlen}d}{vals[2]:{fieldlen}d}{vals[3]:{fieldlen}d}", file=f, end="")
 
     print("\n\n", file=f)
     print("%10d !NDON: donors\n" % (0), file=f)
@@ -593,7 +599,8 @@ class _TestWriters(unittest.TestCase):
         import os
 
         self.testfolder = home(dataDir='molecule-writers')
-        mol = Molecule(os.path.join(self.testfolder, 'filtered.pdb'))
+        mol = Molecule(os.path.join(self.testfolder, 'filtered.psf'))
+        mol.read(os.path.join(self.testfolder, 'filtered.pdb'))
         mol.coords = np.tile(mol.coords, (1, 1, 2))
         mol.filter('protein and resid 1 to 20')
         mol.boxangles = np.ones((3, 2), dtype=np.float32) * 90
@@ -601,6 +608,7 @@ class _TestWriters(unittest.TestCase):
         mol.step = np.arange(2)
         mol.time = np.arange(2) * 1E5
         mol.fileloc = [mol.fileloc[0], mol.fileloc[0]]
+        mol.bondtype[:] = '1'
         self.mol = mol
 
     def test_writers(self):
@@ -641,7 +649,7 @@ class _TestWriters(unittest.TestCase):
                     if ext == 'sdf':
                         reflines = reflines[2:]
                 print('Testing file', reffile, tmpfile)
-                self.assertEqual(filelines, reflines)
+                self.assertEqual(filelines, reflines, msg=f"Failed comparison of {reffile} {tmpfile}")
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
