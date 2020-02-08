@@ -177,6 +177,7 @@ def _buildResAndMol(pdb2pqr_protein):
     # mol_out.set("element", " ")
     # Re-calculating elements
     # mol_out.element[:] = ''
+    assert not np.any(mol_out.element == 'X'), "pdb2pqr left some lonepair atoms in. report this issue to moleculekit github issue tracker"
     mol_out.element = mol_out._guessMissingElements()
 
     prepData._importPKAs(pdb2pqr_protein.pka_protein)
@@ -469,7 +470,6 @@ class _TestPreparation(unittest.TestCase):
             mol_op, prepData = proteinPrepare(mol, returnDetails=True)
             mol_op.write("./{}-prepared.pdb".format(pdb))
             prepData.data.to_csv("./{}-prepared.csv".format(pdb), float_format="%.2f")
-
             compareDir = home(dataDir=os.path.join('test-proteinprepare', pdb))
             assertSameAsReferenceDir(compareDir)
 

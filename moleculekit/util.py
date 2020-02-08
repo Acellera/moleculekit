@@ -553,6 +553,25 @@ def guessAnglesAndDihedrals(bonds, cyclicdih=False):
     return angles, dihedrals
 
 
+def assertSameAsReferenceDir(compareDir, outdir="."):
+    """Check if files in refdir are present in the directory given as second argument AND their content matches.
+
+    Raise an exception if not."""
+
+    import filecmp
+    import os
+
+    toCompare = os.listdir(compareDir)
+    match, mismatch, error = filecmp.cmpfiles(outdir, compareDir, toCompare, shallow=False)
+    if len(mismatch) != 0 or len(error) != 0 or len(match) != len(toCompare):
+        logger.error("Mismatch while checking directory {} versus reference {}".format(outdir,compareDir))
+        logger.error("Files being checked: {}".format(toCompare))
+        for f in mismatch:
+            logger.error("    diff {} {}".format(os.path.join(outdir, f),
+                                                 os.path.join(compareDir, f)   ))
+        raise Exception('Mismatch in regression testing.')
+
+
 from unittest import TestCase
 
 class _TestUtils(TestCase):
