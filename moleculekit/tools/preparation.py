@@ -71,6 +71,7 @@ def _warnIfContainsDUM(mol):
 
 def _checkChainAndSegid(mol, _loggerLevel):
     from moleculekit.util import sequenceID
+    import string
     emptychains = mol.chain == ''
     emptysegids = mol.segid == ''
 
@@ -80,7 +81,8 @@ def _checkChainAndSegid(mol, _loggerLevel):
     if np.all(emptychains) and np.any(~emptysegids):
         logger.info('No chains defined in Molecule. Using segment IDs as chains for protein preparation.')
         mol = mol.copy()
-        mol.chain = sequenceID(mol.segid)
+        chain_alphabet = np.array(list(string.digits + string.ascii_uppercase + string.ascii_lowercase))
+        mol.chain[:] = chain_alphabet[sequenceID(mol.segid)]
         
     if np.any(~emptysegids) and np.any(~emptychains):
         chainseq = sequenceID(mol.chain)
