@@ -68,6 +68,22 @@ class MetricDistance(Projection):
         self.pbc = pbc
         self.truncate = truncate
 
+    def _checkChains(self, mol, sel1, sel2):
+        if np.ndim(sel1) == 1:
+            sel1 = sel1[None, :]
+        if np.ndim(sel2) == 1:
+            sel2 = sel2[None, :]
+        sel1 = np.any(sel1, axis=0)
+        sel2 = np.any(sel2, axis=0)
+        chains_sel1 = mol.chain[sel1]
+        chains_sel2 = mol.chain[sel2]
+        if len(np.intersect1d(chains_sel1, chains_sel2)):
+            logger.warning(
+                "Atomselections sel1 and sel2 of MetricDistance contain atoms belonging to a common chain. "
+                "Atoms within the same chain will not have periodic distances computed. "
+                "Ensure that chains are properly defined in your topology file."
+            )
+
     def project(self, mol):
         """ Project molecule.
 
@@ -84,6 +100,8 @@ class MetricDistance(Projection):
         getMolProp = lambda prop: self._getMolProp(mol, prop)
         sel1 = getMolProp("sel1")
         sel2 = getMolProp("sel2")
+        if self.pbc:
+            self._checkChains(mol, sel1, sel2)
 
         if np.ndim(sel1) == 1 and np.ndim(sel2) == 1:  # normal distances
             metric = pp_calcDistances(
