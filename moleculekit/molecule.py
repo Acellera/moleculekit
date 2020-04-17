@@ -331,7 +331,7 @@ class Molecule(object):
                 return np.insert(data1, index, data2, axis=0)
         append = index == self.numAtoms
 
-        if collisions:
+        if collisions and self.numAtoms > 0:
             idx1, idx2 = _detectCollisions(self, self.frame, mol, mol.frame, coldist)
             torem, numres = _getResidueIndexesByAtom(mol, idx2)
             mol = mol.copy()
