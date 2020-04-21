@@ -375,8 +375,8 @@ class Molecule(object):
 
         append = index == self.numAtoms
 
-        if collisions:
-            idx1, idx2 = _detectCollisions(self, self.frame, mol, mol.frame, coldist)
+        if collisions and self.numAtoms > 0:
+            _, idx2 = _detectCollisions(self, self.frame, mol, mol.frame, coldist)
             torem, numres = _getResidueIndexesByAtom(mol, idx2)
             mol = mol.copy()
             logger.info(
@@ -1367,10 +1367,10 @@ class Molecule(object):
                 trajinfo[field].append(self.__dict__[field])
 
         for mol in newmols:
-            if mol._numAtomsTraj == 0:
-                continue
-
             for field in Molecule._traj_fields:
+                if field == "coords" and mol._numAtomsTraj == 0:
+                    continue
+
                 if (
                     field == "fileloc"
                 ):  # TODO: Make a PR where fileloc becomes (2, nframes) numpy array so we don't handle it separately
@@ -1384,13 +1384,18 @@ class Molecule(object):
                     self.__dict__[field] = trajinfo[field]
                 else:
                     # np.concatenate duplicates memory. Let's avoid it if it's only one array to not fill up all memory w large traj
-                    if len(trajinfo[field]) == 1:
+                    if len(trajinfo[field]) == 0:
+                        continue
+                    elif len(trajinfo[field]) == 1:
                         self.__dict__[field] = trajinfo[field][0]
                     else:
                         self.__dict__[field] = np.concatenate(trajinfo[field], axis=-1)
 
-        if self._numAtomsTopo != 0 and self._numAtomsTraj == 0:
-            self._emptyTraj(self._numAtomsTopo)
+        if self._numAtomsTopo != 0:
+            if self._numAtomsTraj == 0:
+                self.coords = self._empty(self._numAtomsTopo, "coords")
+            if self.box is None or len(self.box) == 0:
+                self.box = np.zeros(self._dims["box"], dtype=self._dtypes["box"])
             return
 
         if skip is not None:
@@ -2763,6 +2768,14 @@ class _TestMolecule(TestCase):
         assert mol_equal(mol1, mol2, fieldPrecision={"coords": 1e-2})
         assert not mol_equal(mol1, mol2, fieldPrecision={"coords": 1e-4})
 
+    def test_append_collision_to_empty_mol(self):
+        mol = Molecule()
+        mol1 = Molecule("3ptb")
+        mol.append(mol1, collisions=True)
+
+        mol = Molecule()
+        mol.append(mol1)
+
 
 if __name__ == "__main__":
     # Unfortunately, tests affect each other because only a shallow copy is done before each test, so
@@ -2774,4 +2787,3 @@ if __name__ == "__main__":
     doctest.testmod(extraglobs={"tryp": m.copy()})
 
     unittest.main(verbosity=2)
-
