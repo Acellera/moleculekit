@@ -197,7 +197,8 @@ class MolFactory(object):
                     uniqueBonds=uniqueBonds,
                 )
             if traj is not None:
-                mol._emptyTraj(natoms)
+                if natoms is not None:
+                    mol._emptyTraj(natoms)
                 MolFactory._parseTraj(mol, traj, filename, frame)
 
             mols.append(mol)
@@ -228,7 +229,7 @@ class MolFactory(object):
                     )
                 )
             toponatoms = natoms[0]
-        if traj is not None:
+        if traj is not None and len(traj.coords):
             trajnatoms = traj.coords.shape[0]
 
         if (
@@ -345,19 +346,23 @@ class MolFactory(object):
 
         ext = os.path.splitext(filename)[1][1:]
 
-        assert (
-            traj.coords.ndim == 3
-        ), "{} reader must return 3D coordinates array for file {}".format(
-            ext, filename
-        )
-        assert (
-            traj.coords.shape[1] == 3
-        ), "{} reader must return 3 values in 2nd dimension for file {}".format(
-            ext, filename
-        )
+        if len(traj.coords):
+            assert (
+                traj.coords.ndim == 3
+            ), "{} reader must return 3D coordinates array for file {}".format(
+                ext, filename
+            )
+            assert (
+                traj.coords.shape[1] == 3
+            ), "{} reader must return 3 values in 2nd dimension for file {}".format(
+                ext, filename
+            )
 
         for field in ["coords", "box", "boxangles"]:
             # All necessary dtype conversions. Only perform if necessary since it otherwise reallocates memory!
+            if getattr(traj, field) is None or len(getattr(traj, field)) == 0:
+                continue
+
             if getattr(traj, field).dtype != Molecule._dtypes[field]:
                 setattr(
                     traj, field, getattr(traj, field).astype(Molecule._dtypes["coords"])
@@ -367,7 +372,8 @@ class MolFactory(object):
             if not getattr(traj, field).flags["C_CONTIGUOUS"]:
                 setattr(traj, field, np.ascontiguousarray(getattr(traj, field)))
 
-        mol.coords = traj.coords
+        if len(traj.coords):
+            mol.coords = traj.coords
 
         if traj.box is None:
             mol.box = np.zeros((3, 1), dtype=Molecule._dtypes["box"])
@@ -387,7 +393,7 @@ class MolFactory(object):
         mol.step = np.hstack(traj.step).astype(int)
         mol.time = np.hstack(traj.time)
 
-        if ext in _TRAJECTORY_READERS and frame is None:
+        if ext in _TRAJECTORY_READERS and frame is None and len(traj.coords):
             # Writing hidden index file containing number of frames in trajectory file
             if os.path.isfile(filename):
                 MolFactory._writeNumFrames(filename, mol.numFrames)
@@ -1593,6 +1599,33 @@ def XTCread(filename, frame=None, topoloc=None):
     )
 
 
+def XSCread(filename, frame=None, topoloc=None):
+    with open(filename, "r") as f:
+        for line in f:
+            if line.startswith("#"):
+                continue
+            pieces = line.split()
+            if len(pieces) != 19:
+                raise RuntimeError(
+                    "Incorrect XSC file. Line should contain 19 numbers."
+                )
+            pieces = np.array(list(map(float, pieces)))
+
+            if np.any(pieces[[2, 3, 4, 6, 7, 8]] != 0):
+                raise RuntimeError(
+                    "Simulation box has to be rectangular for moleculekit to read it"
+                )
+            step = pieces[0]
+            box = pieces[[1, 5, 9]]
+
+    return MolFactory.construct(
+        None,
+        Trajectory(box=box, step=[step,], time=np.zeros(1, dtype=np.float32)),
+        filename,
+        frame,
+    )
+
+
 def CRDread(filename, frame=None, topoloc=None):
     # default_name
     #  7196
@@ -2129,7 +2162,7 @@ for ext in _MDTRAJ_TOPOLOGY_EXTS:
     if ext not in _TOPOLOGY_READERS:
         _TOPOLOGY_READERS[ext] = MDTRAJTOPOread
 
-_TRAJECTORY_READERS = {"xtc": XTCread}
+_TRAJECTORY_READERS = {"xtc": XTCread, "xsc": XSCread}
 
 _COORDINATE_READERS = {"crd": CRDread, "coor": BINCOORread}
 
@@ -2165,73 +2198,71 @@ import unittest
 class _TestReaders(unittest.TestCase):
     def testfolder(self, subname=None):
         from moleculekit.home import home
-
         if subname is None:
-            return home(dataDir="molecule-readers")
+            return home(dataDir='molecule-readers')
         else:
-            return os.path.join(home(dataDir="molecule-readers"), subname)
+            return os.path.join(home(dataDir='molecule-readers'), subname)
 
     def test_pdb(self):
         from moleculekit.home import home
-
-        for f in glob(os.path.join(self.testfolder(), "*.pdb")):
+        for f in glob(os.path.join(self.testfolder(), '*.pdb')):
             mol = Molecule(f)
-        for f in glob(os.path.join(home(dataDir="pdb/"), "*.pdb")):
+        for f in glob(os.path.join(home(dataDir='pdb/'), '*.pdb')):
             mol = Molecule(f)
-
+        
     def test_pdbqt(self):
-        mol = Molecule(os.path.join(self.testfolder(), "3ptb.pdbqt"))
+        mol = Molecule(os.path.join(self.testfolder(), '3ptb.pdbqt'))
 
     def test_psf(self):
-        mol = Molecule(os.path.join(self.testfolder("4RWS"), "structure.psf"))
+        mol = Molecule(os.path.join(self.testfolder('4RWS'), 'structure.psf'))
 
     def test_xtc(self):
-        mol = Molecule(os.path.join(self.testfolder("4RWS"), "traj.xtc"))
+        mol = Molecule(os.path.join(self.testfolder('4RWS'), 'traj.xtc'))
 
     def test_combine_topo_traj(self):
-        testfolder = self.testfolder("4RWS")
-        mol = Molecule(os.path.join(testfolder, "structure.psf"))
-        mol.read(os.path.join(testfolder, "traj.xtc"))
+        testfolder = self.testfolder('4RWS')
+        mol = Molecule(os.path.join(testfolder, 'structure.psf'))
+        mol.read(os.path.join(testfolder, 'traj.xtc'))
 
     def test_prmtop(self):
-        testfolder = self.testfolder("3AM6")
-        mol = Molecule(os.path.join(testfolder, "structure.prmtop"))
+        testfolder = self.testfolder('3AM6')
+        mol = Molecule(os.path.join(testfolder, 'structure.prmtop'))
 
     def test_crd(self):
-        testfolder = self.testfolder("3AM6")
-        mol = Molecule(os.path.join(testfolder, "structure.crd"))
+        testfolder = self.testfolder('3AM6')
+        mol = Molecule(os.path.join(testfolder, 'structure.crd'))
 
     def test_mol2(self):
-        testfolder = self.testfolder("3L5E")
-        mol = Molecule(os.path.join(testfolder, "protein.mol2"))
-        mol = Molecule(os.path.join(testfolder, "ligand.mol2"))
+        testfolder = self.testfolder('3L5E')
+        mol = Molecule(os.path.join(testfolder, 'protein.mol2'))
+        mol = Molecule(os.path.join(testfolder, 'ligand.mol2'))
 
     def test_gjf(self):
-        testfolder = self.testfolder("3L5E")
-        mol = Molecule(os.path.join(testfolder, "ligand.gjf"))
+        testfolder = self.testfolder('3L5E')
+        mol = Molecule(os.path.join(testfolder, 'ligand.gjf'))
 
     def test_xyz(self):
-        testfolder = self.testfolder("3L5E")
-        mol = Molecule(os.path.join(testfolder, "ligand.xyz"))
+        testfolder = self.testfolder('3L5E')
+        mol = Molecule(os.path.join(testfolder, 'ligand.xyz'))
 
     def test_MDTRAJTOPOread(self):
-        testfolder = self.testfolder("3L5E")
-        mol = Molecule(os.path.join(testfolder, "ligand.mol2"))
+        testfolder = self.testfolder('3L5E')
+        mol = Molecule(os.path.join(testfolder, 'ligand.mol2'))
 
     def test_mae(self):
-        for f in glob(os.path.join(self.testfolder(), "*.mae")):
+        for f in glob(os.path.join(self.testfolder(), '*.mae')):
             mol = Molecule(f)
 
     def test_append_trajectories(self):
-        testfolder = self.testfolder("CMYBKIX")
-        mol = Molecule(os.path.join(testfolder, "filtered.pdb"))
-        mol.read(glob(os.path.join(testfolder, "*.xtc")))
+        testfolder = self.testfolder('CMYBKIX')
+        mol = Molecule(os.path.join(testfolder, 'filtered.pdb'))
+        mol.read(glob(os.path.join(testfolder, '*.xtc')))
 
     def test_missing_crystal_info(self):
-        mol = Molecule(os.path.join(self.testfolder(), "weird-cryst.pdb"))
+        mol = Molecule(os.path.join(self.testfolder(), 'weird-cryst.pdb'))
 
     def test_missing_occu_beta(self):
-        mol = Molecule(os.path.join(self.testfolder(), "opm_missing_occu_beta.pdb"))
+        mol = Molecule(os.path.join(self.testfolder(), 'opm_missing_occu_beta.pdb'))
         assert np.all(mol.occupancy[:2141] != 0)
         assert np.all(mol.occupancy[2141:] == 0)
         assert np.all(mol.beta[:2141] != 0)
@@ -2239,485 +2270,212 @@ class _TestReaders(unittest.TestCase):
 
     def test_dcd(self):
         from moleculekit.home import home
-
-        mol = Molecule(os.path.join(self.testfolder("dcd"), "1kdx_0.pdb"))
-        mol.read(os.path.join(self.testfolder("dcd"), "1kdx.dcd"))
+        mol = Molecule(os.path.join(self.testfolder('dcd'), '1kdx_0.pdb'))
+        mol.read(os.path.join(self.testfolder('dcd'), '1kdx.dcd'))
 
     def test_dcd_into_prmtop(self):
         from moleculekit.home import home
-
-        mol = Molecule(os.path.join(self.testfolder(), "dialanine", "structure.prmtop"))
-        mol.read(os.path.join(self.testfolder(), "dialanine", "traj.dcd"))
+        mol = Molecule(os.path.join(self.testfolder(), 'dialanine', 'structure.prmtop'))
+        mol.read(os.path.join(self.testfolder(), 'dialanine', 'traj.dcd'))
         assert mol.numFrames == 2
 
     def test_dcd_frames(self):
         from moleculekit.home import home
-
-        mol = Molecule(os.path.join(self.testfolder("dcd"), "1kdx_0.pdb"))
-        mol.read(os.path.join(self.testfolder("dcd"), "1kdx.dcd"))
+        mol = Molecule(os.path.join(self.testfolder('dcd'), '1kdx_0.pdb'))
+        mol.read(os.path.join(self.testfolder('dcd'), '1kdx.dcd'))
         tmpcoo = mol.coords.copy()
-        mol.read([os.path.join(self.testfolder("dcd"), "1kdx.dcd")], frames=[8])
-        assert np.array_equal(
-            tmpcoo[:, :, 8], np.squeeze(mol.coords)
-        ), "Specific frame reading not working"
+        mol.read([os.path.join(self.testfolder('dcd'), '1kdx.dcd')], frames=[8])
+        assert np.array_equal(tmpcoo[:, :, 8], np.squeeze(mol.coords)), 'Specific frame reading not working'
 
     def test_xtc_frames(self):
-        mol = Molecule(os.path.join(self.testfolder("4RWS"), "structure.pdb"))
-        mol.read(os.path.join(self.testfolder("4RWS"), "traj.xtc"))
+        mol = Molecule(os.path.join(self.testfolder('4RWS'), 'structure.pdb'))
+        mol.read(os.path.join(self.testfolder('4RWS'), 'traj.xtc'))
         tmpcoo = mol.coords.copy()
-        mol.read([os.path.join(self.testfolder("4RWS"), "traj.xtc")], frames=[1])
-        assert np.array_equal(
-            tmpcoo[:, :, 1], np.squeeze(mol.coords)
-        ), "Specific frame reading not working"
+        mol.read([os.path.join(self.testfolder('4RWS'), 'traj.xtc')], frames=[1])
+        assert np.array_equal(tmpcoo[:, :, 1], np.squeeze(mol.coords)), 'Specific frame reading not working'
 
     def test_gromacs_top(self):
-        mol = Molecule(os.path.join(self.testfolder(), "gromacs.top"))
-        assert np.array_equal(
-            mol.name, ["C1", "O2", "N3", "H4", "H5", "N6", "H7", "H8"]
-        )
-        assert np.array_equal(mol.atomtype, ["C", "O", "NT", "H", "H", "NT", "H", "H"])
+        mol = Molecule(os.path.join(self.testfolder(), 'gromacs.top'))
+        assert np.array_equal(mol.name, ['C1', 'O2', 'N3', 'H4', 'H5', 'N6', 'H7', 'H8'])
+        assert np.array_equal(mol.atomtype, ['C', 'O', 'NT', 'H', 'H', 'NT', 'H', 'H'])
         assert np.all(mol.resid == 1)
-        assert np.all(mol.resname == "UREA")
-        assert np.array_equal(
-            mol.charge,
-            np.array(
-                [0.683, -0.683, -0.622, 0.346, 0.276, -0.622, 0.346, 0.276], np.float32
-            ),
-        )
-        assert np.array_equal(
-            mol.bonds, [[2, 3], [2, 4], [5, 6], [5, 7], [0, 1], [0, 2], [0, 5]]
-        )
-        assert np.array_equal(
-            mol.angles,
-            [
-                [0, 2, 3],
-                [0, 2, 4],
-                [3, 2, 4],
-                [0, 5, 6],
-                [0, 5, 7],
-                [6, 5, 7],
-                [1, 0, 2],
-                [1, 0, 5],
-                [2, 0, 5],
-            ],
-        )
-        assert np.array_equal(
-            mol.dihedrals,
-            [
-                [1, 0, 2, 3],
-                [5, 0, 2, 3],
-                [1, 0, 2, 4],
-                [5, 0, 2, 4],
-                [1, 0, 5, 6],
-                [2, 0, 5, 6],
-                [1, 0, 5, 7],
-                [2, 0, 5, 7],
-                [2, 3, 4, 0],
-                [5, 6, 7, 0],
-                [0, 2, 5, 1],
-            ],
-        )
+        assert np.all(mol.resname == 'UREA')
+        assert np.array_equal(mol.charge, np.array([ 0.683, -0.683, -0.622,  0.346,  0.276, -0.622,  0.346,  0.276], np.float32))
+        assert np.array_equal(mol.bonds, [[2, 3],
+                                            [2, 4],
+                                            [5, 6],
+                                            [5, 7],
+                                            [0, 1],
+                                            [0, 2],
+                                            [0, 5]])
+        assert np.array_equal(mol.angles, [[0, 2, 3],
+                                            [0, 2, 4],
+                                            [3, 2, 4],
+                                            [0, 5, 6],
+                                            [0, 5, 7],
+                                            [6, 5, 7],
+                                            [1, 0, 2],
+                                            [1, 0, 5],
+                                            [2, 0, 5]])
+        assert np.array_equal(mol.dihedrals, [[1, 0, 2, 3],
+                                                [5, 0, 2, 3],
+                                                [1, 0, 2, 4],
+                                                [5, 0, 2, 4],
+                                                [1, 0, 5, 6],
+                                                [2, 0, 5, 6],
+                                                [1, 0, 5, 7],
+                                                [2, 0, 5, 7],
+                                                [2, 3, 4, 0],
+                                                [5, 6, 7, 0],
+                                                [0, 2, 5, 1]])
         assert len(mol.impropers) == 0
 
+
     def test_mmcif_single_frame(self):
-        mol = Molecule(os.path.join(self.testfolder(), "1ffk.cif"))
+        mol = Molecule(os.path.join(self.testfolder(), '1ffk.cif'))
         assert mol.numAtoms == 64281
         assert mol.numFrames == 1
 
     def test_mmcif_multi_frame(self):
-        mol = Molecule(os.path.join(self.testfolder(), "1j8k.cif"))
+        mol = Molecule(os.path.join(self.testfolder(), '1j8k.cif'))
         assert mol.numAtoms == 1402
         assert mol.numFrames == 20
 
     def test_multiple_file_fileloc(self):
         from moleculekit.home import home
-
-        mol = Molecule(os.path.join(self.testfolder("multi-traj"), "structure.pdb"))
-        mol.read(
-            glob(os.path.join(self.testfolder("multi-traj"), "data", "*", "*.xtc"))
-        )
+        mol = Molecule(os.path.join(self.testfolder('multi-traj'), 'structure.pdb'))
+        mol.read(glob(os.path.join(self.testfolder('multi-traj'), 'data', '*', '*.xtc')))
         # Try to vstack fileloc. This will fail with wrong fileloc shape
         fileloc = np.vstack(mol.fileloc)
         assert fileloc.shape == (12, 2)
-        print("Correct fileloc shape with multiple file reading.")
+        print('Correct fileloc shape with multiple file reading.')
 
     def test_topo_overwriting(self):
         from moleculekit.home import home
-
         # Testing overwriting of topology fields
-        mol = Molecule(os.path.join(self.testfolder("multi-topo"), "mol.psf"))
+        mol = Molecule(os.path.join(self.testfolder('multi-topo'), 'mol.psf'))
         atomtypes = mol.atomtype.copy()
         charges = mol.charge.copy()
-        coords = np.array(
-            [
-                [[0.0], [0.0], [-0.17]],
-                [[0.007], [1.21], [0.523]],
-                [[0.0], [0.0], [-1.643]],
-                [[-0.741], [-0.864], [-2.296]],
-            ],
-            dtype=np.float32,
-        )
+        coords = np.array([[[0.],
+                            [0.],
+                            [-0.17]],
 
-        mol.read(os.path.join(self.testfolder("multi-topo"), "mol.pdb"))
+                           [[0.007],
+                            [1.21],
+                            [0.523]],
+
+                           [[0.],
+                            [0.],
+                            [-1.643]],
+
+                           [[-0.741],
+                            [-0.864],
+                            [-2.296]]], dtype=np.float32)
+
+        mol.read(os.path.join(self.testfolder('multi-topo'), 'mol.pdb'))
         assert np.array_equal(mol.atomtype, atomtypes)
         assert np.array_equal(mol.charge, charges)
         assert np.array_equal(mol.coords, coords)
-        print("Merging of topology fields works")
+        print('Merging of topology fields works')
 
     def test_integer_resnames(self):
-        mol = Molecule(os.path.join(self.testfolder(), "errors.pdb"))
-        assert np.unique(mol.resname) == "007"
+        mol = Molecule(os.path.join(self.testfolder(), 'errors.pdb'))
+        assert np.unique(mol.resname) == '007'
 
     def test_star_indexes(self):
-        mol = Molecule(os.path.join(self.testfolder(), "errors.pdb"))
-        assert np.all(mol.serial == np.arange(1, mol.numAtoms + 1))
+        mol = Molecule(os.path.join(self.testfolder(), 'errors.pdb'))
+        assert np.all(mol.serial == np.arange(1, mol.numAtoms+1))
 
+    def test_xsc(self):
+        mol1 = Molecule(os.path.join(self.testfolder(), 'test1.xsc'))
+        ref1box = np.array([[81.67313],[75.81903],[75.02757]], dtype=np.float32)
+        ref1step = np.array([2])
+        assert np.array_equal(mol1.box, ref1box)
+        assert np.array_equal(mol1.step, ref1step)
+
+        mol2 = Molecule(os.path.join(self.testfolder(), 'test2.xsc'))
+        ref2box = np.array([[41.0926],[35.99448],[63.51968]], dtype=np.float32)
+        ref2step = np.array([18])
+        assert np.array_equal(mol2.box, ref2box)
+        assert np.array_equal(mol2.step, ref2step)
+
+        # Test reading xsc into existing molecule
+        mol1 = Molecule('3ptb')
+        mol1.read(os.path.join(self.testfolder(), 'test1.xsc'))
+        assert np.array_equal(mol1.box, ref1box)
+        assert np.array_equal(mol1.step, ref1step)
+
+# fmt: off
     def test_pdb_element_guessing(self):
-        mol = Molecule(os.path.join(self.testfolder(), "errors.pdb"))
-        refelem = np.array(
-            [
-                "C",
-                "C",
-                "C",
-                "C",
-                "C",
-                "C",
-                "C",
-                "N",
-                "Na",
-                "N",
-                "H",
-                "H",
-                "C",
-                "Cl",
-                "Ca",
-            ],
-            dtype=object,
-        )
+        mol = Molecule(os.path.join(self.testfolder(), 'errors.pdb'))
+        refelem = np.array(['C', 'C', 'C', 'C', 'C', 'C', 'C', 'N', 'Na', 'N', 'H', 'H', 'C', 'Cl', 'Ca'], dtype=object)
         assert np.array_equal(mol.element, refelem)
 
-        mol = Molecule(os.path.join(self.testfolder(), "dialanine_solute.pdb"))
-        refelem = np.array(
-            [
-                "H",
-                "C",
-                "H",
-                "H",
-                "C",
-                "O",
-                "N",
-                "H",
-                "C",
-                "H",
-                "C",
-                "H",
-                "H",
-                "H",
-                "C",
-                "O",
-                "N",
-                "H",
-                "C",
-                "H",
-                "H",
-                "H",
-            ],
-            dtype=object,
-        )
+        mol = Molecule(os.path.join(self.testfolder(), 'dialanine_solute.pdb'))
+        refelem = np.array(['H', 'C', 'H', 'H', 'C', 'O', 'N', 'H', 'C', 'H', 'C', 'H', 'H', 'H', 'C', 'O', 'N', 'H',
+                            'C', 'H', 'H', 'H'], dtype=object)
         assert np.array_equal(mol.element, refelem)
 
-        mol = Molecule(os.path.join(self.testfolder(), "cl_na_element.pdb"))
-        refelem = np.array(["Cl", "Na"], dtype=object)
+        mol = Molecule(os.path.join(self.testfolder(), 'cl_na_element.pdb'))
+        refelem = np.array(['Cl', 'Na'], dtype=object)
         assert np.array_equal(mol.element, refelem)
 
-        mol = Molecule(os.path.join(self.testfolder(), "dummy_atoms.mol2"))
-        refelem = np.array(
-            [
-                "Cd",
-                "Co",
-                "Ca",
-                "Xe",
-                "Rb",
-                "Lu",
-                "Ga",
-                "Ba",
-                "Cs",
-                "Ho",
-                "Pb",
-                "Sr",
-                "Yb",
-                "Y",
-            ],
-            dtype=object,
-        )
+        mol = Molecule(os.path.join(self.testfolder(), 'dummy_atoms.mol2'))
+        refelem = np.array(['Cd', 'Co', 'Ca', 'Xe', 'Rb', 'Lu', 'Ga', 'Ba', 'Cs', 'Ho', 'Pb', 'Sr', 'Yb', 'Y'], dtype=object)
         assert np.array_equal(mol.element, refelem)
 
     def test_pdb_charges(self):
-        mol = Molecule(os.path.join(self.testfolder(), "errors.pdb"))
-        refcharge = np.array(
-            [
-                -1.0,
-                1.0,
-                -1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-            ],
-            dtype=np.float32,
-        )
+        mol = Molecule(os.path.join(self.testfolder(), 'errors.pdb'))
+        refcharge = np.array([-1.,  1., -1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 0.,  0.,  0.,  0.], dtype=np.float32)
         assert np.array_equal(mol.charge, refcharge)
 
     def test_prepi(self):
-        mol = Molecule(os.path.join(self.testfolder(), "benzamidine.prepi"))
-        assert np.array_equal(
-            mol.name,
-            [
-                "N",
-                "H18",
-                "H17",
-                "C7",
-                "N14",
-                "H15",
-                "H16",
-                "C",
-                "C6",
-                "H12",
-                "C5",
-                "H11",
-                "C4",
-                "H10",
-                "C3",
-                "H9",
-                "C2",
-                "H",
-            ],
-        )
-        assert np.array_equal(
-            mol.atomtype,
-            [
-                "NT",
-                "H",
-                "H",
-                "CM",
-                "NT",
-                "H",
-                "H",
-                "CA",
-                "CA",
-                "HA",
-                "CA",
-                "HA",
-                "CA",
-                "HA",
-                "CA",
-                "HA",
-                "CA",
-                "HA",
-            ],
-        )
-        assert np.array_equal(
-            mol.charge,
-            np.array(
-                [
-                    -0.4691,
-                    0.3267,
-                    0.3267,
-                    0.5224,
-                    -0.4532,
-                    0.3267,
-                    0.3267,
-                    -0.2619,
-                    -0.082,
-                    0.149,
-                    -0.116,
-                    0.17,
-                    -0.058,
-                    0.17,
-                    -0.116,
-                    0.17,
-                    -0.082,
-                    0.149,
-                ],
-                dtype=np.float32,
-            ),
-        )
-        assert np.array_equal(
-            mol.impropers,
-            np.array(
-                [
-                    [7, 0, 3, 4],
-                    [8, 16, 7, 3],
-                    [7, 10, 8, 9],
-                    [8, 12, 10, 11],
-                    [10, 14, 12, 13],
-                    [12, 16, 14, 15],
-                    [7, 14, 16, 17],
-                ]
-            ),
-        )
+        mol = Molecule(os.path.join(self.testfolder(), 'benzamidine.prepi'))
+        assert np.array_equal(mol.name, ['N', 'H18', 'H17', 'C7', 'N14', 'H15', 'H16', 'C', 'C6', 'H12', 'C5', 'H11', 'C4', 'H10', 'C3', 'H9', 'C2', 'H'])
+        assert np.array_equal(mol.atomtype, ['NT', 'H', 'H', 'CM', 'NT', 'H', 'H', 'CA', 'CA', 'HA', 'CA', 'HA', 'CA', 'HA', 'CA', 'HA', 'CA', 'HA'])
+        assert np.array_equal(mol.charge, np.array([-0.4691,  0.3267,  0.3267,  0.5224, -0.4532,  0.3267,  0.3267,
+                                                    -0.2619, -0.082 ,  0.149 , -0.116 ,  0.17  , -0.058 ,  0.17  ,
+                                                    -0.116 ,  0.17  , -0.082 ,  0.149 ], dtype=np.float32))
+        assert np.array_equal(mol.impropers, np.array([[ 7,  0,  3,  4],
+                                                        [ 8, 16,  7,  3],
+                                                        [ 7, 10,  8,  9],
+                                                        [ 8, 12, 10, 11],
+                                                        [10, 14, 12, 13],
+                                                        [12, 16, 14, 15],
+                                                        [ 7, 14, 16, 17]]))
 
     def test_rtf(self):
-        mol = Molecule(os.path.join(self.testfolder(), "mol.rtf"))
-        assert np.array_equal(
-            mol.element,
-            [
-                "C",
-                "C",
-                "C",
-                "C",
-                "C",
-                "C",
-                "C",
-                "H",
-                "H",
-                "H",
-                "H",
-                "H",
-                "N",
-                "N",
-                "H",
-                "H",
-                "H",
-                "H",
-            ],
-        )
-        assert np.array_equal(
-            mol.name,
-            [
-                "C1",
-                "C2",
-                "C3",
-                "C4",
-                "C5",
-                "C6",
-                "C7",
-                "H8",
-                "H9",
-                "H10",
-                "H11",
-                "H12",
-                "N13",
-                "N14",
-                "H15",
-                "H16",
-                "H17",
-                "H18",
-            ],
-        )
-        assert np.array_equal(
-            mol.atomtype,
-            [
-                "C261",
-                "C261",
-                "C261",
-                "C261",
-                "C261",
-                "C261",
-                "C2N2",
-                "HG61",
-                "HG61",
-                "HG61",
-                "HG61",
-                "HG61",
-                "N2P1",
-                "N2P1",
-                "HGP2",
-                "HGP2",
-                "HGP2",
-                "HGP2",
-            ],
-        )
-        assert np.array_equal(
-            mol.charge,
-            np.array(
-                [
-                    0.062728,
-                    -0.046778,
-                    -0.061366,
-                    -0.062216,
-                    -0.061366,
-                    -0.046778,
-                    0.270171,
-                    0.063213,
-                    0.062295,
-                    0.062269,
-                    0.062295,
-                    0.063213,
-                    -0.28704,
-                    -0.28704,
-                    0.3016,
-                    0.3016,
-                    0.3016,
-                    0.3016,
-                ],
-                dtype=np.float32,
-            ),
-        )
-        assert np.array_equal(
-            mol.masses,
-            np.array(
-                [
-                    12.011,
-                    12.011,
-                    12.011,
-                    12.011,
-                    12.011,
-                    12.011,
-                    12.011,
-                    1.008,
-                    1.008,
-                    1.008,
-                    1.008,
-                    1.008,
-                    14.007,
-                    14.007,
-                    1.008,
-                    1.008,
-                    1.008,
-                    1.008,
-                ],
-                dtype=np.float32,
-            ),
-        )
-        assert np.array_equal(
-            mol.bonds,
-            np.array(
-                [
-                    [0, 1],
-                    [0, 5],
-                    [0, 6],
-                    [1, 2],
-                    [1, 7],
-                    [2, 3],
-                    [2, 8],
-                    [3, 4],
-                    [3, 9],
-                    [4, 5],
-                    [4, 10],
-                    [5, 11],
-                    [6, 12],
-                    [6, 13],
-                    [16, 12],
-                    [17, 12],
-                    [14, 13],
-                    [15, 13],
-                ]
-            ),
-        )
-        assert np.array_equal(mol.impropers, np.array([[6, 0, 12, 13]]))
+        mol = Molecule(os.path.join(self.testfolder(), 'mol.rtf'))
+        assert np.array_equal(mol.element, ['C', 'C', 'C', 'C', 'C', 'C', 'C', 'H', 'H', 'H', 'H', 'H', 'N', 'N', 'H', 'H', 'H', 'H'])
+        assert np.array_equal(mol.name, ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'H8', 'H9', 'H10', 'H11', 'H12', 'N13', 'N14', 'H15', 'H16', 'H17', 'H18'])
+        assert np.array_equal(mol.atomtype, ['C261', 'C261', 'C261', 'C261', 'C261', 'C261', 'C2N2', 'HG61', 'HG61', 'HG61', 'HG61', 'HG61', 'N2P1', 'N2P1', 'HGP2', 'HGP2', 'HGP2', 'HGP2'])
+        assert np.array_equal(mol.charge, np.array([ 0.062728, -0.046778, -0.061366, -0.062216, -0.061366, -0.046778,
+                                                    0.270171,  0.063213,  0.062295,  0.062269,  0.062295,  0.063213,
+                                                    -0.28704 , -0.28704 ,  0.3016  ,  0.3016  ,  0.3016  ,  0.3016  ], dtype=np.float32))
+        assert np.array_equal(mol.masses, np.array([12.011, 12.011, 12.011, 12.011, 12.011, 12.011, 12.011,  1.008,
+                                                    1.008,  1.008,  1.008,  1.008, 14.007, 14.007,  1.008,  1.008,
+                                                    1.008,  1.008], dtype=np.float32))
+        assert np.array_equal(mol.bonds, np.array([[ 0,  1],
+                                                    [ 0,  5],
+                                                    [ 0,  6],
+                                                    [ 1,  2],
+                                                    [ 1,  7],
+                                                    [ 2,  3],
+                                                    [ 2,  8],
+                                                    [ 3,  4],
+                                                    [ 3,  9],
+                                                    [ 4,  5],
+                                                    [ 4, 10],
+                                                    [ 5, 11],
+                                                    [ 6, 12],
+                                                    [ 6, 13],
+                                                    [16, 12],
+                                                    [17, 12],
+                                                    [14, 13],
+                                                    [15, 13]]))
+        assert np.array_equal(mol.impropers, np.array([[ 6,  0, 12, 13]]))
+# fmt: on
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     import unittest
-
     unittest.main(verbosity=2)
-

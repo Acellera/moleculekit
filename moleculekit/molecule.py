@@ -1120,7 +1120,11 @@ class Molecule(object):
                     "Reader {} should not return multiple molecules. Report this error on github."
                 )
 
-            if self.numAtoms != 0 and mol.numAtoms != self.numAtoms:
+            if (
+                self.numAtoms != 0
+                and mol.numAtoms != 0
+                and mol.numAtoms != self.numAtoms
+            ):
                 raise ValueError(
                     "Number of atoms in file ({}) mismatch with number of atoms in the molecule "
                     "({})".format(mol.numAtoms, self.numAtoms)
