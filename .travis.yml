@@ -29,7 +29,7 @@ before_install:
 
 script:
   - source activate test
-  - pip install --user --upgrade -q setuptools wheel twine
+  - pip install --upgrade -q setuptools wheel twine
   # Insert version number and dependencies into pip and conda recipes
   - python ci/travis/insert_placeholder_values.py
   # Clone and compile the private htmdlib repo - Disabled due to 2FA not allowing cloning without ssh keys

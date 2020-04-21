@@ -31,3 +31,4 @@ fi
 conda install -q conda-build=3
 conda info -a # for debugging
 conda create -q -n test python=$TRAVIS_PYTHON_VERSION
+echo "python $TRAVIS_PYTHON_VERSION*" > $MINICONDA_DIR/envs/test/conda-meta/pinned
