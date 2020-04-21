@@ -1375,9 +1375,8 @@ class Molecule(object):
                 if field == "coords" and mol._numAtomsTraj == 0:
                     continue
 
-                if (
-                    field == "fileloc"
-                ):  # TODO: Make a PR where fileloc becomes (2, nframes) numpy array so we don't handle it separately
+                if field == "fileloc":
+                    # TODO: Make a PR where fileloc becomes (2, nframes) numpy array so we don't handle it separately
                     trajinfo[field] += mol.__dict__[field]
                 else:
                     trajinfo[field].append(mol.__dict__[field])
@@ -1400,12 +1399,11 @@ class Molecule(object):
                 self.coords = self._empty(self._numAtomsTopo, "coords")
             if self.box is None or len(self.box) == 0:
                 self.box = np.zeros(self._dims["box"], dtype=self._dtypes["box"])
-            return
 
         if skip is not None:
-            self.coords = np.array(
-                self.coords[:, :, ::skip]
-            )  # np.array is required to make copy and thus free memory!
+            if self._numAtomsTraj != 0:
+                # np.array is required to make copy and thus free memory!
+                self.coords = np.array(self.coords[:, :, ::skip])
             if self.box is not None:
                 self.box = np.array(self.box[:, ::skip])
             if self.boxangles is not None:
