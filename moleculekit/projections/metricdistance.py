@@ -69,6 +69,8 @@ class MetricDistance(Projection):
         self.truncate = truncate
 
     def _checkChains(self, mol, sel1, sel2):
+        if np.array_equal(sel1, sel2):
+            return
         if np.ndim(sel1) == 1:
             sel1 = sel1[None, :]
         if np.ndim(sel2) == 1:
