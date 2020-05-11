@@ -138,7 +138,12 @@ class MetricDistance(Projection):
         return res
 
     def _processSelection(self, mol, sel, groupsel):
-        if isinstance(sel, str):  # If user passes simple string selections
+        # If user passes simple string selections or 1D array of ints or bools
+        if isinstance(sel, str) or (
+            isinstance(sel, np.ndarray)
+            and sel.ndim == 1
+            and (np.issubdtype(sel.dtype, np.integer) or sel.dtype == bool)
+        ):
             if groupsel is None:
                 sel = mol.atomselect(sel)
             elif groupsel == "all":
@@ -147,8 +152,14 @@ class MetricDistance(Projection):
                 sel = self._groupByResidue(mol, sel)
             else:
                 raise NameError("Invalid groupsel argument")
-        else:  # If user passes his own sets of groups
+        elif isinstance(sel, np.ndarray) or isinstance(
+            sel, list
+        ):  # If user passes his own sets of groups
             sel = self._processMultiSelections(mol, sel)
+        else:
+            raise RuntimeError(
+                "Invalid atom selection. Either provide a string, a list of string, a 1D numpy array (int/bool) or a 2D numpy array for groups."
+            )
 
         if np.sum(sel) == 0:
             raise NameError("Selection returned 0 atoms")
@@ -157,7 +168,14 @@ class MetricDistance(Projection):
     def _processMultiSelections(self, mol, sel):
         newsel = np.zeros((len(sel), mol.numAtoms), dtype=bool)
         for s in range(len(sel)):
-            newsel[s, :] = mol.atomselect(sel[s])
+            if isinstance(sel[s], str):
+                newsel[s, :] = mol.atomselect(sel[s])
+            elif isinstance(sel[s], np.ndarray) and (
+                np.issubdtype(sel[s].dtype, np.integer) or sel[s].dtype == bool
+            ):
+                newsel[s, sel[s]] = True
+            else:
+                raise RuntimeError("Invalid selection provided for groups")
         return newsel
 
     def _groupByResidue(self, mol, sel):
@@ -486,6 +504,54 @@ class _TestMetricDistance(unittest.TestCase):
         refdata = np.load(reffile) < 8
 
         assert np.allclose(data, refdata, atol=1e-3), "Contact calculation is broken"
+
+    def test_atomselects(self):
+        # String atomselection
+        metr = MetricSelfDistance("protein and name CA", metric="contacts", threshold=8)
+        data = metr.project(self.mol_skipped)
+        mapping = metr.getMapping(self.mol_skipped)
+        assert data.shape == (20, 38226) and mapping.shape == (38226, 3)
+
+        # Integer index atomselection
+        ca_atoms = self.mol_skipped.atomselect("protein and name CA", indexes=True)
+        metr = MetricSelfDistance(ca_atoms, metric="contacts", threshold=8)
+        data = metr.project(self.mol_skipped)
+        mapping = metr.getMapping(self.mol_skipped)
+        assert data.shape == (20, 38226) and mapping.shape == (38226, 3)
+
+        # Boolean atomselection
+        ca_atoms = self.mol_skipped.atomselect("protein and name CA")
+        metr = MetricSelfDistance(ca_atoms, metric="contacts", threshold=8)
+        data = metr.project(self.mol_skipped)
+        mapping = metr.getMapping(self.mol_skipped)
+        assert data.shape == (20, 38226) and mapping.shape == (38226, 3)
+
+        # Manual group atomselection with integers
+        ca_atoms = self.mol_skipped.atomselect("protein and name CA", indexes=True)
+        metr = MetricSelfDistance([ca_atoms[0::3], ca_atoms[1::3], ca_atoms[2::3]],)
+        data = metr.project(self.mol_skipped)
+        mapping = metr.getMapping(self.mol_skipped)
+        assert data.shape == (20, 3) and mapping.shape == (3, 3)
+
+        # Manual group atomselection with booleans
+        ca_atoms = self.mol_skipped.atomselect("protein and name CA", indexes=True)
+        ca_bools1 = self.mol_skipped.atomselect(
+            "index {}".format(" ".join(map(str, ca_atoms[0::3])))
+        )
+        ca_bools2 = self.mol_skipped.atomselect(
+            "index {}".format(" ".join(map(str, ca_atoms[1::3])))
+        )
+        ca_bools3 = self.mol_skipped.atomselect(
+            "index {}".format(" ".join(map(str, ca_atoms[2::3])))
+        )
+        metr = MetricSelfDistance([ca_bools1, ca_bools2, ca_bools3])
+        newdata = metr.project(self.mol_skipped)
+        mapping = metr.getMapping(self.mol_skipped)
+        assert (
+            newdata.shape == (20, 3)
+            and mapping.shape == (3, 3)
+            and np.array_equal(data, newdata)
+        )
 
     def test_distances_trivial(self):
         from moleculekit.molecule import Molecule
