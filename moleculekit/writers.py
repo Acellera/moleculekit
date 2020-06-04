@@ -8,6 +8,7 @@ import ctypes as ct
 import os
 from moleculekit.support import xtc_lib
 from moleculekit.util import ensurelist
+import networkx as nx
 import collections
 import logging
 import numbers
@@ -51,8 +52,15 @@ _exclude_pairs = (_Pair('C14', 'C14'), _Pair('C15', 'C15'),
 
 _rename_elements = {('SOD', 'SO'): 'Na'}
 
+# After scanning most of the PDB database these are the most common elements which start on position 12
+_position_12_elements = ['Se', 'Sr', 'Gd', 'Mn', 'Pt', 'Cs', 'Mg', 'Be', 'Sb', 'Bi', 'Th', 'Yb', 
+                         'Zn', 'Kr', 'Rb', 'Ar', 'Pa', 'Fe', 'Ag', 'In', 'Eu', 'Hg', 
+                         'Pr', 'Al', 'Ru', 'Sm', 'Ba', 'Lu', 'Re', 'Xe', 'Dy', 'Ti', 'As', 'Pu', 'Ir', 
+                         'Br', 'Li', 'Pd', 'Ce', 'Cr', 'Ho', 'La', 'Sn', 'Te', 'Cl', 'Hf', 'Ga', 
+                         'Co', 'Os', 'Tl', 'Au', 'Sc', 'Tb', 'Zr', 'Cu', 'Rh', 'Er', 'Mo', 'Si', 
+                         'Ca', 'Ta', 'Cm', 'Am', 'Na', 'Pb', 'Ni', 'Ne', 'Cd']
 
-def _deduce_PDB_atom_name(name, resname):
+def _deduce_PDB_atom_name(name, resname, element=None):
     """Deduce how the atom name should be aligned.
     Atom name format can be deduced from the atom type, yet atom type is
     not always available. This function uses the atom name and residue name
@@ -61,6 +69,8 @@ def _deduce_PDB_atom_name(name, resname):
     <https://gist.github.com/jbarnoud/37a524330f29b5b7b096> for more
     details.
     """
+    if element is not None and (element.strip().capitalize() in _position_12_elements) and (name[0:2].upper() == element[0:2].upper()):
+        return '{:<4}'.format(name)
     if len(name) >= 4:
         return name[:4]
     elif len(name) == 1:
@@ -168,7 +178,7 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode='pdb'):
     for f in range(numFrames):
         fh.write("MODEL    %5d\n" % (frames[f] + 1))
         for i in range(0, len(mol.record)):
-            name = _deduce_PDB_atom_name(mol.name[i], mol.resname[i])
+            name = _deduce_PDB_atom_name(mol.name[i], mol.resname[i], mol.element[i])
 
             if mode == 'pdb':
                 linefmt = "{!s:6.6}{!s:>5.5} {}{!s:>1.1}{!s:4.4}{!s:>1.1}{!s:>4.4}{!s:>1.1}   {}{}{}{}{}      {!s:4.4}{!s:>2.2}  \n"
@@ -202,23 +212,15 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode='pdb'):
                 fh.write("TER\n")
 
         if writebonds and mol.bonds is not None and len(mol.bonds) != 0:
-            bondedatoms = np.unique(mol.bonds)
-            bondedatoms = bondedatoms[bondedatoms < 99998]  # Don't print bonds over 99999 as it overflows the field
-
-            for a in bondedatoms:
-                partners = mol.bonds[mol.bonds[:, 0] == a, 1]
-                partners = np.unique(np.append(partners, mol.bonds[mol.bonds[:, 1] == a, 0]))
-                partners = partners[partners < 99998] + 1  # Don't print bonds over 99999 as it overflows the field
-                # I need to support multi-line printing of atoms with more than 4 bonds
-                while len(partners) >= 3:  # Write bonds as long as they are more than 3 in fast more
-                    fh.write("CONECT%5d%5d%5d%5d\n" % (a + 1, partners[0], partners[1], partners[2]))
-                    partners = partners[3:]
-                if len(partners) > 0:  # Write the rest of the bonds
-                    line = "CONECT%5d" % (a + 1)
-                    for p in partners:
-                        line = "%s%5d" % (line, p)
-                    fh.write(line)
-                    fh.write('\n')
+            goodbonds = mol.bonds[np.all(mol.bonds < 99998, axis=1), :] # Bonds over 99999 cause issues with PDB fixedwidth format
+            bondgraph = nx.Graph()
+            bondgraph.add_edges_from(goodbonds + 1) # Add 1 for PDB 1-based indexing
+            for atom, neighbours in sorted(bondgraph.adj.items()):
+                neighbours = sorted(list(neighbours))
+                for ni in range(0, len(neighbours), 3):
+                    subneighs = neighbours[ni:min(ni+3, len(neighbours))]
+                    neighstring = ''.join('%5d' % sn for sn in subneighs)
+                    fh.write("CONECT{:5d}{}\n".format(atom, neighstring))
 
         fh.write("ENDMDL\n")
     fh.write("END\n")
@@ -299,14 +301,24 @@ def BINCOORwrite(mol, filename):
     f.close()
 
 
-def PSFwrite(molecule, filename, explicitbonds=None):
-    m = molecule
-
+def PSFwrite(m, filename, explicitbonds=None):
     import string
+
+    segments = np.array([segid if segid != "" else chain for segid, chain in zip(m.segid, m.chain)])
+    used_segids = set(segments)
     # Letters to be used for default segids, if free: 0123456789abcd...ABCD..., minus chain symbols already used
-    used_segids = set(m.segid)
     segid_alphabet = list(string.digits + string.ascii_letters)
-    available_segids = [x for x in segid_alphabet if x not in used_segids]
+    available_segids = np.setdiff1d(segid_alphabet, used_segids)
+    segments[segments == ""] = available_segids[0]
+
+    fs = {
+    "serial": max( len(str(np.max(m.serial))), 10), 
+    "segid": max( len(max(segments, key=len)), 8), 
+    "resid": max( len(str(np.max(m.resid))) + len(max(m.insertion, key=len)), 8), 
+    "resname": max( len(max(m.resname, key=len)), 8), 
+    "name": max( len(max(m.name, key=len)), 8), 
+    "atomtype": max( len(max(m.atomtype, key=len)), 7), 
+    }
 
     f = open(filename, 'w')
     print("PSF NAMD\n", file=f)  # Write NAMD in the header so that VMD will read it as space delimited format instead of FORTRAN
@@ -320,57 +332,63 @@ def PSFwrite(molecule, filename, explicitbonds=None):
             segid = m.segid[i]
         elif m.segid[i] == '' and m.chain[i] != '':
             segid = m.chain[i]
-            
-        print("{!s:>8.8} {!s:4.4} {!s:5.5}{!s:4.4} {!s:4.4} {!s:6.6} {!s:2.2} {:10.6}  {:8.6}  {!s:>10.10}".format(
-            int(m.serial[i]),
-            segid,
-            str(m.resid[i]) + str(m.insertion[i]),
-            m.resname[i],
-            m.name[i],
-            atomtype,
-            "",  # m.element[i], # NAMD barfs if this is set
-            m.charge[i],
-            m.masses[i],
-            0
-        ), file=f)
+
+        string_format = (
+            f"{m.serial[i]:>{fs['serial']}} "
+            f"{segments[i]:<{fs['segid']}} "
+            f"{str(m.resid[i]) + str(m.insertion[i]):<{fs['resid']}} "
+            f"{m.resname[i]:<{fs['resname']}} "
+            f"{m.name[i]:<{fs['name']}} "
+            f"{atomtype:<{fs['atomtype']}} "
+            f"{m.charge[i]:>9.6f} "
+            f"{m.masses[i]:>13.4f} "
+            f"{0:>11} "
+        )
+        print(string_format, file=f)
 
     if explicitbonds is not None:
         bonds = explicitbonds
     else:
         bonds = m.bonds
 
+    fieldlen = max(len(str(np.max(bonds))), 10) if bonds.shape[0] != 0 else 10
     print("\n\n", file=f)
-    print(" %8d !NBOND: bonds" % (bonds.shape[0]), file=f)
+    print(f"{bonds.shape[0]:{fieldlen}d} !NBOND: bonds", file=f)
     for i in range(bonds.shape[0]):
         if i and not (i % 4):
             print("", file=f)
-        print("%10d%10d" % (bonds[i, 0] + 1, bonds[i, 1] + 1), file=f, end="")
+        vals = bonds[i] + 1
+        print(f"{vals[0]:{fieldlen}d}{vals[1]:{fieldlen}d}", file=f, end="")
 
     if hasattr(m, 'angles'):
+        fieldlen = max(len(str(np.max(m.angles))), 10) if m.angles.shape[0] != 0 else 10
         print("\n\n", file=f)
-        print("%10d !NTHETA: angles" % (m.angles.shape[0]), file=f)
+        print(f"{m.angles.shape[0]:{fieldlen}d} !NTHETA: angles", file=f)
         for i in range(m.angles.shape[0]):
             if i and not (i % 3):
                 print("", file=f)
-            print("%10d%10d%10d" % (m.angles[i, 0] + 1, m.angles[i, 1] + 1, m.angles[i, 2] + 1), file=f, end="")
+            vals = m.angles[i] + 1
+            print(f"{vals[0]:{fieldlen}d}{vals[1]:{fieldlen}d}{vals[2]:{fieldlen}d}", file=f, end="")
 
     if hasattr(m, 'dihedrals'):
+        fieldlen = max(len(str(np.max(m.dihedrals))), 10) if m.dihedrals.shape[0] != 0 else 10
         print("\n\n", file=f)
-        print("%10d !NPHI: dihedrals" % (m.dihedrals.shape[0]), file=f)
+        print(f"{m.dihedrals.shape[0]:{fieldlen}d} !NPHI: dihedrals", file=f)
         for i in range(m.dihedrals.shape[0]):
             if i and not (i % 2):
                 print("", file=f)
-            print("%10d%10d%10d%10d" % (
-            m.dihedrals[i, 0] + 1, m.dihedrals[i, 1] + 1, m.dihedrals[i, 2] + 1, m.dihedrals[i, 3] + 1), file=f, end="")
+            vals = m.dihedrals[i] + 1
+            print(f"{vals[0]:{fieldlen}d}{vals[1]:{fieldlen}d}{vals[2]:{fieldlen}d}{vals[3]:{fieldlen}d}", file=f, end="")
 
     if hasattr(m, 'impropers'):
+        fieldlen = max(len(str(np.max(m.impropers))), 10) if m.impropers.shape[0] != 0 else 10
         print("\n\n", file=f)
-        print("%10d !NIMPHI: impropers" % (m.impropers.shape[0]), file=f)
+        print(f"{m.impropers.shape[0]:{fieldlen}d} !NIMPHI: impropers", file=f)
         for i in range(m.impropers.shape[0]):
             if i and not (i % 2):
                 print("", file=f)
-            print("%10d%10d%10d%10d" % (
-            m.impropers[i, 0] + 1, m.impropers[i, 1] + 1, m.impropers[i, 2] + 1, m.impropers[i, 3] + 1), file=f, end="")
+            vals = m.impropers[i] + 1
+            print(f"{vals[0]:{fieldlen}d}{vals[1]:{fieldlen}d}{vals[2]:{fieldlen}d}{vals[3]:{fieldlen}d}", file=f, end="")
 
     print("\n\n", file=f)
     print("%10d !NDON: donors\n" % (0), file=f)
@@ -394,6 +412,19 @@ def XYZwrite(src, filename):
         print("%s   %f   %f    %f" % (
         e, src.coords[i, 0, src.frame], src.coords[i, 1, src.frame], src.coords[i, 2, src.frame]), file=fh)
     fh.close()
+
+
+def XSCwrite(mol, filename, frames=None):
+    if frames is None and mol.numFrames != 0:
+        frames = mol.frame
+    else:
+        frames = 0
+    box = mol.box[:, frames]
+    step = mol.step[frames]
+    with open(filename, 'w') as f:
+        f.write('# NAMD extended system configuration restart file generated by MoleculeKit\n')
+        f.write('#$LABELS step a_x a_y a_z b_x b_y b_z c_x c_y c_z o_x o_y o_z\n')
+        f.write(f"{step} {box[0]:e} {0:e} {0:e} {0:e} {box[1]:e} {0:e} {0:e} {0:e} {box[2]:e} {0:e} {0:e} {0:e} {0:e} {0:e} {0:e} {0:e} {0:e} {0:e}")
 
 
 def MOL2write(mol, filename):
@@ -572,7 +603,8 @@ _WRITERS = {'psf': PSFwrite,
             'xyz': XYZwrite,
             'gro': GROwrite,
             'coor': BINCOORwrite,
-            'xtc': XTCwrite}
+            'xtc': XTCwrite,
+            'xsc': XSCwrite}
 
 
 for ext in _MDTRAJ_SAVERS:
@@ -590,7 +622,8 @@ class _TestWriters(unittest.TestCase):
         import os
 
         self.testfolder = home(dataDir='molecule-writers')
-        mol = Molecule(os.path.join(self.testfolder, 'filtered.pdb'))
+        mol = Molecule(os.path.join(self.testfolder, 'filtered.psf'))
+        mol.read(os.path.join(self.testfolder, 'filtered.pdb'))
         mol.coords = np.tile(mol.coords, (1, 1, 2))
         mol.filter('protein and resid 1 to 20')
         mol.boxangles = np.ones((3, 2), dtype=np.float32) * 90
@@ -598,6 +631,7 @@ class _TestWriters(unittest.TestCase):
         mol.step = np.arange(2)
         mol.time = np.arange(2) * 1E5
         mol.fileloc = [mol.fileloc[0], mol.fileloc[0]]
+        mol.bondtype[:] = '1'
         self.mol = mol
 
     def test_writers(self):
@@ -638,7 +672,7 @@ class _TestWriters(unittest.TestCase):
                     if ext == 'sdf':
                         reflines = reflines[2:]
                 print('Testing file', reffile, tmpfile)
-                self.assertEqual(filelines, reflines)
+                self.assertEqual(filelines, reflines, msg=f"Failed comparison of {reffile} {tmpfile}")
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

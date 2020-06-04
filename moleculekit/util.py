@@ -257,6 +257,9 @@ def sequenceID(field, prepend=None):
     else:
         fieldlen = len(field)
 
+    if fieldlen == 0:
+        raise RuntimeError("An empty array was passed to sequenceID")
+
     if prepend is None:
         seq = np.zeros(fieldlen, dtype=int)
     else:
@@ -548,6 +551,25 @@ def guessAnglesAndDihedrals(bonds, cyclicdih=False):
         angles = np.zeros((0, 3), dtype=np.uint32)
 
     return angles, dihedrals
+
+
+def assertSameAsReferenceDir(compareDir, outdir="."):
+    """Check if files in refdir are present in the directory given as second argument AND their content matches.
+
+    Raise an exception if not."""
+
+    import filecmp
+    import os
+
+    toCompare = os.listdir(compareDir)
+    match, mismatch, error = filecmp.cmpfiles(outdir, compareDir, toCompare, shallow=False)
+    if len(mismatch) != 0 or len(error) != 0 or len(match) != len(toCompare):
+        logger.error("Mismatch while checking directory {} versus reference {}".format(outdir,compareDir))
+        logger.error("Files being checked: {}".format(toCompare))
+        for f in mismatch:
+            logger.error("    diff {} {}".format(os.path.join(outdir, f),
+                                                 os.path.join(compareDir, f)   ))
+        raise Exception('Mismatch in regression testing.')
 
 
 from unittest import TestCase

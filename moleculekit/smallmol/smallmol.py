@@ -56,6 +56,7 @@ class SmallMol(object):
     --------
     >>> import os
     >>> from moleculekit.home import home
+    >>> from moleculekit.smallmol.smallmol import SmallMol
     >>> SmallMol('CCO')  # doctest: +SKIP
     >>> SmallMol(os.path.join(home(dataDir='test-smallmol'), 'ligand.pdb'), fixHs=False, removeHs=True )  # doctest: +SKIP
     >>> sm = SmallMol(os.path.join(home(dataDir='test-smallmol'), 'benzamidine.mol2'))

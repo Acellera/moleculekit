@@ -28,8 +28,8 @@ before_install:
   - source ci/travis/install_miniconda.sh
 
 script:
-  - source activate test
-  - pip install --user --upgrade -q setuptools wheel twine
+  - conda activate test
+  - pip install --upgrade -q setuptools wheel twine
   # Insert version number and dependencies into pip and conda recipes
   - python ci/travis/insert_placeholder_values.py
   # Clone and compile the private htmdlib repo - Disabled due to 2FA not allowing cloning without ssh keys
@@ -38,7 +38,8 @@ script:
   - pip install .
   # Run tests
   - pip install -q codecov coverage
-  - conda install -q tqdm ipython matplotlib joblib scikit-learn rdkit mdtraj htmd-pdb2pqr propka openbabel -c acellera  # Installing extra dependencies for tests
+  - conda install -q --file extra_requirements.txt -c acellera  # Installing extra dependencies for tests
+  - which coverage # Debug
   - coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
   - echo "Finished tests"
 

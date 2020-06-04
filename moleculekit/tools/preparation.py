@@ -51,6 +51,7 @@ def _fillMolecule(name, resname, chain, resid, insertion, coords, segid, element
     mol.element = np.array(element, dtype=mol._dtypes['element'])
     mol.occupancy = np.array(occupancy, dtype=mol._dtypes['occupancy'])
     mol.beta = np.array(beta, dtype=mol._dtypes['beta'])
+    mol.box = np.zeros((3, mol.coords.shape[2]), dtype=mol._dtypes['box'])
     # mol.charge = np.array(charge, dtype=mol._dtypes['charge'])
     # mol.record = np.array(record, dtype=mol._dtypes['record'])
     return mol
@@ -70,6 +71,7 @@ def _warnIfContainsDUM(mol):
 
 def _checkChainAndSegid(mol, _loggerLevel):
     from moleculekit.util import sequenceID
+    import string
     emptychains = mol.chain == ''
     emptysegids = mol.segid == ''
 
@@ -79,7 +81,8 @@ def _checkChainAndSegid(mol, _loggerLevel):
     if np.all(emptychains) and np.any(~emptysegids):
         logger.info('No chains defined in Molecule. Using segment IDs as chains for protein preparation.')
         mol = mol.copy()
-        mol.chain = sequenceID(mol.segid)
+        chain_alphabet = np.array(list(string.digits + string.ascii_uppercase + string.ascii_lowercase))
+        mol.chain[:] = chain_alphabet[sequenceID(mol.segid)]
         
     if np.any(~emptysegids) and np.any(~emptychains):
         chainseq = sequenceID(mol.chain)
@@ -175,7 +178,8 @@ def _buildResAndMol(pdb2pqr_protein):
                             occupancy, beta, charge, record)
     # mol_out.set("element", " ")
     # Re-calculating elements
-    mol_out.element[:] = ''
+    # mol_out.element[:] = ''
+    assert not np.any(mol_out.element == 'X'), "pdb2pqr left some lonepair atoms in. report this issue to moleculekit github issue tracker"
     mol_out.element = mol_out._guessMissingElements()
 
     prepData._importPKAs(pdb2pqr_protein.pka_protein)
@@ -468,7 +472,6 @@ class _TestPreparation(unittest.TestCase):
             mol_op, prepData = proteinPrepare(mol, returnDetails=True)
             mol_op.write("./{}-prepared.pdb".format(pdb))
             prepData.data.to_csv("./{}-prepared.csv".format(pdb), float_format="%.2f")
-
             compareDir = home(dataDir=os.path.join('test-proteinprepare', pdb))
             assertSameAsReferenceDir(compareDir)
 

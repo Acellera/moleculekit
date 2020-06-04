@@ -20,7 +20,7 @@ def createProductGraph(G, H, tolerance, fields):
         for hn in H.nodes():
             matching = True
             for f in fields:
-                if G.node[gn][f] != H.node[hn][f]:
+                if G.nodes[gn][f] != H.nodes[hn][f]:
                     matching = False
                     break
             if matching:

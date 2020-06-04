@@ -10,22 +10,77 @@ import moleculekit.molecule
 logger = logging.getLogger(__name__)
 
 
-def pp_calcDistances(mol, sel1, sel2, metric='distances', threshold=8, pbc=True, gap=1, truncate=None):
-    distances = _distanceArray(mol, sel1, sel2, pbc)
-    distances = _postProcessDistances(distances, sel1, sel2, truncate)
+def pp_calcDistances(
+    mol, sel1, sel2, metric="distances", threshold=8, pbc=True, gap=1, truncate=None
+):
+    import os
+    import ctypes
+    from moleculekit.home import home
 
-    if metric == 'contacts':
-        # from scipy.sparse import lil_matrix
-        # metric = lil_matrix(distances <= threshold)
-        metric = distances <= threshold
-    elif metric == 'distances':
-        metric = distances.astype(dtype=np.float32)
+    selfdist = np.array_equal(sel1, sel2)
+
+    sel1 = np.where(sel1)[0].astype(np.int32)
+    sel2 = np.where(sel2)[0].astype(np.int32)
+
+    coords = mol.coords
+    box = mol.box
+    if pbc:
+        if box is None or np.sum(box) == 0:
+            raise RuntimeError(
+                "No periodic box dimensions given in the molecule/trajectory. "
+                "If you want to calculate distance without wrapping, set the pbc option to False"
+            )
     else:
-        raise NameError('The metric you asked for is not supported. Check spelling and documentation')
-    return metric
+        box = np.zeros((3, coords.shape[2]), dtype=np.float32)
+
+    if box.shape[1] != coords.shape[2]:
+        raise RuntimeError(
+            "Different number of frames in mol.coords and mol.box. "
+            "Please ensure they both have the same number of frames"
+        )
+
+    # Digitize chains to not do PBC calculations of the same chain
+    digitized_chains = np.unique(mol.chain, return_inverse=True)[1].astype(np.int32)
+
+    # Running the actual calculations
+    lib = ctypes.cdll.LoadLibrary(os.path.join(home(libDir=True), "dist_ext.so"))
+    shape = (mol.numFrames, len(sel1) * len(sel2))
+    if selfdist:
+        shape = (mol.numFrames, int((len(sel1) * (len(sel2) - 1)) / 2))
+    results = np.zeros(shape, dtype=np.float32)
+
+    lib.dist_trajectory(
+        coords.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+        box.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+        sel1.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        sel2.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        digitized_chains.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        ctypes.c_int(len(sel1)),
+        ctypes.c_int(len(sel2)),
+        ctypes.c_int(mol.numAtoms),
+        ctypes.c_int(mol.numFrames),
+        ctypes.c_int(int(pbc)),
+        ctypes.c_int(int(selfdist)),
+        results.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+    )
+
+    if truncate is not None:
+        results[results > truncate] = truncate
+
+    if metric == "contacts":
+        results = results <= threshold
+    elif metric == "distances":
+        pass
+    else:
+        raise NameError(
+            "The metric you asked for is not supported. Check spelling and documentation"
+        )
+    return results
 
 
-def pp_calcMinDistances(mol, sel1, sel2, metric='distances', threshold=8, pbc=True, gap=1, truncate=None):
+def pp_calcMinDistances(
+    mol, sel1, sel2, metric="distances", threshold=8, pbc=True, gap=1, truncate=None
+):
     import os
     import ctypes
     from moleculekit.home import home
@@ -44,103 +99,80 @@ def pp_calcMinDistances(mol, sel1, sel2, metric='distances', threshold=8, pbc=Tr
     box = mol.box
     if pbc:
         if box is None or np.sum(box) == 0:
-            raise RuntimeError('No periodic box dimensions given in the molecule/trajectory. '
-                            'If you want to calculate distance without wrapping, set the pbc option to False')
+            raise RuntimeError(
+                "No periodic box dimensions given in the molecule/trajectory. "
+                "If you want to calculate distance without wrapping, set the pbc option to False"
+            )
     else:
         box = np.zeros((3, coords.shape[2]), dtype=np.float32)
 
     if box.shape[1] != coords.shape[2]:
-        raise RuntimeError('Different number of frames in mol.coords and mol.box. '
-                            'Please ensure they both have the same number of frames')
+        raise RuntimeError(
+            "Different number of frames in mol.coords and mol.box. "
+            "Please ensure they both have the same number of frames"
+        )
 
     # Converting from 2D boolean atomselect array to 2D int array where each row starts with the indexes of the boolean
     groups1 = np.ones((sel1.shape[0], mol.numAtoms), dtype=np.int32) * -1
     groups2 = np.ones((sel2.shape[0], mol.numAtoms), dtype=np.int32) * -1
     for i in range(sel1.shape[0]):
         idx = np.where(sel1[i, :])[0]
-        groups1[i, 0:len(idx)] = idx
+        groups1[i, 0 : len(idx)] = idx
     for i in range(sel2.shape[0]):
         idx = np.where(sel2[i, :])[0]
-        groups2[i, 0:len(idx)] = idx
+        groups2[i, 0 : len(idx)] = idx
 
     selfdist = np.array_equal(sel1, sel2)
 
-    # Running the actual calculations
-    lib = ctypes.cdll.LoadLibrary(os.path.join(home(libDir=True), 'mindist_ext.so'))
-    mindist = np.zeros((mol.numFrames, len(groups1) * len(groups2)), dtype=np.float32)  # Preparing the return array
-    if selfdist:
-        mindist = np.zeros((mol.numFrames, int((len(groups1) * (len(groups2)-1))/2)), dtype=np.float32)
+    # Digitize chains to not do PBC calculations of the same chain
+    digitized_chains = np.unique(mol.chain, return_inverse=True)[1].astype(np.int32)
 
-    #import time
-    #t = time.time()
-    lib.mindist_trajectory(coords.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-                           box.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-                           groups1.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                           groups2.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                           ctypes.c_int(len(groups1)),
-                           ctypes.c_int(len(groups2)),
-                           ctypes.c_int(mol.numAtoms),
-                           ctypes.c_int(mol.numFrames),
-                           ctypes.c_int(int(pbc)),
-                           ctypes.c_int(int(selfdist)),
-                           mindist.ctypes.data_as(ctypes.POINTER(ctypes.c_float)))
-    #print(time.time() - t)
+    # Running the actual calculations
+    lib = ctypes.cdll.LoadLibrary(os.path.join(home(libDir=True), "mindist_ext.so"))
+    mindist = np.zeros(
+        (mol.numFrames, len(groups1) * len(groups2)), dtype=np.float32
+    )  # Preparing the return array
+    if selfdist:
+        mindist = np.zeros(
+            (mol.numFrames, int((len(groups1) * (len(groups2) - 1)) / 2)),
+            dtype=np.float32,
+        )
+
+    # import time
+    # t = time.time()
+    lib.mindist_trajectory(
+        coords.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+        box.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+        groups1.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        groups2.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        digitized_chains.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        ctypes.c_int(len(groups1)),
+        ctypes.c_int(len(groups2)),
+        ctypes.c_int(mol.numAtoms),
+        ctypes.c_int(mol.numFrames),
+        ctypes.c_int(int(pbc)),
+        ctypes.c_int(int(selfdist)),
+        mindist.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+    )
+    # print(time.time() - t)
 
     if truncate is not None:
         mindist[mindist > truncate] = truncate
 
-    if metric == 'contacts':
+    if metric == "contacts":
         mindist = mindist <= threshold
-    elif metric == 'distances':
-        mindist = mindist.astype(dtype=np.float32)
+    elif metric == "distances":
+        pass
     else:
-        raise NameError('The metric you asked for is not supported. Check spelling and documentation')
+        raise NameError(
+            "The metric you asked for is not supported. Check spelling and documentation"
+        )
     return mindist
-
-
-def _postProcessDistances(distances, sel1, sel2, truncate):
-    # distances is a list of numpy arrays. Each numpy array is numFrames x numSel1. The list is length numSel2
-    # Setting upper triangle to -1 if same selections
-    if np.array_equal(sel1, sel2):
-        for i in range(len(distances)):
-                distances[i][:, range(i + 1)] = -1
-
-    if np.ndim(distances[0]) > 1:  # 2D data
-        distances = np.concatenate(distances, axis=1)
-    else:  # 1D data
-        distances = np.vstack(distances).transpose()
-
-    if np.array_equal(sel1, sel2):
-        distances = distances[:, np.all(distances != -1, 0)]
-
-    if truncate is not None:
-        distances[distances > truncate] = truncate
-    return np.atleast_1d(np.squeeze(distances))
-
-
-def _distanceArray(mol, sel1, sel2, pbc):
-    numsel1 = np.sum(sel1)
-    numsel2 = np.sum(sel2)
-    coords1 = mol.coords[sel1, :, :]
-    coords2 = mol.coords[sel2, :, :]
-
-    distances = []
-    for j in range(numsel2):
-        coo2 = coords2[j, :, :]  # 3 x numframes array
-        dists = coords1 - coo2
-        if pbc:
-            if mol.box is None or np.sum(mol.box) == 0:
-                raise NameError(
-                    'No periodic box dimensions given in the molecule/trajectory. If you want to calculate distance without wrapping, set the pbc option to False')
-            dists = _wrapDistances(mol.box, dists, _findDiffChain(mol, sel1, sel2, j, range(numsel1)))
-        dists = np.transpose(np.sqrt(np.sum(dists * dists, 1)))
-        distances.append(dists)
-    return distances
 
 
 def _findDiffChain(mol, sel1, sel2, i, others):
     if np.array_equal(sel1, sel2) and len(mol.chain) > 0:
-        chain = mol.get('chain', sel=sel1)
+        chain = mol.get("chain", sel=sel1)
         diffchain = chain[others] != chain[i]
     else:
         diffchain = None

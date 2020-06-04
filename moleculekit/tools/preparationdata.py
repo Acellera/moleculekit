@@ -131,6 +131,8 @@ class PreparationData:
         if not append:
             self.data.at[pos, key] = val
         else:
+            if key not in self.data:
+                self.data[key] = [[]] * len(self.data) # Create empty column of lists
             try:
                 ov = list(self.data.iloc[pos][key])
                 if type(ov) == float and math.isnan(ov):

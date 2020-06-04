@@ -11,25 +11,24 @@ else # if it does not exist, we need to install miniconda
     rm -rf "$MINICONDA_DIR" # remove the directory in case we have an empty cached directory
 
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-        curl -S https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh > miniconda.sh;
+        wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh;
     else
-        curl -S https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh;
+        wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
     fi
 
     bash miniconda.sh -b -p "$MINICONDA_DIR"
-    chown -R "$USER" "$MINICONDA_DIR"
-    export PATH="$MINICONDA_DIR/bin:$PATH"
+    source "$MINICONDA_DIR/etc/profile.d/conda.sh"
     hash -r
+
     conda config --set always_yes yes \
         --set changeps1 no \
         --set quiet yes \
         --set auto_update_conda false \
         --system # important to write to system cfg, otherwise we loose the changes upon cache reloading.
-    #conda config --system --add channels conda-forge
-    #conda install conda
 fi
 
 # we want to have an up to date conda-build.
 conda install -q conda-build=3
 conda info -a # for debugging
 conda create -q -n test python=$TRAVIS_PYTHON_VERSION
+echo "python $TRAVIS_PYTHON_VERSION*" > $MINICONDA_DIR/envs/test/conda-meta/pinned
