@@ -183,7 +183,7 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode="pdb"):
     box = None
     if mol.numFrames != 0:
         coords = np.atleast_3d(mol.coords[:, :, frames])
-        if hasattr(mol, "box"):
+        if hasattr(mol, "box") and mol.box.shape[1] != 0:
             box = mol.box[:, frames[0]]
     else:  # If Molecule only contains topology, PDB requires some coordinates so give it zeros
         coords = np.zeros((mol.numAtoms, 3, 1), dtype=np.float32)
