@@ -100,14 +100,12 @@ class SmallMol(object):
     def __init__(self, mol, ignore_errors=False, force_reading=False, fixHs=True, removeHs=False, verbose=True):
         self._frame = 0
 
-        _mol = self._initializeMolObj(mol, force_reading, ignore_errors, verbose)
-
+        self._mol = self._initializeMolObj(mol, force_reading, ignore_errors, verbose)
         if removeHs:
             self.removeHs()
         if fixHs:
             self.addHs(addCoords=True)
-            
-        self._mol = _mol
+        
 
     def _initializeMolObj(self, mol, force_reading, ignore_errors, verbose=True):
         """
