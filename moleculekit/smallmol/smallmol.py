@@ -103,10 +103,10 @@ class SmallMol(object):
         _mol = self._initializeMolObj(mol, force_reading, ignore_errors, verbose)
 
         if removeHs:
-            _mol = Chem.RemoveHs(_mol)
+            self.removeHs()
         if fixHs:
-            _mol = Chem.AddHs(_mol, addCoords=True)
-
+            self.addHs(addCoords=True)
+            
         self._mol = _mol
 
     def _initializeMolObj(self, mol, force_reading, ignore_errors, verbose=True):
