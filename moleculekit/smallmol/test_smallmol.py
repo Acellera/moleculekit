@@ -36,6 +36,7 @@ class _TestSmallMol(unittest.TestCase):
     def setUp(self):
         self.dataDir= home('test-smallmol')
         self.benzamidine_mol2 = os.path.join(self.dataDir, 'benzamidine.mol2')
+        self.indole_mol2 = os.path.join(self.dataDir, 'indole.mol2')
 
     def test_loadMol2file(self):
         sm = SmallMol(self.benzamidine_mol2)
@@ -144,6 +145,11 @@ class _TestSmallMol(unittest.TestCase):
         sm = SmallMol(mol)
 
         assert mol_equal(sm, mol, exceptFields=['serial', 'name'], _logger=False)
+
+        mol = Molecule(self.indole_mol2)
+        sm = SmallMol(mol, force_reading=True)
+        # Force reading writes to sdf which loses atomtypes and charges
+        assert mol_equal(sm, mol, exceptFields=['serial', 'name', 'atomtype', 'charge'], _logger=False)
 
     def test_getBonds(self):
         sm = SmallMol(self.benzamidine_mol2)

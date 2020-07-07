@@ -4,6 +4,8 @@
 # No redistribution in whole or part
 #
 import os
+import sys
+import tempfile
 from copy import deepcopy
 import multiprocessing
 import math
@@ -95,10 +97,10 @@ class SmallMol(object):
 
 
 
-    def __init__(self, mol, ignore_errors=False, force_reading=False, fixHs=True, removeHs=False):
+    def __init__(self, mol, ignore_errors=False, force_reading=False, fixHs=True, removeHs=False, verbose=True):
         self._frame = 0
 
-        _mol = self._initializeMolObj(mol, force_reading, ignore_errors)
+        _mol = self._initializeMolObj(mol, force_reading, ignore_errors, verbose)
 
         if removeHs:
             _mol = Chem.RemoveHs(_mol)
@@ -107,7 +109,7 @@ class SmallMol(object):
 
         self._mol = _mol
 
-    def _initializeMolObj(self, mol, force_reading, ignore_errors):
+    def _initializeMolObj(self, mol, force_reading, ignore_errors, verbose=True):
         """
         Read the input and tries to convert it into a rdkit.Chem.rdchem.Mol obj
 
@@ -128,40 +130,78 @@ class SmallMol(object):
         """
         from moleculekit.molecule import Molecule
 
+        message = None
+
+        # If we are converting a Molecule object to a SmallMol object
+        remove = False
+        natoms = None
+        if isinstance(mol, Molecule):
+            natoms = mol.numAtoms
+            mol = self._fromMolecule(mol)  # Returns a temp filename
+            remove = True
+
         _mol = None
         if isinstance(mol, Chem.Mol):
             _mol = mol
-        elif isinstance(mol, Molecule):
-            _mol = self._fromMolecule(mol)
         elif isinstance(mol, str):
             if os.path.isfile(mol):
                 name_suffix = os.path.splitext(mol)[-1]
-                # load mol2 file
-                if name_suffix == ".mol2":
-                    _mol = Chem.MolFromMol2File(mol, removeHs=False)
-                # load pdb file
-                elif name_suffix == ".pdb":
-                    _mol = Chem.MolFromPDBFile(mol, removeHs=False)
-                # if the file failed to be loaded and 'force_reading' = True, file convert to sdf and than loaded
-                if _mol is None and force_reading:
-                    logger.warning('Reading {} with force_reading procedure'.format(mol))
-                    sdf = openbabelConvert(mol, name_suffix, 'sdf')
-                    _mol = Chem.SDMolSupplier(sdf, removeHs=False)[0]
-                    os.remove(sdf)
-            # assuming is a smile
-            # TODO validate it. Implement smarts recognition
+
+                with tempfile.TemporaryFile(mode='w+') as stderr:
+                    # Redirect stderr to a file
+                    temp_fileno = os.dup(sys.stderr.fileno())
+                    os.dup2(stderr.fileno(), sys.stderr.fileno()) # Change process stderr
+                    sys.stderr = stderr # Change Python stderr
+
+                    # load mol2 file
+                    if name_suffix == ".mol2":
+                        _mol = Chem.MolFromMol2File(mol, removeHs=False)
+                    # load pdb file
+                    elif name_suffix == ".pdb":
+                        _mol = Chem.MolFromPDBFile(mol, removeHs=False)
+                    # if the file failed to be loaded and 'force_reading' = True, file convert to sdf and than loaded
+                    if _mol is None and force_reading:
+                        logger.warning('Reading {} with force_reading procedure'.format(mol))
+                        sdf = openbabelConvert(mol, name_suffix, 'sdf')
+                        _mol = Chem.SDMolSupplier(sdf, removeHs=False)[0]
+                        os.remove(sdf)
+
+                    # Reset stderr
+                    os.dup2(temp_fileno, sys.__stderr__.fileno())
+                    os.close(temp_fileno)
+                    sys.stderr = sys.__stderr__
+
+                    # Read RDKit warnings
+                    stderr.flush()
+                    stderr.seek(0)
+                    message = stderr.read()
+
+                if verbose:
+                    logger.warning(message)
             else:
-                # try with smiles
+                # assuming it is a smile
                 psmile = Chem.SmilesParserParams()
                 psmile.removeHs = False
                 _mol = Chem.MolFromSmiles(mol, psmile)
 
+        if remove:  # Remove temp file
+            os.remove(mol)
+
         if _mol is None and not ignore_errors:
+            if message is not None and not verbose:
+                # Print it anyway if there was an error
+                logger.warning(message)
             if isinstance(mol, str):
                 frerr = ' Try by setting the force_reading option as True.' if not force_reading else ''
-                raise ValueError('Failed to read file {}.{}'.format(mol, frerr))
-            if isinstance(mol, Molecule):
-                raise ValueError('Failed convering Molecule to SmallMol')
+                raise ValueError(f'Failed to read file {mol}.{frerr}')
+            elif isinstance(mol, Molecule):
+                raise ValueError('Failed converting Molecule to SmallMol')
+            else:
+                raise RuntimeError(f"Failed reading molecule {mol}.")
+
+        if natoms is not None and natoms != _mol.GetNumAtoms():
+            raise RuntimeError("Number of atoms changed while converting to rdkit molecule")
+
         return _mol
 
     @property
@@ -673,10 +713,14 @@ class SmallMol(object):
 
         from tempfile import NamedTemporaryFile
 
-        tmpmol2 = NamedTemporaryFile(suffix='.mol2').name
-        mol.write(tmpmol2)
-
-        return Chem.MolFromMol2File(tmpmol2, removeHs=False)
+        if np.all(mol.bondtype == 'un') and np.all(mol.atomtype == ""):
+            tmppdb = NamedTemporaryFile(suffix='.pdb').name
+            mol.write(tmppdb)
+            return tmppdb
+        else:
+            tmpmol2 = NamedTemporaryFile(suffix='.mol2').name
+            mol.write(tmpmol2)
+            return tmpmol2
 
     def toMolecule(self, formalcharges=False, ids=None):
         """
@@ -816,6 +860,12 @@ class SmallMol(object):
 
         return _depictMol(_mol, filename=filename, ipython=ipython,  atomlabels=atomlabels,
                           highlightAtoms=highlightAtoms, resolution=resolution)
+
+    def addHs(self, addCoords=True):
+        self._mol = Chem.AddHs(self._mol, addCoords=addCoords)
+
+    def removeHs(self):
+        self._mol = Chem.RemoveHs(self._mol)
 
     def __repr__(self):
         return '<{}.{} object at {}>\n'.format(self.__class__.__module__, self.__class__.__name__, hex(id(self))) \
