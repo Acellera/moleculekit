@@ -120,7 +120,7 @@ class PreparationData:
             }, ignore_index=True)
             pos = len(self.data) - 1
         elif mask.sum() == 1:
-            pos = int(np.argwhere(mask))
+            pos = int(np.argwhere(mask.to_numpy()))
         else:
             assert False, "More than one resid matched: either duplicated chain-residue-icode, or internal error (please report if the latter)."
         return pos
