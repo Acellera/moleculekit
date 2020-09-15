@@ -78,14 +78,19 @@ def getProperties(mol):
         import pybel
     except ImportError:
         raise ImportError('Could not import openbabel. The atomtyper requires this dependency so please install it with `conda install openbabel -c acellera`')
+    
     name = NamedTemporaryFile(suffix='.pdb').name
     mol.write(name)
     mpybel = next(pybel.readfile('pdb', name))
+    
     # print(name)
     residues = pybel.ob.OBResidueIter(mpybel.OBMol)
     atoms = [[r.GetName(), r.GetNum(), r.GetAtomID(at), at.GetType(), round(at.GetPartialCharge(), 3)]
              for r in residues
              for at in pybel.ob.OBResidueAtomIter(r)]
+
+    os.remove(name)
+    
     return atoms
 
 def prepareProteinForAtomtyping(mol, guessBonds=True, protonate=True, pH=7, segment=True, verbose=True):
