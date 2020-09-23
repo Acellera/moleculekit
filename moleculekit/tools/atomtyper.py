@@ -77,7 +77,7 @@ def getProperties(mol):
     try:
         from openbabel import pybel
     except ImportError:
-        raise ImportError('Could not import openbabel. The atomtyper requires this dependency so please install it with `conda install openbabel -c acellera`')
+        raise ImportError('Could not import openbabel. The atomtyper requires this dependency so please install it with `conda install openbabel -c conda-forge`')
     
     name = NamedTemporaryFile(suffix='.pdb').name
     mol.write(name)
