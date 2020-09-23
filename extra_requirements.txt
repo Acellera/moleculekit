@@ -3,9 +3,8 @@ ipython
 matplotlib
 joblib
 scikit-learn
-rdkit
+rdkit=2019.03.4.0
 mdtraj
 htmd-pdb2pqr
 propka
-openbabel
-pandas<=0.25.3
+openbabel>=3.1.1
