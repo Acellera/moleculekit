@@ -38,7 +38,7 @@ script:
   - pip install .
   # Run tests
   - pip install -q codecov coverage
-  - conda install -q --file extra_requirements.txt -c acellera  # Installing extra dependencies for tests
+  - conda install -q --file extra_requirements.txt -c acellera -c conda-forge  # Installing extra dependencies for tests
   - which coverage # Debug
   - coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
   - echo "Finished tests"
