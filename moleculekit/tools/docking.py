@@ -238,8 +238,9 @@ class _TestDocking(unittest.TestCase):
         ligand = Molecule(path.join(home(dataDir="test-docking"), "ligand.pdb"))
         poses, scoring = dock(protein, ligand)
 
-        assert scoring.shape == (20, 3)
-        assert len(poses) == 20
+        assert scoring.shape[0] == len(poses)
+        assert scoring.shape[0] <= 20 and scoring.shape[0] > 15
+        assert scoring.shape[1] == 3
 
 
 if __name__ == "__main__":
