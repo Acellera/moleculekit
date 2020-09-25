@@ -9,10 +9,9 @@ from os import path
 import os
 import shutil
 from subprocess import call, check_output
-from moleculekit.util import tempname
+from moleculekit.util import tempname, natsorted
 from moleculekit.molecule import Molecule
 from glob import glob
-from natsort import natsorted
 import logging
 import platform
 

@@ -571,6 +571,14 @@ def assertSameAsReferenceDir(compareDir, outdir="."):
                                                  os.path.join(compareDir, f)   ))
         raise Exception('Mismatch in regression testing.')
 
+def natsorted(items):
+    import re
+
+    def natural_sort_key(s, _nsre=re.compile("([0-9]+)")):
+        return [int(text) if text.isdigit() else text.lower() for text in _nsre.split(s)]
+
+    return sorted(items, key=natural_sort_key)
+
 
 from unittest import TestCase
 
