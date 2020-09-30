@@ -9,12 +9,20 @@ import numpy as np
 from rdkit.Chem import ChemicalFeatures
 from rdkit import RDConfig
 
-_highlight_colors = [(1.00, 0.50, 0.00), (0.00, 0.50, 1.00), (0.00, 1.00, 0.50),
-                     (1.00, 0.00, 0.50), (0.50, 0.00, 1.00), (0.50, 1.00, 0.00),
-                     (1.00, 0.00, 0.25), (0.00, 0.25, 1.00), (0.25, 1.00, 0.00)]
+_highlight_colors = [
+    (1.00, 0.50, 0.00),
+    (0.00, 0.50, 1.00),
+    (0.00, 1.00, 0.50),
+    (1.00, 0.00, 0.50),
+    (0.50, 0.00, 1.00),
+    (0.50, 1.00, 0.00),
+    (1.00, 0.00, 0.25),
+    (0.00, 0.25, 1.00),
+    (0.25, 1.00, 0.00),
+]
 
 
-fdefName = os.path.join(RDConfig.RDDataDir, 'BaseFeatures.fdef')
+fdefName = os.path.join(RDConfig.RDDataDir, "BaseFeatures.fdef")
 factory = ChemicalFeatures.BuildFeatureFactory(fdefName)
 
 
@@ -58,15 +66,16 @@ def getRCSBLigandByLigname(ligname, returnMol2=False):
     from moleculekit.rcsb import _getRCSBtext
 
     url = "https://files.rcsb.org/ligands/view/{}_ideal.sdf".format(ligname)
-    sdf_text = _getRCSBtext(url).decode('ascii')
+    sdf_text = _getRCSBtext(url).decode("ascii")
     tempfile = string_to_tempfile(sdf_text, "sdf")
-    mol2 = openbabelConvert(tempfile, 'sdf', 'mol2')
+    mol2 = openbabelConvert(tempfile, "sdf", "mol2")
 
     sm = SmallMol(mol2)
     if returnMol2:
         return sm, mol2
 
     return sm
+
 
 def getChemblLigandByDrugName(drugname, returnSmile=False):
     """
@@ -98,12 +107,14 @@ def getChemblLigandByDrugName(drugname, returnSmile=False):
         'CC(=O)Nc1ccc(O)cc1'
         """
     from moleculekit.smallmol.smallmol import SmallMol
+
     try:
         from chembl_webresource_client.new_client import new_client
     except ImportError as e:
         raise ImportError(
-            'You need to install the chembl_webresource package to use this function. Try using `conda install '
-            '-c chembl chembl_webresource_client`.')
+            "You need to install the chembl_webresource package to use this function. Try using `conda install "
+            "-c chembl chembl_webresource_client`."
+        )
     drug = new_client.drug
     results = drug.filter(synonyms__icontains=drugname)
 
@@ -114,21 +125,22 @@ def getChemblLigandByDrugName(drugname, returnSmile=False):
 
     found = False
     for drug_chembl in results:
-        for name in drug_chembl['synonyms']:
+        for name in drug_chembl["synonyms"]:
             matched = [True for na in name.split() if na.lower() == drugname.lower()]
             if sum(matched) != 0:
                 found = True
-                chembl_id = drug_chembl['molecule_chembl_id']
+                chembl_id = drug_chembl["molecule_chembl_id"]
                 break
             if found:
                 break
     molecule = new_client.molecule
     molecule_chembl = molecule.get(chembl_id)
-    smi = molecule_chembl['molecule_structures']['canonical_smiles']
+    smi = molecule_chembl["molecule_structures"]["canonical_smiles"]
     sm = SmallMol(smi)
     if returnSmile:
         return sm, smi
     return sm
+
 
 def getChemblSimilarLigandsBySmile(smi, threshold=85, returnSmiles=False):
     """
@@ -169,29 +181,35 @@ def getChemblSimilarLigandsBySmile(smi, threshold=85, returnSmiles=False):
         from chembl_webresource_client.new_client import new_client
     except ImportError as e:
         raise ImportError(
-            'You need to install the chembl_webresource package to use this function. Try using `conda install '
-            '-c chembl chembl_webresource_client`.')
+            "You need to install the chembl_webresource package to use this function. Try using `conda install "
+            "-c chembl chembl_webresource_client`."
+        )
 
     smi_list = []
 
     similarity = new_client.similarity
-    results = similarity.filter(smiles=smi, similarity=threshold).only(['molecule_structures'])
+    results = similarity.filter(smiles=smi, similarity=threshold).only(
+        ["molecule_structures"]
+    )
     results = results.all()
     for r in range(len(results)):
-        tmp_smi = results[r]['molecule_structures']['canonical_smiles']
-        fragments = tmp_smi.split('.')
-        fragments_len = [ len(fr) for fr in fragments ]
+        tmp_smi = results[r]["molecule_structures"]["canonical_smiles"]
+        fragments = tmp_smi.split(".")
+        fragments_len = [len(fr) for fr in fragments]
         fragment = fragments[fragments_len.index(max(fragments_len))]
 
-        if fragment not in smi_list: smi_list.append(fragment)
+        if fragment not in smi_list:
+            smi_list.append(fragment)
 
     lib = SmallMolLib()
-    for smi in smi_list: lib.appendSmallMol(SmallMol(smi))
+    for smi in smi_list:
+        lib.appendSmallMol(SmallMol(smi))
 
     if returnSmiles:
         return lib, smi_list
 
     return lib
+
 
 def openbabelConvert(input_file, input_format, output_format):
     """
@@ -212,11 +230,12 @@ def openbabelConvert(input_file, input_format, output_format):
         The output file generated
     """
 
-    import openbabel
+    from openbabel import openbabel
     import tempfile
-    input_format = input_format[1:] if input_format.startswith('.') else input_format
 
-    file = tempfile.NamedTemporaryFile(delete=True, suffix='.' + output_format)
+    input_format = input_format[1:] if input_format.startswith(".") else input_format
+
+    file = tempfile.NamedTemporaryFile(delete=True, suffix="." + output_format)
     file.close()
     outfile = file.name
 
@@ -241,7 +260,14 @@ def convertToString(arr):
     return arr_str
 
 
-def _depictMol(mol, filename=None, ipython=False, atomlabels=None, highlightAtoms=None, resolution=(400, 200)):
+def _depictMol(
+    mol,
+    filename=None,
+    ipython=False,
+    atomlabels=None,
+    highlightAtoms=None,
+    resolution=(400, 200),
+):
     """
     Returns the image or the ipython rendering.
 
@@ -270,26 +296,30 @@ def _depictMol(mol, filename=None, ipython=False, atomlabels=None, highlightAtom
     from IPython.display import SVG
 
     if highlightAtoms is not None and not isinstance(highlightAtoms, list):
-        raise ValueError('highlightAtoms should be a list of atom idx or a list of atom idx list ')
+        raise ValueError(
+            "highlightAtoms should be a list of atom idx or a list of atom idx list "
+        )
 
-    ext = '.svg'
+    ext = ".svg"
 
     if filename is not None:
         fileext = splitext(filename)[-1]
 
-        if fileext == '':
-            ext = '.svg'
-            filename = filename + '.svg'
+        if fileext == "":
+            ext = ".svg"
+            filename = filename + ".svg"
         else:
             ext = fileext
 
     # init the drawer object
-    if ext == '.png':
+    if ext == ".png":
         drawer = rdMolDraw2D.MolDraw2DCairo(*resolution)
-    elif ext == '.svg':
+    elif ext == ".svg":
         drawer = rdMolDraw2D.MolDraw2DSVG(*resolution)
     else:
-        raise RuntimeError('Unsupported depiction extention {}. Use either svg or png.'.format(ext))
+        raise RuntimeError(
+            "Unsupported depiction extention {}. Use either svg or png.".format(ext)
+        )
     # get the drawer options
     opts = drawer.drawOptions()
 
@@ -305,13 +335,19 @@ def _depictMol(mol, filename=None, ipython=False, atomlabels=None, highlightAtom
     if highlightAtoms is not None:
         if isinstance(highlightAtoms[0], list):
             sel_atoms = [aIdx for subset in highlightAtoms for aIdx in subset]
-            sel_colors = {aIdx: _highlight_colors[n % len(_highlight_colors)] for n, subset in enumerate(highlightAtoms) for aIdx in subset}
+            sel_colors = {
+                aIdx: _highlight_colors[n % len(_highlight_colors)]
+                for n, subset in enumerate(highlightAtoms)
+                for aIdx in subset
+            }
         else:
             sel_atoms = highlightAtoms
             sel_colors = {aIdx: _highlight_colors[0] for aIdx in sel_atoms}
 
     Kekulize(mol)
-    drawer.DrawMolecule(mol, highlightAtoms=sel_atoms, highlightBonds=[], highlightAtomColors=sel_colors)
+    drawer.DrawMolecule(
+        mol, highlightAtoms=sel_atoms, highlightBonds=[], highlightAtomColors=sel_colors
+    )
     drawer.FinishDrawing()
 
     # svg object
@@ -319,22 +355,29 @@ def _depictMol(mol, filename=None, ipython=False, atomlabels=None, highlightAtom
 
     # activate saving into a file
     if filename is not None:
-        if ext == '.svg':
-            f = open(filename, 'w')
-        elif ext == '.png':
-            f = open(filename, 'wb')
+        if ext == ".svg":
+            f = open(filename, "w")
+        elif ext == ".png":
+            f = open(filename, "wb")
         f.write(svg)
         f.close()
 
     # activate jupiter-notebook rendering
     if ipython:
-        svg = svg.replace('svg:', '')
+        svg = svg.replace("svg:", "")
         return SVG(svg)
     else:
         return None
 
 
-def depictMultipleMols(mols_list, filename=None, ipython=False, legends=None, highlightAtoms=None, mols_perrow=3):
+def depictMultipleMols(
+    mols_list,
+    filename=None,
+    ipython=False,
+    legends=None,
+    highlightAtoms=None,
+    mols_perrow=3,
+):
     """
         Returns the image or the ipython rendering.
 
@@ -368,12 +411,20 @@ def depictMultipleMols(mols_list, filename=None, ipython=False, legends=None, hi
     sel_colors = []
     if highlightAtoms is not None:
         if isinstance(highlightAtoms[0][0], list):
-            sel_atoms = [[a for a in subset] for mol_set in highlightAtoms for subset in mol_set]
-            sel_colors = [{aIdx: _highlight_colors[n % len(_highlight_colors)] for aIdx in subset}
-                          for mol_set in highlightAtoms for n, subset in enumerate(mol_set)]
+            sel_atoms = [
+                [a for a in subset] for mol_set in highlightAtoms for subset in mol_set
+            ]
+            sel_colors = [
+                {aIdx: _highlight_colors[n % len(_highlight_colors)] for aIdx in subset}
+                for mol_set in highlightAtoms
+                for n, subset in enumerate(mol_set)
+            ]
         else:
             sel_atoms = highlightAtoms
-            sel_colors = [{aIdx: _highlight_colors[0] for aIdx in subset} for subset in highlightAtoms]
+            sel_colors = [
+                {aIdx: _highlight_colors[0] for aIdx in subset}
+                for subset in highlightAtoms
+            ]
 
     from rdkit.Chem.Draw import IPythonConsole as CDIPythonConsole
 
@@ -381,18 +432,25 @@ def depictMultipleMols(mols_list, filename=None, ipython=False, legends=None, hi
         CDIPythonConsole.UninstallIPythonRenderer()
         from rdkit.Chem.Draw import MolsToGridImage
 
-    svg = MolsToGridImage(mols_list, highlightAtomLists=sel_atoms, highlightBondLists=[], highlightAtomColors=sel_colors,
-                                                                legends=legends, molsPerRow=mols_perrow, useSVG=True)
+    svg = MolsToGridImage(
+        mols_list,
+        highlightAtomLists=sel_atoms,
+        highlightBondLists=[],
+        highlightAtomColors=sel_colors,
+        legends=legends,
+        molsPerRow=mols_perrow,
+        useSVG=True,
+    )
 
     if filename:
         ext = splitext(filename)[-1]
-        filename = filename if ext != '' else filename + '.svg'
-        f = open(filename, 'w')
+        filename = filename if ext != "" else filename + ".svg"
+        f = open(filename, "w")
         f.write(svg)
         f.close()
 
     if ipython:
-            _svg = SVG(svg)
-            return _svg
+        _svg = SVG(svg)
+        return _svg
     else:
         return None
