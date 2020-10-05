@@ -228,7 +228,7 @@ def orientOnAxes(mol, sel="all"):
     return mol
 
 
-def sequenceID(field, prepend=None):
+def sequenceID(field, prepend=None, step=1):
     """ Array of integers which increments at value change of another array
 
     Parameters
@@ -238,6 +238,8 @@ def sequenceID(field, prepend=None):
         If a tuple of ndarrays is passed, a change in any of them will cause an increase in `seq`.
     prepend : str
         A string to prepend to the incremental sequence
+    step : int
+        The step size for incremeting the ID
 
     Returns
     -------
@@ -275,10 +277,10 @@ def sequenceID(field, prepend=None):
         if isinstance(field, tuple):  # Support tuples of multiple fields. Change in any of them will cause an increment
             for t in field:
                 if t[i-1] != t[i]:
-                    c += 1  # new sequence id
+                    c += step  # new sequence id
                     break
         elif field[i-1] != field[i]:
-            c += 1  # new sequence id
+            c += step  # new sequence id
         if prepend is None:
             seq[i] = c
         else:
