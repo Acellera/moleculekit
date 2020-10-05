@@ -117,6 +117,7 @@ def prepareProteinForAtomtyping(mol, guessBonds=True, protonate=True, pH=7, segm
         The prepared Molecule
     """
     from moleculekit.tools.autosegment import autoSegment2
+    from moleculekit.util import sequenceID
 
     mol = mol.copy()
     if guessBonds:  # Need to guess bonds at the start for atom selection and for autoSegment
@@ -125,7 +126,8 @@ def prepareProteinForAtomtyping(mol, guessBonds=True, protonate=True, pH=7, segm
 
     protsel = mol.atomselect('protein')
     metalsel = mol.atomselect('element {}'.format(' '.join(metal_atypes)))
-    notallowed = ~(protsel | metalsel)
+    watersel = mol.atomselect('water')
+    notallowed = ~(protsel | metalsel | watersel)
 
     if not np.any(protsel):
         raise RuntimeError('No protein atoms found in Molecule')
@@ -138,6 +140,8 @@ def prepareProteinForAtomtyping(mol, guessBonds=True, protonate=True, pH=7, segm
     protmol.filter(protsel, _logger=False)
     metalmol = mol.copy()
     metalmol.filter(metalsel, _logger=False)
+    watermol = mol.copy()
+    watermol.filter(watersel, _logger=False)
 
     if protonate:
         from moleculekit.tools.preparation import proteinPrepare
@@ -147,7 +151,7 @@ def prepareProteinForAtomtyping(mol, guessBonds=True, protonate=True, pH=7, segm
 
     if guessBonds:
         protmol.bonds = protmol._guessBonds()
-        # TODO: Should we remove bonds between metals and protein? Should we remove metals before guessing bonds and add them back in? Might crash otherwise?
+        # TODO: Should we remove bonds between metals and protein?
 
     if segment:
         protmol = autoSegment2(protmol, fields=('segid', 'chain'), _logger=verbose)  # Reassign segments after preparation
@@ -157,10 +161,17 @@ def prepareProteinForAtomtyping(mol, guessBonds=True, protonate=True, pH=7, segm
             raise AssertionError('Report this issue on the moleculekit github issue tracker. Too many chains in the protein.')
         metalmol.segid[:] = 'ME'
         metalmol.chain[:] = 'Z'
-        metalmol.resid[:] = np.arange(metalmol.numAtoms) * 2 + protmol.resid.max() + 1 # Just in case, let's put a residue gap between the metals so that they are considered separate chains no matter what happens
+        metalmol.resid[:] = np.arange(0, 2 * metalmol.numAtoms, 2) + protmol.resid.max() + 1 # Just in case, let's put a residue gap between the metals so that they are considered separate chains no matter what happens
 
+        if np.any(protmol.chain == 'W') or np.any(protmol.segid == "WX"):
+            raise AssertionError('Report this issue on the moleculekit github issue tracker. Too many chains in the protein.')
+        watermol.resid[:] = sequenceID((watermol.resid, watermol.segid, watermol.chain), step=2)
+        watermol.segid[:] = 'WX'
+        watermol.chain[:] = 'W'
+        
     mol = protmol.copy()
     mol.append(metalmol)
+    mol.append(watermol)
     return mol
 
 
