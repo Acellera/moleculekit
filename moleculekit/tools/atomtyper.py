@@ -163,11 +163,12 @@ def prepareProteinForAtomtyping(mol, guessBonds=True, protonate=True, pH=7, segm
         metalmol.chain[:] = 'Z'
         metalmol.resid[:] = np.arange(0, 2 * metalmol.numAtoms, 2) + protmol.resid.max() + 1 # Just in case, let's put a residue gap between the metals so that they are considered separate chains no matter what happens
 
-        if np.any(protmol.chain == 'W') or np.any(protmol.segid == "WX"):
-            raise AssertionError('Report this issue on the moleculekit github issue tracker. Too many chains in the protein.')
-        watermol.resid[:] = sequenceID((watermol.resid, watermol.segid, watermol.chain), step=2)
-        watermol.segid[:] = 'WX'
-        watermol.chain[:] = 'W'
+        if watermol.numAtoms != 0:
+            if np.any(protmol.chain == 'W') or np.any(protmol.segid == "WX"):
+                raise AssertionError('Report this issue on the moleculekit github issue tracker. Too many chains in the protein.')
+            watermol.resid[:] = sequenceID((watermol.resid, watermol.segid, watermol.chain), step=2)
+            watermol.segid[:] = 'WX'
+            watermol.chain[:] = 'W'
         
     mol = protmol.copy()
     mol.append(metalmol)
