@@ -25,6 +25,10 @@ class MetricDistance(Projection):
         Atom selection string for the second set of atoms. If sel1 != sel2, it will calculate inter-set distances.
         If sel1 == sel2, it will calculate intra-set distances.
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+    periodic : str
+        If periodic distances should be calculated and between which elements. If set to "chains" it will only calculate
+        periodic distances between different chains. If set to "selections" it will calculate periodic distances between
+        the two selections. If set to None it will not calculate any periodic distances.
     groupsel1 : ['all','residue'], optional
         Group all atoms in `sel1` to the single minimum distance. Alternatively can calculate the minimum distance of a
         residue containing the atoms in sel1.
@@ -34,8 +38,6 @@ class MetricDistance(Projection):
         Set to 'contacts' to calculate contacts instead of distances
     threshold : float, optional
         The threshold under which a distance is considered in contact. Units in Angstrom.
-    pbc : bool, optional
-        Set to false to disable distance calculations using periodic distances
     truncate : float, optional
         Set all distances larger than `truncate` to `truncate`. Units in Angstrom.
     update :
@@ -50,22 +52,33 @@ class MetricDistance(Projection):
         self,
         sel1,
         sel2,
+        periodic,
         groupsel1=None,
         groupsel2=None,
         metric="distances",
         threshold=8,
-        pbc=True,
+        pbc=None,
         truncate=None,
     ):
         super().__init__()
 
+        if pbc is not None:
+            raise DeprecationWarning(
+                "The pbc option in MetricDistance is deprecated. Please use the `periodic` option to specify which periodic distances should be calculated."
+            )
+
         self.sel1 = sel1
         self.sel2 = sel2
+        self.periodic = periodic
+        if periodic is not None and periodic not in ["chains", "selections"]:
+            raise RuntimeError(
+                "Option `periodic` can only be None, 'chains' or 'selections'."
+            )
+
         self.groupsel1 = groupsel1
         self.groupsel2 = groupsel2
         self.metric = metric
         self.threshold = threshold
-        self.pbc = pbc
         self.truncate = truncate
 
     def _checkChains(self, mol, sel1, sel2):
@@ -102,7 +115,7 @@ class MetricDistance(Projection):
         getMolProp = lambda prop: self._getMolProp(mol, prop)
         sel1 = getMolProp("sel1")
         sel2 = getMolProp("sel2")
-        if self.pbc:
+        if self.periodic == "chains":
             self._checkChains(mol, sel1, sel2)
 
         if np.ndim(sel1) == 1 and np.ndim(sel2) == 1:  # normal distances
@@ -110,9 +123,9 @@ class MetricDistance(Projection):
                 mol,
                 sel1,
                 sel2,
+                self.periodic,
                 self.metric,
                 self.threshold,
-                self.pbc,
                 truncate=self.truncate,
             )
         else:  # minimum distances by groups
@@ -120,9 +133,9 @@ class MetricDistance(Projection):
                 mol,
                 sel1,
                 sel2,
+                self.periodic,
                 self.metric,
                 self.threshold,
-                pbc=self.pbc,
                 truncate=self.truncate,
             )
 
@@ -276,7 +289,8 @@ class MetricSelfDistance(MetricDistance):
         groupsel=None,
         metric="distances",
         threshold=8,
-        pbc=True,
+        periodic=None,
+        pbc=None,
         truncate=None,
     ):
         """ Creates a MetricSelfDistance object
@@ -293,8 +307,8 @@ class MetricSelfDistance(MetricDistance):
             Set to 'contacts' to calculate contacts instead of distances
         threshold : float, optional
             The threshold under which a distance is considered in contact
-        pbc : bool, optional
-            Set to false to disable distance calculations using periodic distances
+        periodic : str
+            See documentation of MetricDistance class
         truncate : float, optional
             Set all distances larger than `truncate` to `truncate`
         update :
@@ -304,7 +318,21 @@ class MetricSelfDistance(MetricDistance):
         -------
         proj : MetricDistance object
         """
-        super().__init__(sel, sel, groupsel, groupsel, metric, threshold, pbc, truncate)
+        if pbc is not None:
+            raise DeprecationWarning(
+                "The `pbc` option is deprecated please use the `periodic` option as described in MetricDistance."
+            )
+
+        super().__init__(
+            sel1=sel,
+            sel2=sel,
+            periodic=periodic,
+            groupsel1=groupsel,
+            groupsel2=groupsel,
+            metric=metric,
+            threshold=threshold,
+            truncate=truncate,
+        )
 
 
 def contactVecToMatrix(vector, atomIndexes):
@@ -495,7 +523,11 @@ class _TestMetricDistance(unittest.TestCase):
 
     def test_contacts(self):
         metr = MetricDistance(
-            "protein and name CA", "resname MOL and noh", metric="contacts", threshold=8
+            "protein and name CA",
+            "resname MOL and noh",
+            periodic="selections",
+            metric="contacts",
+            threshold=8,
         )
         data = metr.project(self.mol)
         reffile = os.path.join(
@@ -573,7 +605,7 @@ class _TestMetricDistance(unittest.TestCase):
 
         realdistances = np.linalg.norm(mol.coords[[1, 2], :, :], axis=1).T
 
-        metr = MetricDistance("index 0", "index 1 2", metric="distances", pbc=False)
+        metr = MetricDistance("index 0", "index 1 2", metric="distances", periodic=None)
         data = metr.project(mol)
         assert np.allclose(
             data, realdistances
@@ -584,7 +616,9 @@ class _TestMetricDistance(unittest.TestCase):
         wrappedrealdistances = np.linalg.norm(wrappedcoords[[1, 2], :, :], axis=1).T
 
         mol.box = np.full((3, 2), 2, dtype=np.float32)  # Make box 2x2x2A large
-        metr = MetricDistance("index 0", "index 1 2", metric="distances", pbc=True)
+        metr = MetricDistance(
+            "index 0", "index 1 2", metric="distances", periodic="selections"
+        )
         data = metr.project(mol)
         assert np.allclose(
             data, wrappedrealdistances
@@ -595,7 +629,7 @@ class _TestMetricDistance(unittest.TestCase):
             "index 0",
             "index 1 2",
             metric="distances",
-            pbc=False,
+            periodic=None,
             groupsel1="all",
             groupsel2="all",
         )
@@ -631,7 +665,9 @@ class _TestMetricDistance(unittest.TestCase):
             )
         )
 
-        metr = MetricDistance("index 0 1", "index 2 3", metric="distances", pbc=False)
+        metr = MetricDistance(
+            "index 0 1", "index 2 3", metric="distances", periodic=None
+        )
         data = metr.project(mol)
         assert np.allclose(
             data, realdistances
@@ -639,7 +675,10 @@ class _TestMetricDistance(unittest.TestCase):
 
     def test_distances(self):
         metr = MetricDistance(
-            "protein and name CA", "resname MOL and noh", metric="distances"
+            "protein and name CA",
+            "resname MOL and noh",
+            metric="distances",
+            periodic="selections",
         )
         data = metr.project(self.mol)
         refdata = np.load(
@@ -653,6 +692,7 @@ class _TestMetricDistance(unittest.TestCase):
         metr = MetricDistance(
             "protein and noh",
             "resname MOL and noh",
+            periodic="selections",
             groupsel1="residue",
             groupsel2="all",
         )
@@ -670,6 +710,7 @@ class _TestMetricDistance(unittest.TestCase):
         metr = MetricDistance(
             "protein and noh",
             "resname MOL and noh",
+            periodic="selections",
             groupsel1="residue",
             groupsel2="all",
             truncate=3,
@@ -688,6 +729,7 @@ class _TestMetricDistance(unittest.TestCase):
         metr = MetricDistance(
             "protein and resid 1 to 50 and noh",
             "protein and resid 1 to 50 and noh",
+            periodic=None,
             groupsel1="residue",
             groupsel2="residue",
         )
@@ -742,7 +784,7 @@ class _TestMetricDistance(unittest.TestCase):
 
         mol = Molecule("1yu8")
 
-        metr = MetricSelfDistance("protein and name CA", metric="contacts", pbc=False)
+        metr = MetricSelfDistance("protein and name CA", metric="contacts")
         data = metr.project(mol)[0]
         mapping = metr.getMapping(mol)
 
@@ -762,7 +804,9 @@ class _TestMetricDistance(unittest.TestCase):
         assert np.array_equal(refdata["uqAtomGroups"], uqAtomGroups)
 
     def test_description(self):
-        metr = MetricDistance("protein and noh", "resname MOL and noh", truncate=3)
+        metr = MetricDistance(
+            "protein and noh", "resname MOL and noh", truncate=3, periodic="selections"
+        )
         data = metr.project(self.mol)
         atomIndexes = metr.getMapping(self.mol).atomIndexes.values
         refdata = np.load(
@@ -772,6 +816,35 @@ class _TestMetricDistance(unittest.TestCase):
             allow_pickle=True,
         )
         assert np.array_equal(refdata, atomIndexes)
+
+    def test_periodicity(self):
+        metr = MetricDistance(
+            "protein and resid 1 to 20 and noh",
+            "resname MOL and noh",
+            periodic="selections",
+        )
+        data1 = metr.project(self.mol)
+        metr = MetricDistance(
+            "protein and resid 1 to 20 and noh",
+            "resname MOL and noh",
+            periodic="chains",
+        )
+        data2 = metr.project(self.mol)
+
+        from IPython.core.debugger import set_trace
+
+        set_trace()
+        assert np.allclose(data1, data2)
+
+        mol_tmp = self.mol.copy()
+        mol_tmp.chain[:] = ""
+        metr = MetricDistance(
+            "protein and resid 1 to 20 and noh",
+            "resname MOL and noh",
+            periodic="chains",
+        )
+        data3 = metr.project(mol_tmp)
+        assert not np.allclose(data1, data3)
 
 
 if __name__ == "__main__":

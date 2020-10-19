@@ -29,12 +29,12 @@ class MetricShell(Projection):
     sel2 : str
         Atom selection string for the second set of atoms whose density will be calculated in shells around `sel1`.
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+    periodic : str
+        See the documentation of MetricDistance class for options.
     numshells : int, optional
         Number of shells to use around atoms of `sel1`
     shellwidth : int, optional
         The width of each concentric shell in Angstroms
-    pbc : bool, optional
-        Set to false to disable distance calculations using periodic distances
     gap : int, optional
         Not functional yet
     truncate : float, optional
@@ -42,9 +42,22 @@ class MetricShell(Projection):
     """
 
     def __init__(
-        self, sel1, sel2, numshells=4, shellwidth=3, pbc=True, gap=None, truncate=None
+        self,
+        sel1,
+        sel2,
+        periodic,
+        numshells=4,
+        shellwidth=3,
+        pbc=None,
+        gap=None,
+        truncate=None,
     ):
         super().__init__()
+
+        if pbc is not None:
+            raise DeprecationWarning(
+                "The `pbc` option is deprecated please use the `periodic` option as described in MetricDistance."
+            )
 
         from moleculekit.projections.metricdistance import MetricDistance
 
@@ -52,11 +65,11 @@ class MetricShell(Projection):
         self.metricdistance = MetricDistance(
             sel1=sel1,
             sel2=sel2,
+            periodic=periodic,
             groupsel1=None,
             groupsel2=None,
             metric="distances",
             threshold=8,
-            pbc=pbc,
             truncate=truncate,
         )
 
@@ -199,7 +212,9 @@ class _TestMetricShell(unittest.TestCase):
         )
         mol.read(path.join(home(dataDir="test-projections"), "trajectory", "traj.xtc"))
 
-        metr = MetricShell("protein and name CA", "resname MOL and noh")
+        metr = MetricShell(
+            "protein and name CA", "resname MOL and noh", periodic="selections"
+        )
         data = metr.project(mol)
 
         refdata = np.load(
@@ -224,14 +239,16 @@ class _TestMetricShell(unittest.TestCase):
         mol.coords[1, :, 0] = [0.5, 0, 0]
         mol.coords[2, :, 0] = [0, 1.5, 0]
 
-        metr = MetricShell("name CL", "name CL", pbc=False)
+        metr = MetricShell("name CL", "name CL", periodic=None)
         data = metr.project(mol)
         # fmt: off
         refdata = np.array([[0.01768388256576615, 0.0, 0.0, 0.0, 0.01768388256576615, 0.0, 0.0, 0.0, 0.01768388256576615, 0.0, 0.0, 0.0]])
         # fmt: on
         assert np.allclose(data, refdata)
 
-        metr = MetricShell("name CL", "name CL", numshells=2, shellwidth=1, pbc=False)
+        metr = MetricShell(
+            "name CL", "name CL", numshells=2, shellwidth=1, periodic=None
+        )
         data = metr.project(mol)
         refdata = np.array(
             [[0.23873241, 0.03410463, 0.23873241, 0.03410463, 0.0, 0.06820926]]

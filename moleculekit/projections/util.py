@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def pp_calcDistances(
-    mol, sel1, sel2, metric="distances", threshold=8, pbc=True, gap=1, truncate=None
+    mol, sel1, sel2, periodic, metric="distances", threshold=8, gap=1, truncate=None
 ):
     import os
     import ctypes
@@ -24,11 +24,11 @@ def pp_calcDistances(
 
     coords = mol.coords
     box = mol.box
-    if pbc:
+    if periodic is not None:
         if box is None or np.sum(box) == 0:
             raise RuntimeError(
                 "No periodic box dimensions given in the molecule/trajectory. "
-                "If you want to calculate distance without wrapping, set the pbc option to False"
+                "If you want to calculate distance without wrapping, set the periodic option to `None`"
             )
     else:
         box = np.zeros((3, coords.shape[2]), dtype=np.float32)
@@ -40,7 +40,13 @@ def pp_calcDistances(
         )
 
     # Digitize chains to not do PBC calculations of the same chain
-    digitized_chains = np.unique(mol.chain, return_inverse=True)[1].astype(np.int32)
+    if periodic is None:  # Won't be used since box is 0
+        digitized_chains = np.zeros(mol.numAtoms, dtype=np.int32)
+    elif periodic == "chains":
+        digitized_chains = np.unique(mol.chain, return_inverse=True)[1].astype(np.int32)
+    elif periodic == "selections":
+        digitized_chains = np.ones(mol.numAtoms, dtype=np.int32)
+        digitized_chains[sel2] = 2
 
     # Running the actual calculations
     lib = ctypes.cdll.LoadLibrary(os.path.join(home(libDir=True), "dist_ext.so"))
@@ -59,7 +65,7 @@ def pp_calcDistances(
         ctypes.c_int(len(sel2)),
         ctypes.c_int(mol.numAtoms),
         ctypes.c_int(mol.numFrames),
-        ctypes.c_int(int(pbc)),
+        ctypes.c_int(int(periodic is not None)),
         ctypes.c_int(int(selfdist)),
         results.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
     )
@@ -79,7 +85,7 @@ def pp_calcDistances(
 
 
 def pp_calcMinDistances(
-    mol, sel1, sel2, metric="distances", threshold=8, pbc=True, gap=1, truncate=None
+    mol, sel1, sel2, periodic, metric="distances", threshold=8, gap=1, truncate=None
 ):
     import os
     import ctypes
@@ -97,11 +103,11 @@ def pp_calcMinDistances(
 
     coords = mol.coords
     box = mol.box
-    if pbc:
+    if periodic is not None:
         if box is None or np.sum(box) == 0:
             raise RuntimeError(
                 "No periodic box dimensions given in the molecule/trajectory. "
-                "If you want to calculate distance without wrapping, set the pbc option to False"
+                "If you want to calculate distance without wrapping, set the `periodic` option to None"
             )
     else:
         box = np.zeros((3, coords.shape[2]), dtype=np.float32)
@@ -125,7 +131,14 @@ def pp_calcMinDistances(
     selfdist = np.array_equal(sel1, sel2)
 
     # Digitize chains to not do PBC calculations of the same chain
-    digitized_chains = np.unique(mol.chain, return_inverse=True)[1].astype(np.int32)
+    if periodic is None:  # Won't be used since box is 0
+        digitized_chains = np.zeros(mol.numAtoms, dtype=np.int32)
+    elif periodic == "chains":
+        digitized_chains = np.unique(mol.chain, return_inverse=True)[1].astype(np.int32)
+    elif periodic == "selections":
+        digitized_chains = np.ones(mol.numAtoms, dtype=np.int32)
+        for i in range(sel2.shape[0]):
+            digitized_chains[sel2[i, :]] = 2
 
     # Running the actual calculations
     lib = ctypes.cdll.LoadLibrary(os.path.join(home(libDir=True), "mindist_ext.so"))
@@ -150,7 +163,7 @@ def pp_calcMinDistances(
         ctypes.c_int(len(groups2)),
         ctypes.c_int(mol.numAtoms),
         ctypes.c_int(mol.numFrames),
-        ctypes.c_int(int(pbc)),
+        ctypes.c_int(int(periodic is not None)),
         ctypes.c_int(int(selfdist)),
         mindist.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
     )
