@@ -830,10 +830,6 @@ class _TestMetricDistance(unittest.TestCase):
             periodic="chains",
         )
         data2 = metr.project(self.mol)
-
-        from IPython.core.debugger import set_trace
-
-        set_trace()
         assert np.allclose(data1, data2)
 
         mol_tmp = self.mol.copy()
