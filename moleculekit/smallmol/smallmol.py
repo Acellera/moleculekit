@@ -144,38 +144,18 @@ class SmallMol(object):
         elif isinstance(mol, str):
             if os.path.isfile(mol):
                 name_suffix = os.path.splitext(mol)[-1]
-
-                with tempfile.TemporaryFile(mode='w+') as stderr:
-                    # Redirect stderr to a file
-                    temp_fileno = os.dup(sys.stderr.fileno())
-                    os.dup2(stderr.fileno(), sys.stderr.fileno()) # Change process stderr
-                    sys.stderr = stderr # Change Python stderr
-
-                    # load mol2 file
-                    if name_suffix == ".mol2":
-                        _mol = Chem.MolFromMol2File(mol, removeHs=False)
-                    # load pdb file
-                    elif name_suffix == ".pdb":
-                        _mol = Chem.MolFromPDBFile(mol, removeHs=False)
-                    # if the file failed to be loaded and 'force_reading' = True, file convert to sdf and than loaded
-                    if _mol is None and force_reading:
-                        logger.warning('Reading {} with force_reading procedure'.format(mol))
-                        sdf = openbabelConvert(mol, name_suffix, 'sdf')
-                        _mol = Chem.SDMolSupplier(sdf, removeHs=False)[0]
-                        os.remove(sdf)
-
-                    # Reset stderr
-                    os.dup2(temp_fileno, sys.__stderr__.fileno())
-                    os.close(temp_fileno)
-                    sys.stderr = sys.__stderr__
-
-                    # Read RDKit warnings
-                    stderr.flush()
-                    stderr.seek(0)
-                    message = stderr.read()
-
-                if verbose:
-                    logger.warning(message)
+                # load mol2 file
+                if name_suffix == ".mol2":
+                    _mol = Chem.MolFromMol2File(mol, removeHs=False)
+                # load pdb file
+                elif name_suffix == ".pdb":
+                    _mol = Chem.MolFromPDBFile(mol, removeHs=False)
+                # if the file failed to be loaded and 'force_reading' = True, file convert to sdf and than loaded
+                if _mol is None and force_reading:
+                    logger.warning('Reading {} with force_reading procedure'.format(mol))
+                    sdf = openbabelConvert(mol, name_suffix, 'sdf')
+                    _mol = Chem.SDMolSupplier(sdf, removeHs=False)[0]
+                    os.remove(sdf)
             else:
                 # assuming it is a smile
                 psmile = Chem.SmilesParserParams()
@@ -186,9 +166,6 @@ class SmallMol(object):
             os.remove(mol)
 
         if _mol is None and not ignore_errors:
-            if message is not None and not verbose:
-                # Print it anyway if there was an error
-                logger.warning(message)
             if isinstance(mol, str):
                 frerr = ' Try by setting the force_reading option as True.' if not force_reading else ''
                 raise ValueError(f'Failed to read file {mol}.{frerr}')
