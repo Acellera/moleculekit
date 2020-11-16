@@ -287,26 +287,30 @@ class Molecule(object):
         """ The frame-step of the trajectory """
         if self.time is not None and len(self.time) > 1:
             uqf, uqidx = np.unique([f[0] for f in self.fileloc], return_inverse=True)
-            diff = None
-            for f, n in enumerate(uqf):
-                df = np.unique(np.diff(self.time[uqidx == f]))
-                if len(df) != 1:
+            firstDiff = None
+            for f, filename in enumerate(uqf):
+                currDiff = np.diff(self.time[uqidx == f])
+                uqDiff = np.unique(currDiff)
+                # Check with the std if it's simply a rounding error. time is in fs so this would be zeptosecond diff
+                if len(uqDiff) == 1 or currDiff.std() * 1e6 < uqDiff[0]:
+                    uqDiff = uqDiff[0]
+                else:
+                    # Not a rounding error. Actual different fsteps
                     logger.warning(
-                        "Different timesteps in Molecule.time for file {}. Cannot calculate fstep.".format(
-                            n
-                        )
+                        f"Different timesteps in Molecule.time for file {filename}. Cannot calculate fstep."
                     )
                     return None
-                if diff is None:
-                    diff = df
-                if df != diff:
+
+                if firstDiff is None:
+                    firstDiff = uqDiff
+
+                if uqDiff != firstDiff:
                     logger.warning(
-                        "Different timesteps detected between files {} and {}. Cannot calculate fstep.".format(
-                            uqf[f], uqf[f - 1]
-                        )
+                        f"Different timesteps detected between files {uqf[f]} and {uqf[f - 1]}. Cannot calculate fstep."
                     )
-            if diff is not None:
-                return float(diff / 1e6)  # convert femtoseconds to nanoseconds
+
+            if firstDiff is not None:
+                return float(firstDiff / 1e6)  # convert femtoseconds to nanoseconds
             else:
                 return None
         return None

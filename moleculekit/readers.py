@@ -1589,6 +1589,7 @@ def XTCread(filename, frame=None, topoloc=None):
 
     coords *= 10.0  # Convert from nm to Angstrom
     box *= 10.0  # Convert from nm to Angstrom
+    time *= 1E6  # Convert from ns to fs. This seems to be ACEMD3 specific. GROMACS writes other units in time
     nframes = coords.shape[2]
     if len(step) != nframes or np.sum(step) == 0:
         step = np.arange(nframes)
@@ -2293,6 +2294,17 @@ class _TestReaders(unittest.TestCase):
         tmpcoo = mol.coords.copy()
         mol.read([os.path.join(self.testfolder('4RWS'), 'traj.xtc')], frames=[1])
         assert np.array_equal(tmpcoo[:, :, 1], np.squeeze(mol.coords)), 'Specific frame reading not working'
+
+    def test_acemd3_xtc_fstep(self):
+        mol = Molecule(os.path.join(self.testfolder(), 'aladipep_traj_4fs_100ps.xtc'))
+        refstep = np.array([ 10,  20,  30,  40,  50,  60,  70,  80,  90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200])
+        reftime = np.array([ 40000.  ,  80000.  , 120000.  , 160000.  , 200000.  , 240000.  ,
+                            280000.  , 320000.  , 360000.  , 400000.  , 440000.  , 480000.  ,
+                            519999.97, 560000.  , 600000.  , 640000.  , 680000.  , 720000.  ,
+                            760000.  , 800000.  ], dtype=np.float32)
+        assert np.array_equal(mol.step, refstep)
+        assert np.allclose(mol.time, reftime)
+        assert abs(mol.fstep - 0.04) < 1E-6
 
     def test_gromacs_top(self):
         mol = Molecule(os.path.join(self.testfolder(), 'gromacs.top'))
