@@ -302,7 +302,7 @@ def XTCwrite(mol, filename):
 
     box = box.astype(np.float32) * 0.1
     step = step.astype(np.int32)
-    time = time.astype(np.float32)
+    time = time.astype(np.float32) / 1e3  # Convert from fs to ps
     coords = coords.astype(np.float32) * 0.1  # Convert from A to nm
     if not box.flags["C_CONTIGUOUS"]:
         box = np.ascontiguousarray(box)
@@ -739,6 +739,8 @@ def MDTRAJwrite(mol, filename):
             traj = md.load(tmppdb)
             os.remove(tmppdb)
         elif ext in _MDTRAJ_TRAJECTORY_SAVERS:
+            mol = mol.copy()
+            mol.time = mol.time / 1000  # convert fs to ps
             tmppdb = tempname(suffix=".pdb")
             tmpxtc = tempname(suffix=".xtc")
             mol.write(tmppdb)
