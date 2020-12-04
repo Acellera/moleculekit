@@ -3,6 +3,11 @@ variables:
 
 stages:
   - stage: Test
+    trigger:
+      branches:
+        include:
+          - master
+          - refs/tags/*
     jobs:
       - template: test_job.yml
         parameters:
@@ -19,6 +24,10 @@ stages:
           OS: mac
 
   - stage: Build
+    trigger:
+      branches:
+        include:
+          - refs/tags/*
     jobs:
       - template: build_artifact_job.yml
         parameters:
