@@ -61,5 +61,6 @@ stages:
           inputs:
             pythonUploadServiceConnection: pypi
 
-        - script: python -m twine upload -r "pypi" --config-file $(PYPIRC_PATH) $(Build.ArtifactStagingDirectory)/*.whl
+        - bash: |
+            python -m twine upload -r "pypi" --config-file $(PYPIRC_PATH) $(Build.ArtifactStagingDirectory)/*.whl
           displayName: Uploading to PyPI
