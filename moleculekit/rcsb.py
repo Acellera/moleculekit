@@ -1,20 +1,27 @@
 import urllib.request
 import logging
+
 logger = logging.getLogger(__name__)
 
 
-def _getRCSBtext(url):
+def _getRCSBtext(url, attempts=3):
     connected = False
-    while not connected:
+    for _ in range(attempts):
         try:
             response = urllib.request.urlopen(url)
             text = response.read()
         except Exception as coer:
             import time
-            logger.warning('Failed to connect to URL {} with error {}. Sleeping 5s and retrying.'.format(url, coer))
+
+            logger.warning(
+                f"Failed to connect to URL {url} with error {coer}. Sleeping 5s and retrying."
+            )
             time.sleep(5)
             continue
         connected = True
+
+    if not connected:
+        raise RuntimeError(f"Failed to connect to URL {url}")
 
     return text
 
@@ -30,21 +37,23 @@ def rcsbFindMutatedResidues(pdbid):
         from bs4 import BeautifulSoup
         import lxml
     except ImportError:
-        raise ImportError('You need to install the \'beautifulsoup4\' and \'lxml\' packages to use this function.')
+        raise ImportError(
+            "You need to install the 'beautifulsoup4' and 'lxml' packages to use this function."
+        )
     tomutate = {}
 
-    url = 'http://www.rcsb.org/pdb/explore.do?structureId={}'.format(pdbid)
+    url = "http://www.rcsb.org/pdb/explore.do?structureId={}".format(pdbid)
     text = _getRCSBtext(url)
-    soup = BeautifulSoup(text, 'lxml')
-    table = soup.find(id='ModifiedResidueTable')
+    soup = BeautifulSoup(text, "lxml")
+    table = soup.find(id="ModifiedResidueTable")
 
     if table:
-        trs = table.find_all('tr')
+        trs = table.find_all("tr")
 
         for tr in trs:
-            td = tr.find_all('td')
+            td = tr.find_all("td")
             if td:
-                mutname = td[0].find_all('a')[0].text.strip()
+                mutname = td[0].find_all("a")[0].text.strip()
                 orgname = td[5].text.strip()
                 tomutate[mutname] = orgname
     return tomutate
@@ -61,19 +70,21 @@ def rcsbFindLigands(pdbid):
         from bs4 import BeautifulSoup
         import lxml
     except ImportError:
-        raise ImportError('You need to install the \'beautifulsoup4\' and \'lxml\' packages to use this function.')
+        raise ImportError(
+            "You need to install the 'beautifulsoup4' and 'lxml' packages to use this function."
+        )
     ligands = []
 
-    url = 'http://www.rcsb.org/pdb/explore.do?structureId={}'.format(pdbid)
+    url = "http://www.rcsb.org/pdb/explore.do?structureId={}".format(pdbid)
     text = _getRCSBtext(url)
-    soup = BeautifulSoup(text, 'lxml')
-    table = soup.find(id='LigandsTable')
+    soup = BeautifulSoup(text, "lxml")
+    table = soup.find(id="LigandsTable")
     if table:
-        trs = table.find_all('tr')
+        trs = table.find_all("tr")
 
         for tr in trs:
-            td = tr.find_all('td')
+            td = tr.find_all("td")
             if td:
-                name = td[0].find_all('a')[0].text.strip()
+                name = td[0].find_all("a")[0].text.strip()
                 ligands.append(name)
     return ligands

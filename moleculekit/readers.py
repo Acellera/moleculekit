@@ -735,8 +735,8 @@ def _getPDB(pdbid):
         # or the PDB website
         from moleculekit.rcsb import _getRCSBtext
 
-        logger.info("Attempting PDB query for {:s}".format(pdbid))
-        url = "https://files.rcsb.org/download/{}.pdb".format(pdbid)
+        logger.info(f"Attempting PDB query for {pdbid}")
+        url = f"https://files.rcsb.org/download/{pdbid}.pdb"
         text = _getRCSBtext(url)
         filepath = string_to_tempfile(text.decode("ascii"), "pdb")
         tempfile = True

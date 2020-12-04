@@ -65,7 +65,7 @@ def getRCSBLigandByLigname(ligname, returnMol2=False):
     from moleculekit.smallmol.smallmol import SmallMol
     from moleculekit.rcsb import _getRCSBtext
 
-    url = "https://files.rcsb.org/ligands/view/{}_ideal.sdf".format(ligname)
+    url = f"https://files.rcsb.org/ligands/view/{ligname}_ideal.sdf"
     sdf_text = _getRCSBtext(url).decode("ascii")
     tempfile = string_to_tempfile(sdf_text, "sdf")
     mol2 = openbabelConvert(tempfile, "sdf", "mol2")
@@ -79,33 +79,33 @@ def getRCSBLigandByLigname(ligname, returnMol2=False):
 
 def getChemblLigandByDrugName(drugname, returnSmile=False):
     """
-        Returns a SmallMol object of a ligand by its drug name. This molecule is retrieve from Chembl. It is possible to
-        return also the smile of the ligand.
+    Returns a SmallMol object of a ligand by its drug name. This molecule is retrieve from Chembl. It is possible to
+    return also the smile of the ligand.
 
-        Parameters
-        ----------
-        drugname: str
-            The drug name
-        returnSmile: bool
-            If True, the smile is returned
+    Parameters
+    ----------
+    drugname: str
+        The drug name
+    returnSmile: bool
+        If True, the smile is returned
 
-        Returns
-        -------
-        sm: moleculekit.smallmol.smallmol.SmallMol
-            The SmallMol object
+    Returns
+    -------
+    sm: moleculekit.smallmol.smallmol.SmallMol
+        The SmallMol object
 
-        smile: str
-            The smile
+    smile: str
+        The smile
 
-        Example
-        -------
-        >>> sm = getChemblLigandByDrugName('paracetamol')  # doctest: +SKIP
-        >>> sm.numAtoms  # doctest: +SKIP
-        20
-        >>> sm, smile = getChemblLigandByDrugName('paracetamol', returnSmile=True)  # doctest: +SKIP
-        >>> smile  # doctest: +SKIP
-        'CC(=O)Nc1ccc(O)cc1'
-        """
+    Example
+    -------
+    >>> sm = getChemblLigandByDrugName('paracetamol')  # doctest: +SKIP
+    >>> sm.numAtoms  # doctest: +SKIP
+    20
+    >>> sm, smile = getChemblLigandByDrugName('paracetamol', returnSmile=True)  # doctest: +SKIP
+    >>> smile  # doctest: +SKIP
+    'CC(=O)Nc1ccc(O)cc1'
+    """
     from moleculekit.smallmol.smallmol import SmallMol
 
     try:
@@ -144,36 +144,36 @@ def getChemblLigandByDrugName(drugname, returnSmile=False):
 
 def getChemblSimilarLigandsBySmile(smi, threshold=85, returnSmiles=False):
     """
-        Returns a SmallMolLib object of the ligands having a similarity with a smile of at least the specified
-        threshold.. This molecules are retrieve from Chembl. It is possible to return also the list smiles.
+    Returns a SmallMolLib object of the ligands having a similarity with a smile of at least the specified
+    threshold.. This molecules are retrieve from Chembl. It is possible to return also the list smiles.
 
-        Parameters
-        ----------
-        smi: str
-            The smile
-        threshold: int
-            The threshold value to apply for the similarity search
-        returnSmiles: bool
-            If True, the list smiles is returned
+    Parameters
+    ----------
+    smi: str
+        The smile
+    threshold: int
+        The threshold value to apply for the similarity search
+    returnSmiles: bool
+        If True, the list smiles is returned
 
-        Returns
-        -------
-        sm: moleculekit.smallmol.smallmol.SmallMol
-            The SmallMol object
+    Returns
+    -------
+    sm: moleculekit.smallmol.smallmol.SmallMol
+        The SmallMol object
 
-        smiles: str
-            The list of smiles
+    smiles: str
+        The list of smiles
 
-        Example
-        -------
-        >>> _, smile = getChemblLigandByDrugName('ibuprofen', returnSmile=True)  # doctest: +SKIP
-        >>> lib = getChemblSimilarLigandsBySmile(smile)  # doctest: +SKIP
-        >>> lib.numMols  # doctest: +SKIP
-        4
-        >>> lib, smiles = getChemblSimilarLigandsBySmile(smile, returnSmiles=True)  # doctest: +SKIP
-        >>> len(smiles)  # doctest: +SKIP
-        4
-        """
+    Example
+    -------
+    >>> _, smile = getChemblLigandByDrugName('ibuprofen', returnSmile=True)  # doctest: +SKIP
+    >>> lib = getChemblSimilarLigandsBySmile(smile)  # doctest: +SKIP
+    >>> lib.numMols  # doctest: +SKIP
+    4
+    >>> lib, smiles = getChemblSimilarLigandsBySmile(smile, returnSmiles=True)  # doctest: +SKIP
+    >>> len(smiles)  # doctest: +SKIP
+    4
+    """
     from moleculekit.smallmol.smallmol import SmallMol
     from moleculekit.smallmol.smallmollib import SmallMolLib
 
@@ -379,29 +379,29 @@ def depictMultipleMols(
     mols_perrow=3,
 ):
     """
-        Returns the image or the ipython rendering.
+    Returns the image or the ipython rendering.
 
-        Parameters
-        ----------
-        mols_list: list
-            The list of the rdkit molecules to depict
-        filename: str
-            The filename of the image
-        ipython: bool
-            If True, the SVG rendering for jupiter-nootebook are returned
-        legends: list
-            List of titles subfigure for each molecule
-        highlightAtoms: list
-            List of list of atom index to highlight.
-        mols_perrow: int
-            The number of subfigures per row
+    Parameters
+    ----------
+    mols_list: list
+        The list of the rdkit molecules to depict
+    filename: str
+        The filename of the image
+    ipython: bool
+        If True, the SVG rendering for jupiter-nootebook are returned
+    legends: list
+        List of titles subfigure for each molecule
+    highlightAtoms: list
+        List of list of atom index to highlight.
+    mols_perrow: int
+        The number of subfigures per row
 
-        Returns
-        -------
-        svg: SVG
-            If ipython set as True, the SVG rendering is returned
+    Returns
+    -------
+    svg: SVG
+        If ipython set as True, the SVG rendering is returned
 
-        """
+    """
     import rdkit
     from rdkit.Chem.Draw import MolsToGridImage
     from IPython.display import SVG
