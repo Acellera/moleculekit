@@ -14,6 +14,7 @@ from moleculekit.molecule import Molecule
 from glob import glob
 import logging
 import platform
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ def dock(
     babelexe="obabel",
     vinaexe=None,
 ):
-    """ Molecular docking, using Vina
+    """Molecular docking, using Vina
 
     If centre and extent are not provided, docking will be performed over the whole protein
 
@@ -229,6 +230,7 @@ import unittest
 
 
 class _TestDocking(unittest.TestCase):
+    @unittest.skipUnless(sys.platform.startswith("linux"), "No vina on OSX yet")
     def test_docking(self):
         from moleculekit.home import home
         from moleculekit.molecule import Molecule
