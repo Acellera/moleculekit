@@ -1,73 +1,73 @@
-sudo: required
-dist: xenial
-matrix:
-  include:
-    - os: linux
-      language: python
-      python:
-        - '3.6'
-      env: OSNAME=Linux CONDA_PY=3.6
-    - os: linux
-      language: python
-      python:
-        - '3.7'
-      env: OSNAME=Linux CONDA_PY=3.7
-    # - os: osx
-    #   language: python
-    #   python:
-    #     - '3.6'
-    #   env: OSNAME=Darwin CONDA_PY=3.6
+# sudo: required
+# dist: xenial
+# matrix:
+#   include:
+#     - os: linux
+#       language: python
+#       python:
+#         - '3.6'
+#       env: OSNAME=Linux CONDA_PY=3.6
+#     - os: linux
+#       language: python
+#       python:
+#         - '3.7'
+#       env: OSNAME=Linux CONDA_PY=3.7
+#     # - os: osx
+#     #   language: python
+#     #   python:
+#     #     - '3.6'
+#     #   env: OSNAME=Darwin CONDA_PY=3.6
 
 
-env:
-  global:
-    - MINICONDA_DIR="$HOME/miniconda"
-    - PYTHONHASHSEED=0
+# env:
+#   global:
+#     - MINICONDA_DIR="$HOME/miniconda"
+#     - PYTHONHASHSEED=0
 
-before_install:
-  - source ci/travis/install_miniconda.sh
+# before_install:
+#   - source ci/travis/install_miniconda.sh
 
-script:
-  - conda activate test
-  - pip install --upgrade -q setuptools wheel twine
-  # Insert version number and dependencies into pip and conda recipes
-  - python ci/travis/insert_placeholder_values.py
-  # Clone and compile the private htmdlib repo - Disabled due to 2FA not allowing cloning without ssh keys
-  # - bash -x ./ci/travis/compile_htmdlib.sh
-  # Install the library locally
-  - pip install .
-  # Run tests
-  - pip install -q codecov coverage
-  - conda install -q --file extra_requirements.txt -c acellera -c conda-forge  # Installing extra dependencies for tests
-  - which coverage # Debug
-  - coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
-  - echo "Finished tests"
+# script:
+#   - conda activate test
+#   - pip install --upgrade -q setuptools wheel twine
+#   # Insert version number and dependencies into pip and conda recipes
+#   - python ci/travis/insert_placeholder_values.py
+#   # Clone and compile the private htmdlib repo - Disabled due to 2FA not allowing cloning without ssh keys
+#   # - bash -x ./ci/travis/compile_htmdlib.sh
+#   # Install the library locally
+#   - pip install .
+#   # Run tests
+#   - pip install -q codecov coverage
+#   - conda install -q --file extra_requirements.txt -c acellera -c conda-forge  # Installing extra dependencies for tests
+#   - which coverage # Debug
+#   - coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
+#   - echo "Finished tests"
 
-after_success:
-  - echo "Attempting codecov statistics upload"
-  - codecov
+# after_success:
+#   - echo "Attempting codecov statistics upload"
+#   - codecov
 
-deploy:
-  - provider: pypi
-    skip_cleanup: true
-    distributions: sdist bdist_wheel
-    on:
-      tags: true
-      branch: master
-    user: stefdoerr
-    password: # To produce encrypted pass use `travis encrypt "dont-escape-this-password" -r Acellera/moleculekit`
-      secure: BCnQJGIHefHmIy4CwzYNFwwh0w1BA+WZ5+fGpJvM2D+8Ubxuv6qbTRkdQn42X7H5n0QxzurSXEoT9/QMf0PsQDFwvyrvRse7VFYo8wSEODPO41GnuSGOKMzOcddZdsnliCQdKHCy3Gg7H1bDja7uZtvJZwriGre3oaxfc7ftpZvCjqt6n/LsEDzavOF6UuoTx1yOynmeE7qMHz2ePucWTJe8cblE3YVzfJHCQSkgcuStSfJhcjDyGtyXNYJfPzsbOM1tkNp7afVFxA8y/uaeSidMEZ1BgFuf+NkpTZ8YG4AcUj38E7GJ8FMtI3cXqS+vlAMLgHkCW3bz3UYMJ+aNLpYvhEBWL6/uPVqBll44KcEJc/LnKkpidzS1VEX2VumgAE0tjYNn4Zkjc6szDlfKYSl7VfM4gDO/VgdlVV+6g5iSZOgjMON+SAC/3SRPWQnGPabqnnHFuadziPz63vLdc4v672efBKKIF3mHkxHtfRt/LJ8bvZz4JYgQTTwS8yDvwvUt6yfz5UJ4LR6FxaibGf2DtwpyYhdXdeGP11+J2p8dWU5g06zlgBQmJipHSuwriZVHWNi7LJK5xVdbNqmFddazxJ6fWIdSzewGjd3B1lYa5c9ndxYEN0WtplTbXTg6Is92xdXWhUqZ5dvV9tHShwkvrObDjdj9U0Bg/sSHtbg=
-    skip_existing: true
-    #server: https://test.pypi.org/legacy/
-  - provider: script
-    skip_cleanup: true
-    script: bash ./ci/travis/deploy.sh
-    on:
-      tags: true
-      branch: master
+# deploy:
+#   - provider: pypi
+#     skip_cleanup: true
+#     distributions: sdist bdist_wheel
+#     on:
+#       tags: true
+#       branch: master
+#     user: stefdoerr
+#     password: # To produce encrypted pass use `travis encrypt "dont-escape-this-password" -r Acellera/moleculekit`
+#       secure: BCnQJGIHefHmIy4CwzYNFwwh0w1BA+WZ5+fGpJvM2D+8Ubxuv6qbTRkdQn42X7H5n0QxzurSXEoT9/QMf0PsQDFwvyrvRse7VFYo8wSEODPO41GnuSGOKMzOcddZdsnliCQdKHCy3Gg7H1bDja7uZtvJZwriGre3oaxfc7ftpZvCjqt6n/LsEDzavOF6UuoTx1yOynmeE7qMHz2ePucWTJe8cblE3YVzfJHCQSkgcuStSfJhcjDyGtyXNYJfPzsbOM1tkNp7afVFxA8y/uaeSidMEZ1BgFuf+NkpTZ8YG4AcUj38E7GJ8FMtI3cXqS+vlAMLgHkCW3bz3UYMJ+aNLpYvhEBWL6/uPVqBll44KcEJc/LnKkpidzS1VEX2VumgAE0tjYNn4Zkjc6szDlfKYSl7VfM4gDO/VgdlVV+6g5iSZOgjMON+SAC/3SRPWQnGPabqnnHFuadziPz63vLdc4v672efBKKIF3mHkxHtfRt/LJ8bvZz4JYgQTTwS8yDvwvUt6yfz5UJ4LR6FxaibGf2DtwpyYhdXdeGP11+J2p8dWU5g06zlgBQmJipHSuwriZVHWNi7LJK5xVdbNqmFddazxJ6fWIdSzewGjd3B1lYa5c9ndxYEN0WtplTbXTg6Is92xdXWhUqZ5dvV9tHShwkvrObDjdj9U0Bg/sSHtbg=
+#     skip_existing: true
+#     #server: https://test.pypi.org/legacy/
+#   - provider: script
+#     skip_cleanup: true
+#     script: bash ./ci/travis/deploy.sh
+#     on:
+#       tags: true
+#       branch: master
 
-# after_deploy:
-#   - echo "Uploading build"
-#   # If the build did not fail, if it is not PR, it's on Acellera/moleculekit and a tagged build, do anaconda upload tasks
-#   - if [ "$TRAVIS_TEST_RESULT" == "0" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ] && [ "$TRAVIS_REPO_SLUG" == "Acellera/moleculekit" ] && [ "$TRAVIS_BRANCH" == "$TRAVIS_TAG" ]; then bash -x ./ci/travis/deploy.sh; fi
+# # after_deploy:
+# #   - echo "Uploading build"
+# #   # If the build did not fail, if it is not PR, it's on Acellera/moleculekit and a tagged build, do anaconda upload tasks
+# #   - if [ "$TRAVIS_TEST_RESULT" == "0" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ] && [ "$TRAVIS_REPO_SLUG" == "Acellera/moleculekit" ] && [ "$TRAVIS_BRANCH" == "$TRAVIS_TAG" ]; then bash -x ./ci/travis/deploy.sh; fi
 
