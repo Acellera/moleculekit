@@ -10,7 +10,7 @@ steps:
 
 - bash: |
     source activate test
-    conda install -y -q tqdm ipython matplotlib joblib scikit-learn rdkit mdtraj htmd-pdb2pqr propka openbabel -c acellera  # Installing extra dependencies for tests
+    conda install -y -q --file extra_requirements.txt -c acellera -c conda-forge  # Installing extra dependencies for tests
   displayName: Install Anaconda packages
 
 - bash: python ci/travis/insert_placeholder_values.py
