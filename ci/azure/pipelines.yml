@@ -49,18 +49,18 @@ stages:
           vmImage: "ubuntu-16.04"
 
         steps:
-          - task: UsePythonVersion@0
-            displayName: "Use Python 3.6"
-            inputs:
-              versionSpec: 3.6
-              addToPath: true
-              architecture: "x64"
+        - task: UsePythonVersion@0
+          displayName: "Use Python 3.6"
+          inputs:
+            versionSpec: 3.6
+            addToPath: true
+            architecture: "x64"
 
-          - task: TwineAuthenticate@1
-            displayName: 'Twine Authenticate'
-            inputs:
-              pythonUploadServiceConnection: pypi
+        - task: TwineAuthenticate@1
+          displayName: 'Twine Authenticate'
+          inputs:
+            pythonUploadServiceConnection: pypi
 
-          - script: |
-              python -m twine upload -r "pypi" --config-file $(PYPIRC_PATH) $(Build.ArtifactStagingDirectory)/*.whl
-            displayName: Uploading to PyPI
+        - script: |
+            python -m twine upload -r "pypi" --config-file $(PYPIRC_PATH) $(Build.ArtifactStagingDirectory)/*.whl
+          displayName: Uploading to PyPI
