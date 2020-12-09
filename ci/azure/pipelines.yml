@@ -69,5 +69,5 @@ stages:
             artifact: moleculekit_linux_3.6
 
         - script: |
-            python -m twine upload -r pypi --config-file $(PYPIRC_PATH) '$(Pipeline.Workspace)/moleculekit_linux_3.6/pypi/*.whl'
+            python -m twine upload -r pypi --config-file $(PYPIRC_PATH) '$(Pipeline.Workspace)/pypi/*.whl'
           displayName: 'Uploading to PyPI'
