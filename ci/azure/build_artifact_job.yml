@@ -40,6 +40,8 @@ jobs:
     
     - ${{ if eq(parameters.OS, 'linux') }}:  # Don't build pypi for OSX. It's platform independent
       - template: templates/publish_pypi_artifact.yml
+      
     - template: templates/publish_conda_artifact.yml
+
     - publish: $(Build.ArtifactStagingDirectory)
       artifact: moleculekit_$(OS)_$(python.version)

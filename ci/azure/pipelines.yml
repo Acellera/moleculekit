@@ -64,6 +64,10 @@ stages:
           inputs:
             pythonUploadServiceConnection: pypi
 
+        - task: DownloadPipelineArtifact@2
+          inputs:
+            artifact: moleculekit_linux_3.6
+
         - script: |
-            python -m twine upload -r pypi --config-file $(PYPIRC_PATH) '$(Build.ArtifactStagingDirectory)/pypi/*.whl'
-          displayName: 'Uploading to PyPI from $(Build.ArtifactStagingDirectory)/pypi/'
+            python -m twine upload -r pypi --config-file $(PYPIRC_PATH) '$(Pipeline.Workspace)/moleculekit_linux_3.6/pypi/*.whl'
+          displayName: 'Uploading to PyPI'
