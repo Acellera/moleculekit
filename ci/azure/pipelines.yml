@@ -50,7 +50,14 @@ stages:
           vmImage: "ubuntu-16.04"
 
         steps:
-        - script: 'pip install twine'
+        - task: UsePythonVersion@0
+          displayName: "Use Python 3.6"
+          inputs:
+            versionSpec: 3.6
+            addToPath: true
+            architecture: "x64"
+          
+        - script: 'pip install wheel twine'
 
         - task: TwineAuthenticate@1
           displayName: 'Twine Authenticate'
