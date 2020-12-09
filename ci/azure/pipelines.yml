@@ -35,12 +35,12 @@ stages:
           vmImage: 'ubuntu-16.04'
           OS: linux
 
-      - template: build_artifact_job.yml
-        parameters:
-          name: BuildOSXArtifacts
-          displayName: Build OSX Artifacts
-          vmImage: 'macOS-latest'
-          OS: mac
+      # - template: build_artifact_job.yml
+      #   parameters:
+      #     name: BuildOSXArtifacts
+      #     displayName: Build OSX Artifacts
+      #     vmImage: 'macOS-latest'
+      #     OS: mac
 
   - stage: Publish
     # condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
@@ -65,5 +65,5 @@ stages:
             pythonUploadServiceConnection: pypi
 
         - script: |
-            python -m twine upload -r pypi --config-file $(PYPIRC_PATH) '$(Build.ArtifactStagingDirectory)/*.whl'
-          displayName: 'Uploading to PyPI from $(Build.ArtifactStagingDirectory)'
+            python -m twine upload -r pypi --config-file $(PYPIRC_PATH) '$(Build.ArtifactStagingDirectory)/pypi/*.whl'
+          displayName: 'Uploading to PyPI from $(Build.ArtifactStagingDirectory)/pypi/'
