@@ -517,6 +517,10 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
     molnum = 0
     with open(filename, "r") as f:
         for line in f:
+            line = line.strip()
+            if len(line) == 0:  # Ignore empty lines
+                continue
+
             if line.startswith("@<TRIPOS>MOLECULE"):
                 section = None
                 molnum += 1

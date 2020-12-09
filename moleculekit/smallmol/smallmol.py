@@ -217,7 +217,11 @@ class SmallMol(object):
 
     @property
     def _bonds(self):
-        return np.vstack([[bo.GetBeginAtomIdx(), bo.GetEndAtomIdx()] for bo in self._mol.GetBonds()]).astype(SmallMol._dtypes['bonds'])
+        bonds = [[bo.GetBeginAtomIdx(), bo.GetEndAtomIdx()] for bo in self._mol.GetBonds()]
+        if len(bonds):
+            return np.vstack(bonds).astype(SmallMol._dtypes['bonds'])
+        else:
+            return np.zeros((0, 2), dtype=SmallMol._dtypes['bonds'])
 
     @property
     def _bondtype(self):
