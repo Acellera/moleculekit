@@ -81,6 +81,7 @@ stages:
               python.version: '3.7'
           maxParallel: 2
           
+        steps:
         - template: templates/conda_config.yml
 
         - bash:  conda install -y -q anaconda-client
