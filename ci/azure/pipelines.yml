@@ -45,52 +45,41 @@ stages:
   - stage: Publish
     # condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
     jobs:
-      # - job: PublishPyPI
-      #   pool:
-      #     vmImage: "ubuntu-16.04"
+      - job: PublishPyPI          
+        - script: 'pip install wheel twine'
 
-      #   steps:
-      #   - task: UsePythonVersion@0
-      #     displayName: "Use Python 3.6"
-      #     inputs:
-      #       versionSpec: 3.6
-      #       addToPath: true
-      #       architecture: "x64"
-          
-      #   - script: 'pip install wheel twine'
-
-      #   - task: TwineAuthenticate@1
-      #     displayName: 'Twine Authenticate'
-      #     inputs:
-      #       pythonUploadServiceConnection: pypi
-
-      #   - task: DownloadPipelineArtifact@2
-      #     inputs:
-      #       artifact: moleculekit_linux_3.6
-
-      #   - script: |
-      #       python -m twine upload -r pypi --config-file $(PYPIRC_PATH) '$(Pipeline.Workspace)/pypi/*.whl'
-      #     displayName: 'Uploading to PyPI'
-
-      - job: PublishConda
-        strategy:
-          matrix:
-            Python36:
-              python.version: '3.6'
-            Python37:
-              python.version: '3.7'
-          maxParallel: 2
-          
-        steps:
-        - template: templates/conda_config.yml
-
-        - bash:  conda install -y -q anaconda-client
-          displayName: Installing conda-build
+        - task: TwineAuthenticate@1
+          displayName: 'Twine Authenticate'
+          inputs:
+            pythonUploadServiceConnection: pypi
 
         - task: DownloadPipelineArtifact@2
           inputs:
-            artifact: 'moleculekit_linux_$(python.version)'
+            artifact: moleculekit_linux_3.6
 
-        - bash: |
-            anaconda -t $(ANACONDA_TOKEN) upload $(Pipeline.Workspace)/conda/moleculekit-[0-9]*.tar.bz2 -u acellera
-          displayName: 'Uploading $(python.version) to Anaconda'
+        - script: |
+            python -m twine upload -r pypi --config-file $(PYPIRC_PATH) '$(Pipeline.Workspace)/pypi/*.whl'
+          displayName: 'Uploading to PyPI'
+
+      # - job: PublishConda
+      #   strategy:
+      #     matrix:
+      #       Python36:
+      #         python.version: '3.6'
+      #       Python37:
+      #         python.version: '3.7'
+      #     maxParallel: 2
+          
+      #   steps:
+      #   - template: templates/conda_config.yml
+
+      #   - bash:  conda install -y -q anaconda-client
+      #     displayName: Installing conda-build
+
+      #   - task: DownloadPipelineArtifact@2
+      #     inputs:
+      #       artifact: 'moleculekit_linux_$(python.version)'
+
+      #   - bash: |
+      #       anaconda -t $(ANACONDA_TOKEN) upload $(Pipeline.Workspace)/conda/moleculekit-[0-9]*.tar.bz2 -u acellera
+      #     displayName: 'Uploading $(python.version) to Anaconda'
