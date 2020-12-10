@@ -91,6 +91,6 @@ stages:
           inputs:
             artifact: 'moleculekit_linux_$(python.version)'
 
-        - script: |
-            anaconda -t $(ANACONDA_TOKEN) upload '$(Pipeline.Workspace)/conda/*.tar.bz2' -u acellera
+        - bash: |
+            anaconda -t $(ANACONDA_TOKEN) upload $(Pipeline.Workspace)/conda/moleculekit-[0-9]*.tar.bz2 -u acellera
           displayName: 'Uploading $(python.version) to Anaconda'
