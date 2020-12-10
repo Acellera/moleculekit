@@ -35,12 +35,12 @@ stages:
           vmImage: 'ubuntu-16.04'
           OS: linux
 
-      # - template: build_artifact_job.yml
-      #   parameters:
-      #     name: BuildOSXArtifacts
-      #     displayName: Build OSX Artifacts
-      #     vmImage: 'macOS-latest'
-      #     OS: mac
+      - template: build_artifact_job.yml
+        parameters:
+          name: BuildOSXArtifacts
+          displayName: Build OSX Artifacts
+          vmImage: 'macOS-latest'
+          OS: mac
 
   - stage: Publish
     # condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
@@ -93,4 +93,12 @@ stages:
 
         - bash: |
             anaconda -t $(ANACONDA_TOKEN) upload $(Pipeline.Workspace)/conda/moleculekit-[0-9]*.tar.bz2 -u acellera
-          displayName: 'Uploading $(python.version) to Anaconda'
+          displayName: 'Uploading Linux $(python.version) to Anaconda'
+
+        - task: DownloadPipelineArtifact@2
+          inputs:
+            artifact: 'moleculekit_osx_$(python.version)'
+
+        - bash: |
+            anaconda -t $(ANACONDA_TOKEN) upload $(Pipeline.Workspace)/conda/moleculekit-[0-9]*.tar.bz2 -u acellera
+          displayName: 'Uploading OSX $(python.version) to Anaconda'
