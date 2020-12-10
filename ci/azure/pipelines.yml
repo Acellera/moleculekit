@@ -5,7 +5,6 @@ trigger:
   branches:
     include:
       - master
-      - azure
       - refs/tags/*
 
 stages:
@@ -26,7 +25,7 @@ stages:
       #     OS: mac
 
   - stage: Build
-    # condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
     jobs:
       - template: build_artifact_job.yml
         parameters:
@@ -43,7 +42,7 @@ stages:
       #     OS: mac
 
   - stage: Publish
-    # condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
     jobs:
       - job: PublishPyPI
         pool:

@@ -12,7 +12,6 @@ jobs:
       vmImage: ${{ parameters.vmImage }}
 
     dependsOn: ${{ parameters.dependsOn }}
-    # condition: and(succeeded(${{ parameters.dependsOn }})) #, startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
 
     continueOnError: false
     
@@ -39,9 +38,9 @@ jobs:
         CONDA_PY: $(python.version)
     
     - ${{ if eq(parameters.OS, 'linux') }}:  # Don't build pypi for OSX. It's platform independent
-      - template: templates/publish_pypi_artifact.yml
+      - template: templates/build_pypi_artifact.yml
       
-    - template: templates/publish_conda_artifact.yml
+    - template: templates/build_conda_artifact.yml
 
     - publish: $(Build.ArtifactStagingDirectory)
       artifact: moleculekit_$(OS)_$(python.version)
