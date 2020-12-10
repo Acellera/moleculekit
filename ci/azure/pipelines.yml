@@ -45,7 +45,8 @@ stages:
   - stage: Publish
     # condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
     jobs:
-      - job: PublishPyPI          
+      - job: PublishPyPI
+        steps:          
         - script: 'pip install wheel twine'
 
         - task: TwineAuthenticate@1
