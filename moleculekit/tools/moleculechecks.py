@@ -89,13 +89,16 @@ def isLigandDocked(prot, lig, threshold=10):
     return dist < threshold
 
 
-def areLigandsDocked(prot_file, sdf_file, threshold=10):
+def areLigandsDocked(prot_file, sdf_file, threshold=10, maxCheck=None):
     from moleculekit.smallmol.smallmollib import SmallMolLib
     from moleculekit.molecule import Molecule
 
     not_docked = []
     prot = Molecule(prot_file)
-    for lig in SmallMolLib(sdf_file):
+    for i, lig in enumerate(SmallMolLib(sdf_file)):
+        if maxCheck is not None and i >= maxCheck:
+            break
+
         ligname = lig.ligname
         lig = lig.toMolecule()
 
