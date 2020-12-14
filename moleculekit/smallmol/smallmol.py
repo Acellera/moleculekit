@@ -331,7 +331,7 @@ class SmallMol(object):
         newsmallmol : :class:`SmallMol`
             A copy of the object
         """
-        return SmallMol(Chem.Mol(self._mol))  # Chem.Mol creates a deep copy of the C++ object
+        return SmallMol(Chem.Mol(self._mol), fixHs=False, removeHs=False)  # Chem.Mol creates a deep copy of the C++ object
 
     def get(self, returnField, sel='all', convertType=True, invert=False):
         """
