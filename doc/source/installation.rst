@@ -41,5 +41,5 @@ Install with conda
 ------------------ 
 ::
 
-   conda install moleculekit -c acellera
+   conda install moleculekit -c acellera -c conda-forge
 
