@@ -114,6 +114,7 @@ class MetricFluctuation(_MetricCoordinate):
             refcoords = _MetricCoordinate(
                 atomsel=self._atomsel,
                 refmol=self._refmol,
+                trajalnsel=self._refalnsel,  # This is correct since we project same mol
                 refalnsel=self._refalnsel,
                 centersel=self._centersel,
                 pbc=_wrapref,
