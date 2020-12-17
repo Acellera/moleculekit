@@ -3,7 +3,9 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
-from moleculekit.projections.metriccoordinate import MetricCoordinate as _MetricCoordinate
+from moleculekit.projections.metriccoordinate import (
+    MetricCoordinate as _MetricCoordinate,
+)
 from moleculekit.util import sequenceID
 import numpy as np
 import logging
@@ -12,9 +14,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-
 class MetricFluctuation(_MetricCoordinate):
-    """ Creates a MetricFluctuation object that calculates the squared fluctuation of atom positions in trajectories.
+    """Creates a MetricFluctuation object that calculates the squared fluctuation of atom positions in trajectories.
 
     Depending on the `refmol` option the projection either returns the fluctuation from the mean position of the atoms,
     or from coordinates of reference given in `refmol`. This means it calculates for atom coordinates (x,y,z) and
@@ -53,7 +54,7 @@ class MetricFluctuation(_MetricCoordinate):
     Examples
     --------
     Calculate the fluctuation of atoms wrt their mean positions
-    >>> MetricFluctuation('protein and name CA').project(mol)  
+    >>> MetricFluctuation('protein and name CA').project(mol)
     Calculate the fluctuation of atoms wrt the reference structure
     >>> MetricFluctuation('protein and name CA', refmol).project(mol)
     Calculate the fluctuation of residues wrt their mean positions
@@ -61,12 +62,29 @@ class MetricFluctuation(_MetricCoordinate):
     Calculate the fluctuation of residues wrt the reference structure
     >>> MetricFluctuation('protein', refmol, mode='residue').project(mol)
     """
-    def __init__(self, atomsel, refmol=None, trajalnsel='protein and name CA', refalnsel=None, centersel='protein', pbc=True, mode='atom'):
-        super().__init__(atomsel=atomsel, refmol=refmol, trajalnsel=trajalnsel, refalnsel=refalnsel, centersel=centersel, pbc=pbc)
+
+    def __init__(
+        self,
+        atomsel,
+        refmol=None,
+        trajalnsel="protein and name CA",
+        refalnsel=None,
+        centersel="protein",
+        pbc=True,
+        mode="atom",
+    ):
+        super().__init__(
+            atomsel=atomsel,
+            refmol=refmol,
+            trajalnsel=trajalnsel,
+            refalnsel=refalnsel,
+            centersel=centersel,
+            pbc=pbc,
+        )
         self._mode = mode
 
     def project(self, mol):
-        """ Project molecule.
+        """Project molecule.
 
         Parameters
         ----------
@@ -84,13 +102,25 @@ class MetricFluctuation(_MetricCoordinate):
             refcoords = np.mean(coords, axis=0)
         else:
             _wrapref = True
-            if self._pbc and (self._refmol.box is None or len(self._refmol.box) == 0 or np.all(self._refmol.box == 0)):
-                logger.warning("refmol doesn't contain periodic box information and will not be wrapped.")
+            if self._pbc and (
+                self._refmol.box is None
+                or len(self._refmol.box) == 0
+                or np.all(self._refmol.box == 0)
+            ):
+                logger.warning(
+                    "refmol doesn't contain periodic box information and will not be wrapped."
+                )
                 _wrapref = False
-            refcoords = _MetricCoordinate(atomsel=self._atomsel, refmol=self._refmol, pbc=_wrapref).project(self._refmol)
+            refcoords = _MetricCoordinate(
+                atomsel=self._atomsel,
+                refmol=self._refmol,
+                refalnsel=self._refalnsel,
+                centersel=self._centersel,
+                pbc=_wrapref,
+            ).project(self._refmol)
 
         mapping = super().getMapping(mol)
-        xyzgroups = mapping.groupby('atomIndexes').groups
+        xyzgroups = mapping.groupby("atomIndexes").groups
         numatoms = len(xyzgroups)
 
         resids = sequenceID(mol.resid)
@@ -103,20 +133,23 @@ class MetricFluctuation(_MetricCoordinate):
             atomfluct[:, i] = squarediff[:, atom].sum(axis=1)
             atomresids[i] = resids[int(mapping.atomIndexes[atom[0]])]
 
-        if self._mode == 'atom':
+        if self._mode == "atom":
             return atomfluct
-        elif self._mode == 'residue':
+        elif self._mode == "residue":
             numres = len(np.unique(atomresids))
             meanresfluct = np.zeros((coords.shape[0], numres))
             for i, r in enumerate(np.unique(atomresids)):
                 meanresfluct[:, i] = atomfluct[:, atomresids == r].mean(axis=1)
             return meanresfluct
         else:
-            raise RuntimeError('Invalid mode {} given. Choose between `atom` and `residue`'.format(self._mode))
-            
+            raise RuntimeError(
+                "Invalid mode {} given. Choose between `atom` and `residue`".format(
+                    self._mode
+                )
+            )
 
     def getMapping(self, mol):
-        """ Returns the description of each projected dimension.
+        """Returns the description of each projected dimension.
 
         Parameters
         ----------
@@ -130,31 +163,45 @@ class MetricFluctuation(_MetricCoordinate):
         """
         getMolProp = lambda prop: self._getMolProp(mol, prop)
 
-        atomidx = np.where(getMolProp('atomsel'))[0]
+        atomidx = np.where(getMolProp("atomsel"))[0]
         from pandas import DataFrame
+
         types = []
         indexes = []
         description = []
-        if self._mode == 'atom':
+        if self._mode == "atom":
             for i in atomidx:
-                types += ['fluctuation']
+                types += ["fluctuation"]
                 indexes += [i]
-                description += ['Fluctuation of {} {} {}'.format(mol.resname[i], mol.resid[i], mol.name[i])]
-        elif self._mode == 'residue':
+                description += [
+                    "Fluctuation of {} {} {}".format(
+                        mol.resname[i], mol.resid[i], mol.name[i]
+                    )
+                ]
+        elif self._mode == "residue":
             resids = mol.resid[atomidx]
             for r in np.unique(resids):
-                types += ['fluctuation']
+                types += ["fluctuation"]
                 i = atomidx[np.where(resids == r)[0][0]]
                 indexes += [i]
-                description += ['Mean fluctuation of {} {}'.format(mol.resname[i], mol.resid[i])]
+                description += [
+                    "Mean fluctuation of {} {}".format(mol.resname[i], mol.resid[i])
+                ]
         else:
-            raise RuntimeError('Invalid mode {} given. Choose between `atom` and `residue`'.format(self._mode))
+            raise RuntimeError(
+                "Invalid mode {} given. Choose between `atom` and `residue`".format(
+                    self._mode
+                )
+            )
 
-        return DataFrame({'type': types, 'atomIndexes': indexes, 'description': description})
-
+        return DataFrame(
+            {"type": types, "atomIndexes": indexes, "description": description}
+        )
 
 
 import unittest
+
+
 class _TestMetricFluctuation(unittest.TestCase):
     @classmethod
     def setUpClass(self):
@@ -163,12 +210,16 @@ class _TestMetricFluctuation(unittest.TestCase):
         import numpy as np
         from os import path
 
-        mol = Molecule(path.join(home(dataDir='test-projections'), 'trajectory', 'filtered.pdb'))
-        mol.read(path.join(home(dataDir='test-projections'), 'trajectory', 'traj.xtc'))
+        mol = Molecule(
+            path.join(home(dataDir="test-projections"), "trajectory", "filtered.pdb")
+        )
+        mol.read(path.join(home(dataDir="test-projections"), "trajectory", "traj.xtc"))
         ref = mol.copy()
 
         ref.dropFrames(keep=0)
-        mol.dropFrames(keep=np.arange(mol.numFrames-20, mol.numFrames)) # Keep only last 20 frames
+        mol.dropFrames(
+            keep=np.arange(mol.numFrames - 20, mol.numFrames)
+        )  # Keep only last 20 frames
         self.ref = ref
         self.mol = mol
 
@@ -176,47 +227,74 @@ class _TestMetricFluctuation(unittest.TestCase):
         import os
         from moleculekit.home import home
 
-        metr = MetricFluctuation('protein and name CA', self.ref)
+        metr = MetricFluctuation("protein and name CA", self.ref)
         _ = metr.getMapping(self.mol)  # Just test if it executes fine
         data = metr.project(self.mol)
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricfluctuation', 'fluctuation_atom_ref.npy'))
-        assert np.allclose(data, refdata, atol=1e-3), 'Atom to ref fluctuation calculation is broken'
+        refdata = np.load(
+            os.path.join(
+                home(dataDir="test-projections"),
+                "metricfluctuation",
+                "fluctuation_atom_ref.npy",
+            )
+        )
+        assert np.allclose(
+            data, refdata, atol=1e-3
+        ), "Atom to ref fluctuation calculation is broken"
 
     def test_metricfluctuation_atom_mean(self):
         import os
         from moleculekit.home import home
 
-        metr = MetricFluctuation('protein and name CA')
+        metr = MetricFluctuation("protein and name CA")
         _ = metr.getMapping(self.mol)  # Just test if it executes fine
         data = metr.project(self.mol)
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricfluctuation', 'fluctuation_atom_mean.npy'))
-        assert np.allclose(data, refdata, atol=1e-3), 'Atom mean fluctuation calculation is broken'
+        refdata = np.load(
+            os.path.join(
+                home(dataDir="test-projections"),
+                "metricfluctuation",
+                "fluctuation_atom_mean.npy",
+            )
+        )
+        assert np.allclose(
+            data, refdata, atol=1e-3
+        ), "Atom mean fluctuation calculation is broken"
 
     def test_metricfluctuation_residue_ref(self):
         import os
         from moleculekit.home import home
 
-        metr = MetricFluctuation('protein and noh', self.ref, mode='residue')
+        metr = MetricFluctuation("protein and noh", self.ref, mode="residue")
         _ = metr.getMapping(self.mol)  # Just test if it executes fine
         data = metr.project(self.mol)
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricfluctuation', 'fluctuation_residue_ref.npy'))
-        assert np.allclose(data, refdata, atol=1e-3), 'Residue to ref fluctuation calculation is broken'
-    
+        refdata = np.load(
+            os.path.join(
+                home(dataDir="test-projections"),
+                "metricfluctuation",
+                "fluctuation_residue_ref.npy",
+            )
+        )
+        assert np.allclose(
+            data, refdata, atol=1e-3
+        ), "Residue to ref fluctuation calculation is broken"
+
     def test_metricfluctuation_residue_mean(self):
         import os
         from moleculekit.home import home
 
-        metr = MetricFluctuation('protein and noh', mode='residue')
+        metr = MetricFluctuation("protein and noh", mode="residue")
         _ = metr.getMapping(self.mol)  # Just test if it executes fine
         data = metr.project(self.mol)
-        refdata = np.load(os.path.join(home(dataDir='test-projections'), 'metricfluctuation', 'fluctuation_residue_mean.npy'))
-        assert np.allclose(data, refdata, atol=1e-3), 'Residue mean fluctuation calculation is broken'
+        refdata = np.load(
+            os.path.join(
+                home(dataDir="test-projections"),
+                "metricfluctuation",
+                "fluctuation_residue_mean.npy",
+            )
+        )
+        assert np.allclose(
+            data, refdata, atol=1e-3
+        ), "Residue mean fluctuation calculation is broken"
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(verbosity=2)
-
-
-
-        
-
