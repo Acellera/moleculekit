@@ -107,7 +107,7 @@ def getChannels(mol, aromaticNitrogen=False, version=2, validitychecks=True):
             channels = getFeatures(mol)
         elif version == 3:
             from moleculekit.tools.atomtyper import getProteinAtomFeatures
-            channels = getProteinAtomFeatures(mol)
+            channels, _ = getProteinAtomFeatures(mol)
 
     if channels.dtype == bool:
         # Calculate for each channel the atom sigmas

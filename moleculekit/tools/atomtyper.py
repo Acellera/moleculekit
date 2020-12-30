@@ -521,22 +521,46 @@ def getProteinAtomFeatures(mol):
     non_h = np.where(mol.element != "H")[0]
     # backbone = mol.atomselect("backbone")
 
+    failed = {"residues": [], "atoms": [], "labels": []}
     for i in non_h:
-        resn = resname_map[mol.resname[i]]
-        atmn = atmname_map[resn][mol.name[i]]
+        resn = mol.resname[i]
+        atmn = mol.name[i]
         heavy_bonds, h_bonds = getAtomBonds(mol, i)
-        label = getAtomLabel(atmn, heavy_bonds, h_bonds)
 
-        if resn not in atomtypes:
-            raise RuntimeError(f"No atomtypes defined for residue {resn}")
-        if label not in atomtypes[resn]:
-            raise RuntimeError(
-                f"Could not find residue {resn} atom {atmn} with bonding partners (heavy: {heavy_bonds} hydrogen: {h_bonds}) in the atomtypes library."
+        if resn not in resname_map:
+            if resn in failed["residues"]:
+                continue
+            logger.error(
+                f"No atomtypes defined for residue {resn}. No features will be calculated for this residue."
             )
+            failed["residues"].append(resn)
+            continue
+        resn = resname_map[resn]
+
+        if atmn not in atmname_map[resn]:
+            if (resn, atmn) in failed["atoms"]:
+                continue
+            logger.error(
+                f"Could not find atom {atmn} in residue {resn}. No features will be calculated for this atom."
+            )
+            failed["atoms"].append((resn, atmn))
+            continue
+        atmn = atmname_map[resn][atmn]
+
+        label = getAtomLabel(atmn, heavy_bonds, h_bonds)
+        if label not in atomtypes[resn]:
+            if (resn, label) in failed["labels"]:
+                continue
+            logger.error(
+                f"Could not find residue {resn} atom {atmn} with bonding partners (heavy: {heavy_bonds} hydrogen: {h_bonds}) in the atomtypes library. No features will be calculated for this atom."
+            )
+            failed["labels"].append((resn, label))
+            continue
+
         props = atomtypes[resn][label]["properties"]
         for prop in props:
             features[i, _order.index(prop)] = True
-    return features
+    return features, failed
 
 
 import unittest
