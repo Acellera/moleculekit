@@ -796,7 +796,7 @@ class SmallMol(object):
         from copy import deepcopy
 
         if sketch and optimize:
-            raise ValueError('Impossible to use optmization in  2D sketch representation')
+            raise ValueError('Impossible to use optimization in  2D sketch representation')
 
         if optimizemode not in ['std', 'mmff']:
             raise ValueError('Optimization mode {} not understood. Can be "std" or "ff"'.format(optimizemode))
@@ -807,7 +807,6 @@ class SmallMol(object):
         chirals = self._chiral
 
         _mol = deepcopy(self._mol)
-
 
         if sketch:
             Compute2DCoords(_mol)

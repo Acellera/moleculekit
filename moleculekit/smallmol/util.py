@@ -301,15 +301,11 @@ def _depictMol(
         )
 
     ext = ".svg"
-
     if filename is not None:
-        fileext = splitext(filename)[-1]
-
-        if fileext == "":
+        ext = splitext(filename)[-1]
+        if ext == "":
             ext = ".svg"
             filename = filename + ".svg"
-        else:
-            ext = fileext
 
     # init the drawer object
     if ext == ".png":
@@ -328,26 +324,22 @@ def _depictMol(
         for n, a in enumerate(atomlabels):
             opts.atomLabels[n] = a
 
-    # draw molecule
-    sel_atoms = []
-    sel_colors = {}
     # highlight atoms
+    sel_colors = {}
     if highlightAtoms is not None:
-        if isinstance(highlightAtoms[0], list):
-            sel_atoms = [aIdx for subset in highlightAtoms for aIdx in subset]
-            sel_colors = {
-                aIdx: _highlight_colors[n % len(_highlight_colors)]
-                for n, subset in enumerate(highlightAtoms)
-                for aIdx in subset
-            }
-        else:
-            sel_atoms = highlightAtoms
-            sel_colors = {aIdx: _highlight_colors[0] for aIdx in sel_atoms}
+        if not isinstance(highlightAtoms[0], list):
+            highlightAtoms = [highlightAtoms]
+
+        for n, subset in enumerate(highlightAtoms):
+            for aIdx in subset:
+                if aIdx not in sel_colors:
+                    sel_colors[aIdx] = []
+                sel_colors[aIdx].append(_highlight_colors[n % len(_highlight_colors)])
 
     Kekulize(mol)
-    drawer.DrawMolecule(
-        mol, highlightAtoms=sel_atoms, highlightBonds=[], highlightAtomColors=sel_colors
-    )
+    if np.any([len(sel_colors[aIdx]) > 1 for aIdx in sel_colors]):
+        drawer.drawOptions().fillHighlights = False
+    drawer.DrawMoleculeWithHighlights(mol, "", sel_colors, {}, {}, {}, -1)
     drawer.FinishDrawing()
 
     # svg object
