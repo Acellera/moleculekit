@@ -10,7 +10,7 @@ import inspect
 import platform
 
 
-def home(dataDir=None, libDir=False):
+def home(dataDir=None, libDir=False, shareDir=False):
     """Return the pathname of the moleculekit root directory (or a data subdirectory).
 
     Parameters
@@ -36,26 +36,32 @@ def home(dataDir=None, libDir=False):
     '.../data/dhfr/dhfr.pdb'
     """
 
-    homeDir=os.path.dirname(inspect.getfile(moleculekit))
+    homeDir = os.path.dirname(inspect.getfile(moleculekit))
     try:
-      if sys._MEIPASS:
-         homeDir = sys._MEIPASS
+        if sys._MEIPASS:
+            homeDir = sys._MEIPASS
     except:
-      pass
+        pass
 
     if dataDir:
         return os.path.join(homeDir, "test-data", dataDir)
     elif libDir:
         libdir = os.path.join(homeDir, "lib", platform.system())
         if not os.path.exists(libdir):
-            raise FileNotFoundError('Could not find libs.')
+            raise FileNotFoundError("Could not find libs.")
         return libdir
+    elif shareDir:
+        sharedir = os.path.join(homeDir, "share")
+        if not os.path.exists(sharedir):
+            raise FileNotFoundError("Could not find MoleculeKit share directory.")
+        return sharedir
     else:
         return homeDir
 
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()
 
     h = home()

@@ -97,7 +97,7 @@ def getChannels(mol, aromaticNitrogen=False, version=2, validitychecks=True):
     mol = mol.copy()
 
     if isinstance(mol, SmallMol):
-            channels = _getPropertiesRDkit(mol)
+        channels = _getPropertiesRDkit(mol)
     elif isinstance(mol, Molecule):
         if version == 1:
             channels = _getAtomtypePropertiesPDBQT(mol)
@@ -105,6 +105,9 @@ def getChannels(mol, aromaticNitrogen=False, version=2, validitychecks=True):
             from moleculekit.tools.atomtyper import getFeatures, getPDBQTAtomTypesAndCharges
             mol.atomtype, mol.charge = getPDBQTAtomTypesAndCharges(mol, aromaticNitrogen=aromaticNitrogen, validitychecks=validitychecks)
             channels = getFeatures(mol)
+        elif version == 3:
+            from moleculekit.tools.atomtyper import getProteinAtomFeatures
+            channels = getProteinAtomFeatures(mol)
 
     if channels.dtype == bool:
         # Calculate for each channel the atom sigmas
@@ -152,7 +155,7 @@ def getCenters(mol=None, buffer=0, boxsize=None, center=None, voxelsize=1):
 
 
 def getVoxelDescriptors(mol, boxsize=None, voxelsize=1, buffer=0, center=None, usercenters=None, userchannels=None, 
-                        usercoords=None, aromaticNitrogen=False, method='C', version=2, validitychecks=True):
+                        usercoords=None, aromaticNitrogen=False, method='C', version=3, validitychecks=True):
     """ Calculate descriptors of atom properties for voxels in a grid bounding the Molecule object.
 
     Parameters

@@ -487,6 +487,58 @@ def parallel(func, listobj, n_cpus=-1, *args):
     return results
 
 
+def getProteinAtomFeatures(mol):
+    import yaml
+    from moleculekit.home import home
+    from moleculekit.tools.atomtyper_utils import getAtomLabel, getAtomBonds
+    from moleculekit.tools.voxeldescriptors import _order
+
+    atomtypes_f = os.path.join(
+        home(shareDir=True), "atomtyper", "protein_atomtypes.yaml"
+    )
+    resmap_f = os.path.join(
+        home(shareDir=True), "atomtyper", "protein_residue_map.yaml"
+    )
+    atmmap_f = os.path.join(home(shareDir=True), "atomtyper", "protein_atom_map.yaml")
+    with open(atomtypes_f, "r") as f:
+        atomtypes = yaml.load(f, Loader=yaml.BaseLoader)
+    with open(resmap_f, "r") as f:
+        resname_map = yaml.load(f, Loader=yaml.BaseLoader)
+    with open(atmmap_f, "r") as f:
+        atmname_map = yaml.load(f, Loader=yaml.BaseLoader)
+    if atmname_map is None:
+        atmname_map = {}
+
+    for resn in atomtypes:
+        resname_map[resn] = resn
+        atmname_map[resn] = {
+            an.split("_")[0]: an.split("_")[0] for an in atomtypes[resn]
+        }
+
+    features = np.zeros((mol.numAtoms, len(_order)), dtype=bool)
+    features[:, _order.index("occupancies")] = True  # Set all occupancies to True
+
+    non_h = np.where(mol.element != "H")[0]
+    # backbone = mol.atomselect("backbone")
+
+    for i in non_h:
+        resn = resname_map[mol.resname[i]]
+        atmn = atmname_map[resn][mol.name[i]]
+        heavy_bonds, h_bonds = getAtomBonds(mol, i)
+        label = getAtomLabel(atmn, heavy_bonds, h_bonds)
+
+        if resn not in atomtypes:
+            raise RuntimeError(f"No atomtypes defined for residue {resn}")
+        if label not in atomtypes[resn]:
+            raise RuntimeError(
+                f"Could not find residue {resn} atom {atmn} with bonding partners (heavy: {heavy_bonds} hydrogen: {h_bonds}) in the atomtypes library."
+            )
+        props = atomtypes[resn][label]["properties"]
+        for prop in props:
+            features[i, _order.index(prop)] = True
+    return features
+
+
 import unittest
 
 

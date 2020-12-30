@@ -1,0 +1,1247 @@
+ALA:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_1_3:
+    element: C
+    h_bonds: 3
+    heavy_bonds: 1
+    properties:
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+ARG:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CD_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CG_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CZ_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties:
+    - positive_ionizable
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  NE_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+    - positive_ionizable
+  NH1_1_2:
+    element: N
+    h_bonds: 2
+    heavy_bonds: 1
+    properties:
+    - hbond_donor
+    - positive_ionizable
+  NH2_1_2:
+    element: N
+    h_bonds: 2
+    heavy_bonds: 1
+    properties:
+    - hbond_donor
+    - positive_ionizable
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+ASN:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  CG_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  ND2_1_2:
+    element: N
+    h_bonds: 2
+    heavy_bonds: 1
+    properties:
+    - hbond_donor
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  OD1_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+  OXT_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+ASP:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  CG_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties:
+    - negative_ionizable
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  OD1_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+    - negative_ionizable
+  OD2_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+    - negative_ionizable
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+CA:
+  CA_0_0:
+    element: Ca
+    h_bonds: 0
+    heavy_bonds: 0
+    properties:
+    - metal
+CYX:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+  SG_2_0:
+    element: S
+    h_bonds: 0
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+GLH:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  CD_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  CG_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  OE1_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+  OE2_1_1:
+    element: O
+    h_bonds: 1
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+GLN:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  CD_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  CG_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  NE2_1_2:
+    element: N
+    h_bonds: 2
+    heavy_bonds: 1
+    properties:
+    - hbond_donor
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  OE1_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+GLU:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  CD_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties:
+    - negative_ionizable
+  CG_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  OE1_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+    - negative_ionizable
+  OE2_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+    - negative_ionizable
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+GLY:
+  CA_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+HID:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  CD2_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CE1_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CG_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties:
+    - aromatic
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  ND1_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hbond_donor
+  NE2_2_0:
+    element: N
+    h_bonds: 0
+    heavy_bonds: 2
+    properties:
+    - aromatic
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+HIE:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  CD2_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CE1_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CG_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties:
+    - aromatic
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  ND1_2_0:
+    element: N
+    h_bonds: 0
+    heavy_bonds: 2
+    properties:
+    - aromatic
+  NE2_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hbond_donor
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+HIP:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  CD2_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CE1_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - positive_ionizable
+  CG_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties:
+    - aromatic
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  ND1_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+    - positive_ionizable
+    - aromatic
+  NE2_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+    - positive_ionizable
+    - aromatic
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+HOH:
+  O_0_2:
+    element: O
+    h_bonds: 2
+    heavy_bonds: 0
+    properties:
+    - hbond_donor
+    - hbond_acceptor
+  O_0_0: # Cover the case of non-protonated systems like PDB structures
+    element: O
+    h_bonds: 0
+    heavy_bonds: 0
+    properties:
+    - hbond_donor
+    - hbond_acceptor
+ILE:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties:
+    - hydrophobic
+  CD1_1_3:
+    element: C
+    h_bonds: 3
+    heavy_bonds: 1
+    properties:
+    - hydrophobic
+  CG1_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CG2_1_3:
+    element: C
+    h_bonds: 3
+    heavy_bonds: 1
+    properties:
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_1_3:  # Terminal cap N
+    element: N
+    h_bonds: 3
+    heavy_bonds: 1
+    properties:
+    - hbond_donor
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+LEU:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CD1_1_3:
+    element: C
+    h_bonds: 3
+    heavy_bonds: 1
+    properties:
+    - hydrophobic
+  CD2_1_3:
+    element: C
+    h_bonds: 3
+    heavy_bonds: 1
+    properties:
+    - hydrophobic
+  CG_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties:
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+LYS:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CD_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CE_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  CG_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  NZ_1_3:
+    element: N
+    h_bonds: 3
+    heavy_bonds: 1
+    properties:
+    - hbond_donor
+    - positive_ionizable
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+MET:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CE_1_3:
+    element: C
+    h_bonds: 3
+    heavy_bonds: 1
+    properties:
+    - hydrophobic
+  CG_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+  SD_2_0:
+    element: S
+    h_bonds: 0
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+PHE:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CD1_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CD2_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CE1_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CE2_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CG_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties:
+    - aromatic
+    - hydrophobic
+  CZ_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+PRO:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CD_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CG_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_3_0:
+    element: N
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+SER:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  OG_1_1:
+    element: O
+    h_bonds: 1
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+THR:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties:
+    - hydrophobic
+  CG2_1_3:
+    element: C
+    h_bonds: 3
+    heavy_bonds: 1
+    properties: []
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  OG1_1_1:
+    element: O
+    h_bonds: 1
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+TRP:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CD1_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CD2_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties:
+    - aromatic
+    - hydrophobic
+  CE2_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties:
+    - aromatic
+    - hydrophobic
+  CE3_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CG_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties:
+    - aromatic
+    - hydrophobic
+  CH2_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CZ2_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CZ3_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  NE1_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+TYR:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CD1_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CD2_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CE1_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CE2_2_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - aromatic
+    - hydrophobic
+  CG_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties:
+    - aromatic
+    - hydrophobic
+  CZ_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties:
+    - aromatic
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  OH_1_1:
+    element: O
+    h_bonds: 1
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+VAL:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties:
+    - hydrophobic
+  CG1_1_3:
+    element: C
+    h_bonds: 3
+    heavy_bonds: 1
+    properties:
+    - hydrophobic
+  CG2_1_3:
+    element: C
+    h_bonds: 3
+    heavy_bonds: 1
+    properties:
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+ACE:
+  CH3_1_3:
+    element: C
+    h_bonds: 3
+    heavy_bonds: 1
+    properties:
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+NME:
+  CH3_1_3:
+    element: C
+    h_bonds: 3
+    heavy_bonds: 1
+    properties:
+    - hydrophobic
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
