@@ -158,9 +158,8 @@ def prepareProteinForAtomtyping(
     from moleculekit.util import sequenceID
 
     mol = mol.copy()
-    if (
-        guessBonds
-    ):  # Need to guess bonds at the start for atom selection and for autoSegment
+    # Need to guess bonds at the start for atom selection and for autoSegment
+    if guessBonds:
         mol.bondtype = np.array([], dtype=object)
         mol.bonds = mol._guessBonds()
 
@@ -191,21 +190,21 @@ def prepareProteinForAtomtyping(
         from moleculekit.tools.preparation import proteinPrepare
 
         if np.all(protmol.segid == "") and np.all(protmol.chain == ""):
+            # We need segments to prepare the protein
             protmol = autoSegment2(
                 protmol, fields=("segid", "chain"), basename="K", _logger=verbose
-            )  # We need segments to prepare the protein
+            )
         protmol = proteinPrepare(
             protmol, pH=pH, verbose=verbose, _loggerLevel="INFO" if verbose else "ERROR"
         )
 
-    if guessBonds:
+    if (not protonate) and guessBonds:
         protmol.bonds = protmol._guessBonds()
         # TODO: Should we remove bonds between metals and protein?
 
     if segment:
-        protmol = autoSegment2(
-            protmol, fields=("segid", "chain"), _logger=verbose
-        )  # Reassign segments after preparation
+        # Reassign segments after preparation
+        protmol = autoSegment2(protmol, fields=("segid", "chain"), _logger=verbose)
 
         # Assign separate segment to the metals just in case pybel takes that into account
         if np.any(protmol.chain == "Z") or np.any(protmol.segid == "ME"):
@@ -214,9 +213,10 @@ def prepareProteinForAtomtyping(
             )
         metalmol.segid[:] = "ME"
         metalmol.chain[:] = "Z"
+        # Just in case, let's put a residue gap between the metals so that they are considered separate chains no matter what happens
         metalmol.resid[:] = (
             np.arange(0, 2 * metalmol.numAtoms, 2) + protmol.resid.max() + 1
-        )  # Just in case, let's put a residue gap between the metals so that they are considered separate chains no matter what happens
+        )
 
         if watermol.numAtoms != 0:
             if np.any(protmol.chain == "W") or np.any(protmol.segid == "WX"):

@@ -8,7 +8,7 @@ import tempfile
 import numpy as np
 import os
 from moleculekit.tools.preparationdata import PreparationData
-from moleculekit.molecule import Molecule
+from moleculekit.molecule import Molecule, calculateUniqueBonds
 try:
     from pdb2pqr.main import runPDB2PQR
     from pdb2pqr.src.pdb import readPDB
@@ -35,8 +35,8 @@ def _selToHoldList(mol, sel):
     return ret
 
 
-def _fillMolecule(name, resname, chain, resid, insertion, coords, segid, element,
-                  occupancy, beta, charge, record):
+def _fillMolecule(serial, name, resname, chain, resid, insertion, coords, segid, element,
+                  occupancy, beta, charge, record, bonds):
     numAtoms = len(name)
     mol = Molecule()
     mol.empty(numAtoms)
@@ -54,6 +54,24 @@ def _fillMolecule(name, resname, chain, resid, insertion, coords, segid, element
     mol.box = np.zeros((3, mol.coords.shape[2]), dtype=mol._dtypes['box'])
     # mol.charge = np.array(charge, dtype=mol._dtypes['charge'])
     # mol.record = np.array(record, dtype=mol._dtypes['record'])
+
+    # Set the bonds
+    serial_to_idx = np.full(max(serial)+1, -1, dtype=int)
+    serial_to_idx[serial] = np.arange(len(serial))
+    idx_bonds = serial_to_idx[np.vstack(bonds)]
+    assert not np.any(idx_bonds == -1)
+    mol.bonds = idx_bonds
+
+    backbone_sel = mol.atomselect("backbone")
+    if np.any(backbone_sel):
+        backbone = mol.copy()
+        backbone.filter(backbone_sel, _logger=False)
+        backbone_bonds = backbone._guessBonds()
+        backbone_idx = np.where(backbone_sel)[0]
+        backbone_bonds = backbone_idx[backbone_bonds]  # Map back
+        mol.bonds = np.vstack((mol.bonds, backbone_bonds))
+
+    mol.bonds = calculateUniqueBonds(mol.bonds, [])[0]
     return mol
 
 
@@ -126,6 +144,8 @@ def _buildResAndMol(pdb2pqr_protein):
     beta = []
     record = []
     charge = []
+    bonds = []
+    serial = []
 
     prepData = PreparationData()
 
@@ -139,7 +159,6 @@ def _buildResAndMol(pdb2pqr_protein):
                              (residue, residue.ffname, curr_resname))
         else:
             curr_resname = residue.name
-
         prepData._setProtonationState(residue, curr_resname)
 
         # Removed because not really useful
@@ -155,6 +174,7 @@ def _buildResAndMol(pdb2pqr_protein):
         prepData._set(residue, 'pdb2pqr_idx', i)
 
         for atom in residue.atoms:
+            serial.append(atom.serial)
             name.append(atom.name)
             resid.append(residue.resSeq)
             chain.append(residue.chainID)
@@ -169,13 +189,15 @@ def _buildResAndMol(pdb2pqr_protein):
             beta.append(99.0 if atom.added else atom.tempFactor)
             charge.append(atom.charge)
             record.append(atom.type)
+            for bond_partner in atom.bonds:
+                bonds.append([atom.serial, bond_partner.serial])
             if atom.added:
                 logger.debug("Coordinates of atom {:s} in residue {:s} were guessed".format(residue.__str__(),atom.name))
                 prepData._set(residue, 'guessedAtoms', atom.name, append=True)
 
 
-    mol_out = _fillMolecule(name, resname, chain, resid, insertion, coords, segid, element,
-                            occupancy, beta, charge, record)
+    mol_out = _fillMolecule(serial, name, resname, chain, resid, insertion, coords, segid, element,
+                            occupancy, beta, charge, record, bonds)
     # mol_out.set("element", " ")
     # Re-calculating elements
     # mol_out.element[:] = ''
