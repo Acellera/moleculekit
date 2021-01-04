@@ -575,22 +575,25 @@ def getProteinAtomFeatures(mol):
                 features[matched, props[:, None]] = True
 
     # Print and report all atoms which were not atom-typed
-    failed["labels"] = np.vstack(
-        (
-            mol.resname[~all_matched],
-            mol.label[~all_matched],
-            mol.resid[~all_matched],
-            mol.chain[~all_matched],
-        )
-    ).T
-    if failed["labels"].ndim == 1:
-        failed["labels"] = failed["labels"][None, :]
+    if np.any(~all_matched):
+        failed["labels"] = np.vstack(
+            (
+                mol.resname[~all_matched],
+                mol.label[~all_matched],
+                mol.resid[~all_matched],
+                mol.chain[~all_matched],
+            )
+        ).T
+        if failed["labels"].ndim == 1:
+            failed["labels"] = failed["labels"][None, :]
 
-    for resn, label in np.vstack(list({tuple(row[:2]) for row in failed["labels"]})):
-        atmn, heavy_bonds, h_bonds = label.split("_")
-        logger.error(
-            f"Could not find residue {resn} atom {atmn} with bonding partners (heavy: {heavy_bonds} hydrogen: {h_bonds}) in the atomtypes library. No features will be calculated for this atom."
-        )
+        for resn, label in np.vstack(
+            list({tuple(row[:2]) for row in failed["labels"]})
+        ):
+            atmn, heavy_bonds, h_bonds = label.split("_")
+            logger.error(
+                f"Could not find residue {resn} atom {atmn} with bonding partners (heavy: {heavy_bonds} hydrogen: {h_bonds}) in the atomtypes library. No features will be calculated for this atom."
+            )
 
     return features, failed
 
