@@ -537,36 +537,56 @@ def getProteinAtomFeatures(mol):
     bond_graph.add_edges_from(mol.bonds)
 
     # Create labels for all heavy atoms of the protein
+    mol.label = np.array(["" for _ in range(mol.numAtoms)], dtype=object)
     for idx in np.where(atoms_to_compute)[0]:
         bond_elem = mol.element[list(bond_graph.adj[idx])]
         heavy_bonds = sum(bond_elem != "H")
         label = getAtomLabel(mol.name[idx], heavy_bonds, len(bond_elem) - heavy_bonds)
-        mol.name[idx] = label
+        mol.label[idx] = label
 
+    # Fix some labels which are commonly wrong
     fixAtomLabels(mol, atoms_to_compute, atmlabel_map)
 
     uqresn = np.unique(mol.resname)
     resnames = np.intersect1d(list(atomtypes.keys()), uqresn)
 
+    # Keep track which atoms were atom-typed and which not
     all_matched = np.zeros(mol.numAtoms, dtype=bool)
     all_matched[~atoms_to_compute] = True  # Ignore the non-compute atoms
+
+    # Perform the atom-typing
     for resn in resnames:
-        for atmn in atomtypes[resn]:
-            # resn = mol.resname[i]
-            # atmn = mol.name[i]
-            # heavy_bonds, h_bonds = getAtomBonds(mol, i)
-            matched = (mol.resname == resn) & (mol.name == atmn)
+        for label in atomtypes[resn]:
+            matched = (mol.resname == resn) & (mol.label == label)
             all_matched[matched] = True
 
-            props = atomtypes[resn][atmn]["properties"]
+            props = atomtypes[resn][label]["properties"]
             if len(props):
                 features[matched, props[:, None]] = True
 
-    failed["labels"] = np.vstack((mol.resname[~all_matched], mol.name[~all_matched])).T
+    # Atom-type the terminals
+    for resn in ["NTERM", "CTERM"]:
+        for label in atomtypes[resn]:
+            matched = (mol.label == label) & ~all_matched
+            all_matched[matched] = True
+
+            props = atomtypes[resn][label]["properties"]
+            if len(props):
+                features[matched, props[:, None]] = True
+
+    # Print and report all atoms which were not atom-typed
+    failed["labels"] = np.vstack(
+        (
+            mol.resname[~all_matched],
+            mol.label[~all_matched],
+            mol.resid[~all_matched],
+            mol.chain[~all_matched],
+        )
+    ).T
     if failed["labels"].ndim == 1:
         failed["labels"] = failed["labels"][None, :]
 
-    for resn, label in np.vstack(list({tuple(row) for row in failed["labels"]})):
+    for resn, label in np.vstack(list({tuple(row[:2]) for row in failed["labels"]})):
         atmn, heavy_bonds, h_bonds = label.split("_")
         logger.error(
             f"Could not find residue {resn} atom {atmn} with bonding partners (heavy: {heavy_bonds} hydrogen: {h_bonds}) in the atomtypes library. No features will be calculated for this atom."
@@ -654,8 +674,8 @@ def fixResidueNames(mol, atoms_to_compute, resname_map, failed):
 def fixAtomLabels(mol, atoms_to_compute, atmname_map):
     for resn in atmname_map:
         for label in atmname_map[resn]:
-            match = (mol.resname == resn) & (mol.name == label)
-            mol.name[match] = atmname_map[resn][label]
+            match = (mol.resname == resn) & (mol.label == label)
+            mol.label[match] = atmname_map[resn][label]
 
 
 import unittest
@@ -704,11 +724,14 @@ if __name__ == "__main__":
     # )
     # from moleculekit.molecule import Molecule
     # from glob import glob
+    # from tqdm import tqdm
 
     # all_failed = {}
-    # for protf in glob("/home/sdoerr/Datasets/scPDB_2017/scPDB/*/protein.mol2"):
+    # for protf in tqdm(
+    #     glob("/home/sdoerr/Datasets/scPDB_2017/scPDB/*/protein_prepared.pdb")
+    # ):
     #     mol = Molecule(protf)
-    #     mol.filter("protein or water")
-    #     pmol = prepareProteinForAtomtyping(mol, verbose=False)
-    #     features, failed = getProteinAtomFeatures(pmol)
+    #     # mol.filter("protein or water")
+    #     # pmol = prepareProteinForAtomtyping(mol, verbose=False)
+    #     features, failed = getProteinAtomFeatures(mol)
     #     all_failed[protf] = failed

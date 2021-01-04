@@ -134,12 +134,6 @@ ASN:
     heavy_bonds: 1
     properties:
     - hbond_acceptor
-  OXT_1_0:
-    element: O
-    h_bonds: 0
-    heavy_bonds: 1
-    properties:
-    - hbond_acceptor
   O_1_0:
     element: O
     h_bonds: 0
@@ -1272,3 +1266,26 @@ NME:
     heavy_bonds: 2
     properties:
     - hbond_donor
+NTERM:
+  N_1_3:
+    element: N
+    h_bonds: 3
+    heavy_bonds: 1
+    properties:
+    - hbond_donor
+    - positive_ionizable
+  N_1_2:
+    element: N
+    h_bonds: 2
+    heavy_bonds: 1
+    properties:
+    - hbond_donor
+    - positive_ionizable
+CTERM:
+  OXT_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+    - negative_ionizable
