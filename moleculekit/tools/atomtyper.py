@@ -488,10 +488,13 @@ def parallel(func, listobj, n_cpus=-1, *args):
 
 
 def getProteinAtomFeatures(mol):
-    import yaml
     from moleculekit.home import home
     from moleculekit.tools.atomtyper_utils import getAtomLabel, getAtomBonds
     from moleculekit.tools.voxeldescriptors import _order
+    import networkx as nx
+    import yaml
+
+    mol = mol.copy()
 
     atomtypes_f = os.path.join(
         home(shareDir=True), "atomtyper", "protein_atomtypes.yaml"
@@ -502,31 +505,80 @@ def getProteinAtomFeatures(mol):
     atmmap_f = os.path.join(home(shareDir=True), "atomtyper", "protein_atom_map.yaml")
     with open(atomtypes_f, "r") as f:
         atomtypes = yaml.load(f, Loader=yaml.BaseLoader)
+    # Convert all properties to integers for fast indexing
+    for resn in atomtypes:
+        for atmn in atomtypes[resn]:
+            props = atomtypes[resn][atmn]["properties"]
+            int_props = np.array([_order.index(prop) for prop in props])
+            atomtypes[resn][atmn]["properties"] = int_props
     with open(resmap_f, "r") as f:
         resname_map = yaml.load(f, Loader=yaml.BaseLoader)
     with open(atmmap_f, "r") as f:
-        atmname_map = yaml.load(f, Loader=yaml.BaseLoader)
-    if atmname_map is None:
-        atmname_map = {}
-
+        atmlabel_map = yaml.load(f, Loader=yaml.BaseLoader)
+    if atmlabel_map is None:
+        atmlabel_map = {}
     for resn in atomtypes:
         resname_map[resn] = resn
-        atmname_map[resn] = {
-            an.split("_")[0]: an.split("_")[0] for an in atomtypes[resn]
-        }
+
+    atoms_to_compute = mol.element != "H"
 
     features = np.zeros((mol.numAtoms, len(_order)), dtype=bool)
-    features[:, _order.index("occupancies")] = True  # Set all occupancies to True
-
-    non_h = np.where(mol.element != "H")[0]
-    # backbone = mol.atomselect("backbone")
+    # Set all occupancies to True
+    features[atoms_to_compute, _order.index("occupancies")] = True
 
     failed = {"residues": [], "atoms": [], "labels": []}
-    for i in non_h:
-        resn = mol.resname[i]
-        atmn = mol.name[i]
-        heavy_bonds, h_bonds = getAtomBonds(mol, i)
 
+    # Iterate over residues and find non-existent or try to map them
+    failed = fixResidueNames(mol, atoms_to_compute, resname_map, failed)
+
+    # Create bond graph to generate atom labels
+    bond_graph = nx.Graph()
+    bond_graph.add_nodes_from(np.arange(mol.numAtoms))
+    bond_graph.add_edges_from(mol.bonds)
+
+    # Create labels for all heavy atoms of the protein
+    for idx in np.where(atoms_to_compute)[0]:
+        bond_elem = mol.element[list(bond_graph.adj[idx])]
+        heavy_bonds = sum(bond_elem != "H")
+        label = getAtomLabel(mol.name[idx], heavy_bonds, len(bond_elem) - heavy_bonds)
+        mol.name[idx] = label
+
+    fixAtomLabels(mol, atoms_to_compute, atmlabel_map)
+
+    uqresn = np.unique(mol.resname)
+    resnames = np.intersect1d(list(atomtypes.keys()), uqresn)
+
+    all_matched = np.zeros(mol.numAtoms, dtype=bool)
+    all_matched[~atoms_to_compute] = True  # Ignore the non-compute atoms
+    for resn in resnames:
+        for atmn in atomtypes[resn]:
+            # resn = mol.resname[i]
+            # atmn = mol.name[i]
+            # heavy_bonds, h_bonds = getAtomBonds(mol, i)
+            matched = (mol.resname == resn) & (mol.name == atmn)
+            all_matched[matched] = True
+
+            props = atomtypes[resn][atmn]["properties"]
+            if len(props):
+                features[matched, props[:, None]] = True
+
+    failed["labels"] = np.vstack((mol.resname[~all_matched], mol.name[~all_matched])).T
+    if failed["labels"].ndim == 1:
+        failed["labels"] = failed["labels"][None, :]
+
+    for resn, label in np.vstack(list({tuple(row) for row in failed["labels"]})):
+        atmn, heavy_bonds, h_bonds = label.split("_")
+        logger.error(
+            f"Could not find residue {resn} atom {atmn} with bonding partners (heavy: {heavy_bonds} hydrogen: {h_bonds}) in the atomtypes library. No features will be calculated for this atom."
+        )
+
+    return features, failed
+
+
+def fixResidueNames(mol, atoms_to_compute, resname_map, failed):
+    from moleculekit.tools.atomtyper_utils import getAtomBonds
+
+    for resn in np.unique(mol.resname[atoms_to_compute]):
         if resn not in resname_map:
             if resn in failed["residues"]:
                 continue
@@ -535,32 +587,75 @@ def getProteinAtomFeatures(mol):
             )
             failed["residues"].append(resn)
             continue
-        resn = resname_map[resn]
 
-        if atmn not in atmname_map[resn]:
-            if (resn, atmn) in failed["atoms"]:
-                continue
-            logger.error(
-                f"Could not find atom {atmn} in residue {resn}. No features will be calculated for this atom."
-            )
-            failed["atoms"].append((resn, atmn))
-            continue
-        atmn = atmname_map[resn][atmn]
+        res_atoms = mol.resname == resn
 
-        label = getAtomLabel(atmn, heavy_bonds, h_bonds)
-        if label not in atomtypes[resn]:
-            if (resn, label) in failed["labels"]:
-                continue
-            logger.error(
-                f"Could not find residue {resn} atom {atmn} with bonding partners (heavy: {heavy_bonds} hydrogen: {h_bonds}) in the atomtypes library. No features will be calculated for this atom."
-            )
-            failed["labels"].append((resn, label))
-            continue
+        # Get unique residues (resid, chain, segid) which match that residue name
+        resid_chain_seg = np.vstack(
+            (mol.resid[res_atoms], mol.chain[res_atoms], mol.segid[res_atoms])
+        ).T
+        if resid_chain_seg.ndim == 1:
+            resid_chain_seg = resid_chain_seg[None, :]
+        resid_chain_seg = np.vstack(list({tuple(row) for row in resid_chain_seg}))
 
-        props = atomtypes[resn][label]["properties"]
-        for prop in props:
-            features[i, _order.index(prop)] = True
-    return features, failed
+        potential_residues = resname_map[resn]
+        if isinstance(potential_residues, list):  # fancy residue detection by hydrogens
+            # Loop over unique residues
+            for resid, chain, segid in resid_chain_seg:
+                # All atoms of the current residue
+                atoms_match = (
+                    (mol.resid == int(resid))
+                    & (mol.chain == chain)
+                    & (mol.segid == segid)
+                )
+                found = False
+                for pot_res in potential_residues:
+                    res_name = pot_res["residue_name"]
+                    conditions = pot_res["conditions"]
+
+                    # Loop over all conditions which have to be true
+                    for condition in conditions:
+                        idx = None
+                        failed_condition = True
+                        if "atom_name" in condition:
+                            atom_name = condition["atom_name"]
+                            match = atoms_match & (mol.name == atom_name)
+                            idx = np.where(match)[0]
+                            if len(idx):
+                                idx = idx[0]
+                            else:
+                                idx = None
+                        if "h_bonds" in condition and idx is not None:
+                            h_bonds = int(condition["h_bonds"])
+                            _, h_bonds_atom = getAtomBonds(mol, idx)
+                            if h_bonds == h_bonds_atom:
+                                failed_condition = False
+                        if failed_condition:
+                            break
+
+                    if not failed_condition:
+                        mol.resname[atoms_match] = res_name
+                        logger.info(
+                            f"Converted residue {resn}/{resid}/{chain}/{segid} to type {res_name}"
+                        )
+                        found = True
+                        break
+                if not found:
+                    logger.error(
+                        f"Could not match residue {resn}/{resid}/{chain}/{segid} to any potential residue. No features will be calculated for this."
+                    )
+                    failed["residues"].append((resn, resid, chain, segid))
+        else:
+            mol.resname[mol.resname == resn] = potential_residues
+
+    return failed
+
+
+def fixAtomLabels(mol, atoms_to_compute, atmname_map):
+    for resn in atmname_map:
+        for label in atmname_map[resn]:
+            match = (mol.resname == resn) & (mol.name == label)
+            mol.name[match] = atmname_map[resn][label]
 
 
 import unittest
@@ -580,6 +675,40 @@ class _TestAtomTyper(unittest.TestCase):
 
         assert mol_equal(mol2, ref, exceptFields=("coords",))
 
+    def test_atomtyping(self):
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule, mol_equal
+        from moleculekit.tools.atomtyper import prepareProteinForAtomtyping
+        from os import path
+        import numpy as np
+
+        mol = Molecule("3PTB")
+        mol.filter("protein or water")
+        pmol = prepareProteinForAtomtyping(mol, verbose=False)
+
+        feats, failed = getProteinAtomFeatures(pmol)
+        ref_file = path.join(home(dataDir="test-atomtyper"), "3ptb_atomtypes.npy")
+        ref_feats = np.load(ref_file)
+
+        # This is the wrongly bonded oxygen in LEU
+        assert failed["labels"].shape[0] == 1
+        assert np.array_equal(feats, ref_feats)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+    # from moleculekit.tools.atomtyper import (
+    #     prepareProteinForAtomtyping,
+    #     getProteinAtomFeatures,
+    # )
+    # from moleculekit.molecule import Molecule
+    # from glob import glob
+
+    # all_failed = {}
+    # for protf in glob("/home/sdoerr/Datasets/scPDB_2017/scPDB/*/protein.mol2"):
+    #     mol = Molecule(protf)
+    #     mol.filter("protein or water")
+    #     pmol = prepareProteinForAtomtyping(mol, verbose=False)
+    #     features, failed = getProteinAtomFeatures(pmol)
+    #     all_failed[protf] = failed

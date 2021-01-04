@@ -1,1 +1,20 @@
 WAT: HOH
+HIS:
+  - residue_name: HID
+    conditions:
+      - atom_name: NE2 
+        h_bonds: 0
+      - atom_name: ND1
+        h_bonds: 1
+  - residue_name: HIE
+    conditions:
+      - atom_name: NE2 
+        h_bonds: 1
+      - atom_name: ND1
+        h_bonds: 0
+  - residue_name: HIP
+    conditions:
+      - atom_name: NE2 
+        h_bonds: 1
+      - atom_name: ND1
+        h_bonds: 1

@@ -201,6 +201,40 @@ CA:
     heavy_bonds: 0
     properties:
     - metal
+CYS:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+  SG_1_1:
+    element: S
+    h_bonds: 1
+    heavy_bonds: 1
+    properties: []
 CYX:
   CA_3_1:
     element: C
@@ -606,13 +640,6 @@ HOH:
   O_0_2:
     element: O
     h_bonds: 2
-    heavy_bonds: 0
-    properties:
-    - hbond_donor
-    - hbond_acceptor
-  O_0_0: # Cover the case of non-protonated systems like PDB structures
-    element: O
-    h_bonds: 0
     heavy_bonds: 0
     properties:
     - hbond_donor
