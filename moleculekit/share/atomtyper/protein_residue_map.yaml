@@ -25,3 +25,12 @@ ASP:
         h_bonds: 1
       - atom_name: OD1
         h_bonds: 0
+LYS:
+  - residue_name: LYN
+    conditions:
+      - atom_name: NZ
+        h_bonds: 2
+  - residue_name: LYS
+    conditions:
+      - atom_name: NZ
+        h_bonds: 3

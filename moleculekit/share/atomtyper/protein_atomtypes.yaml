@@ -229,7 +229,6 @@ ASH:
     heavy_bonds: 1
     properties:
     - hbond_acceptor
-    - negative_ionizable
   OD2_1_1:
     element: O
     h_bonds: 1
@@ -237,7 +236,6 @@ ASH:
     properties:
     - hbond_donor
     - hbond_acceptor
-    - negative_ionizable
   O_1_0:
     element: O
     h_bonds: 0
@@ -828,6 +826,59 @@ LYS:
     properties:
     - hbond_donor
     - positive_ionizable
+  N_2_1:
+    element: N
+    h_bonds: 1
+    heavy_bonds: 2
+    properties:
+    - hbond_donor
+  O_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
+LYN:
+  CA_3_1:
+    element: C
+    h_bonds: 1
+    heavy_bonds: 3
+    properties: []
+  CB_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CD_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  CE_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties: []
+  CG_2_2:
+    element: C
+    h_bonds: 2
+    heavy_bonds: 2
+    properties:
+    - hydrophobic
+  C_3_0:
+    element: C
+    h_bonds: 0
+    heavy_bonds: 3
+    properties: []
+  NZ_1_2:
+    element: N
+    h_bonds: 2
+    heavy_bonds: 1
+    properties:
+    - hbond_donor
+    - hbond_acceptor
   N_2_1:
     element: N
     h_bonds: 1
