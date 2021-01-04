@@ -236,6 +236,19 @@ ASH:
     properties:
     - hbond_donor
     - hbond_acceptor
+  OD1_1_1:
+    element: O
+    h_bonds: 1
+    heavy_bonds: 1
+    properties:
+    - hbond_donor
+    - hbond_acceptor
+  OD2_1_0:
+    element: O
+    h_bonds: 0
+    heavy_bonds: 1
+    properties:
+    - hbond_acceptor
   O_1_0:
     element: O
     h_bonds: 0

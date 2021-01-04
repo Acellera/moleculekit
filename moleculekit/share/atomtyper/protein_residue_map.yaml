@@ -25,6 +25,12 @@ ASP:
         h_bonds: 1
       - atom_name: OD1
         h_bonds: 0
+  - residue_name: ASH
+      conditions:
+      - atom_name: OD2
+        h_bonds: 0
+      - atom_name: OD1
+        h_bonds: 1
 LYS:
   - residue_name: LYN
     conditions:

@@ -32,7 +32,7 @@ def depictResidue(mol, resname, protein_atomtypes, imgpath):
     res = mol.copy()
     residx = np.where(res.resname == resname)[0]
     firstgap = np.where(np.diff(residx) != 1)[0]
-    raise RuntimeError("WHAT IF THEY ARE CONSECUTIVE! FIND OTHER SOLUTION")
+    # raise RuntimeError("WHAT IF THEY ARE CONSECUTIVE! FIND OTHER SOLUTION")
     if len(firstgap):
         residx = residx[: firstgap[0] + 1]
 
