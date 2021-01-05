@@ -1,2 +1,4 @@
 HOH:
   O_0_0: O_0_2  # Cover the case of non-protonated waters like in PDB structures
+CYX:
+  SG_1_0: SG_2_0  # Case where the bond of the disulfide bond is missing

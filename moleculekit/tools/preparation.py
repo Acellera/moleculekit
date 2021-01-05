@@ -8,7 +8,7 @@ import tempfile
 import numpy as np
 import os
 from moleculekit.tools.preparationdata import PreparationData
-from moleculekit.molecule import Molecule, calculateUniqueBonds
+from moleculekit.molecule import Molecule, calculateUniqueBonds, UniqueAtomID
 try:
     from pdb2pqr.main import runPDB2PQR
     from pdb2pqr.src.pdb import readPDB
@@ -36,7 +36,7 @@ def _selToHoldList(mol, sel):
 
 
 def _fillMolecule(serial, name, resname, chain, resid, insertion, coords, segid, element,
-                  occupancy, beta, charge, record, bonds):
+                  occupancy, beta, charge, record, bonds, mol_in):
     numAtoms = len(name)
     mol = Molecule()
     mol.empty(numAtoms)
@@ -70,6 +70,16 @@ def _fillMolecule(serial, name, resname, chain, resid, insertion, coords, segid,
         backbone_idx = np.where(backbone_sel)[0]
         backbone_bonds = backbone_idx[backbone_bonds]  # Map back
         mol.bonds = np.vstack((mol.bonds, backbone_bonds))
+
+    _fixupWaterNames(mol)
+    
+    # Restore original bonds
+    if len(mol_in.bonds):
+        bond_in_atm = {i: UniqueAtomID.fromMolecule(mol_in, idx=i) for i in np.unique(mol_in.bonds)}
+        atom_map = np.ones(mol_in.numAtoms, dtype=int) * -1
+        for idx in bond_in_atm:
+            atom_map[idx] = bond_in_atm[idx].selectAtom(mol, ignore=["resname"])
+        mol.bonds = np.vstack((mol.bonds, atom_map[mol_in.bonds]))
 
     mol.bonds = calculateUniqueBonds(mol.bonds, [])[0]
     return mol
@@ -127,7 +137,7 @@ def _checkChainAndSegid(mol, _loggerLevel):
     return mol
 
 
-def _buildResAndMol(pdb2pqr_protein):
+def _buildResAndMol(pdb2pqr_protein, mol_in):
     # Here I parse the returned protein object and recreate a Molecule,
     # because I need to access the properties.
     logger.debug("Building Molecule object.")
@@ -197,7 +207,7 @@ def _buildResAndMol(pdb2pqr_protein):
 
 
     mol_out = _fillMolecule(serial, name, resname, chain, resid, insertion, coords, segid, element,
-                            occupancy, beta, charge, record, bonds)
+                            occupancy, beta, charge, record, bonds, mol_in)
     # mol_out.set("element", " ")
     # Re-calculating elements
     # mol_out.element[:] = ''
@@ -439,10 +449,10 @@ def proteinPrepare(mol_in,
     for missedligand in missedLigands:
         logger.warning("The following residue has not been optimized: " + missedligand)
 
-    mol_out, resData = _buildResAndMol(pdb2pqr_protein)
+    mol_out, resData = _buildResAndMol(pdb2pqr_protein, mol_in)
 
     mol_out.box = mol_in.box
-    _fixupWaterNames(mol_out)
+    #_fixupWaterNames(mol_out)
 
     # Misc. info
     resData.header = header
