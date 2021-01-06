@@ -387,8 +387,16 @@ def _findDonors(mol, bonds):
 
 def _getOccupancyC(coords, centers, channelsigmas):
     """ Calls the C code to calculate the voxels values for each property."""
+    coords = coords.astype(np.float32)
     centers = centers.astype(np.float64)
     channelsigmas = channelsigmas.astype(np.float64)
+
+    if not coords.flags["C_CONTIGUOUS"]:
+        coords = np.ascontiguousarray(coords)
+    if not centers.flags["C_CONTIGUOUS"]:
+        centers = np.ascontiguousarray(centers)
+    if not channelsigmas.flags["C_CONTIGUOUS"]:
+        channelsigmas = np.ascontiguousarray(channelsigmas)
 
     nchannels = channelsigmas.shape[1]
     occus = np.zeros((centers.shape[0], nchannels))
