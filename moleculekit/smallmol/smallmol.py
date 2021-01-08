@@ -150,6 +150,12 @@ class SmallMol(object):
                 # load pdb file
                 elif name_suffix == ".pdb":
                     _mol = Chem.MolFromPDBFile(mol, removeHs=False)
+                # load single-molecule sdf file
+                elif name_suffix == ".sdf":
+                    sms = Chem.SDMolSupplier(mol, removeHs=False)
+                    if len(sms) != 1:
+                        logger.warning(f"More than one molecules found in {mol}. SmallMol will only read the first. If you want to read them all use the SmallMolLib class.")
+                    _mol = sms[0]
                 # if the file failed to be loaded and 'force_reading' = True, file convert to sdf and than loaded
                 if _mol is None and force_reading:
                     logger.warning('Reading {} with force_reading procedure'.format(mol))

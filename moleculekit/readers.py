@@ -2130,8 +2130,8 @@ def PREPIread(filename, frame=None, topoloc=None):
     return MolFactory.construct(topo, None, filename, frame)
 
 def SDFread(filename, frame=None, topoloc=None):
-    # Reader for GROMACS .top file format:
-    # http://manual.gromacs.org/online/top.html
+    # Some (mostly correct) info here: www.nonlinear.com/progenesis/sdf-studio/v0.9/faq/sdf-file-format-guidance.aspx
+    chargemap = {"7": -3, "6": -2, "5": -1, "0": 0, "3": 1, "2": 2, "1": 3, "4": 0}
 
     with open(filename, "r") as f:
         lines = f.readlines()
@@ -2148,7 +2148,6 @@ def SDFread(filename, frame=None, topoloc=None):
         coords = []
         mol_start = 0
 
-        title = lines[mol_start+0]
         n_atoms, n_bonds = lines[mol_start+3].split()[:2]
         coord_start = mol_start + 4
         bond_start = coord_start + int(n_atoms)
@@ -2159,11 +2158,20 @@ def SDFread(filename, frame=None, topoloc=None):
             topo.element.append(pieces[3])
             topo.name.append(pieces[3])
             topo.serial.append(n-coord_start)
+            topo.charge.append(chargemap[pieces[5]])
 
         for n in range(bond_start, bond_end):
             idx1, idx2, bond_type = lines[n].strip().split()[:3]
             topo.bonds.append([int(idx1)-1, int(idx2)-1])
             topo.bondtype.append(bond_type)
+
+        for line in lines[bond_end:]:
+            if line.strip() == "$$$$":
+                break
+            if line.startswith("M  CHG"):  # These charges are more correct
+                pairs = line.strip().split()[3:]
+                for cc in range(0, len(pairs), 2):
+                    topo.charge[int(pairs[cc])-1] = int(pairs[cc+1])
             
     traj = Trajectory(coords=np.vstack(coords))
     return MolFactory.construct(topo, traj, filename, frame)
@@ -2285,14 +2293,27 @@ class _TestReaders(unittest.TestCase):
     def test_sdf(self):
         sdf_file = os.path.join(self.testfolder(), 'benzamidine-3PTB-pH7.sdf')
         ref_file = os.path.join(self.testfolder(), 'benzamidine-3PTB-pH7.npz')
+        ref_data = np.load(ref_file, allow_pickle=True)
         mol = Molecule(sdf_file)
         assert mol.numAtoms == 18
-        assert mol.bonds.shape == (18, 2)
-        assert mol.bondtype.shape == (18,)
         assert np.all(mol.name == mol.element)
-        ref_data = np.load(ref_file, allow_pickle=True)
         assert np.array_equal(mol.element, ref_data["element"])
         assert np.array_equal(mol.coords, ref_data["coords"])
+        assert np.array_equal(mol.charge, ref_data["charge"])
+        assert np.array_equal(mol.bonds, ref_data["bonds"])
+        assert np.array_equal(mol.bondtype, ref_data["bondtype"])
+
+        sdf_file = os.path.join(self.testfolder(), 'S98_ideal.sdf')
+        ref_file = os.path.join(self.testfolder(), 'S98_ideal.npz')
+        ref_data = np.load(ref_file, allow_pickle=True)
+        mol = Molecule(sdf_file)
+        assert mol.numAtoms == 34
+        assert np.all(mol.name == mol.element)
+        assert np.array_equal(mol.element, ref_data["element"])
+        assert np.array_equal(mol.coords, ref_data["coords"])
+        assert np.array_equal(mol.charge, ref_data["charge"])
+        assert np.array_equal(mol.bonds, ref_data["bonds"])
+        assert np.array_equal(mol.bondtype, ref_data["bondtype"])
 
     def test_gjf(self):
         testfolder = self.testfolder('3L5E')
