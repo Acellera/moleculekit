@@ -2129,6 +2129,45 @@ def PREPIread(filename, frame=None, topoloc=None):
 
     return MolFactory.construct(topo, None, filename, frame)
 
+def SDFread(filename, frame=None, topoloc=None):
+    # Reader for GROMACS .top file format:
+    # http://manual.gromacs.org/online/top.html
+
+    with open(filename, "r") as f:
+        lines = f.readlines()
+        molend = False
+        for line in lines:
+            if "V3000" in line:
+                raise RuntimeError("Moleculekit does not support parsing V3000 SDF files yet.")
+            if line.strip() == "$$$$":
+                molend = True
+            elif molend and line.strip() != "":
+                logger.warning("MoleculeKit will only read the first molecule from the SDF file.")
+
+        topo = Topology()
+        coords = []
+        mol_start = 0
+
+        title = lines[mol_start+0]
+        n_atoms, n_bonds = lines[mol_start+3].split()[:2]
+        coord_start = mol_start + 4
+        bond_start = coord_start + int(n_atoms)
+        bond_end = bond_start+int(n_bonds)
+        for n in range(coord_start, bond_start):
+            pieces = lines[n].strip().split()
+            coords.append(list(map(float, pieces[:3])))
+            topo.element.append(pieces[3])
+            topo.name.append(pieces[3])
+            topo.serial.append(n-coord_start)
+
+        for n in range(bond_start, bond_end):
+            idx1, idx2, bond_type = lines[n].strip().split()[:3]
+            topo.bonds.append([int(idx1)-1, int(idx2)-1])
+            topo.bondtype.append(bond_type)
+            
+    traj = Trajectory(coords=np.vstack(coords))
+    return MolFactory.construct(topo, traj, filename, frame)
+
 
 # Register here all readers with their extensions
 _TOPOLOGY_READERS = {
@@ -2147,6 +2186,7 @@ _TOPOLOGY_READERS = {
     "cif": PDBXMMCIFread,
     "rtf": RTFread,
     "prepi": PREPIread,
+    "sdf": SDFread,
 }
 
 _MDTRAJ_TOPOLOGY_EXTS = [
@@ -2241,6 +2281,18 @@ class _TestReaders(unittest.TestCase):
         testfolder = self.testfolder('3L5E')
         mol = Molecule(os.path.join(testfolder, 'protein.mol2'))
         mol = Molecule(os.path.join(testfolder, 'ligand.mol2'))
+
+    def test_sdf(self):
+        sdf_file = os.path.join(self.testfolder(), 'benzamidine-3PTB-pH7.sdf')
+        ref_file = os.path.join(self.testfolder(), 'benzamidine-3PTB-pH7.npz')
+        mol = Molecule(sdf_file)
+        assert mol.numAtoms == 18
+        assert mol.bonds.shape == (18, 2)
+        assert mol.bondtype.shape == (18,)
+        assert np.all(mol.name == mol.element)
+        ref_data = np.load(ref_file, allow_pickle=True)
+        assert np.array_equal(mol.element, ref_data["element"])
+        assert np.array_equal(mol.coords, ref_data["coords"])
 
     def test_gjf(self):
         testfolder = self.testfolder('3L5E')
