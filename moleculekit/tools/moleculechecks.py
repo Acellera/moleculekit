@@ -36,7 +36,8 @@ def closestDistance(mol1, mol2):
 
 def isProteinProtonated(mol):
     numberHs = mol.atomselect("protein and hydrogen").sum()
-    numberHeavy = mol.numAtoms - numberHs
+    numberProt = mol.atomselect("protein").sum()
+    numberHeavy = numberProt - numberHs
 
     # Rough heuristic of what is a significant number of hydrogens
     if numberHs < (numberHeavy * 0.7):
