@@ -57,14 +57,12 @@ class MetricCoordinate(Projection):
         self._pbc = pbc
 
         self._refmol = refmol
-        self._refalnsel = refalnsel
+        self._refalnsel = refalnsel if refalnsel is not None else trajalnsel
         if self._refmol is not None:
             if self._trajalnsel is None:
                 self._trajalnsel = "protein and name CA"
             self._refmol = refmol.copy()
-            self._cache["refalnsel"] = self._refmol.atomselect(
-                self._refalnsel if self._refalnsel is not None else self._trajalnsel
-            )
+            self._cache["refalnsel"] = self._refmol.atomselect(self._refalnsel)
 
     def _calculateMolProp(self, mol, props="all"):
         props = ("trajalnsel", "atomsel", "centersel") if props == "all" else props
@@ -79,7 +77,7 @@ class MetricCoordinate(Projection):
             res["atomsel"] = mol.atomselect(self._atomsel)
             if np.sum(res["atomsel"]) == 0:
                 raise RuntimeError("Atom selection resulted in 0 atoms.")
-        if "centersel" in props:
+        if "centersel" in props and self._pbc:
             res["centersel"] = mol.atomselect(self._centersel)
             if np.sum(res["centersel"]) == 0:
                 raise RuntimeError("Centering selection resulted in 0 atoms.")

@@ -101,8 +101,8 @@ class MetricFluctuation(_MetricCoordinate):
         if self._refmol is None:
             refcoords = np.mean(coords, axis=0)
         else:
-            _wrapref = True
-            if self._pbc and (
+            _wrapref = self._pbc
+            if _wrapref and (
                 self._refmol.box is None
                 or len(self._refmol.box) == 0
                 or np.all(self._refmol.box == 0)
