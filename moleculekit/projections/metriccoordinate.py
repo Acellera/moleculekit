@@ -55,12 +55,12 @@ class MetricCoordinate(Projection):
         self._centersel = centersel
         self._atomsel = atomsel
         self._pbc = pbc
-
         self._refmol = refmol
-        self._refalnsel = refalnsel if refalnsel is not None else trajalnsel
+
         if self._refmol is not None:
             if self._trajalnsel is None:
                 self._trajalnsel = "protein and name CA"
+            self._refalnsel = refalnsel if refalnsel is not None else self._trajalnsel
             self._refmol = refmol.copy()
             self._cache["refalnsel"] = self._refmol.atomselect(self._refalnsel)
 
