@@ -66,9 +66,9 @@ class Molecule(object):
     Class to manipulate molecular structures.
 
     Molecule contains all the fields of a PDB and it is independent of any force field. It can contain multiple
-    conformations and trajectories, however all operations are done on the current frame. The following PDB fields 
+    conformations and trajectories, however all operations are done on the current frame. The following PDB fields
     are accessible as attributes (record, serial, name, altloc, resname, chain, resid, insertion, coords,
-    occupancy, beta, segid, element, charge). The coordinates are accessible via the coords attribute 
+    occupancy, beta, segid, element, charge). The coordinates are accessible via the coords attribute
     ([number of atoms x 3 x number of frames] where [x,y,z] are the second dimension.
 
     Parameters
@@ -94,12 +94,12 @@ class Molecule(object):
     .. rubric:: Methods
     .. autoautosummary:: moleculekit.molecule.Molecule
        :methods:
-       
+
     .. rubric:: Attributes
 
     Attributes
     ----------
-    
+
     numAtoms : int
         Number of atoms in the Molecule
     numFrames : int
@@ -193,10 +193,10 @@ class Molecule(object):
     )
     _connectivity_fields = ("bonds", "bondtype", "angles", "dihedrals", "impropers")
     _topo_fields = tuple(
-        list(_atom_fields) + list(_connectivity_fields) + ["crystalinfo",]
+        list(_atom_fields) + list(_connectivity_fields) + ["crystalinfo"]
     )
     _traj_fields = ("coords", "box", "boxangles", "fileloc", "step", "time")
-    _atom_and_coord_fields = tuple(list(_atom_fields) + ["coords",])
+    _atom_and_coord_fields = tuple(list(_atom_fields) + ["coords"])
 
     _dtypes = {
         "record": object,
@@ -384,9 +384,7 @@ class Molecule(object):
             torem, numres = _getResidueIndexesByAtom(mol, idx2)
             mol = mol.copy()
             logger.info(
-                "Removed {} residues from appended Molecule due to collisions.".format(
-                    numres
-                )
+                f"Removed {numres} residues from appended Molecule due to collisions."
             )
             mol.remove(torem, _logger=False)
 
@@ -397,7 +395,7 @@ class Molecule(object):
             if np.size(self.coords) != 0 and (
                 np.size(self.coords, 2) != 1 or np.size(mol.coords, 2) != 1
             ):
-                raise NameError(
+                raise RuntimeError(
                     "Cannot concatenate molecules which contain multiple frames."
                 )
 
@@ -536,7 +534,7 @@ class Molecule(object):
             self.__dict__[field][s] = value
 
     def align(self, sel, refmol=None, refsel=None, frames=None, matchingframes=False):
-        """ Align conformations.
+        """Align conformations.
 
         Align a given set of frames of this molecule to either the current active frame of this molecule (mol.frame)
         or the current frame of a different reference molecule. To align to any frame other than the current active one
@@ -612,7 +610,7 @@ class Molecule(object):
         returnAlignments=False,
         maxalignments=1,
     ):
-        """ Aligns the Molecule to a reference Molecule by their longest sequence alignment
+        """Aligns the Molecule to a reference Molecule by their longest sequence alignment
 
         Parameters
         ----------
@@ -648,7 +646,7 @@ class Molecule(object):
             self = aligns[0]
 
     def append(self, mol, collisions=False, coldist=1.3):
-        """ Append a molecule at the end of the current molecule
+        """Append a molecule at the end of the current molecule
 
         Parameters
         ----------
@@ -670,7 +668,7 @@ class Molecule(object):
         self.insert(mol, self.numAtoms, collisions=collisions, coldist=coldist)
 
     def _getBonds(self, fileBonds=True, guessBonds=True):
-        """ Returns an array of all bonds.
+        """Returns an array of all bonds.
 
         Parameters
         ----------
@@ -698,7 +696,7 @@ class Molecule(object):
     def atomselect(
         self, sel, indexes=False, strict=False, fileBonds=True, guessBonds=True
     ):
-        """ Get a boolean mask or the indexes of a set of selected atoms
+        """Get a boolean mask or the indexes of a set of selected atoms
 
         Parameters
         ----------
@@ -760,7 +758,7 @@ class Molecule(object):
             return s
 
     def copy(self):
-        """ Create a copy of the Molecule object
+        """Create a copy of the Molecule object
 
         Returns
         -------
@@ -791,7 +789,7 @@ class Molecule(object):
         return self.remove(np.invert(s), _logger=_logger)
 
     def _updateBondsAnglesDihedrals(self, idx):
-        """ Renumbers bonds after removing atoms and removes non-existent bonds
+        """Renumbers bonds after removing atoms and removes non-existent bonds
 
         Needs to be called before removing atoms!
         """
@@ -820,7 +818,7 @@ class Molecule(object):
                 self.bondtype = self.bondtype[stays]
 
     def deleteBonds(self, sel, inter=True):
-        """ Deletes all bonds that contain atoms in sel or between atoms in sel.
+        """Deletes all bonds that contain atoms in sel or between atoms in sel.
 
         Parameters
         ----------
@@ -843,7 +841,7 @@ class Molecule(object):
         self.bondtype = np.delete(self.bondtype, idx)
 
     def _guessBonds(self):
-        """ Tries to guess the bonds in the Molecule
+        """Tries to guess the bonds in the Molecule
 
         Can fail badly when non-bonded atoms are very close together. Use with extreme caution.
         """
@@ -863,7 +861,7 @@ class Molecule(object):
         )
 
     def moveBy(self, vector, sel=None):
-        """ Move a selection of atoms by a given vector
+        """Move a selection of atoms by a given vector
 
         Parameters
         ----------
@@ -887,7 +885,7 @@ class Molecule(object):
         self.coords[s, :, self.frame] += vector
 
     def rotateBy(self, M, center=(0, 0, 0), sel="all"):
-        """ Rotate a selection of atoms by a given rotation matrix around a center
+        """Rotate a selection of atoms by a given rotation matrix around a center
 
         Parameters
         ----------
@@ -914,7 +912,7 @@ class Molecule(object):
         self.set("coords", newcoords, sel=sel)
 
     def getDihedral(self, atom_quad):
-        """ Get the value of a dihedral angle.
+        """Get the value of a dihedral angle.
 
         Parameters
         ----------
@@ -935,8 +933,8 @@ class Molecule(object):
         return dihedralAngle(self.coords[atom_quad, :, self.frame])
 
     def setDihedral(self, atom_quad, radians, bonds=None):
-        """ Sets the angle of a dihedral.
-        
+        """Sets the angle of a dihedral.
+
         Parameters
         ----------
         atom_quad : list
@@ -979,7 +977,7 @@ class Molecule(object):
         self.rotateBy(M, center=self.coords[atom_quad[1], :, self.frame], sel=right)
 
     def center(self, loc=(0, 0, 0), sel="all"):
-        """ Moves the geometric center of the Molecule to a given location
+        """Moves the geometric center of the Molecule to a given location
 
         Parameters
         ----------
@@ -1014,7 +1012,7 @@ class Molecule(object):
         _logger=True,
         **kwargs,
     ):
-        """ Read topology, coordinates and trajectory files in multiple formats.
+        """Read topology, coordinates and trajectory files in multiple formats.
 
         Detects from the extension the file type and loads it into Molecule
 
@@ -1292,7 +1290,7 @@ class Molecule(object):
             self.viewname = mol.viewname
 
     def write(self, filename, sel=None, type=None, **kwargs):
-        """ Writes the topology and coordinates of the Molecule in any of the supported formats.
+        """Writes the topology and coordinates of the Molecule in any of the supported formats.
 
         Parameters
         ----------
@@ -1329,7 +1327,7 @@ class Molecule(object):
             )
 
     def reorderAtoms(self, order):
-        """ Reorder atoms in Molecule
+        """Reorder atoms in Molecule
 
         Changes the order of atoms in the Molecule to the defined order.
 
@@ -1421,7 +1419,7 @@ class Molecule(object):
         self.coords = np.atleast_3d(self.coords)
 
     def mutateResidue(self, sel, newres):
-        """ Mutates a residue by deleting its sidechain and renaming it
+        """Mutates a residue by deleting its sidechain and renaming it
 
         Parameters
         ----------
@@ -1446,7 +1444,7 @@ class Molecule(object):
         self.set("resname", newres, sel=s)
 
     def wrap(self, wrapsel=None, fileBonds=True, guessBonds=False):
-        """ Wraps the coordinates of the molecule into the simulation box
+        """Wraps the coordinates of the molecule into the simulation box
 
         Parameters
         ----------
@@ -1505,7 +1503,7 @@ class Molecule(object):
         self.box = np.zeros(self._dims["box"], dtype=np.float32)
 
     def empty(self, numAtoms):
-        """ Creates an empty molecule of `numAtoms` atoms.
+        """Creates an empty molecule of `numAtoms` atoms.
 
         Parameters
         ----------
@@ -1521,7 +1519,7 @@ class Molecule(object):
         return self
 
     def sequence(self, oneletter=True, noseg=False):
-        """ Return the aminoacid sequence of the Molecule.
+        """Return the aminoacid sequence of the Molecule.
 
         Parameters
         ----------
@@ -1603,7 +1601,7 @@ class Molecule(object):
         return segSequences
 
     def dropFrames(self, keep="all", drop=None):
-        """ Removes trajectory frames from the Molecule
+        """Removes trajectory frames from the Molecule
 
         Parameters
         ----------
@@ -1689,7 +1687,7 @@ class Molecule(object):
         return elements
 
     def appendFrames(self, mol):
-        """ Appends the frames of another Molecule object to this object.
+        """Appends the frames of another Molecule object to this object.
 
         Parameters
         ----------
@@ -1707,7 +1705,7 @@ class Molecule(object):
         self.time = np.concatenate((self.time, mol.time))
 
     def renumberResidues(self, returnMapping=False):
-        """ Renumbers protein residues incrementally.
+        """Renumbers protein residues incrementally.
 
         It checks for changes in either of the resid, insertion, chain or segid fields and in case of a change it
         creates a new residue number.
@@ -1753,8 +1751,7 @@ class Molecule(object):
 
     @property
     def numFrames(self):
-        """ Number of coordinate frames in the molecule
-        """
+        """Number of coordinate frames in the molecule"""
         return np.size(np.atleast_3d(self.coords), 2)
 
     @property
@@ -1767,8 +1764,7 @@ class Molecule(object):
 
     @property
     def numAtoms(self):
-        """ Number of atoms in the molecule
-        """
+        """Number of atoms in the molecule"""
         natoms = self._numAtomsTopo
         if natoms == 0:
             natoms = self._numAtomsTraj
@@ -1837,7 +1833,7 @@ class Molecule(object):
         viewerhandle=None,
         gui=False,
     ):
-        """ Visualizes the molecule in a molecular viewer
+        """Visualizes the molecule in a molecular viewer
 
         Parameters
         ----------
@@ -1964,7 +1960,7 @@ class UniqueAtomID:
     _fields = ("name", "altloc", "resname", "chain", "resid", "insertion", "segid")
 
     def __init__(self, **kwargs):
-        """ Unique atom identifier
+        """Unique atom identifier
 
         Parameters
         ----------
@@ -2000,7 +1996,7 @@ class UniqueAtomID:
         if sel is not None:
             atom = mol.atomselect(sel, indexes=True)
         elif idx is not None:
-            atom = np.array([idx,])
+            atom = np.array([idx])
 
         if len(atom) > 1:
             raise RuntimeError("Your atomselection returned more than one atom")
@@ -2062,7 +2058,7 @@ class UniqueResidueID:
     _fields = ("resname", "chain", "resid", "insertion", "segid")
 
     def __init__(self, **kwargs):
-        """ Unique residue identifier
+        """Unique residue identifier
 
         Parameters
         ----------
@@ -2163,7 +2159,7 @@ def mol_equal(
     fieldPrecision=None,
     _logger=True,
 ):
-    """ Compare two Molecules for equality.
+    """Compare two Molecules for equality.
 
     Parameters
     ----------
@@ -2263,7 +2259,7 @@ def _getResidueIndexesByAtom(mol, idx):
 
 
 def calculateUniqueBonds(bonds, bondtype):
-    """ Given bonds and bondtypes calculates unique bonds dropping any duplicates
+    """Given bonds and bondtypes calculates unique bonds dropping any duplicates
 
     Parameters
     ----------
@@ -2317,7 +2313,7 @@ def calculateUniqueBonds(bonds, bondtype):
 
 
 class Representations:
-    """ Class that stores representations for Molecule.
+    """Class that stores representations for Molecule.
 
     Examples
     --------
@@ -2341,7 +2337,7 @@ class Representations:
         self.replist += reps.replist
 
     def add(self, sel=None, style=None, color=None):
-        """ Adds a new representation for Molecule.
+        """Adds a new representation for Molecule.
 
         Parameters
         ----------
@@ -2357,7 +2353,7 @@ class Representations:
         self.replist.append(_Representation(sel, style, color))
 
     def remove(self, index=None):
-        """ Removed one or all representations.
+        """Removed one or all representations.
 
         Parameters
         ----------
@@ -2370,8 +2366,7 @@ class Representations:
             del self.replist[index]
 
     def list(self):
-        """ Lists all representations. Equivalent to using print.
-        """
+        """Lists all representations. Equivalent to using print."""
         print(self)
 
     def __str__(self):
@@ -2463,7 +2458,7 @@ class Representations:
 
 
 class _Representation:
-    """ Class that stores a representation for Molecule
+    """Class that stores a representation for Molecule
 
     Parameters
     ----------
