@@ -391,12 +391,11 @@ class Molecule(object):
         backup = self.copy()
         try:
             mol.coords = np.atleast_3d(mol.coords)  # Ensuring 3D coords for appending
-            # TODO: Why this limitation?
             if np.size(self.coords) != 0 and (
-                np.size(self.coords, 2) != 1 or np.size(mol.coords, 2) != 1
+                np.size(self.coords, 2) != np.size(mol.coords, 2) != 1
             ):
                 raise RuntimeError(
-                    "Cannot concatenate molecules which contain multiple frames."
+                    "Cannot concatenate molecules which different number of frames."
                 )
 
             if len(self.bonds) > 0:
@@ -415,15 +414,21 @@ class Molecule(object):
                 if k == "serial":
                     continue
                 data2 = mol.__dict__[k]
-                if mol.__dict__[k] is None or np.size(mol.__dict__[k]) == 0:
+                if data2 is None or np.size(data2) == 0:
                     data2 = self._empty(mol.numAtoms, k)
                 self.__dict__[k] = insertappend(index, self.__dict__[k], data2, append)
             self.serial = np.arange(1, self.numAtoms + 1)
-            # Reset the box to zeros as you cannot keep box size after inserting atoms
-            self.box = np.zeros((3, self.numFrames), dtype=self._dtypes["box"])
-            self.boxangles = np.zeros(
-                (3, self.numFrames), dtype=self._dtypes["boxangles"]
-            )
+
+            if (
+                self.box is not None
+                and mol.box is not None
+                and not np.array_equal(self.box, mol.box)
+            ):
+                # Reset the box to zeros as you cannot keep box size after inserting atoms
+                self.box = np.zeros((3, self.numFrames), dtype=self._dtypes["box"])
+                self.boxangles = np.zeros(
+                    (3, self.numFrames), dtype=self._dtypes["boxangles"]
+                )
         except Exception as err:
             self = backup
             raise RuntimeError(
@@ -657,8 +662,10 @@ class Molecule(object):
         -------
         >>> mol=tryp.copy()
         >>> mol.filter("not resname BEN")
+        array([1630, 1631, 1632, 1633, 1634, 1635, 1636, 1637, 1638], dtype=int32)
         >>> lig=tryp.copy()
         >>> lig.filter("resname BEN")
+        array([   0,    1,    2, ..., 1698, 1699, 1700], dtype=int32)
         >>> mol.append(lig)
         """
         self.insert(mol, self.numAtoms, collisions=collisions, coldist=coldist)
@@ -897,6 +904,7 @@ class Molecule(object):
 
         Examples
         --------
+        >>> from moleculekit.util import rotationMatrix
         >>> mol = tryp.copy()
         >>> mol.rotateBy(rotationMatrix([0, 1, 0], 1.57))
         """
@@ -1335,12 +1343,12 @@ class Molecule(object):
         Examples
         --------
         >>> mol = Molecule()
-        >>> mol.empty(4)
+        >>> _ = mol.empty(4)
         >>> mol.name[:] = ['N', 'C', 'H', 'S']
         >>> neworder = [1, 3, 2, 0]
         >>> mol.reorderAtoms(neworder)
         >>> print(mol.name)
-        array(['C', 'S', 'H', 'N'], dtype=object)
+        ['C' 'S' 'H' 'N']
         """
         order = np.array(order)
         for field in Molecule._atom_and_coord_fields:
@@ -1610,8 +1618,10 @@ class Molecule(object):
         >>> mol = Molecule('1sb0')
         >>> mol.dropFrames(keep=[1,2])
         >>> mol.numFrames == 2
+        True
         >>> mol.dropFrames(drop=[0])
         >>> mol.numFrames == 1
+        True
         """
         from moleculekit.util import ensurelist
 
@@ -2706,7 +2716,7 @@ class _TestMolecule(TestCase):
 
     def test_reorderAtoms(self):
         mol = Molecule()
-        mol.empty(8)
+        _ = mol.empty(8)
         mol.name[:] = ["C1", "C3", "H", "O", "S", "N", "H3", "H1"]
         randcoords = np.random.rand(8, 3, 1).astype(np.float32)
         mol.coords = randcoords.copy()
@@ -2772,6 +2782,19 @@ class _TestMolecule(TestCase):
 
         mol = Molecule()
         mol.append(mol1)
+
+    def test_split_append_insert_trajectory(self):
+        lig = self.trajmol.copy()
+        lig.filter("resname MOL")
+        rest = self.trajmol.copy()
+        rest.filter("not resname MOL")
+
+        insertidx = np.where(self.trajmol.resname == "MOL")[0][0]
+
+        newmol = Molecule()
+        newmol.append(rest)
+        newmol.insert(lig, insertidx)
+        assert mol_equal(self.trajmol, newmol)
 
 
 if __name__ == "__main__":
