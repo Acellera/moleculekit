@@ -23,7 +23,7 @@ libdir = moleculekit.home.home(libDir=True)
 occupancylib = ctypes.cdll.LoadLibrary(os.path.join(libdir, "occupancy_ext.so"))
 
 
-def viewVoxelFeatures(features, centers, nvoxels, voxelsize=None, draw='wireframe'):
+def viewVoxelFeatures(features, centers, nvoxels, voxelsize=None, feature_names=_order, draw='wireframe'):
     """ Visualize in VMD the voxel features produced by getVoxelDescriptors.
 
     Parameters
@@ -49,11 +49,11 @@ def viewVoxelFeatures(features, centers, nvoxels, voxelsize=None, draw='wirefram
 
     voxelsize = np.array(voxelsize)
 
-    features = features.reshape(list(nvoxels) + [len(_order),])
+    features = features.reshape(list(nvoxels) + [len(feature_names),])
     centers = centers.reshape(list(nvoxels) + [3,])
     loweredge = np.min(centers, axis=(0, 1, 2)) - (voxelsize / 2)
 
-    for i, name in enumerate(_order):
+    for i, name in enumerate(feature_names):
         VMDIsosurface(features[..., i], loweredge, voxelsize, color=i, name=name, draw=draw)
 
 def rotateCoordinates(coords, rotations, center):
