@@ -18,22 +18,37 @@ libdir = home(libDir=True)
 if platform.system() == "Windows":
     ct.cdll.LoadLibrary(os.path.join(libdir, "libgcc_s_seh-1.dll"))
     ct.cdll.LoadLibrary(os.path.join(libdir, "libstdc++-6.dll"))
-    if (os.path.exists(os.path.join(libdir, "psprolib.dll"))):
+    if os.path.exists(os.path.join(libdir, "psprolib.dll")):
         ct.cdll.LoadLibrary(os.path.join(libdir, "psprolib.dll"))
     parser = ct.cdll.LoadLibrary(os.path.join(libdir, "libvmdparser.dll"))
 else:
     parser = ct.cdll.LoadLibrary(os.path.join(libdir, "libvmdparser.so"))
 
 
-def vmdselection(selection, coordinates, atomname, atomtype, resname, resid, chain=None, segname=None, insert=None,
-                 altloc=None, beta=None, occupancy=None, bonds=None):
+def vmdselection(
+    selection,
+    coordinates,
+    atomname,
+    atomtype,
+    resname,
+    resid,
+    chain=None,
+    segname=None,
+    insert=None,
+    altloc=None,
+    beta=None,
+    occupancy=None,
+    bonds=None,
+):
 
     maxseglen = np.max([len(x) for x in segname])
     if maxseglen > 4:
-        logger.warning('More than 4 characters were used for segids. '
-                       'Due to limitations in VMD atomselect segids will be ignored for the atomselection.')
+        logger.warning(
+            "More than 4 characters were used for segids. "
+            "Due to limitations in VMD atomselect segids will be ignored for the atomselection."
+        )
         segname = segname.copy()
-        segname[:] = ''
+        segname[:] = ""
 
     if coordinates.ndim == 2:
         coordinates = np.atleast_3d(coordinates)
@@ -45,19 +60,18 @@ def vmdselection(selection, coordinates, atomname, atomtype, resname, resid, cha
     if coordinates.dtype != np.float32:
         raise ValueError("Coordinates is not float32")
 
-    if(coordinates.strides[0] != 12  or coordinates.strides[1] != 4 ):
+    if coordinates.strides[0] != 12 or coordinates.strides[1] != 4:
         # It's a view -- need to make a copy to ensure contiguity of memory
-       coordinates = np.array( coordinates, dtype=np.float32 )
-    if(coordinates.strides[0] != 12  or coordinates.strides[1] != 4 ):
-       raise ValueError("Coordinates is a view with unsupported strides" )
-
+        coordinates = np.array(coordinates, dtype=np.float32)
+    if coordinates.strides[0] != 12 or coordinates.strides[1] != 4:
+        raise ValueError("Coordinates is a view with unsupported strides")
 
     natoms = coordinates.shape[0]
     nframes = coordinates.shape[2]
     # Sanity check the inputs
 
-    #	print(natoms)
-    #	print (len(atomname))
+    # 	print(natoms)
+    # 	print (len(atomname))
 
     if bonds is not None and bonds.shape[1] != 2:
         raise RuntimeError("'bonds' not nbonds x 2 in length")
@@ -84,7 +98,7 @@ def vmdselection(selection, coordinates, atomname, atomtype, resname, resid, cha
     if occupancy is not None and len(occupancy) != natoms:
         raise RuntimeError("'occupancy' not natoms in length")
 
-    c_selection = ct.create_string_buffer(selection.encode('ascii'), len(selection) + 1)
+    c_selection = ct.create_string_buffer(selection.encode("ascii"), len(selection) + 1)
     c_natoms = ct.c_int(natoms)
     c_nframes = ct.c_int(nframes)
     c_atomname = pack_string_buffer(atomname)
@@ -154,10 +168,13 @@ def vmdselection(selection, coordinates, atomname, atomtype, resname, resid, cha
         c_nframes,
         c_nbonds,
         c_bonds,
-        c_output_buffer)
+        c_output_buffer,
+    )
 
     if retval != 0:
-        raise RuntimeError(f'Could not parse selection "{selection}". Is the selection a valid VMD atom selection?')
+        raise RuntimeError(
+            f'Could not parse selection "{selection}". Is the selection a valid VMD atom selection?'
+        )
 
     retval = np.empty((natoms, nframes), dtype=np.bool_)
 
@@ -171,7 +188,9 @@ def vmdselection(selection, coordinates, atomname, atomtype, resname, resid, cha
 #    return (retval.reshape(natoms, nframes))
 
 
-def guessbonds(coordinates, element, name, resname, resid, chain, segname, insertion, altloc):
+def guessbonds(
+    coordinates, element, name, resname, resid, chain, segname, insertion, altloc
+):
     # if it's a single frame, resize to be a 3d array
     if coordinates.ndim == 2:
         c = coordinates.shape
@@ -184,7 +203,7 @@ def guessbonds(coordinates, element, name, resname, resid, chain, segname, inser
         # It's a view -- need to make a copy to ensure contiguity of memory
         coordinates = np.array(coordinates, dtype=np.float32)
     if coordinates.strides[0] != 12 or coordinates.strides[1] != 4:
-        raise ValueError("Coordinates is a view with unsupported strides" )
+        raise ValueError("Coordinates is a view with unsupported strides")
 
     if coordinates.dtype != np.float32:
         raise ValueError("Coordinates is not float32")
@@ -213,7 +232,9 @@ def guessbonds(coordinates, element, name, resname, resid, chain, segname, inser
     c_nframes = ct.c_int(nframes)
 
     c_nbonds = (ct.c_int * 1)()
-    maxbonds = natoms * 5  # some dumb guess about the max # of bonds likely to be created
+    maxbonds = (
+        natoms * 5
+    )  # some dumb guess about the max # of bonds likely to be created
     tmp = maxbonds * 2
     c_bonds = (ct.c_int * tmp)()
 
@@ -234,7 +255,7 @@ def guessbonds(coordinates, element, name, resname, resid, chain, segname, inser
         c_coords,
         c_nbonds,
         ct.c_int(maxbonds),
-        c_bonds
+        c_bonds,
     )
 
     if retval:
