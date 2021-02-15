@@ -16,6 +16,7 @@ from moleculekit.support import string_to_tempfile
 import numpy as np
 import tempfile
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,14 +27,14 @@ def _enqueue_output(obj, vmd, queue):
     while vmd.poll() is None:
         line = vmd.stdout.readline()
     # print("READIN: [" + line.decode("ascii") + "]", end="" );
-    #			queue.put(line.decode("ascii"))
-    #	print( "Process finished" )
+    # 			queue.put(line.decode("ascii"))
+    # 	print( "Process finished" )
     vmd.stdout.close()
     obj.done = True
 
 
 class VMD:
-    """ Please do not directly call this class constructor. Use the `viewer` or `getCurrentViewer` function instead.
+    """Please do not directly call this class constructor. Use the `viewer` or `getCurrentViewer` function instead.
 
     Parameters
     ----------
@@ -42,34 +43,42 @@ class VMD:
     dispdev : str
     """
 
-    def __init__(self, vmd=None, host=None, dispdev='win'):
+    def __init__(self, vmd=None, host=None, dispdev="win"):
         self.done = False
         vmd = getVMDpath(vmd=vmd)
 
         args = [vmd]
         if host:
-            args.append('--host')
+            args.append("--host")
             args.append(host)
-        args.append('--dispdev')
+        args.append("--dispdev")
         args.append(dispdev)
-        self.vmd = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0, close_fds=True,
-                                    shell=False)
+        self.vmd = subprocess.Popen(
+            args,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            bufsize=0,
+            close_fds=True,
+            shell=False,
+        )
         self.queue = queue.Queue()
-        self.thread = threading.Thread(target=_enqueue_output, args=(self, self.vmd, self.queue))
+        self.thread = threading.Thread(
+            target=_enqueue_output, args=(self, self.vmd, self.queue)
+        )
         self.thread.daemon = True
         self.thread.start()
-        #	self.vmd.stdin.write( b"chan configure stdout -buffering none\n" )
+        # 	self.vmd.stdin.write( b"chan configure stdout -buffering none\n" )
         time.sleep(2)
-        self.send('display reposition 500 1000')
-        self.send('display resize 800 800')
-        self.send('menu main on')
-        self.send('display depthcue off')
-        self.send('axes location Off')
+        self.send("display reposition 500 1000")
+        self.send("display resize 800 800")
+        self.send("menu main on")
+        self.send("display depthcue off")
+        self.send("axes location Off")
         # self.send('color Display Background white')
-        self.send('display projection Orthographic')
+        self.send("display projection Orthographic")
 
     def send(self, command):
-        """ Send a tcl command to VMD
+        """Send a tcl command to VMD
 
         Parameters
         ----------
@@ -80,9 +89,9 @@ class VMD:
             return
         # print( command )
         fn = string_to_tempfile(command, "tcl")
-        #		print(fn)
+        # 		print(fn)
 
-        cc = "if { [ catch { source " + fn + "} ] } { unlink " + fn + " } else { unlink " + fn + " }\n"
+        cc = f"if {{ [ catch {{ source {fn}}} ] }} {{ unlink {fn} }} else {{ unlink {fn} }}\n"
         self.vmd.stdin.write(cc.encode("ascii"))
         self.vmd.stdin.flush()
 
@@ -90,7 +99,7 @@ class VMD:
             time.sleep(0.01)
 
     def loadMol(self, mol, name=None):
-        """ Load a :class:`Molecule <moleculekit.molecule.Molecule>` object into VMD
+        """Load a :class:`Molecule <moleculekit.molecule.Molecule>` object into VMD
 
         Parameters
         ----------
@@ -100,7 +109,7 @@ class VMD:
             The name to give to the Molecule
         """
         # Getting name of variable passed to method
-        '''
+        """
         caller = inspect.currentframe().f_back
         try:
             value = caller.f_locals[mol]
@@ -109,11 +118,11 @@ class VMD:
         if name is None:
             name = value
         # -----------------------------------------
-        '''
+        """
         mol.view(name=name, viewerhandle=self)
 
-    def rep(self, mode, sel='resname MOL', color=0):
-        """ Modify representations for the top molecule in VMD
+    def rep(self, mode, sel="resname MOL", color=0):
+        """Modify representations for the top molecule in VMD
 
         Parameters
         ----------
@@ -126,30 +135,32 @@ class VMD:
         color : int
             Color for the ligand. Use color numbers of VMD
         """
-        if mode == 'ligand':
+        if mode == "ligand":
             # Protein representation
-            self.send('mol modstyle 0 top NewCartoon')
+            self.send("mol modstyle 0 top NewCartoon")
             self.send('mol modselect 0 top "protein"')
             # self.send('mol modcolor 0 top Index')
             # Ligand representation
-            self.send('set rep [molinfo top get numreps]')
-            self.send('mol color ColorID ' + str(color))
-            self.send('mol representation Lines 1.000000')
-            self.send('mol selection ' + sel)
-            self.send('mol material Opaque')
-            self.send('mol addrep top')
-            self.send('set end [molinfo top get numframes]')
+            self.send("set rep [molinfo top get numreps]")
+            self.send("mol color ColorID " + str(color))
+            self.send("mol representation Lines 1.000000")
+            self.send("mol selection " + sel)
+            self.send("mol material Opaque")
+            self.send("mol addrep top")
+            self.send("set end [molinfo top get numframes]")
             self.send('mol drawframes top $rep "0:$end"')
-        elif mode == 'protein':
+        elif mode == "protein":
             # Protein representation
-            self.send('mol modstyle 0 top NewCartoon')
+            self.send("mol modstyle 0 top NewCartoon")
             self.send('mol modselect 0 top "protein"')
-            self.send('mol modcolor 0 top Index')
+            self.send("mol modcolor 0 top Index")
         else:
-            raise ValueError('Invalid mode. Choose between ''ligand'' and ''protein''')
+            raise ValueError(
+                "Invalid mode. Choose between " "ligand" " and " "protein" ""
+            )
 
     def completed(self):
-        """ Check if the viewer has been closed
+        """Check if the viewer has been closed
 
         Returns
         -------
@@ -161,8 +172,18 @@ class VMD:
     def copy(self):
         return None
 
-    def render(self, outfile, renderer='TachyonInternal', resolution=None, aasamples=None, skylight=None, tachyon=None, convert=None, trim=False):
-        """ Renders the current VMD scene into a file.
+    def render(
+        self,
+        outfile,
+        renderer="TachyonInternal",
+        resolution=None,
+        aasamples=None,
+        skylight=None,
+        tachyon=None,
+        convert=None,
+        trim=False,
+    ):
+        """Renders the current VMD scene into a file.
 
         Parameters
         ----------
@@ -184,50 +205,65 @@ class VMD:
             Trims the whitespace of the image
         """
         import shutil
+
         outfile = os.path.abspath(outfile)
         outname, ext = os.path.splitext(outfile)
 
-        if (renderer.lower() != 'tachyon') and \
-                (resolution is not None or aasamples is not None or skylight is not None or tachyon is not None):
-            raise AttributeError('resolution, aasamples, skylight and tachyon parameters only accepted with the '
-                                 'renderer=\'tachyon\' option.')
+        if (renderer.lower() != "tachyon") and (
+            resolution is not None
+            or aasamples is not None
+            or skylight is not None
+            or tachyon is not None
+        ):
+            raise AttributeError(
+                "resolution, aasamples, skylight and tachyon parameters only accepted with the "
+                "renderer='tachyon' option."
+            )
 
-        if renderer.lower() == 'tachyon':
-            tmpext = '.psd'
+        if renderer.lower() == "tachyon":
+            tmpext = ".psd"
             if tachyon is None:
-                tachyon = shutil.which('tachyon', mode=os.X_OK)
+                tachyon = shutil.which("tachyon", mode=os.X_OK)
             if tachyon is None:
-                raise FileNotFoundError("Could not find `tachyon` executable, or no execute permissions are given. Try using renderer='snapshot' instead.")
-            rendercommand = 'render Tachyon {}'.format(outname)
-        elif renderer.lower() == 'snapshot':
-            tmpext = '.tga'
-            rendercommand = 'render snapshot {}{}'.format(outname, tmpext)
-        elif renderer.lower() == 'tachyoninternal':
-            tmpext = '.tga'
-            rendercommand = 'render TachyonInternal {}{}'.format(outname, tmpext)
+                raise FileNotFoundError(
+                    "Could not find `tachyon` executable, or no execute permissions are given. Try using renderer='snapshot' instead."
+                )
+            rendercommand = f"render Tachyon {outname}"
+        elif renderer.lower() == "snapshot":
+            tmpext = ".tga"
+            rendercommand = f"render snapshot {outname}{tmpext}"
+        elif renderer.lower() == "tachyoninternal":
+            tmpext = ".tga"
+            rendercommand = f"render TachyonInternal {outname}{tmpext}"
 
         self.send(rendercommand)
-        if renderer == 'tachyon':
-            os.system('{tachyon} -res {resx} {resy} -aasamples {aa} -add_skylight {sl} {out} -format PSD48 -o {out}.psd'.format(tachyon=tachyon, resx=resolution[0], resy=resolution[1], aa=aasamples, sl=skylight, out=outname))
+        if renderer == "tachyon":
+            os.system(
+                f"{tachyon} -res {resolution[0]} {resolution[1]} -aasamples {aasamples} -add_skylight {skylight} {outname} -format PSD48 -o {outname}.psd"
+            )
         logger.debug(rendercommand)
-        if not os.path.exists(outname+tmpext):
-            raise RuntimeError('Rendering failed to produce image with following command: {}'.format(rendercommand))
+        if not os.path.exists(outname + tmpext):
+            raise RuntimeError(
+                f"Rendering failed to produce image with following command: {rendercommand}"
+            )
         if os.path.exists(outname):
             os.remove(outname)
 
         if ext != tmpext:
             if convert is None:
-                convert = shutil.which('convert', mode=os.X_OK)
+                convert = shutil.which("convert", mode=os.X_OK)
             if convert is None:
-                raise FileNotFoundError('Could not find `convert` executable, or no execute permissions are given. You can find the temporary render file in {}'.format(outname + tmpext))
+                raise FileNotFoundError(
+                    f"Could not find `convert` executable, or no execute permissions are given. You can find the temporary render file in {outname + tmpext}"
+                )
 
-            os.system('{convert} {outname}{tmpext} {outname}{ext}'.format(convert=convert, tmpext=tmpext, outname=outname, ext=ext))
+            os.system(f"{convert} {outname}{tmpext} {outname}{ext}")
             if trim:
-                os.system('{convert} {outname}{ext} -trim {outname}{ext}'.format(convert=convert, outname=outname, ext=ext))
-            os.remove(outname+tmpext)
+                os.system(f"{convert} {outname}{ext} -trim {outname}{ext}")
+            os.remove(outname + tmpext)
 
     def close(self):
-        self.send('exit')
+        self.send("exit")
 
     def __del__(self):
         self.close()
@@ -247,8 +283,8 @@ def getVMDpath(vmd=None):
     return vmd
 
 
-def getCurrentViewer(dispdev='win'):
-    """ Get the handle to the current molecular viewer
+def getCurrentViewer(dispdev="win"):
+    """Get the handle to the current molecular viewer
 
     Parameters
     ----------
@@ -277,8 +313,8 @@ def getCurrentViewer(dispdev='win'):
     return _viewers[-1]
 
 
-def viewer(dispdev='win'):
-    """ Start a new molecular viewer
+def viewer(dispdev="win"):
+    """Start a new molecular viewer
 
     Returns
     -------
@@ -299,26 +335,31 @@ def viewer(dispdev='win'):
 
 
 def _tempfilename():
-    return os.path.join(tempfile._get_default_tempdir(), next(tempfile._get_candidate_names()))
+    return os.path.join(
+        tempfile._get_default_tempdir(), next(tempfile._get_candidate_names())
+    )
 
 
 from unittest import TestCase
+
+
 class _TestVMDViewer(TestCase):
     def test_send(self):
-        viewer = getCurrentViewer(dispdev='text')
-        viewer.send('menu main off')
-        viewer.send('menu main on')
+        viewer = getCurrentViewer(dispdev="text")
+        viewer.send("menu main off")
+        viewer.send("menu main on")
         viewer.close()
 
     def test_rep(self):
         from moleculekit.molecule import Molecule
         from moleculekit.home import home
-        mol = Molecule(os.path.join(home(dataDir='pdb'), 'alanine.pdb'))
 
-        viewer = getCurrentViewer(dispdev='text')
+        mol = Molecule(os.path.join(home(dataDir="pdb"), "alanine.pdb"))
+
+        viewer = getCurrentViewer(dispdev="text")
         viewer.loadMol(mol)
-        viewer.rep(mode='protein', sel='protein')
-        viewer.rep(mode='ligand', sel='protein')
+        viewer.rep(mode="protein", sel="protein")
+        viewer.rep(mode="ligand", sel="protein")
         viewer.close()
 
 
