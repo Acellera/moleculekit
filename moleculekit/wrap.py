@@ -26,7 +26,7 @@ def wrap(coords, bonds, box, centersel=None):
         coords = coords[:, :, None]
 
     if coords.shape[1] != 3:
-        raise NameError("coords needs to be natoms x 3 x nframes")
+        raise RuntimeError("coords needs to be natoms x 3 x nframes")
 
     nframes = coords.shape[2]
     natoms = coords.shape[0]
@@ -39,9 +39,9 @@ def wrap(coords, bonds, box, centersel=None):
         raise ValueError("coords is a view with unsupported strides")
 
     if np.size(bonds, 1) != 2:
-        raise NameError("'bonds' not nbonds x 2 in length")
+        raise RuntimeError("'bonds' not nbonds x 2 in length")
     if np.size(box, 0) != 3 or np.size(box, 1) != nframes:
-        raise NameError("'box' not 3 x nframes in length")
+        raise RuntimeError("'box' not 3 x nframes in length")
 
     if platform.system() == "Windows":
         ct.cdll.LoadLibrary(os.path.join(libdir, "libgcc_s_seh-1.dll"))

@@ -146,7 +146,7 @@ class VMD:
             self.send('mol modselect 0 top "protein"')
             self.send('mol modcolor 0 top Index')
         else:
-            raise NameError('Invalid mode. Choose between ''ligand'' and ''protein''')
+            raise ValueError('Invalid mode. Choose between ''ligand'' and ''protein''')
 
     def completed(self):
         """ Check if the viewer has been closed

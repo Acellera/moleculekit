@@ -40,7 +40,7 @@ def vmdselection(selection, coordinates, atomname, atomtype, resname, resid, cha
 
     if coordinates.shape[1] != 3:
         print(coordinates.shape)
-        raise NameError("Coordinates needs to be natoms x 3 x nframes")
+        raise RuntimeError("Coordinates needs to be natoms x 3 x nframes")
 
     if coordinates.dtype != np.float32:
         raise ValueError("Coordinates is not float32")
@@ -60,29 +60,29 @@ def vmdselection(selection, coordinates, atomname, atomtype, resname, resid, cha
     #	print (len(atomname))
 
     if bonds is not None and bonds.shape[1] != 2:
-        raise NameError("'bonds' not nbonds x 2 in length")
+        raise RuntimeError("'bonds' not nbonds x 2 in length")
     if len(atomname) != natoms:
         #        print(natoms)
         #        print(len(atomname))
-        raise NameError("'atomname' not natoms in length")
+        raise RuntimeError("'atomname' not natoms in length")
     if len(atomtype) != natoms:
-        raise NameError("'atomtype' not natoms in length")
+        raise RuntimeError("'atomtype' not natoms in length")
     if len(resname) != natoms:
-        raise NameError("'resname' not natoms in length")
+        raise RuntimeError("'resname' not natoms in length")
     if len(resid) != natoms:
-        raise NameError("'resid' not natoms in length")
+        raise RuntimeError("'resid' not natoms in length")
     if chain is not None and len(chain) != natoms:
-        raise NameError("'chain' not natoms in length")
+        raise RuntimeError("'chain' not natoms in length")
     if segname is not None and len(segname) != natoms:
-        raise NameError("'segname' not natoms in length")
+        raise RuntimeError("'segname' not natoms in length")
     if insert is not None and len(insert) != natoms:
-        raise NameError("'insert' not natoms in length")
+        raise RuntimeError("'insert' not natoms in length")
     if altloc is not None and len(altloc) != natoms:
-        raise NameError("'altloc' not natoms in length")
+        raise RuntimeError("'altloc' not natoms in length")
     if beta is not None and len(beta) != natoms:
-        raise NameError("'beta' not natoms in length")
+        raise RuntimeError("'beta' not natoms in length")
     if occupancy is not None and len(occupancy) != natoms:
-        raise NameError("'occupancy' not natoms in length")
+        raise RuntimeError("'occupancy' not natoms in length")
 
     c_selection = ct.create_string_buffer(selection.encode('ascii'), len(selection) + 1)
     c_natoms = ct.c_int(natoms)
@@ -157,7 +157,7 @@ def vmdselection(selection, coordinates, atomname, atomtype, resname, resid, cha
         c_output_buffer)
 
     if retval != 0:
-        raise NameError('Could not parse selection "' + selection + '". Is the selection a valid VMD atom selection?')
+        raise RuntimeError(f'Could not parse selection "{selection}". Is the selection a valid VMD atom selection?')
 
     retval = np.empty((natoms, nframes), dtype=np.bool_)
 
@@ -192,13 +192,13 @@ def guessbonds(coordinates, element, name, resname, resid, chain, segname, inser
     nframes = coordinates.shape[2]
 
     if len(element) != natoms:
-        raise NameError("'element' not natoms in length")
+        raise RuntimeError("'element' not natoms in length")
     if len(name) != natoms:
-        raise NameError("'name' not natoms in length")
+        raise RuntimeError("'name' not natoms in length")
     if len(resname) != natoms:
-        raise NameError("'resname' not natoms in length")
+        raise RuntimeError("'resname' not natoms in length")
     if len(resid) != natoms:
-        raise NameError("'resid' not natoms in length")
+        raise RuntimeError("'resid' not natoms in length")
 
     c_natoms = ct.c_int(natoms)
     c_element = pack_string_buffer(element)

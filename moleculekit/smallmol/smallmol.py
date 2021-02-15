@@ -259,13 +259,13 @@ class SmallMol(object):
     @property
     def frame(self):
         if self._frame < 0 or self._frame >= self.numFrames:
-            raise NameError("frame out of range")
+            raise RuntimeError("frame out of range")
         return self._frame
 
     @frame.setter
     def frame(self, value):
         if value < 0 or ((self.numFrames != 0) and (value >= self.numFrames)):
-            raise NameError("Frame index out of range. Molecule contains {} frame(s). Frames are 0-indexed.".format(self.numFrames))
+            raise RuntimeError(f"Frame index out of range. Molecule contains {self.numFrames} frame(s). Frames are 0-indexed.")
         self._frame = value
 
     # Dummy properties for compatibility with Molecule

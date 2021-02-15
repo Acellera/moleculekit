@@ -63,7 +63,7 @@ def dock(
 
     """
     if np.size(protein.coords, 2) != 1 or np.size(ligand.coords, 2) != 1:
-        raise NameError("Protein and ligand Molecules should be single frames")
+        raise RuntimeError("Protein and ligand Molecules should be single frames")
 
     buffer = 10.0  # Angstrom buffer around protein for whole-protein docking
     c_min = np.min(protein.coords, 0).reshape((1, 3))[0]
@@ -109,16 +109,16 @@ def dock(
 
         vinaexe = shutil.which(vinaexe, mode=os.X_OK)
         if not vinaexe:
-            raise NameError("Could not find vina, or no execute permissions are given")
+            raise RuntimeError("Could not find vina, or no execute permissions are given")
     except:
-        raise NameError("Could not find vina, or no execute permissions are given")
+        raise RuntimeError("Could not find vina, or no execute permissions are given")
 
     try:
         babelexe = shutil.which(babelexe, mode=os.X_OK)
         if babelexe is None:
-            raise NameError("Could not find babel, or no execute permissions are given")
+            raise RuntimeError("Could not find babel, or no execute permissions are given")
     except:
-        raise NameError("Could not find babel, or no execute permissions are given")
+        raise RuntimeError("Could not find babel, or no execute permissions are given")
 
     call(
         [babelexe, "-i", "pdb", protein_pdb, "-o", "pdbqt", "-O", protein_pdbqt, "-xr"]
@@ -147,9 +147,9 @@ def dock(
     call(babelcmd)
 
     if not path.isfile(ligand_pdbqt):
-        raise NameError("Ligand could not be converted to PDBQT")
+        raise RuntimeError("Ligand could not be converted to PDBQT")
     if not path.isfile(protein_pdbqt):
-        raise NameError("Protein could not be converted to PDBQT")
+        raise RuntimeError("Protein could not be converted to PDBQT")
 
     call(
         [

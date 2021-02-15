@@ -319,13 +319,13 @@ class Molecule(object):
     def frame(self):
         """ The currently active frame of the Molecule on which methods will be applied """
         if self._frame < 0 or self._frame >= self.numFrames:
-            raise NameError("frame out of range")
+            raise RuntimeError("frame out of range")
         return self._frame
 
     @frame.setter
     def frame(self, value):
         if value < 0 or ((self.numFrames != 0) and (value >= self.numFrames)):
-            raise NameError(
+            raise RuntimeError(
                 "Frame index out of range. Molecule contains {} frame(s). Frames are 0-indexed.".format(
                     self.numFrames
                 )
@@ -426,10 +426,8 @@ class Molecule(object):
             )
         except Exception as err:
             self = backup
-            raise NameError(
-                'Failed to insert/append molecule at position {} with error: "{}"'.format(
-                    index, err
-                )
+            raise RuntimeError(
+                f'Failed to insert/append molecule at position {index} with error: "{err}"'
             )
 
     def remove(self, selection, _logger=True):
@@ -494,7 +492,7 @@ class Molecule(object):
 
         """
         if field != "index" and field not in self._atom_and_coord_fields:
-            raise NameError("Invalid field '" + field + "'")
+            raise RuntimeError(f"Invalid field '{field}'")
         s = self.atomselect(sel)
         if field == "coords":
             cc = np.squeeze(self.coords[s, :, self.frame])
@@ -526,7 +524,7 @@ class Molecule(object):
         >>> mol.set('segid', 'P', sel='protein')
         """
         if field not in self._atom_and_coord_fields:
-            raise NameError("Invalid field '" + field + "'")
+            raise RuntimeError(f"Invalid field '{field}'")
         s = self.atomselect(sel)
         if field == "coords":
             self.__dict__[field][s, :, self.frame] = value
@@ -583,12 +581,10 @@ class Molecule(object):
                 "This molecule and the reference molecule need the same number or frames to use the matchinframes option."
             )
 
-        # if not isinstance(refmol, Molecule):
-        # raise NameError('Reference molecule has to be a Molecule object')
         sel = self.atomselect(sel, indexes=True)
         refsel = refmol.atomselect(refsel, indexes=True)
         if sel.size != refsel.size:
-            raise NameError(
+            raise RuntimeError(
                 "Cannot align molecules. The two selections produced different number of atoms"
             )
         self.coords = _pp_align(
@@ -744,8 +740,8 @@ class Molecule(object):
                 bonds=self._getBonds(fileBonds, guessBonds),
             )
             if np.sum(s) == 0 and strict:
-                raise NameError(
-                    'No atoms were selected with atom selection "{}".'.format(sel)
+                raise RuntimeError(
+                    f'No atoms were selected with atom selection "{sel}".'
                 )
         else:
             s = sel
@@ -785,7 +781,9 @@ class Molecule(object):
             return np.array([], dtype=np.int32)
 
         if not isinstance(s, np.ndarray) or s.dtype != bool:
-            raise NameError("Filter can only work with string inputs or boolean arrays")
+            raise RuntimeError(
+                "Filter can only work with string inputs or boolean arrays"
+            )
         return self.remove(np.invert(s), _logger=_logger)
 
     def _updateBondsAnglesDihedrals(self, idx):
@@ -878,7 +876,7 @@ class Molecule(object):
         """
         vector = np.array(vector)
         if np.size(vector) != 3:
-            raise NameError("Move vector must be a 1x3 dimensional vector.")
+            raise ValueError("Move vector must be a 1x3 dimensional vector.")
         vector.shape = [1, 3]  # Forces it to be row vector
 
         s = self.atomselect(sel)
@@ -1057,10 +1055,8 @@ class Molecule(object):
         if frames is not None:
             frames = ensurelist(frames)
             if len(filename) != len(frames):
-                raise NameError(
-                    "Number of trajectories ({}) does not match number of frames ({}) given as arguments".format(
-                        len(filename), len(frames)
-                    )
+                raise RuntimeError(
+                    f"Number of trajectories ({len(filename)}) does not match number of frames ({len(frames)}) given as arguments"
                 )
         else:
             frames = [None] * len(filename)
@@ -2333,7 +2329,7 @@ class Representations:
 
     def append(self, reps):
         if not isinstance(reps, Representations):
-            raise NameError("You can only append Representations objects.")
+            raise RuntimeError("You can only append Representations objects.")
         self.replist += reps.replist
 
     def add(self, sel=None, style=None, color=None):

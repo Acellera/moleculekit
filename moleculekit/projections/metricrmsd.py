@@ -64,15 +64,15 @@ class MetricRmsd(Projection):
         if 'trajalnsel' in props:
             res['trajalnsel'] = mol.atomselect(self._trajalnsel)
             if np.sum(res['trajalnsel']) == 0:
-                raise NameError('Alignment selection resulted in 0 atoms.')
+                raise RuntimeError('Alignment selection resulted in 0 atoms.')
         if 'trajrmsdsel' in props:
             res['trajrmsdsel'] = mol.atomselect(self._trajrmsdsel)
             if np.sum(res['trajrmsdsel']) == 0:
-                raise NameError('RMSD selection resulted in 0 atoms.')
+                raise RuntimeError('RMSD selection resulted in 0 atoms.')
         if 'centersel' in props and self._pbc:
             res['centersel'] = mol.atomselect(self._centersel)
             if np.sum(res['centersel']) == 0:
-                raise NameError('Center selection resulted in 0 atoms.')
+                raise RuntimeError('Center selection resulted in 0 atoms.')
 
         return res
 

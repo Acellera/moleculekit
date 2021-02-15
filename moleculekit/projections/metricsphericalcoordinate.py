@@ -89,15 +89,15 @@ class MetricSphericalCoordinate(Projection):
         if 'trajalnsel' in props:
             res['trajalnsel'] = mol.atomselect(self._trajalnsel)
             if np.sum(res['trajalnsel']) == 0:
-                raise NameError('Alignment selection resulted in 0 atoms.')
+                raise RuntimeError('Alignment selection resulted in 0 atoms.')
         if 'targetcom' in props:
             res['targetcom'] = mol.atomselect(self._targetcom)
             if np.sum(res['targetcom']) == 0:
-                raise NameError('Atom selection for `targetcom` resulted in 0 atoms.')
+                raise RuntimeError('Atom selection for `targetcom` resulted in 0 atoms.')
         if 'refcom' in props:
             res['refcom'] = mol.atomselect(self._refcom)
             if np.sum(res['refcom']) == 0:
-                raise NameError('Atom selection for `refcom` resulted in 0 atoms.')
+                raise RuntimeError('Atom selection for `refcom` resulted in 0 atoms.')
         return res
 
     def getMapping(self, mol):

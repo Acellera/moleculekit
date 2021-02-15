@@ -78,7 +78,7 @@ def pp_calcDistances(
     elif metric == "distances":
         pass
     else:
-        raise NameError(
+        raise RuntimeError(
             "The metric you asked for is not supported. Check spelling and documentation"
         )
     return results
@@ -177,7 +177,7 @@ def pp_calcMinDistances(
     elif metric == "distances":
         pass
     else:
-        raise NameError(
+        raise RuntimeError(
             "The metric you asked for is not supported. Check spelling and documentation"
         )
     return mindist
@@ -198,4 +198,3 @@ def _wrapDistances(box, dist, diffchain):
     else:
         dist = dist - box * np.round(dist / box)
     return dist
-

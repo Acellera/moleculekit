@@ -39,7 +39,7 @@ class MetricTMscore(Projection):
         res = {}
         res['trajtmsel'] = mol.atomselect(self._trajtmsel) & (mol.name == 'CA')
         if np.sum(res['trajtmsel']) == 0:
-            raise NameError('RMSD atom selection resulted in 0 atoms.')
+            raise RuntimeError('RMSD atom selection resulted in 0 atoms.')
         return res
 
     def project(self, mol):

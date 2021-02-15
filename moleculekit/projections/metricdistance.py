@@ -164,7 +164,7 @@ class MetricDistance(Projection):
             elif groupsel == "residue":
                 sel = self._groupByResidue(mol, sel)
             else:
-                raise NameError("Invalid groupsel argument")
+                raise RuntimeError("Invalid groupsel argument")
         elif isinstance(sel, np.ndarray) or isinstance(
             sel, list
         ):  # If user passes his own sets of groups
@@ -175,7 +175,7 @@ class MetricDistance(Projection):
             )
 
         if np.sum(sel) == 0:
-            raise NameError("Selection returned 0 atoms")
+            raise RuntimeError("Selection returned 0 atoms")
         return sel
 
     def _processMultiSelections(self, mol, sel):

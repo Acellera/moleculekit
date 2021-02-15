@@ -1563,7 +1563,7 @@ def XTCread(filename, frame=None, topoloc=None):
                     ct.c_char_p(filename.encode("ascii")), natoms_r, ct.c_int(f)
                 )
                 if not retval:
-                    raise IOError("XTC file {} possibly corrupt.".format(filename))
+                    raise RuntimeError(f"XTC file {filename} possibly corrupt.")
                 if coords is None:
                     coords = np.zeros((natoms_r[0], 3, nframes), dtype=np.float32)
                 fidx = 0
@@ -1587,9 +1587,9 @@ def XTCread(filename, frame=None, topoloc=None):
             lib["libc"].free(retval)
 
     if np.size(coords, 2) == 0:
-        raise NameError("Malformed XTC file. No frames read from: {}".format(filename))
+        raise RuntimeError(f"Malformed XTC file. No frames read from: {filename}")
     if np.size(coords, 0) == 0:
-        raise NameError("Malformed XTC file. No atoms read from: {}".format(filename))
+        raise RuntimeError(f"Malformed XTC file. No atoms read from: {filename}")
 
     coords *= 10.0  # Convert from nm to Angstrom
     box *= 10.0  # Convert from nm to Angstrom
