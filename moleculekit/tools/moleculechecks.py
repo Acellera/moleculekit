@@ -90,14 +90,14 @@ def isLigandDocked(prot, lig, threshold=10):
     return dist < threshold
 
 
-def areLigandsDocked(prot_file, sdf_file, threshold=10, maxCheck=None):
+def areLigandsDocked(prot_file, sdf_file, threshold=10, max_check=None):
     from moleculekit.smallmol.smallmollib import SmallMolLib
     from moleculekit.molecule import Molecule
 
     not_docked = []
     prot = Molecule(prot_file)
     for i, lig in enumerate(SmallMolLib(sdf_file)):
-        if maxCheck is not None and i >= maxCheck:
+        if max_check is not None and i >= max_check:
             break
 
         ligname = lig.ligname
@@ -109,15 +109,18 @@ def areLigandsDocked(prot_file, sdf_file, threshold=10, maxCheck=None):
     return len(not_docked) == 0, not_docked
 
 
-def areLigandsOptimized(sdf_file):
+def areLigandsOptimized(sdf_file, num_planes=3, max_check=None):
     from moleculekit.smallmol.smallmollib import SmallMolLib
 
     not_optimized = []
-    for lig in SmallMolLib(sdf_file):
+    for i, lig in enumerate(SmallMolLib(sdf_file)):
+        if max_check is not None and i >= max_check:
+            break
+
         ligname = lig.ligname
         lig = lig.toMolecule()
 
-        if not isLigandOptimized(lig):
+        if not isLigandOptimized(lig, num_planes=num_planes):
             not_optimized.append(ligname)
 
     return len(not_optimized) == 0, not_optimized

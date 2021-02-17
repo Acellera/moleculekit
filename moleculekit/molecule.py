@@ -1132,8 +1132,7 @@ class Molecule(object):
                 and mol.numAtoms != self.numAtoms
             ):
                 raise ValueError(
-                    "Number of atoms in file ({}) mismatch with number of atoms in the molecule "
-                    "({})".format(mol.numAtoms, self.numAtoms)
+                    f"Number of atoms in file ({mol.numAtoms}) mismatch with number of atoms in the molecule ({self.numAtoms})"
                 )
 
             # TODO: Needs redesign to remove hack
