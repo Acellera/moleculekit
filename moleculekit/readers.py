@@ -2148,10 +2148,12 @@ def SDFread(filename, frame=None, topoloc=None):
         coords = []
         mol_start = 0
 
-        n_atoms, n_bonds = lines[mol_start+3].split()[:2]
+        n_atoms = int(lines[mol_start+3][:3])
+        n_bonds = int(lines[mol_start+3][3:6])
+
         coord_start = mol_start + 4
-        bond_start = coord_start + int(n_atoms)
-        bond_end = bond_start+int(n_bonds)
+        bond_start = coord_start + n_atoms
+        bond_end = bond_start + n_bonds
         for n in range(coord_start, bond_start):
             pieces = lines[n].strip().split()
             coords.append(list(map(float, pieces[:3])))
