@@ -1,6 +1,6 @@
 steps:
 - bash: |
-    source activate test
+    source activate test$(python.version)
     python setup.py bdist bdist_wheel
   displayName: Building PyPI package
 

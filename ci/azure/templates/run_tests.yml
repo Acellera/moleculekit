@@ -1,15 +1,15 @@
 steps:
-- bash: conda create -y -q --name test python=$(python.version)
+- bash: conda create -y -q --name test$(python.version) python=$(python.version)
   displayName: Create Anaconda test environment
 
 - bash: |
-    source activate test
+    source activate test$(python.version)
     python -m pip install --upgrade pip setuptools wheel
     pip install twine codecov coverage
   displayName: Install pip packages
 
 - bash: |
-    source activate test
+    source activate test$(python.version)
     conda install -y -q --file extra_requirements.txt -c acellera -c conda-forge  # Installing extra dependencies for tests
   displayName: Install Anaconda packages
 
@@ -19,13 +19,13 @@ steps:
     CONDA_PY: $(python.version)
 
 - bash: |
-    source activate test
-    pip install Cython
+    source activate test$(python.version)
+    pip install Cython==0.29.21
     pip install .
   displayName: Install moleculekit locally
 
 - bash: |
-    source activate test
+    source activate test$(python.version)
     coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
   condition: succeededOrFailed()
   displayName: Run tests
