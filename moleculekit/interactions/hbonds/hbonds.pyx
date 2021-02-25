@@ -26,8 +26,10 @@ def calculate(
         np.ndarray[UINT32_t, ndim=1] acceptors, 
         np.ndarray[FLOAT32_t, ndim=3] coords, 
         np.ndarray[FLOAT32_t, ndim=2] box,
-        float dist_threshold,
-        float angle_threshold,
+        np.ndarray[UINT32_t, ndim=1] sel1, 
+        np.ndarray[UINT32_t, ndim=1] sel2, 
+        float dist_threshold=2.5,
+        float angle_threshold=120,
     ):
     cdef int d, a, f, i
     cdef int n_donors = donors.shape[0]
@@ -38,7 +40,7 @@ def calculate(
     cdef np.ndarray[FLOAT32_t, ndim=1] dist_vec_b = np.zeros(3, dtype=FLOAT32)
     cdef np.ndarray[FLOAT32_t, ndim=1] half_box = np.zeros(3, dtype=FLOAT32)
     cdef FLOAT32_t dist2_a, dist2_b, dotprod, val, angle
-    cdef int d_idx
+    cdef UINT32_t d_idx_d, d_idx_h, a_idx
 
     dist_threshold = dist_threshold * dist_threshold
     angle_threshold = angle_threshold / 57.29578
@@ -50,17 +52,29 @@ def calculate(
 
         for d in range(n_donors):
             for a in range(n_acceptors):
-                if acceptors[a] == donors[d, 0]:
+                a_idx = acceptors[a]
+                d_idx_d = donors[d, 0]
+                d_idx_h = donors[d, 1]
+
+                # Don't calculate h-bonds with identical donor-acceptor atom
+                if a_idx == d_idx_d:
                     continue
+
+                # Donor and acceptor must belong to different selections
+                if sel1[a_idx] != 0:
+                    if sel2[d_idx_d] == 0:
+                        continue
+                if sel1[d_idx_d] != 0:
+                    if sel2[a_idx] == 0:
+                        continue
 
                 dist2_a = 0
                 dist2_b = 0
                 # Calculate donor hydrogen to acceptor vector
                 for i in range(3):
-                    val = coords[acceptors[a], i, f] - coords[donors[d, 1], i, f] 
+                    val = coords[a_idx, i, f] - coords[d_idx_h, i, f] 
                     # Wrap the distance vector into the periodic box
                     if abs(val) > half_box[i] and box[i, f] != 0:
-                        print("wrapped!")
                         val = val - box[i, f] * round(val / box[i, f])
                     dist_vec_a[i] = val
                     dist2_a = dist2_a + (val * val)
@@ -71,7 +85,7 @@ def calculate(
 
                 # Calculate donor heavy to donor hydrogen vector for the angle
                 for i in range(3):
-                    val = coords[donors[d, 0], i, f] - coords[donors[d, 1], i, f] 
+                    val = coords[d_idx_d, i, f] - coords[d_idx_h, i, f] 
                     # Wrap the distance vector into the periodic box
                     if abs(val) > half_box[i] and box[i, f] != 0:
                         val = val - box[i, f] * round(val / box[i, f])
@@ -97,9 +111,9 @@ def calculate(
                 angle = acos(angle)
 
                 if angle > angle_threshold:
-                    print(donors[d, 0], donors[d, 1], acceptors[a], sqrt(dist2_a), angle)
-                    results[f].push_back(d)
-                    results[f].push_back(a)
+                    results[f].push_back(d_idx_d)
+                    results[f].push_back(d_idx_h)
+                    results[f].push_back(a_idx)
 
     return results
 
