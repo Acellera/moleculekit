@@ -20,6 +20,7 @@ steps:
 
 - bash: |
     source activate test
+    pip install Cython
     pip install .
   displayName: Install moleculekit locally
 
