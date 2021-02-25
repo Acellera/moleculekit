@@ -85,7 +85,7 @@ def view_hbonds(mol, hbonds):
         mol.view()
         for i in range(hbonds[f].shape[0]):
             VMDCylinder(
-                mol.coords[hbonds[f][i, 0], :, f],
+                mol.coords[hbonds[f][i, 1], :, f],
                 mol.coords[hbonds[f][i, 2], :, f],
                 radius=0.1,
             )
