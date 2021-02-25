@@ -4,3 +4,4 @@ numba
 pandas>=1.1.2
 networkx
 tqdm
+Cython>=0.29.21
