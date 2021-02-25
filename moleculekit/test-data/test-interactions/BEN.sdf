@@ -1,0 +1,82 @@
+BEN
+     RDKit          3D
+
+ 17 17  0  0  0  0  0  0  0  0999 V2000
+   -1.8530   14.3110   16.6580 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.1070   15.6530   16.7580 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.7740   16.3410   17.9320 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.1750   15.6620   19.0050 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.9140   14.2950   18.8850 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.2570   13.6340   17.7080 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.1930   13.6270   15.4960 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.7970   14.2350   14.4910 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.7620   12.3910   15.3090 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.5717   16.1898   15.9179 H   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.9827   17.4179   18.0135 H   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.9145   16.1997   19.9286 H   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.4418   13.7455   19.7127 H   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.0512   12.5578   17.6114 H   0  0  0  0  0  0  0  0  0  0  0  0
+   -3.0389   13.7072   13.6403 H   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.0128   11.8827   14.4490 H   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.1755   11.9365   16.0234 H   0  0  0  0  0  0  0  0  0  0  0  0
+  1  2  2  0
+  1  6  1  0
+  1  7  1  0
+  2  3  1  0
+  3  4  2  0
+  4  5  1  0
+  5  6  2  0
+  7  8  2  3
+  7  9  1  0
+  2 10  1  0
+  3 11  1  0
+  4 12  1  0
+  5 13  1  0
+  6 14  1  0
+  8 15  1  0
+  9 16  1  0
+  9 17  1  0
+M  END
+>  <model_server_result.job_id>  (1) 
+KE4JBVnCsMKCw4nDsXPDvU
+
+>  <model_server_result.datetime_utc>  (1) 
+2021-02-15 14:04:44
+
+>  <model_server_result.server_version>  (1) 
+0.9.6
+
+>  <model_server_result.query_name>  (1) 
+ligand
+
+>  <model_server_result.source_id>  (1) 
+pdb-bcif
+
+>  <model_server_result.entry_id>  (1) 
+3ptb
+
+>  <model_server_params.name>  (1) 
+atom_site
+
+>  <model_server_params.value>  (1) 
+{"label_comp_id":"BEN"}
+
+>  <model_server_stats.io_time_ms>  (1) 
+7
+
+>  <model_server_stats.parse_time_ms>  (1) 
+30
+
+>  <model_server_stats.create_model_time_ms>  (1) 
+10
+
+>  <model_server_stats.query_time_ms>  (1) 
+199
+
+>  <model_server_stats.encode_time_ms>  (1) 
+0
+
+>  <model_server_stats.element_count>  (1) 
+9
+
+$$$$

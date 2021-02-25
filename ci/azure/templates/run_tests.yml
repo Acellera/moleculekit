@@ -20,7 +20,9 @@ steps:
 
 - bash: |
     source activate test
+    pip install cython==0.29.21
     pip install .
+    python setup.py build_ext --inplace
   displayName: Install moleculekit locally
 
 - bash: |
