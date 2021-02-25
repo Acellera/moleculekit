@@ -84,3 +84,11 @@ mol.view()
 
 For any bugs or questions on usage feel free to use the issue tracker of this github repo.
 For the official documentation of moleculekit head over to https://software.acellera.com/docs/latest/moleculekit/index.html 
+
+### Dev
+
+If you are using moleculekit without installing it by using the PYTHONPATH env var you will need to compile the C++ extensions in-place with the following command:
+
+```
+python setup.py build_ext --inplace
+```
