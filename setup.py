@@ -15,7 +15,7 @@ with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
 # extra_compile_args = ["-O3",]
-interactions_ext = Extension(
+hbonds_ext = Extension(
     name="moleculekit.interactions.hbonds",
     sources=["moleculekit/interactions/hbonds/hbonds.pyx"],
     include_dirs=[numpy.get_include()],
@@ -24,6 +24,13 @@ interactions_ext = Extension(
     # libraries=["examples"],
     # library_dirs=["lib"],
 )
+pipi_ext = Extension(
+    name="moleculekit.interactions.pipi",
+    sources=["moleculekit/interactions/pipi/pipi.pyx"],
+    include_dirs=[numpy.get_include()],
+    language="c++",
+)
+interactions_ext = [hbonds_ext, pipi_ext]
 
 if __name__ == "__main__":
     with open("README.md", "r") as fh:
@@ -55,5 +62,5 @@ if __name__ == "__main__":
         zip_safe=False,
         test_suite="setup.my_test_suite",
         install_requires=requirements,
-        ext_modules=cythonize([interactions_ext]),
+        ext_modules=cythonize(interactions_ext),
     )
