@@ -18,7 +18,7 @@ FLOAT32 = np.float32
 ctypedef np.uint32_t UINT32_t
 ctypedef np.float32_t FLOAT32_t
 
-cdef get_plane():
+# cdef get_plane():
     
 
 import cython
