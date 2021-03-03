@@ -1,0 +1,108 @@
+# GNU LGPL v3
+# Copyright (C) 2015-2018 Acellera
+# info@acellera.com
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 3 of the License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+import sys
+
+
+def getOpenBabelProperties(mol):
+    import subprocess
+    import os
+    from moleculekit.util import tempname
+
+    pdbfile = tempname(suffix=".pdb")
+    outfile = tempname(suffix=".csv")
+    mol.write(pdbfile)
+
+    obabelcli = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "obabel_cli.py"
+    )
+
+    try:
+        output = subprocess.check_output(
+            [sys.executable, obabelcli, pdbfile, outfile],
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        print(
+            "Failed to call getOpenBabelProperties with error",
+            exc.returncode,
+            exc.output,
+        )
+    else:
+        print(output)
+
+    os.remove(pdbfile)
+
+    atoms = []
+    with open(outfile, "r") as f:
+        for line in f:
+            pieces = line.split(",")
+            pieces[1] = int(pieces[1])
+            pieces[4] = float(pieces[4])
+            atoms.append(pieces)
+
+    return atoms
+
+
+def openbabelConvert(input_file, input_format, output_format, extra_args=()):
+    """
+    Converts the file from the input format to the output format specified. It uses the openbabel features
+
+    Parameters
+    ----------
+    input_file: str
+        The path of the input file to convert
+    input_format: str
+        The input file format
+    output_format: str
+        The output file format
+
+    Returns
+    -------
+    outfile: str
+        The output file generated
+    """
+    import subprocess
+    from moleculekit.util import tempname
+
+    input_format = input_format[1:] if input_format.startswith(".") else input_format
+    output_format = (
+        output_format[1:] if output_format.startswith(".") else output_format
+    )
+
+    outfile = tempname(suffix=f".{output_format}")
+    try:
+        output = subprocess.check_output(
+            [
+                "obabel",
+                f"-i{input_format}",
+                input_file,
+                f"-o{output_format}",
+                f"-O{outfile}",
+                *extra_args,
+            ],
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        print("Failed to call openbabel with error", exc.returncode, exc.output)
+    else:
+        print(output)
+
+    return outfile

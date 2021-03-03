@@ -98,37 +98,6 @@ def getPDBQTAtomType(atype, aidx, mol, aromaticNitrogen=False):
     return tmptype
 
 
-def getProperties(mol):
-    try:
-        from openbabel import pybel
-    except ImportError:
-        raise ImportError(
-            "Could not import openbabel. The atomtyper requires this dependency so please install it with `conda install openbabel -c conda-forge`"
-        )
-
-    name = NamedTemporaryFile(suffix=".pdb").name
-    mol.write(name)
-    mpybel = next(pybel.readfile("pdb", name))
-
-    # print(name)
-    residues = pybel.ob.OBResidueIter(mpybel.OBMol)
-    atoms = [
-        [
-            r.GetName(),
-            r.GetNum(),
-            r.GetAtomID(at),
-            at.GetType(),
-            round(at.GetPartialCharge(), 3),
-        ]
-        for r in residues
-        for at in pybel.ob.OBResidueAtomIter(r)
-    ]
-
-    os.remove(name)
-
-    return atoms
-
-
 def prepareProteinForAtomtyping(
     mol, guessBonds=True, protonate=True, pH=7, segment=True, verbose=True
 ):
@@ -297,16 +266,17 @@ def atomtypingValidityChecks(mol):
 
 
 def getPDBQTAtomTypesAndCharges(mol, aromaticNitrogen=False, validitychecks=True):
+    from moleculekit.tools.obabel_tools import getOpenBabelProperties
+
     if validitychecks:
         atomtypingValidityChecks(mol)
 
-    atomsProp = getProperties(mol)
-    for n, a in enumerate(atomsProp):
+    atomsProp = getOpenBabelProperties(mol)
+    for a in atomsProp:
         if a[0] == "HIP":
             if a[2].strip().startswith("C") and a[2].strip() not in ["CA", "C", "CB"]:
                 a[3] = "Car"
 
-            # print(n, a)
     charges = ["{0:.3f}".format(a[-1]) for a in atomsProp]
     pdbqtATypes = [
         getPDBQTAtomType(a[3], n, mol, aromaticNitrogen)
