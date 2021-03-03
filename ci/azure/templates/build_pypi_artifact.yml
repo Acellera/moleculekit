@@ -1,7 +1,7 @@
 steps:
 - bash: |
     source activate test
-    pip install auditwheel numpy>=1.18.5 Cython>=0.29.21
+    pip install auditwheel
     python setup.py bdist bdist_wheel
     auditwheel repair dist/moleculekit-*-cp38-cp38-linux_86_64.whl
     mv wheelhouse/* dist
