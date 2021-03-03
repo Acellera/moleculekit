@@ -1,6 +1,7 @@
 steps:
 - bash: |
     source activate test
+    pip install cython==0.29.21
     python setup.py bdist bdist_wheel
   displayName: Building PyPI package
 
