@@ -12,6 +12,7 @@ requirements:
   host:
     - python
     - cython
+    - numpy>=1.18.5
 DEPENDENCY_PLACEHOLDER
   run:
     - python
