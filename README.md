@@ -13,6 +13,7 @@ We recommend installing Miniconda on your machine to better manage python packag
 
 You can install moleculekit either in the "base" conda environment or in a new conda environment. We recommend the second.
 
+
 ### Install it into the base conda environment
 
 #### With conda
@@ -92,3 +93,13 @@ If you are using moleculekit without installing it by using the PYTHONPATH env v
 ```
 python setup.py build_ext --inplace
 ```
+
+## Citing MoleculeKit
+
+If you use this software in your publication please cite:
+
+Stefan Doerr, Matthew J. Harvey, Frank Noé, and Gianni De Fabritiis. 
+**HTMD: High-throughput molecular dynamics for molecular discovery.** 
+*Journal of Chemical Theory and Computation*, **2016**, *12* (4), pp 1845–1852.
+[doi:10.1021/acs.jctc.6b00049](http://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b00049)
+
