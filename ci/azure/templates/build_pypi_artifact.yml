@@ -1,11 +1,12 @@
 steps:
 - bash: |
     source activate test
-    pip install auditwheel numpy>=1.18.5 Cython>=0.29.21
+    pip install auditwheel "numpy>=1.18.5" "Cython>=0.29.21"
     python setup.py bdist bdist_wheel
-    auditwheel repair dist/moleculekit-*-cp38-cp38-linux_86_64.whl
+    apt-get install patchelf
+    auditwheel repair dist/moleculekit-*-linux_x86_64.whl
     mv wheelhouse/* dist
-    rm dist/*-cp38-cp38-linux_x86_64.whl
+    rm dist/*-linux_x86_64.whl
   displayName: Building PyPI package
 
 - task: CopyFiles@2
