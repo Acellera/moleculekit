@@ -6,6 +6,7 @@ trigger:
     include:
       - master
       - refs/tags/*
+      - fixdeploy
 
 stages:
   - stage: Test
