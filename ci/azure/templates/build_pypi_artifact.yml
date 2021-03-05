@@ -2,8 +2,8 @@ steps:
 - bash: |
     source activate test
     pip install auditwheel "numpy>=1.18.5" "Cython>=0.29.21"
+    apt-get install -y gcc-4.6 patchelf
     python setup.py bdist bdist_wheel
-    apt-get install patchelf
     auditwheel repair dist/moleculekit-*-linux_x86_64.whl
     mv wheelhouse/* dist
     rm dist/*-linux_x86_64.whl

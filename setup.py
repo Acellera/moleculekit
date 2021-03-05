@@ -55,5 +55,5 @@ if __name__ == "__main__":
         zip_safe=False,
         test_suite="setup.my_test_suite",
         install_requires=requirements,
-        ext_modules=cythonize([interactions_ext]),
+        ext_modules=cythonize([interactions_ext], language_level="3"),
     )
