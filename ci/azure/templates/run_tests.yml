@@ -25,8 +25,8 @@ steps:
     python setup.py build_ext --inplace
   displayName: Install moleculekit locally
 
-- bash: |
-    source activate test
-    coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
-  condition: succeededOrFailed()
-  displayName: Run tests
+# - bash: |
+#     source activate test
+#     coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
+#   condition: succeededOrFailed()
+#   displayName: Run tests
