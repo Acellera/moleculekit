@@ -21,10 +21,12 @@ jobs:
           python.version: '3.6'
           DOCKER_IMAGE: quay.io/pypa/manylinux1_x86_64
           PLAT: manylinux1_x86_64
+          PRE_CMD: ""
         Python37:
           python.version: '3.7'
           DOCKER_IMAGE: quay.io/pypa/manylinux1_x86_64
           PLAT: manylinux1_x86_64
+          PRE_CMD: ""
       maxParallel: 2
 
     variables:
@@ -36,7 +38,7 @@ jobs:
     - bash:  conda install -y -q conda-build=3
       displayName: Installing conda-build
 
-    - bash: python ci/travis/insert_placeholder_values.py
+    - bash: python ci/insert_placeholder_values.py
       displayName: Insert version number and dependencies into pip and conda recipes
       env:
         CONDA_PY: $(python.version)
