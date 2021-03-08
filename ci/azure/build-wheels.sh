@@ -11,11 +11,14 @@ function repair_wheel {
 }
 
 
-# Install a system package required by our library
-yum install -y atlas-devel
+pythonversions=(
+    "cp36-cp36m"
+    "cp37-cp37m"
+    "cp38-cp38"
+)
 
 # Compile wheels
-for PYBIN in /opt/python/cp3*/bin; do
+for PYBIN in "/opt/python/${pythonversions[@]}/bin"; do
     "${PYBIN}/pip" install -r /io/requirements.txt
     "${PYBIN}/pip" install Cython>=0.29.21 
     "${PYBIN}/pip" wheel /io/ --no-deps -w wheelhouse/
