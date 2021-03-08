@@ -103,10 +103,10 @@ class SmallMol(object):
     _mol_fields = ["ligname", "_mol"]
 
     _dtypes = {
-        "idx": np.int,
+        "idx": int,
         "name": object,
         "charge": np.float32,
-        "formalcharge": np.int,
+        "formalcharge": int,
         "element": object,
         "chiral": object,
         "hybridization": int,

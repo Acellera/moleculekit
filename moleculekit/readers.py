@@ -916,12 +916,12 @@ def PDBread(
         )
     topodtypes = {
         "record": str,
-        "serial": np.int,
+        "serial": int,
         "name": str,
         "altloc": str,
         "resname": str,
         "chain": str,
-        "resid": np.int,
+        "resid": int,
         "insertion": str,
         "occupancy": np.float32,
         "beta": np.float32,
@@ -1184,7 +1184,7 @@ def PDBread(
     serials = parsedtopo.serial.values
     # if isinstance(serials[0], str) and np.any(serials == '*****'):
     #     logger.info('Non-integer serials were read. For safety we will discard all bond information and serials will be assigned automatically.')
-    #     topo.serial = np.arange(1, len(serials)+1, dtype=np.int)
+    #     topo.serial = np.arange(1, len(serials)+1, dtype=int)
     if np.max(parsedbonds.max()) > np.max(serials):
         logger.info(
             "Bond indexes in PDB file exceed atom indexes. For safety we will discard all bond information."
