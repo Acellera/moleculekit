@@ -200,12 +200,12 @@ class Molecule(object):
 
     _dtypes = {
         "record": object,
-        "serial": np.int,
+        "serial": int,
         "name": object,
         "altloc": object,
         "resname": object,
         "chain": object,
-        "resid": np.int,
+        "resid": int,
         "insertion": object,
         "coords": np.float32,
         "occupancy": np.float32,
@@ -2299,14 +2299,13 @@ def calculateUniqueBonds(bonds, bondtype):
         )
         bonds = unique_sorted[:, :2].astype(np.uint32)
         bondtypes = unique_sorted[:, 2].astype(object)
-        # Sort both arrays for prettiness by the first bond index
-        sortidx = np.argsort(bonds[:, 0])
+        # Sort both arrays for prettiness by the first then second bond index
+        sortidx = np.lexsort((bonds[:, 1], bonds[:, 0]))
         return bonds[sortidx].copy(), bondtypes[sortidx].copy()
     else:
         bonds = np.array(list(set(tuple(bb) for bb in np.sort(bonds, axis=1).tolist())))
-        sortidx = np.argsort(
-            bonds[:, 0]
-        )  # Sort array for prettiness by the first bond index
+        # Sort both arrays for prettiness by the first then second bond index
+        sortidx = np.lexsort((bonds[:, 1], bonds[:, 0]))
         return (
             bonds[sortidx].astype(np.uint32).copy(),
             None

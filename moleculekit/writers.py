@@ -774,7 +774,7 @@ class _TestWriters(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         from moleculekit.home import home
-        from moleculekit.molecule import Molecule
+        from moleculekit.molecule import Molecule, calculateUniqueBonds
         import numpy as np
         import os
 
@@ -789,6 +789,7 @@ class _TestWriters(unittest.TestCase):
         mol.time = np.arange(2) * 1e5
         mol.fileloc = [mol.fileloc[0], mol.fileloc[0]]
         mol.bondtype[:] = "1"
+        mol.bonds, mol.bondtype = calculateUniqueBonds(mol.bonds, mol.bondtype)
         self.mol = mol
 
     def test_writers(self):
