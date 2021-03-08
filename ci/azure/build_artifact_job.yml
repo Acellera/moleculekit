@@ -23,8 +23,9 @@ jobs:
           python.version: '3.7'
         Python38:
           python.version: '3.8'
-        Python39:
-          python.version: '3.9'
+        # Need to wait for numba to support 3.9. Should be done around March 2021 https://github.com/numba/numba/issues/6345 
+        # Python39:
+        #   python.version: '3.9'
       maxParallel: 4
 
     variables:
