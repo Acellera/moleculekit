@@ -1,6 +1,7 @@
 steps:
 - bash: |
     source activate test
+    pip install numpy>=1.18.5 Cython>=0.29.21
     python setup.py build sdist
   displayName: Building PyPI package
 
