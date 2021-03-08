@@ -18,10 +18,10 @@ pythonversions=(
 )
 
 # Compile wheels
-for PYBIN in "/opt/python/${pythonversions[@]}/bin"; do
-    "${PYBIN}/pip" install -r /io/requirements.txt
-    "${PYBIN}/pip" install Cython>=0.29.21 
-    "${PYBIN}/pip" wheel /io/ --no-deps -w wheelhouse/
+for PYBIN in "${pythonversions[@]}"; do
+    "/opt/python/${PYBIN}/bin/pip" install -r /io/requirements.txt
+    "/opt/python/${PYBIN}/bin/pip" install Cython>=0.29.21 
+    "/opt/python/${PYBIN}/bin/pip" wheel /io/ --no-deps -w wheelhouse/
 done
 
 # Bundle external shared libraries into the wheels
