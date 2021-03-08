@@ -19,14 +19,8 @@ jobs:
       matrix:
         Python36:
           python.version: '3.6'
-          DOCKER_IMAGE: quay.io/pypa/manylinux2014_x86_64
-          PLAT: manylinux2014_x86_64
-          PRE_CMD: ""
         Python37:
           python.version: '3.7'
-          DOCKER_IMAGE: quay.io/pypa/manylinux2014_x86_64
-          PLAT: manylinux2014_x86_64
-          PRE_CMD: ""
       maxParallel: 2
 
     variables:
