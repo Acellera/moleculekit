@@ -3,14 +3,12 @@ steps:
     source activate test
     docker pull $(DOCKER_IMAGE)
     docker run --rm -e PLAT=$(PLAT) -v `pwd`:/io $(DOCKER_IMAGE) $(PRE_CMD) /io/ci/azure/build-wheels.sh
-    mv wheelhouse/* dist
   displayName: Building PyPI package
 
 - task: CopyFiles@2
   displayName: 'Copy pypi files to: $(Build.ArtifactStagingDirectory)'
   inputs:
     Contents: |
-      dist/moleculekit-*.tar.gz
-      dist/moleculekit-*.whl
+      wheelhouse/moleculekit-*.whl
     targetFolder: $(Build.ArtifactStagingDirectory)/pypi/
     flattenFolders: true
