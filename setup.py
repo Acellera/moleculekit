@@ -39,7 +39,7 @@ if __name__ == "__main__":
         long_description_content_type="text/markdown",
         url="https://github.com/acellera/moleculekit/",
         classifiers=[
-            "Programming Language :: Python :: PYTHON_VERSION_PLACEHOLDER",
+            "Programming Language :: Python :: 3",
             "Operating System :: POSIX :: Linux",
         ],
         packages=setuptools.find_packages(

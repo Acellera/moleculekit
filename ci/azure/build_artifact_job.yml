@@ -32,7 +32,7 @@ jobs:
     - bash:  conda install -y -q conda-build=3
       displayName: Installing conda-build
 
-    - bash: python ci/travis/insert_placeholder_values.py
+    - bash: python ci/insert_placeholder_values.py
       displayName: Insert version number and dependencies into pip and conda recipes
       env:
         CONDA_PY: $(python.version)

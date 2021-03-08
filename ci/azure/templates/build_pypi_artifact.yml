@@ -1,12 +1,8 @@
 steps:
 - bash: |
     source activate test
-    pip install auditwheel "numpy>=1.18.5" "Cython>=0.29.21"
-    sudo apt-get install -y gcc-4.6 patchelf build-essential gcc-c++
-    CC=gcc-4.6 CXX=g++-4.6 python setup.py bdist bdist_wheel
-    auditwheel repair dist/moleculekit-*-linux_x86_64.whl
-    mv wheelhouse/* dist
-    rm dist/*-linux_x86_64.whl
+    pip install numpy>=1.18.5 Cython>=0.29.21
+    python setup.py build sdist
   displayName: Building PyPI package
 
 - task: CopyFiles@2
@@ -14,6 +10,5 @@ steps:
   inputs:
     Contents: |
       dist/moleculekit-*.tar.gz
-      dist/moleculekit-*.whl
     targetFolder: $(Build.ArtifactStagingDirectory)/pypi/
     flattenFolders: true

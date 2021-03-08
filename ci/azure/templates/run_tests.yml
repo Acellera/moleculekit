@@ -13,7 +13,7 @@ steps:
     conda install -y -q --file extra_requirements.txt -c acellera -c conda-forge  # Installing extra dependencies for tests
   displayName: Install Anaconda packages
 
-- bash: python ci/travis/insert_placeholder_values.py
+- bash: python ci/insert_placeholder_values.py
   displayName: Insert version number and dependencies into pip and conda recipes
   env:
     CONDA_PY: $(python.version)
@@ -25,8 +25,8 @@ steps:
     python setup.py build_ext --inplace
   displayName: Install moleculekit locally
 
-# - bash: |
-#     source activate test
-#     coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
-#   condition: succeededOrFailed()
-#   displayName: Run tests
+- bash: |
+    source activate test
+    coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
+  condition: succeededOrFailed()
+  displayName: Run tests
