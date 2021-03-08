@@ -23,7 +23,9 @@ jobs:
           python.version: '3.7'
         Python38:
           python.version: '3.8'
-      maxParallel: 2
+        Python39:
+          python.version: '3.9'
+      maxParallel: 4
 
     variables:
       OS: ${{ parameters.OS }}
