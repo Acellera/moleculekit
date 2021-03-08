@@ -69,7 +69,7 @@ stages:
             artifact: moleculekit_linux_3.6
 
         - script: |
-            python -m twine upload -r pypi --config-file $(PYPIRC_PATH) '$(Pipeline.Workspace)/pypi/*.whl'
+            python -m twine upload -r pypi --config-file $(PYPIRC_PATH) '$(Pipeline.Workspace)/pypi/*.tar.gz'
           displayName: 'Uploading to PyPI'
 
       - job: PublishConda
