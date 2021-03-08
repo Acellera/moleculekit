@@ -15,7 +15,7 @@ function repair_wheel {
 yum install -y atlas-devel
 
 # Compile wheels
-for PYBIN in /opt/python/*/bin; do
+for PYBIN in /opt/python/cp3*/bin; do
     "${PYBIN}/pip" install -r /io/requirements.txt
     "${PYBIN}/pip" install Cython>=0.29.21 
     "${PYBIN}/pip" wheel /io/ --no-deps -w wheelhouse/
