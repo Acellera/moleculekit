@@ -1211,35 +1211,37 @@ class Molecule(object):
             if self._numAtomsTopo == 0:
                 self._emptyTopo(mol.numAtoms)
 
+            # Truncate names to 4 characters before checking since it's what's supported by PDB
+            selfname = [x[:4] for x in self.name]
+            molname = [x[:4] for x in mol.name]
+
             if (
                 (len(self.name) == mol._numAtomsTopo)
                 and np.any(mol.name != "")
                 and np.any(self.name != "")
-                and not np.array_equal(self.name, mol.name)
+                and not np.array_equal(selfname, molname)
             ):
-                if len(np.setdiff1d(self.name, mol.name)) == 0:
-                    logger.warning(
-                        "Same atoms read in different order from topology file {}. Will reorder atom information to match existing ones in Molecule.".format(
-                            mol.fileloc
-                        )
-                    )
-                    if len(np.unique(self.name)) != len(self.name):
-                        msg = "Cannot reorder atoms due to non-unique atom names in molecule."
-                        if overwrite == "all":
-                            logger.warning(msg + " Will overwrite all fields.")
-                        else:
-                            raise RuntimeError(msg)
-                    else:
-                        order = np.array(
-                            [np.where(mol.name == nn)[0][0] for nn in self.name]
-                        )
-                        mol.reorderAtoms(order)
-                else:
+                if len(np.setdiff1d(self.name, mol.name)) != 0:
                     raise TopologyInconsistencyError(
-                        "Same number of atoms but different atom names read from topology file {}".format(
-                            mol.fileloc
-                        )
+                        f"Same number of atoms but different atom names read from topology file {mol.fileloc}"
                     )
+
+                logger.warning(
+                    f"Same atoms read in different order from topology file {mol.fileloc}. Will reorder atom information to match existing ones in Molecule."
+                )
+                if len(np.unique(self.name)) != len(self.name):
+                    msg = (
+                        "Cannot reorder atoms due to non-unique atom names in molecule."
+                    )
+                    if overwrite == "all":
+                        logger.warning(msg + " Will overwrite all fields.")
+                    else:
+                        raise RuntimeError(msg)
+                else:
+                    order = np.array(
+                        [np.where(mol.name == nn)[0][0] for nn in self.name]
+                    )
+                    mol.reorderAtoms(order)
 
             for field in mol._topo_fields:
                 if field == "crystalinfo":
@@ -1259,13 +1261,11 @@ class Molecule(object):
                 if self._dtypes[field] != object and np.all(newfielddata == 0):
                     continue
 
-                if field in Molecule._atom_fields and np.shape(
-                    self.__dict__[field]
-                ) != np.shape(newfielddata):
+                if field in Molecule._atom_fields and (
+                    np.shape(self.__dict__[field]) != np.shape(newfielddata)
+                ):
                     raise TopologyInconsistencyError(
-                        "Different number of atoms read from topology file {} for field {}".format(
-                            mol.fileloc, field
-                        )
+                        f"Different number of atoms read from topology file {mol.fileloc} for field {field}"
                     )
 
                 if overwrite is not None and (
@@ -1275,9 +1275,7 @@ class Molecule(object):
                 else:
                     if not np.array_equal(self.__dict__[field], newfielddata):
                         raise TopologyInconsistencyError(
-                            "Different atom information read from topology file {} for field {}".format(
-                                mol.fileloc, field
-                            )
+                            f"Different atom information read from topology file {mol.fileloc} for field {field}"
                         )
 
             if len(self.bonds) != 0 and len(self.bondtype) == 0:
