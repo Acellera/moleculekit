@@ -78,7 +78,9 @@ stages:
               python.version: '3.6'
             Python37:
               python.version: '3.7'
-          maxParallel: 2
+            Python38:
+              python.version: '3.8'
+          maxParallel: 4
           
         steps:
         - template: templates/conda_config.yml
