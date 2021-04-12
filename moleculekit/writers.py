@@ -264,8 +264,8 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode="pdb"):
             bondgraph.add_edges_from(goodbonds + 1)  # Add 1 for PDB 1-based indexing
             for atom, neighbours in sorted(bondgraph.adj.items()):
                 neighbours = sorted(list(neighbours))
-                for ni in range(0, len(neighbours), 3):
-                    subneighs = neighbours[ni : min(ni + 3, len(neighbours))]
+                for ni in range(0, len(neighbours), 4):
+                    subneighs = neighbours[ni : min(ni + 4, len(neighbours))]
                     neighstring = "".join("%5d" % sn for sn in subneighs)
                     fh.write("CONECT{:5d}{}\n".format(atom, neighstring))
 
