@@ -2143,6 +2143,7 @@ def SDFread(filename, frame=None, topoloc=None):
                 molend = True
             elif molend and line.strip() != "":
                 logger.warning("MoleculeKit will only read the first molecule from the SDF file.")
+                break
 
         topo = Topology()
         coords = []
