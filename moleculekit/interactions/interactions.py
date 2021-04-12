@@ -92,6 +92,79 @@ def view_hbonds(mol, hbonds):
     mol.viewname = viewname
 
 
+def get_ligand_rings(sm):
+    ligandRings = sm._mol.GetRingInfo().AtomRings()
+    ligandAtomAromaticRings = []
+    for r in ligandRings:
+        aromatics = sum([sm._mol.GetAtomWithIdx(idx).GetIsAromatic() for idx in r])
+        if aromatics != len(r):
+            continue
+        ligandAtomAromaticRings.append(r)
+    return ligandAtomAromaticRings
+
+
+def get_protein_rings(mol):
+    from moleculekit.util import sequenceID
+    import networkx as nx
+
+    _aromatics = ["PHE", "HIS", "HID", "HIE", "HIP", "TYR", "TRP"]
+    _excluded_atoms = ["N", "CA", "C", "O"]  # , "CB", "OH"]
+
+    arom_res_atoms = np.isin(mol.resname, _aromatics) & ~np.isin(
+        mol.name, _excluded_atoms
+    )
+    mol2 = mol.copy()
+    mol2.filter(arom_res_atoms, _logger=False)
+    bonds = mol2._guessBonds()
+
+    graph = nx.Graph()
+    graph.add_edges_from(bonds)
+    cycles = nx.cycle_basis(graph)
+
+    original_idx = np.where(arom_res_atoms)[0]
+    cycles = [tuple(original_idx[cc]) for cc in cycles]
+
+    return cycles
+
+
+def pipi_calculate(
+    mol,
+    rings1,
+    rings2,
+    dist_threshold1=4.4,
+    angle_threshold1_min=0,
+    angle_threshold1_max=30,
+    dist_threshold2=5.5,
+    angle_threshold2_min=60,
+    angle_threshold2_max=120,
+):
+    from moleculekit.interactions import pipi
+
+    ring_atoms = np.hstack((np.hstack(rings1), np.hstack(rings2)))
+    ring_starts1 = np.insert(np.cumsum([len(rr) for rr in rings1]), 0, 0)
+    ring_starts2 = np.insert(np.cumsum([len(rr) for rr in rings2]), 0, 0)
+    ring_starts2 += ring_starts1.max()
+
+    pp = pipi.calculate(
+        ring_atoms.astype(np.uint32),
+        ring_starts1.astype(np.uint32),
+        ring_starts2.astype(np.uint32),
+        mol.coords,
+        mol.box,
+        dist_threshold1=dist_threshold1,
+        angle_threshold1_min=angle_threshold1_min,
+        angle_threshold1_max=angle_threshold1_max,
+        dist_threshold2=dist_threshold2,
+        angle_threshold2_min=angle_threshold2_min,
+        angle_threshold2_max=angle_threshold2_max,
+    )
+
+    pp_list = []
+    for f in range(mol.numFrames):
+        pp_list.append(np.array(pp[f]).reshape(-1, 2))
+    return pp_list
+
+
 import unittest
 
 
@@ -125,6 +198,27 @@ class _TestInteractions(unittest.TestCase):
         hb = hbonds_calculate(mol, donors, acceptors, "all")
         assert len(hb) == 2
         assert hb[0].shape == (179, 3)
+
+    def test_pipi(self):
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule
+        from moleculekit.smallmol.smallmol import SmallMol
+        import os
+
+        mol = Molecule(os.path.join(home(dataDir="test-interactions"), "5L87.pdb"))
+        lig = SmallMol(os.path.join(home(dataDir="test-interactions"), "5L87_6RD.sdf"))
+
+        lig_idx = np.where(mol.resname == "6RD")[0][0]
+
+        prot_rings = get_protein_rings(mol)
+        lig_rings = get_ligand_rings(lig)
+
+        lig_rings = [tuple(lll + lig_idx for lll in ll) for ll in lig_rings]
+        pipis = pipi_calculate(mol, prot_rings, lig_rings)
+
+        assert len(pipis) == 1
+        ref = np.array([[0, 2], [0, 4], [2, 4]])
+        assert np.array_equal(pipis[0], ref)
 
 
 if __name__ == "__main__":
