@@ -129,7 +129,7 @@ class _TestSmallMol(unittest.TestCase):
 
         refimg_size = os.path.getsize(refimg)
         sm_img_size = os.path.getsize(img_name)
-
+        
         self.assertIsInstance(_img, IPython.core.display.SVG, msg="The object is not an IPython image as expected")
         self.assertEqual(sm_img_size, refimg_size, msg="The svg image does not have the same size of the reference")
 

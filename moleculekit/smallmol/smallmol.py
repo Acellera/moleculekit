@@ -682,7 +682,7 @@ class SmallMol(object):
         if not append:
             self.dropFrames(np.arange(self.numFrames))
 
-        # get the rdkit mol and copied it.
+        # get the rdkit mol and copy it.
         mol = deepcopy(self._mol)
         # hydrogens are added for safety
         mol = Chem.AddHs(mol)
@@ -724,14 +724,10 @@ class SmallMol(object):
 
     def dropFrames(self, frames="all"):
         if isinstance(frames, int):
-            frames = np.array(
-                [
-                    frames,
-                ]
-            )
+            frames = np.array([frames])
         if isinstance(frames, list):
             frames = np.array(frames)
-        if frames == "all":
+        if isinstance(frames, str) and frames == "all":
             ids = [cc.GetId() for cc in self._mol.GetConformers()]
             for f in ids:
                 self._mol.RemoveConformer(int(f))

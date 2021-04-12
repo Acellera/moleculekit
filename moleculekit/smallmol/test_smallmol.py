@@ -169,11 +169,10 @@ class _TestSmallMol(unittest.TestCase):
         sm.generateConformers(num_confs=10, append=False)
         n_conformers = sm.numFrames
 
-        self.assertGreater(
+        self.assertGreaterEqual(
             n_conformers,
             current_conformer,
-            "The generation of conforemr should provide at least the "
-            "same amount of conformer",
+            "The conformer generation should provide at least the same amount of conformers",
         )
 
     def test_writeGenerateAndWriteConformers(self):
@@ -186,12 +185,12 @@ class _TestSmallMol(unittest.TestCase):
         n_files = len(glob(os.path.join(tmpdir, "*.sdf")))
         self.assertTrue(
             direxists,
-            "The directory where to store the conformations where not created",
+            "The directory where to store the conformations was not created",
         )
-        self.assertGreater(
+        self.assertGreaterEqual(
             n_files,
             1,
-            "None conformations were written. At least one should be present",
+            "No conformations were written. At least one should be present",
         )
 
     def test_removeGenerateConformer(self):
@@ -207,8 +206,7 @@ class _TestSmallMol(unittest.TestCase):
         self.assertEqual(
             n_confs_del,
             n_confs - 1,
-            "The number of conformations after the deletion was not reduced of "
-            "exactly one unit",
+            "The number of conformations after the deletion was not reduced by exactly one unit",
         )
         self.assertEqual(
             n_confs_zero,
