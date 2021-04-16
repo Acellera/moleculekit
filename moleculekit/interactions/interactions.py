@@ -248,6 +248,33 @@ def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
     return salt_bridge_list
 
 
+def get_aryl_halides_protein(mol):
+    # TODO: Need to support non-standard residues
+    pass
+
+
+def get_ligand_aryl_halides(sm):
+    import networkx as nx
+
+    halogens = ["Cl", "Br", "I"]
+    rings = get_ligand_rings(sm)
+    ring_atoms = np.hstack(rings)
+    halogens = np.where(np.isin(sm._element, halogens))[0]
+
+    graph = nx.Graph()
+    graph.add_edges_from(sm._bonds)
+
+    halides = []
+    for hi in halogens:
+        neighs = list(graph.neighbors(hi))
+        if len(neighs) != 1:
+            continue
+        if neighs[0] in ring_atoms:
+            halides.append([hi, neighs[0]])
+
+    return halides
+
+
 def cationpi_calculate(
     mol,
     rings,
@@ -272,12 +299,44 @@ def cationpi_calculate(
         angle_threshold_max=angle_threshold_max,
     )
 
-    pp_list = []
+    index_list = []
     dist_ang_list = []
     for f in range(mol.numFrames):
-        pp_list.append(np.array(pp[f]).reshape(-1, 2))
+        index_list.append(np.array(pp[f]).reshape(-1, 2))
         dist_ang_list.append(np.array(da[f]).reshape(-1, 2))
-    return pp_list, dist_ang_list
+    return index_list, dist_ang_list
+
+
+def sigmahole_calculate(
+    mol,
+    rings,
+    halides,
+    dist_threshold=4.5,
+    angle_threshold_min=60,
+    angle_threshold_max=120,
+):
+    from moleculekit.interactions import sigmahole
+
+    ring_atoms = np.hstack(rings)
+    ring_starts = np.insert(np.cumsum([len(rr) for rr in rings]), 0, 0)
+
+    indexes, da = sigmahole.calculate(
+        ring_atoms.astype(np.uint32),
+        ring_starts.astype(np.uint32),
+        np.array(halides, dtype=np.uint32),
+        mol.coords,
+        mol.box,
+        dist_threshold=dist_threshold,
+        angle_threshold_min=angle_threshold_min,
+        angle_threshold_max=angle_threshold_max,
+    )
+
+    index_list = []
+    dist_ang_list = []
+    for f in range(mol.numFrames):
+        index_list.append(np.array(indexes[f]).reshape(-1, 2))
+        dist_ang_list.append(np.array(da[f]).reshape(-1, 2))
+    return index_list, dist_ang_list
 
 
 import unittest
@@ -434,6 +493,31 @@ class _TestInteractions(unittest.TestCase):
         ref_atms = np.array([[11, 3494]])
         assert np.array_equal(ref_atms, catpi[0]), print(ref_atms, catpi[0])
         ref_distang = np.array([[4.74848127, 74.07044983]])
+        assert np.allclose(ref_distang, distang)
+
+    def test_sigma_holes(self):
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule
+        from moleculekit.smallmol.smallmol import SmallMol
+        import os
+
+        lig = SmallMol(os.path.join(home(dataDir="test-interactions"), "2P95_ME5.sdf"))
+        mol = Molecule(
+            os.path.join(home(dataDir="test-interactions"), "2P95_prepared.pdb")
+        )
+        mol.append(lig.toMolecule())
+
+        lig_idx = np.where(mol.resname == "ME5")[0][0]
+        lig_halides = get_ligand_aryl_halides(lig)
+        lig_halides = [[ll[0] + lig_idx, ll[1] + lig_idx] for ll in lig_halides]
+
+        prot_rings = get_protein_rings(mol)
+
+        sh, distang = sigmahole_calculate(mol, prot_rings, lig_halides)
+
+        ref_atms = np.array([[29, 3702]])
+        assert np.array_equal(ref_atms, sh[0]), print(ref_atms, sh[0])
+        ref_distang = np.array([[4.26179695, 66.55052185]])
         assert np.allclose(ref_distang, distang)
 
 

@@ -92,16 +92,16 @@ cdef void _cross_product(
 def calculate(
         np.ndarray[UINT32_t, ndim=1] rings_atoms, 
         np.ndarray[UINT32_t, ndim=1] rings_start_indexes, 
-        np.ndarray[UINT32_t, ndim=1] cations,
+        np.ndarray[UINT32_t, ndim=2] halogen_bond,
         np.ndarray[FLOAT32_t, ndim=3] coords, 
         np.ndarray[FLOAT32_t, ndim=2] box,
-        float dist_threshold=5,
+        float dist_threshold=4.5,
         float angle_threshold_min=60,
         float angle_threshold_max=120,
     ):
     cdef int r1, r2, f, i
-    cdef int n_rings = rings_start_indexes.shape[0] - 1 # Subtract 1 for the added 0 index at the start
-    cdef int n_cations = cations.shape[0]
+    cdef int n_rings = rings_start_indexes.shape[0] - 1  # Subtract 1 for the added 0 index at the start
+    cdef int n_halogens = halogen_bond.shape[0]
     cdef int n_frames = coords.shape[2]
 
     cdef vector[vector[int]] results
@@ -109,11 +109,11 @@ def calculate(
     cdef np.ndarray[FLOAT32_t, ndim=1] ring_mean = np.zeros(3, dtype=FLOAT32)
     cdef np.ndarray[FLOAT32_t, ndim=1] ring_normal = np.zeros(3, dtype=FLOAT32)
     cdef np.ndarray[FLOAT32_t, ndim=1] half_box = np.zeros(3, dtype=FLOAT32)
-    cdef np.ndarray[FLOAT32_t, ndim=1] cation_coor = np.zeros(3, dtype=FLOAT32)
+    cdef np.ndarray[FLOAT32_t, ndim=1] halogen_coor = np.zeros(3, dtype=FLOAT32)
     cdef np.ndarray[FLOAT32_t, ndim=1] tmp1 = np.zeros(3, dtype=FLOAT32)
     cdef np.ndarray[FLOAT32_t, ndim=1] tmp2 = np.zeros(3, dtype=FLOAT32)
     cdef FLOAT32_t dist2, dot_prod
-    cdef int r_start_idx, r_end_idx
+    cdef int r_start_idx, r_end_idx, halogen_idx, partner_idx
 
     dist_threshold = dist_threshold * dist_threshold
 
@@ -124,19 +124,21 @@ def calculate(
             half_box[i] = box[i, f] / 2
 
         for r1 in range(n_rings):
-            for r2 in range(n_cations):
+            for r2 in range(n_halogens):
                 r_start_idx = rings_start_indexes[r1]
                 r_end_idx = rings_start_indexes[r1+1]
+                halogen_idx = halogen_bond[r2, 0]
+                partner_idx = halogen_bond[r2, 1]
 
                 # Calculate the ring centroid
                 _calculate_ring_mean(f, r_start_idx, r_end_idx, rings_atoms, coords, ring_mean)
 
-                # Cation coordinates
+                # Halogen coordinates
                 for i in range(3):
-                    cation_coor[i] = coords[cations[r2], i, f]
+                    halogen_coor[i] = coords[halogen_idx, i, f]
 
                 # Calculate the wrapped distance between the ring centroid and the cation
-                dist2 = _wrapped_dist(f, ring_mean, cation_coor, half_box, box)
+                dist2 = _wrapped_dist(f, ring_mean, halogen_coor, half_box, box)
 
                 # Ring centroid too far apart from cation
                 if dist2 > dist_threshold:
@@ -148,9 +150,9 @@ def calculate(
                     tmp2[i] = coords[rings_atoms[r_start_idx+1], i, f] - coords[rings_atoms[r_start_idx+2], i, f]
                 _cross_product(tmp1, tmp2, ring_normal)
 
-                # Calculate ring-cation vector
+                # Calculate halide-aryl bond vector
                 for i in range(3):
-                    tmp1[i] = cation_coor[i] - ring_mean[i]
+                    tmp1[i] = halogen_coor[i] - coords[partner_idx, i, f]
                 _normalize(tmp1)
 
                 # Calculate angle between plane normal and ring-cation vector
@@ -162,7 +164,7 @@ def calculate(
 
                 if angle >= angle_threshold_min and angle <= angle_threshold_max:
                     results[f].push_back(r1)
-                    results[f].push_back(cations[r2])
+                    results[f].push_back(halogen_bond[r2, 0])
                     distangles[f].push_back(sqrt(dist2))
                     distangles[f].push_back(angle)
 

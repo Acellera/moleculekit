@@ -19,6 +19,7 @@ extentions = [
     "moleculekit/interactions/hbonds/hbonds.pyx",
     "moleculekit/interactions/pipi/pipi.pyx",
     "moleculekit/interactions/cationpi/cationpi.pyx",
+    "moleculekit/interactions/sigmahole/sigmahole.pyx",
 ]
 extentions = [
     Extension(

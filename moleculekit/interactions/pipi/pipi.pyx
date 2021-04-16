@@ -97,7 +97,7 @@ def calculate(
         float angle_threshold2_max=120,
     ):
     cdef int r1, r2, f, i
-    cdef int n_rings1 = rings1_start_indexes.shape[0] - 1  # Remove one for the end index which we append to the start
+    cdef int n_rings1 = rings1_start_indexes.shape[0] - 1  # Remove one for the index which we append to the start
     cdef int n_rings2 = rings2_start_indexes.shape[0] - 1
     cdef int n_frames = coords.shape[2]
 
