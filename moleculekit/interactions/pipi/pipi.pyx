@@ -102,6 +102,7 @@ def calculate(
     cdef int n_frames = coords.shape[2]
 
     cdef vector[vector[int]] results
+    cdef vector[vector[float]] distangles
     cdef np.ndarray[FLOAT32_t, ndim=1] ring1_mean = np.zeros(3, dtype=FLOAT32)
     cdef np.ndarray[FLOAT32_t, ndim=1] ring2_mean = np.zeros(3, dtype=FLOAT32)
     cdef np.ndarray[FLOAT32_t, ndim=1] ring1_normal = np.zeros(3, dtype=FLOAT32)
@@ -117,6 +118,7 @@ def calculate(
 
     for f in range(n_frames):
         results.push_back(vector[int]())
+        distangles.push_back(vector[float]())
         for i in range(3):
             half_box[i] = box[i, f] / 2
 
@@ -169,7 +171,9 @@ def calculate(
                     (dist2 < dist_threshold2 and (angle >= angle_threshold2_min and angle <= angle_threshold2_max))):
                     results[f].push_back(r1)
                     results[f].push_back(r2)
+                    distangles[f].push_back(sqrt(dist2))
+                    distangles[f].push_back(angle)
 
-    return results
+    return results, distangles
 
 

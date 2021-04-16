@@ -1,7 +1,7 @@
 BEN
      RDKit          3D
 
- 17 17  0  0  0  0  0  0  0  0999 V2000
+ 18 18  0  0  0  0  0  0  0  0999 V2000
    -1.8530   14.3110   16.6580 C   0  0  0  0  0  0  0  0  0  0  0  0
    -2.1070   15.6530   16.7580 C   0  0  0  0  0  0  0  0  0  0  0  0
    -1.7740   16.3410   17.9320 C   0  0  0  0  0  0  0  0  0  0  0  0
@@ -9,7 +9,7 @@ BEN
    -0.9140   14.2950   18.8850 C   0  0  0  0  0  0  0  0  0  0  0  0
    -1.2570   13.6340   17.7080 C   0  0  0  0  0  0  0  0  0  0  0  0
    -2.1930   13.6270   15.4960 C   0  0  0  0  0  0  0  0  0  0  0  0
-   -2.7970   14.2350   14.4910 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.7970   14.2350   14.4910 N   0  0  0  0  0  4  0  0  0  0  0  0
    -1.7620   12.3910   15.3090 N   0  0  0  0  0  0  0  0  0  0  0  0
    -2.5717   16.1898   15.9179 H   0  0  0  0  0  0  0  0  0  0  0  0
    -1.9827   17.4179   18.0135 H   0  0  0  0  0  0  0  0  0  0  0  0
@@ -17,6 +17,7 @@ BEN
    -0.4418   13.7455   19.7127 H   0  0  0  0  0  0  0  0  0  0  0  0
    -1.0512   12.5578   17.6114 H   0  0  0  0  0  0  0  0  0  0  0  0
    -3.0389   13.7072   13.6403 H   0  0  0  0  0  0  0  0  0  0  0  0
+   -3.0261   15.2370   14.5580 H   0  0  0  0  0  0  0  0  0  0  0  0
    -2.0128   11.8827   14.4490 H   0  0  0  0  0  0  0  0  0  0  0  0
    -1.1755   11.9365   16.0234 H   0  0  0  0  0  0  0  0  0  0  0  0
   1  2  2  0
@@ -34,49 +35,111 @@ BEN
   5 13  1  0
   6 14  1  0
   8 15  1  0
-  9 16  1  0
+  8 16  1  0
   9 17  1  0
+  9 18  1  0
+M  CHG  1   8   1
 M  END
->  <model_server_result.job_id>  (1) 
-KE4JBVnCsMKCw4nDsXPDvU
+>  <SMILES>  (1) 
+NC(=[NH2+])c1ccccc1
 
->  <model_server_result.datetime_utc>  (1) 
-2021-02-15 14:04:44
+>  <Formula>  (1) 
+C7H9N2+
 
->  <model_server_result.server_version>  (1) 
-0.9.6
+>  <MW>  (1) 
+121.163
 
->  <model_server_result.query_name>  (1) 
-ligand
+>  <HevyAtoms>  (1) 
+9
 
->  <model_server_result.source_id>  (1) 
-pdb-bcif
+>  <TotalAtoms>  (1) 
+18
 
->  <model_server_result.entry_id>  (1) 
-3ptb
+>  <FormalCharge>  (1) 
+1
 
->  <model_server_params.name>  (1) 
-atom_site
+>  <CLogP>  (1) 
+-0.84899999999999998
 
->  <model_server_params.value>  (1) 
-{"label_comp_id":"BEN"}
+>  <MolarRefractivity>  (1) 
+36.664000000000001
 
->  <model_server_stats.io_time_ms>  (1) 
-7
-
->  <model_server_stats.parse_time_ms>  (1) 
-30
-
->  <model_server_stats.create_model_time_ms>  (1) 
-10
-
->  <model_server_stats.query_time_ms>  (1) 
-199
-
->  <model_server_stats.encode_time_ms>  (1) 
+>  <SP3Fraction>  (1) 
 0
 
->  <model_server_stats.element_count>  (1) 
-9
+>  <TPSA>  (1) 
+51.609999999999999
+
+>  <LabuteASA>  (1) 
+66.698999999999998
+
+>  <RotatableBonds>  (1) 
+1
+
+>  <LHBD>  (1) 
+4
+
+>  <HBD>  (1) 
+2
+
+>  <LHBA>  (1) 
+2
+
+>  <HBA>  (1) 
+0
+
+>  <TotalRings>  (1) 
+1
+
+>  <AromaticRings>  (1) 
+1
+
+>  <AromaticCarboCycles>  (1) 
+1
+
+>  <AromaticHeteroCycles>  (1) 
+0
+
+>  <AliphaticRings>  (1) 
+0
+
+>  <AliphaticCarboCycles>  (1) 
+0
+
+>  <AliphaticHeteroCycles>  (1) 
+0
+
+>  <Bridgehead>  (1) 
+0
+
+>  <Spiro>  (1) 
+0
+
+>  <LipinskiR3>  (1) 
+0
+
+>  <LipinskiR5>  (1) 
+0
+
+>  <Ghose>  (1) 
+0
+
+>  <Veber>  (1) 
+1
+
+>  <REOS>  (1) 
+0
+
+>  <Drug-like>  (1) 
+1
+
+>  <QED_MaxWeight>  (1) 
+0.34899999999999998
+
+>  <QED_MeanWeight>  (1) 
+0.36899999999999999
+
+>  <QED_NoWeight>  (1) 
+0.40899999999999997
 
 $$$$

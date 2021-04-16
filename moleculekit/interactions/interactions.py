@@ -145,7 +145,7 @@ def pipi_calculate(
     ring_starts2 = np.insert(np.cumsum([len(rr) for rr in rings2]), 0, 0)
     ring_starts2 += ring_starts1.max()
 
-    pp = pipi.calculate(
+    pp, da = pipi.calculate(
         ring_atoms.astype(np.uint32),
         ring_starts1.astype(np.uint32),
         ring_starts2.astype(np.uint32),
@@ -160,9 +160,79 @@ def pipi_calculate(
     )
 
     pp_list = []
+    dist_ang_list = []
     for f in range(mol.numFrames):
         pp_list.append(np.array(pp[f]).reshape(-1, 2))
-    return pp_list
+        dist_ang_list.append(np.array(da[f]).reshape(-1, 2))
+    return pp_list, dist_ang_list
+
+
+def get_charged(mol):
+    metals = [
+        "Fe",
+        "Cu",
+        "Ni",
+        "Mo",
+        "Rh",
+        "Re",
+        "Mn",
+        "Mg",
+        "Ca",
+        "Na",
+        "K",
+        "Cs",
+        "Zn",
+        "Se",
+    ]
+    metal = np.isin(mol.element, metals)
+    lys_n = (mol.resname == "LYS") & (mol.name == "NZ")
+    arg_c = (mol.resname == "ARG") & (mol.name == "CZ")
+    hip_c = (mol.resname == "HIP") & (mol.name == "CE1")
+    pos = metal | lys_n | arg_c | hip_c
+
+    asp_c = (mol.resname == "ASP") & (mol.name == "CG")
+    glu_c = (mol.resname == "GLU") & (mol.name == "CD")
+    neg = asp_c | glu_c
+    return list(np.where(pos)[0]), list(np.where(neg)[0])
+
+
+def get_ligand_charged(sm):
+    pos = []
+    neg = []
+    for i in range(sm.numAtoms):
+        fc = sm._mol.GetAtomWithIdx(i).GetFormalCharge()
+        if fc > 0:
+            pos.append(i)
+        elif fc < 0:
+            neg.append(i)
+    return pos, neg
+
+
+def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None):
+    from moleculekit.projections.util import pp_calcDistances
+
+    sel1 = mol.atomselect(sel1).astype(np.uint32).copy()
+    if sel2 is None:
+        sel2 = sel1.copy()
+    else:
+        sel2 = mol.atomselect(sel2).astype(np.uint32).copy()
+
+    charged = np.zeros(sel1.shape, dtype=bool)
+    charged[pos] = True
+    charged[neg] = True
+
+    periodic = "selections" if not np.all(mol.box == 0) else None
+    dists = pp_calcDistances(
+        mol, sel1 & charged, sel2 & charged, periodic, metric="distances"
+    )
+
+    from IPython.core.debugger import set_trace
+
+    set_trace()
+
+    salt_bridge_list = []
+
+    return salt_bridge_list
 
 
 import unittest
@@ -172,12 +242,11 @@ class _TestInteractions(unittest.TestCase):
     def test_hbonds(self):
         from moleculekit.home import home
         from moleculekit.molecule import Molecule
-        from moleculekit.tools.preparation import proteinPrepare
         from moleculekit.smallmol.smallmol import SmallMol
         import os
 
         prot = os.path.join(home(dataDir="test-interactions"), "3PTB_prepared.pdb")
-        lig = os.path.join(home(dataDir="test-interactions"), "BEN.sdf")
+        lig = os.path.join(home(dataDir="test-interactions"), "3PTB_BEN.sdf")
 
         mol = Molecule(prot)
         lig = SmallMol(lig).toMolecule()
@@ -192,12 +261,19 @@ class _TestInteractions(unittest.TestCase):
 
         hb = hbonds_calculate(mol, donors, acceptors, "protein", "resname BEN")
         assert len(hb) == 2
-        ref = np.array([[3229, 3236, 2472], [3230, 3237, 2473], [3230, 3238, 2483]])
-        assert np.array_equal(hb[0], ref) and np.array_equal(hb[1], ref)
+        ref = np.array(
+            [
+                [3229, 3236, 2472],
+                [3229, 3237, 2790],
+                [3230, 3238, 2473],
+                [3230, 3239, 2483],
+            ]
+        )
+        assert np.array_equal(hb[0], ref) and np.array_equal(hb[1], ref), print(hb, ref)
 
         hb = hbonds_calculate(mol, donors, acceptors, "all")
         assert len(hb) == 2
-        assert hb[0].shape == (179, 3)
+        assert hb[0].shape == (180, 3), hb[0].shape
 
     def test_pipi(self):
         from moleculekit.home import home
@@ -214,11 +290,44 @@ class _TestInteractions(unittest.TestCase):
         lig_rings = get_ligand_rings(lig)
 
         lig_rings = [tuple(lll + lig_idx for lll in ll) for ll in lig_rings]
-        pipis = pipi_calculate(mol, prot_rings, lig_rings)
+        pipis, distang = pipi_calculate(mol, prot_rings, lig_rings)
 
         assert len(pipis) == 1
-        ref = np.array([[0, 2], [0, 4], [2, 4]])
-        assert np.array_equal(pipis[0], ref)
+
+        ref_rings = np.array([[0, 2], [0, 4], [2, 4]])
+        assert np.array_equal(pipis[0], ref_rings)
+
+        ref_distang = np.array(
+            [
+                [5.33927107, 97.67315674],
+                [5.23078251, 85.32985687],
+                [5.16490269, 81.33213806],
+            ]
+        )
+        assert np.allclose(distang[0], ref_distang)
+
+    def test_salt_bridge(self):
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule
+        from moleculekit.smallmol.smallmol import SmallMol
+        import os
+
+        # 3ptb 5tvn 5l87
+
+        prot = os.path.join(home(dataDir="test-interactions"), "3PTB_prepared.pdb")
+        lig = os.path.join(home(dataDir="test-interactions"), "3PTB_BEN.sdf")
+
+        mol = Molecule(prot)
+        lig = SmallMol(lig)
+        mol.append(lig.toMolecule())
+        mol.coords = np.tile(mol.coords, (1, 1, 2)).copy()  # Fake second frame
+
+        prot_pos, prot_neg = get_charged(mol)
+        lig_pos, lig_neg = get_ligand_charged(lig)
+
+        bridges = saltbridge_calculate(
+            mol, prot_pos + lig_pos, prot_neg + lig_neg, "protein", "resname BEN"
+        )
 
 
 if __name__ == "__main__":
