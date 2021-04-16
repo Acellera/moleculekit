@@ -159,6 +159,8 @@ def pipi_calculate(
         angle_threshold2_max=angle_threshold2_max,
     )
 
+    # TODO: Add halogens to the pyx code
+
     pp_list = []
     dist_ang_list = []
     for f in range(mol.numFrames):
@@ -244,6 +246,38 @@ def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
         salt_bridge_list.append(inter[opposite_charges])
 
     return salt_bridge_list
+
+
+def cationpi_calculate(
+    mol,
+    rings,
+    cations,
+    dist_threshold=5,
+    angle_threshold_min=60,
+    angle_threshold_max=120,
+):
+    from moleculekit.interactions import cationpi
+
+    ring_atoms = np.hstack(rings)
+    ring_starts = np.insert(np.cumsum([len(rr) for rr in rings]), 0, 0)
+
+    pp, da = cationpi.calculate(
+        ring_atoms.astype(np.uint32),
+        ring_starts.astype(np.uint32),
+        np.array(cations, dtype=np.uint32),
+        mol.coords,
+        mol.box,
+        dist_threshold=dist_threshold,
+        angle_threshold_min=angle_threshold_min,
+        angle_threshold_max=angle_threshold_max,
+    )
+
+    pp_list = []
+    dist_ang_list = []
+    for f in range(mol.numFrames):
+        pp_list.append(np.array(pp[f]).reshape(-1, 2))
+        dist_ang_list.append(np.array(da[f]).reshape(-1, 2))
+    return pp_list, dist_ang_list
 
 
 import unittest
@@ -347,6 +381,60 @@ class _TestInteractions(unittest.TestCase):
 
         ref_bridge = np.array([[2470, 3414]])
         assert np.array_equal(bridges[0], ref_bridge)
+
+    def test_cationpi_protein(self):
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule
+        from moleculekit.smallmol.smallmol import SmallMol
+        import os
+
+        mol = Molecule(os.path.join(home(dataDir="test-interactions"), "1LPI.pdb"))
+        prot_rings = get_protein_rings(mol)
+        prot_pos, _ = get_charged(mol)
+
+        catpi, distang = cationpi_calculate(mol, prot_rings, prot_pos)
+
+        ref_atms = np.array([[0, 8], [17, 1001], [18, 1001]])
+        assert np.array_equal(ref_atms, catpi[0]), print(ref_atms, catpi[0])
+        ref_distang = np.array(
+            [
+                [4.10110903, 63.69768524],
+                [4.70270395, 60.51351929],
+                [4.12248421, 82.81176758],
+            ]
+        )
+        assert np.allclose(ref_distang, distang)
+
+    def test_cationpi_protein_ligand(self):
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule
+        from moleculekit.smallmol.smallmol import SmallMol
+        import os
+
+        lig = SmallMol(os.path.join(home(dataDir="test-interactions"), "2BOK_784.sdf"))
+        mol = Molecule(
+            os.path.join(home(dataDir="test-interactions"), "2BOK_prepared.pdb")
+        )
+        mol.append(lig.toMolecule())
+
+        lig_idx = np.where(mol.resname == "784")[0][0]
+
+        prot_rings = get_protein_rings(mol)
+        lig_rings = get_ligand_rings(lig)
+        lig_rings = [tuple(lll + lig_idx for lll in ll) for ll in lig_rings]
+
+        prot_pos, _ = get_charged(mol)
+        lig_pos, _ = get_ligand_charged(lig)
+        lig_pos = [ll + lig_idx for ll in lig_pos]
+
+        catpi, distang = cationpi_calculate(
+            mol, prot_rings + lig_rings, prot_pos + lig_pos
+        )
+
+        ref_atms = np.array([[11, 3494]])
+        assert np.array_equal(ref_atms, catpi[0]), print(ref_atms, catpi[0])
+        ref_distang = np.array([[4.74848127, 74.07044983]])
+        assert np.allclose(ref_distang, distang)
 
 
 if __name__ == "__main__":

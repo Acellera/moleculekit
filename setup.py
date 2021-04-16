@@ -3,6 +3,7 @@ import unittest
 from distutils.extension import Extension
 from Cython.Build import cythonize
 import numpy
+import os
 
 
 def my_test_suite():
@@ -14,22 +15,24 @@ def my_test_suite():
 with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
+extentions = [
+    "moleculekit/interactions/hbonds/hbonds.pyx",
+    "moleculekit/interactions/pipi/pipi.pyx",
+    "moleculekit/interactions/cationpi/cationpi.pyx",
+]
+extentions = [
+    Extension(
+        name=os.path.dirname(ext).replace("/", "."),
+        sources=[ext],
+        include_dirs=[numpy.get_include()],
+        language="c++",
+    )
+    for ext in extentions
+]
 # extra_compile_args = ["-O3",]
-hbonds_ext = Extension(
-    name="moleculekit.interactions.hbonds",
-    sources=["moleculekit/interactions/hbonds/hbonds.pyx"],
-    include_dirs=[numpy.get_include()],
-    language="c++",
-    # extra_compile_args=extra_compile_args
-    # libraries=["examples"],
-    # library_dirs=["lib"],
-)
-pipi_ext = Extension(
-    name="moleculekit.interactions.pipi",
-    sources=["moleculekit/interactions/pipi/pipi.pyx"],
-    include_dirs=[numpy.get_include()],
-    language="c++",
-)
+# extra_compile_args=extra_compile_args
+# libraries=["examples"],
+# library_dirs=["lib"],
 
 if __name__ == "__main__":
     with open("README.md", "r") as fh:
@@ -61,5 +64,5 @@ if __name__ == "__main__":
         zip_safe=False,
         test_suite="setup.my_test_suite",
         install_requires=requirements,
-        ext_modules=cythonize([hbonds_ext, pipi_ext], language_level="3"),
+        ext_modules=cythonize(extentions, language_level="3"),
     )

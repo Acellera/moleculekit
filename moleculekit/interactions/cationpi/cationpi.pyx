@@ -63,6 +63,18 @@ cdef float _wrapped_dist(
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
+cdef void _normalize(np.ndarray[FLOAT32_t, ndim=1] vec):
+    cdef float vec_norm = 0 
+    for i in range(3):
+        vec_norm = vec_norm + (vec[i] * vec[i])
+    vec_norm = sqrt(vec_norm)
+
+    for i in range(3):
+        vec[i] = vec[i] / vec_norm
+
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
 cdef void _cross_product(
         np.ndarray[FLOAT32_t, ndim=1] vec_a, 
         np.ndarray[FLOAT32_t, ndim=1] vec_b,
@@ -72,49 +84,38 @@ cdef void _cross_product(
     res[1] = vec_a[2] * vec_b[0] - vec_a[0] * vec_b[2]
     res[2] = vec_a[0] * vec_b[1] - vec_a[1] * vec_b[0]
 
-    cdef float vec_norm = 0 
-    for i in range(3):
-        vec_norm = vec_norm + (res[i] * res[i])
-    vec_norm = sqrt(vec_norm)
-
-    for i in range(3):
-        res[i] = res[i] / vec_norm
+    _normalize(res)
 
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 def calculate(
         np.ndarray[UINT32_t, ndim=1] rings_atoms, 
-        np.ndarray[UINT32_t, ndim=1] rings1_start_indexes, 
-        np.ndarray[UINT32_t, ndim=1] rings2_start_indexes, 
+        np.ndarray[UINT32_t, ndim=1] rings_start_indexes, 
+        np.ndarray[UINT32_t, ndim=1] cations,
         np.ndarray[FLOAT32_t, ndim=3] coords, 
         np.ndarray[FLOAT32_t, ndim=2] box,
-        float dist_threshold1=4.4,
-        float angle_threshold1_min=0,
-        float angle_threshold1_max=30,
-        float dist_threshold2=5.5,
-        float angle_threshold2_min=60,
-        float angle_threshold2_max=120,
+        float dist_threshold=5,
+        float angle_threshold_min=60,
+        float angle_threshold_max=120,
     ):
     cdef int r1, r2, f, i
-    cdef int n_rings1 = rings1_start_indexes.shape[0] - 1  # Remove one for the end index which we append to the start
-    cdef int n_rings2 = rings2_start_indexes.shape[0] - 1
+    cdef int n_rings = rings_start_indexes.shape[0] - 1
+    cdef int n_cations = cations.shape[0]
     cdef int n_frames = coords.shape[2]
 
     cdef vector[vector[int]] results
     cdef vector[vector[float]] distangles
-    cdef np.ndarray[FLOAT32_t, ndim=1] ring1_mean = np.zeros(3, dtype=FLOAT32)
-    cdef np.ndarray[FLOAT32_t, ndim=1] ring2_mean = np.zeros(3, dtype=FLOAT32)
-    cdef np.ndarray[FLOAT32_t, ndim=1] ring1_normal = np.zeros(3, dtype=FLOAT32)
-    cdef np.ndarray[FLOAT32_t, ndim=1] ring2_normal = np.zeros(3, dtype=FLOAT32)
+    cdef np.ndarray[FLOAT32_t, ndim=1] ring_mean = np.zeros(3, dtype=FLOAT32)
+    cdef np.ndarray[FLOAT32_t, ndim=1] ring_normal = np.zeros(3, dtype=FLOAT32)
     cdef np.ndarray[FLOAT32_t, ndim=1] half_box = np.zeros(3, dtype=FLOAT32)
+    cdef np.ndarray[FLOAT32_t, ndim=1] cation_coor = np.zeros(3, dtype=FLOAT32)
     cdef np.ndarray[FLOAT32_t, ndim=1] tmp1 = np.zeros(3, dtype=FLOAT32)
     cdef np.ndarray[FLOAT32_t, ndim=1] tmp2 = np.zeros(3, dtype=FLOAT32)
     cdef FLOAT32_t dist2, dot_prod
-    cdef int r1_start_idx, r2_start_idx, r1_end_idx, r2_end_idx
+    cdef int r_start_idx, r_end_idx
 
-    dist_threshold1 = dist_threshold1 * dist_threshold1
-    dist_threshold2 = dist_threshold2 * dist_threshold2
+    dist_threshold = dist_threshold * dist_threshold
 
     for f in range(n_frames):
         results.push_back(vector[int]())
@@ -122,55 +123,46 @@ def calculate(
         for i in range(3):
             half_box[i] = box[i, f] / 2
 
-        for r1 in range(n_rings1):
-            for r2 in range(n_rings2):
-                r1_start_idx = rings1_start_indexes[r1]
-                r1_end_idx = rings1_start_indexes[r1+1]
-                r2_start_idx = rings2_start_indexes[r2]
-                r2_end_idx = rings2_start_indexes[r2+1]
-                
-                # Exit early if any of the two ring's atoms are too far
-                for i in range(3):
-                    tmp1[i] = coords[rings_atoms[r1_start_idx], i, f]
-                    tmp2[i] = coords[rings_atoms[r2_start_idx], i, f]
-                dist2 = _wrapped_dist(f, tmp1, tmp2, half_box, box)
-                # Rings too far apart
-                if dist2 > 225: # If two randomly picked atoms are more than 15A apart early-quit
-                    continue
+        for r1 in range(n_rings):
+            for r2 in range(n_cations):
+                r_start_idx = rings_start_indexes[r1]
+                r_end_idx = rings_start_indexes[r1+1]
 
                 # Calculate the ring centroids
-                _calculate_ring_mean(f, r1_start_idx, r1_end_idx, rings_atoms, coords, ring1_mean)
-                _calculate_ring_mean(f, r2_start_idx, r2_end_idx, rings_atoms, coords, ring2_mean)
+                _calculate_ring_mean(f, r_start_idx, r_end_idx, rings_atoms, coords, ring_mean)
 
-                # Calculate the wrapped distance between the ring centroids
-                dist2 = _wrapped_dist(f, ring1_mean, ring2_mean, half_box, box)
+                # Cation coordinates
+                for i in range(3):
+                    cation_coor[i] = coords[cations[r2], i, f]
 
-                # Ring centroids too far apart
-                if dist2 > dist_threshold2:
+                # Calculate the wrapped distance between the ring centroid and the cation
+                dist2 = _wrapped_dist(f, ring_mean, cation_coor, half_box, box)
+
+                # Ring centroid too far apart from cation
+                if dist2 > dist_threshold:
                     continue
 
-                # Calculate the plane normals
+                # Calculate the plane normal
                 for i in range(3):
-                    tmp1[i] = coords[rings_atoms[r1_start_idx], i, f] - coords[rings_atoms[r1_start_idx+2], i, f]
-                    tmp2[i] = coords[rings_atoms[r1_start_idx+1], i, f] - coords[rings_atoms[r1_start_idx+2], i, f]
-                _cross_product(tmp1, tmp2, ring1_normal)
-                for i in range(3):
-                    tmp1[i] = coords[rings_atoms[r2_start_idx], i, f] - coords[rings_atoms[r2_start_idx+2], i, f]
-                    tmp2[i] = coords[rings_atoms[r2_start_idx+1], i, f] - coords[rings_atoms[r2_start_idx+2], i, f]
-                _cross_product(tmp1, tmp2, ring2_normal)
+                    tmp1[i] = coords[rings_atoms[r_start_idx], i, f] - coords[rings_atoms[r_start_idx+2], i, f]
+                    tmp2[i] = coords[rings_atoms[r_start_idx+1], i, f] - coords[rings_atoms[r_start_idx+2], i, f]
+                _cross_product(tmp1, tmp2, ring_normal)
 
-                # Calculate angle between normals
+                # Calculate ring-cation vector
+                for i in range(3):
+                    tmp1[i] = cation_coor[i] - ring_mean[i]
+                _normalize(tmp1)
+
+                # Calculate angle between plane normal and ring-cation vector
                 dot_prod = 0
                 for i in range(3):
-                    dot_prod = dot_prod + ring1_normal[i] * ring2_normal[i]
+                    dot_prod = dot_prod + ring_normal[i] * tmp1[i]
                 angle = acos(dot_prod) * 57.29578  # Convert radians to degrees
+                angle = angle - 90 # We want the angle to the plane, not the normal of the plane
 
-                # If dist < 4.4 and angle <= 30 deg
-                # If dist < 5.5 and angle in range [60, 120]
-                if (dist2 < dist_threshold1 and (angle >= angle_threshold1_min and angle <= angle_threshold1_max) or 
-                    (dist2 < dist_threshold2 and (angle >= angle_threshold2_min and angle <= angle_threshold2_max))):
+                if angle >= angle_threshold_min and angle <= angle_threshold_max:
                     results[f].push_back(r1)
-                    results[f].push_back(r2)
+                    results[f].push_back(cations[r2])
                     distangles[f].push_back(sqrt(dist2))
                     distangles[f].push_back(angle)
 
