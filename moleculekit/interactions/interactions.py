@@ -263,17 +263,17 @@ class _TestInteractions(unittest.TestCase):
         assert len(hb) == 2
         ref = np.array(
             [
-                [3229, 3236, 2472],
-                [3229, 3237, 2790],
-                [3230, 3238, 2473],
-                [3230, 3239, 2483],
+                [3414, 3421, 2471],
+                [3414, 3422, 2789],
+                [3415, 3423, 2472],
+                [3415, 3424, 2482],
             ]
         )
         assert np.array_equal(hb[0], ref) and np.array_equal(hb[1], ref), print(hb, ref)
 
         hb = hbonds_calculate(mol, donors, acceptors, "all")
         assert len(hb) == 2
-        assert hb[0].shape == (180, 3), hb[0].shape
+        assert hb[0].shape == (178, 3), hb[0].shape
 
     def test_pipi(self):
         from moleculekit.home import home
