@@ -208,7 +208,7 @@ def get_ligand_charged(sm):
     return pos, neg
 
 
-def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None):
+def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
     from moleculekit.projections.util import pp_calcDistances
 
     sel1 = mol.atomselect(sel1).astype(np.uint32).copy()
@@ -221,16 +221,27 @@ def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None):
     charged[pos] = True
     charged[neg] = True
 
+    sel1 = sel1 & charged
+    sel2 = sel2 & charged
+
+    if np.sum(sel1) == 0 or np.sum(sel2) == 0:
+        return [[] for _ in range(mol.numFrames)]
+
     periodic = "selections" if not np.all(mol.box == 0) else None
-    dists = pp_calcDistances(
-        mol, sel1 & charged, sel2 & charged, periodic, metric="distances"
-    )
+    dists = pp_calcDistances(mol, sel1, sel2, periodic, metric="distances")
 
-    from IPython.core.debugger import set_trace
-
-    set_trace()
+    sel1 = np.where(sel1)[0]
+    sel2 = np.where(sel2)[0]
 
     salt_bridge_list = []
+    for f in range(mol.numFrames):
+        idx = np.where(dists[f] < threshold)[0]
+        sel1_sub = sel1[(idx % len(sel1)).astype(int)]
+        sel2_sub = sel2[(idx / len(sel1)).astype(int)]
+        inter = np.vstack((sel1_sub, sel2_sub)).T
+        # Should only have one positive per row (the other is necessarily negative)
+        opposite_charges = np.sum(np.isin(inter, pos), axis=1) == 1
+        salt_bridge_list.append(inter[opposite_charges])
 
     return salt_bridge_list
 
@@ -325,9 +336,17 @@ class _TestInteractions(unittest.TestCase):
         prot_pos, prot_neg = get_charged(mol)
         lig_pos, lig_neg = get_ligand_charged(lig)
 
+        lig_idx = np.where(mol.resname == "BEN")[0][0]
+        lig_pos = [ll + lig_idx for ll in lig_pos]
+        lig_neg = [ll + lig_idx for ll in lig_neg]
         bridges = saltbridge_calculate(
             mol, prot_pos + lig_pos, prot_neg + lig_neg, "protein", "resname BEN"
         )
+
+        assert len(bridges) == 2
+
+        ref_bridge = np.array([[2470, 3414]])
+        assert np.array_equal(bridges[0], ref_bridge)
 
 
 if __name__ == "__main__":
