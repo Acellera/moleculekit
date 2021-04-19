@@ -1,6 +1,9 @@
 import networkx as nx
 import numpy as np
 from moleculekit.tools.moleculechecks import isProteinProtonated
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_donors_acceptors(mol, exclude_water=True, exclude_backbone=False):
@@ -17,6 +20,10 @@ def get_donors_acceptors(mol, exclude_water=True, exclude_backbone=False):
     potential_donors = np.in1d(mol.element, donor_elements)
     potential_acceptors = np.in1d(mol.element, acceptor_elements)
 
+    if not np.any(potential_donors) and not np.any(potential_acceptors):
+        logger.warning("Could not find any [N, O] elements in the molecule")
+        return [], []
+
     backbone = mol.atomselect("protein and backbone")
     # Amide nitrogens are only donors
     potential_acceptors[(mol.element == "N") & backbone] = False
@@ -31,7 +38,12 @@ def get_donors_acceptors(mol, exclude_water=True, exclude_backbone=False):
         potential_acceptors = ~backbone & potential_acceptors
 
     if not np.any(potential_donors):
-        return
+        logger.warning("Did not find any potential donors")
+        return [], []
+
+    if not np.any(potential_acceptors):
+        logger.warning("Did not find any potential acceptors")
+        return [], []
 
     hydrogens = tuple(np.where(mol.element == "H")[0])
     donor_pairs = []
@@ -44,33 +56,8 @@ def get_donors_acceptors(mol, exclude_water=True, exclude_backbone=False):
     acceptors = np.where(potential_acceptors)[0]
 
     if not len(donor_pairs) or not len(acceptors):
-        return
+        return [], []
     return np.vstack(donor_pairs).astype(np.uint32), acceptors.astype(np.uint32)
-
-
-def hbonds_calculate(
-    mol,
-    donors,
-    acceptors,
-    sel1="all",
-    sel2=None,
-    dist_threshold=2.5,
-    angle_threshold=120,
-):
-    from moleculekit.interactions import hbonds
-
-    sel1 = mol.atomselect(sel1).astype(np.uint32).copy()
-    if sel2 is None:
-        sel2 = sel1.copy()
-    else:
-        sel2 = mol.atomselect(sel2).astype(np.uint32).copy()
-
-    hb = hbonds.calculate(donors, acceptors, mol.coords, mol.box, sel1, sel2, 2.5, 120)
-
-    hbond_list = []
-    for f in range(mol.numFrames):
-        hbond_list.append(np.array(hb[f]).reshape(-1, 3))
-    return hbond_list
 
 
 def view_hbonds(mol, hbonds):
@@ -116,46 +103,9 @@ def get_protein_rings(mol):
     return cycles
 
 
-def pipi_calculate(
-    mol,
-    rings1,
-    rings2,
-    dist_threshold1=4.4,
-    angle_threshold1_min=0,
-    angle_threshold1_max=30,
-    dist_threshold2=5.5,
-    angle_threshold2_min=60,
-    angle_threshold2_max=120,
-):
-    from moleculekit.interactions import pipi
-
-    ring_atoms = np.hstack((np.hstack(rings1), np.hstack(rings2)))
-    ring_starts1 = np.insert(np.cumsum([len(rr) for rr in rings1]), 0, 0)
-    ring_starts2 = np.insert(np.cumsum([len(rr) for rr in rings2]), 0, 0)
-    ring_starts2 += ring_starts1.max()
-
-    pp, da = pipi.calculate(
-        ring_atoms.astype(np.uint32),
-        ring_starts1.astype(np.uint32),
-        ring_starts2.astype(np.uint32),
-        mol.coords,
-        mol.box,
-        dist_threshold1=dist_threshold1,
-        angle_threshold1_min=angle_threshold1_min,
-        angle_threshold1_max=angle_threshold1_max,
-        dist_threshold2=dist_threshold2,
-        angle_threshold2_min=angle_threshold2_min,
-        angle_threshold2_max=angle_threshold2_max,
-    )
-
-    # TODO: Add halogens to the pyx code
-
-    pp_list = []
-    dist_ang_list = []
-    for f in range(mol.numFrames):
-        pp_list.append(np.array(pp[f]).reshape(-1, 2))
-        dist_ang_list.append(np.array(da[f]).reshape(-1, 2))
-    return pp_list, dist_ang_list
+def get_protein_aryl_halides(mol):
+    # TODO: Need to support non-standard residues
+    pass
 
 
 def get_charged(mol):
@@ -232,6 +182,73 @@ def get_ligand_aryl_halides(sm, start_idx=0):
     return halides
 
 
+def hbonds_calculate(
+    mol,
+    donors,
+    acceptors,
+    sel1="all",
+    sel2=None,
+    dist_threshold=2.5,
+    angle_threshold=120,
+):
+    from moleculekit.interactions import hbonds
+
+    sel1 = mol.atomselect(sel1).astype(np.uint32).copy()
+    if sel2 is None:
+        sel2 = sel1.copy()
+    else:
+        sel2 = mol.atomselect(sel2).astype(np.uint32).copy()
+
+    hb = hbonds.calculate(donors, acceptors, mol.coords, mol.box, sel1, sel2, 2.5, 120)
+
+    hbond_list = []
+    for f in range(mol.numFrames):
+        hbond_list.append(np.array(hb[f]).reshape(-1, 3))
+    return hbond_list
+
+
+def pipi_calculate(
+    mol,
+    rings1,
+    rings2,
+    dist_threshold1=4.4,
+    angle_threshold1_min=0,
+    angle_threshold1_max=30,
+    dist_threshold2=5.5,
+    angle_threshold2_min=60,
+    angle_threshold2_max=120,
+):
+    from moleculekit.interactions import pipi
+
+    ring_atoms = np.hstack((np.hstack(rings1), np.hstack(rings2)))
+    ring_starts1 = np.insert(np.cumsum([len(rr) for rr in rings1]), 0, 0)
+    ring_starts2 = np.insert(np.cumsum([len(rr) for rr in rings2]), 0, 0)
+    ring_starts2 += ring_starts1.max()
+
+    pp, da = pipi.calculate(
+        ring_atoms.astype(np.uint32),
+        ring_starts1.astype(np.uint32),
+        ring_starts2.astype(np.uint32),
+        mol.coords,
+        mol.box,
+        dist_threshold1=dist_threshold1,
+        angle_threshold1_min=angle_threshold1_min,
+        angle_threshold1_max=angle_threshold1_max,
+        dist_threshold2=dist_threshold2,
+        angle_threshold2_min=angle_threshold2_min,
+        angle_threshold2_max=angle_threshold2_max,
+    )
+
+    # TODO: Add halogens to the pyx code
+
+    pp_list = []
+    dist_ang_list = []
+    for f in range(mol.numFrames):
+        pp_list.append(np.array(pp[f]).reshape(-1, 2))
+        dist_ang_list.append(np.array(da[f]).reshape(-1, 2))
+    return pp_list, dist_ang_list
+
+
 def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
     from moleculekit.projections.util import pp_calcDistances
 
@@ -268,11 +285,6 @@ def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
         salt_bridge_list.append(inter[opposite_charges])
 
     return salt_bridge_list
-
-
-def get_aryl_halides_protein(mol):
-    # TODO: Need to support non-standard residues
-    pass
 
 
 def cationpi_calculate(
