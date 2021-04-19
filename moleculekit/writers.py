@@ -608,7 +608,7 @@ def MOL2write(mol, filename):
 def SDFwrite(mol, filename):
     import datetime
 
-    mol2bonds = {"1": 1, "2": 2, "3": 3, "ar": 4}
+    mol2bonds = {"1": 1, "2": 2, "3": 3, "ar": 4, "4": 4}
     chargemap = {-3: 7, -2: 6, -1: 5, 0: 0, 1: 3, 2: 2, 3: 1}
     with open(filename, "w") as fh:
         fh.write(f"{mol.viewname}\n")
@@ -632,7 +632,7 @@ def SDFwrite(mol, filename):
                 charges.append([i + 1, int(mol.charge[i])])
 
             fh.write(
-                f"{coor[i, 0]:>10.4f}{coor[i, 1]:>10.4f}{coor[i, 2]:>10.4f} {element}   0  0  0  0  0  0  0  0  0  0  0  0\n"
+                f"{coor[i, 0]:>10.4f}{coor[i, 1]:>10.4f}{coor[i, 2]:>10.4f} {element:<2}  0  0  0  0  0  0  0  0  0  0  0  0\n"
             )
 
         for i in range(mol.bonds.shape[0]):
@@ -848,6 +848,26 @@ class _TestWriters(unittest.TestCase):
                 self.assertEqual(
                     filelines, reflines, msg=f"Failed comparison of {reffile} {tmpfile}"
                 )
+
+    def test_sdf_writer(self):
+        from moleculekit.molecule import Molecule
+        from moleculekit.util import tempname
+        from moleculekit.home import home
+        import filecmp
+
+        reffile = os.path.join(self.testfolder, "mol_bromium_out.sdf")
+        mol = Molecule(os.path.join(self.testfolder, "mol_bromium.sdf"))
+        tmpfile = tempname(suffix=".sdf")
+        mol.write(tmpfile)
+
+        with open(tmpfile, "r") as f:
+            filelines = f.readlines()[2:]
+        with open(reffile, "r") as f:
+            reflines = f.readlines()[2:]
+
+        self.assertEqual(
+            filelines, reflines, msg=f"Failed comparison of {reffile} {tmpfile}"
+        )
 
 
 if __name__ == "__main__":
