@@ -92,17 +92,6 @@ def view_hbonds(mol, hbonds):
     mol.viewname = viewname
 
 
-def get_ligand_rings(sm):
-    ligandRings = sm._mol.GetRingInfo().AtomRings()
-    ligandAtomAromaticRings = []
-    for r in ligandRings:
-        aromatics = sum([sm._mol.GetAtomWithIdx(idx).GetIsAromatic() for idx in r])
-        if aromatics != len(r):
-            continue
-        ligandAtomAromaticRings.append(r)
-    return ligandAtomAromaticRings
-
-
 def get_protein_rings(mol):
     from moleculekit.util import sequenceID
     import networkx as nx
@@ -198,16 +187,49 @@ def get_charged(mol):
     return list(np.where(pos)[0]), list(np.where(neg)[0])
 
 
-def get_ligand_charged(sm):
+def get_ligand_rings(sm, start_idx=0):
+    ligandRings = sm._mol.GetRingInfo().AtomRings()
+    ligandAtomAromaticRings = []
+    for ring in ligandRings:
+        aromatics = sum([sm._mol.GetAtomWithIdx(idx).GetIsAromatic() for idx in ring])
+        if aromatics != len(ring):
+            continue
+        ligandAtomAromaticRings.append([r + start_idx for r in ring])
+    return ligandAtomAromaticRings
+
+
+def get_ligand_charged(sm, start_idx=0):
     pos = []
     neg = []
     for i in range(sm.numAtoms):
         fc = sm._mol.GetAtomWithIdx(i).GetFormalCharge()
         if fc > 0:
-            pos.append(i)
+            pos.append(i + start_idx)
         elif fc < 0:
-            neg.append(i)
+            neg.append(i + start_idx)
     return pos, neg
+
+
+def get_ligand_aryl_halides(sm, start_idx=0):
+    import networkx as nx
+
+    halogens = ["Cl", "Br", "I"]
+    rings = get_ligand_rings(sm)
+    ring_atoms = np.hstack(rings)
+    halogens = np.where(np.isin(sm._element, halogens))[0]
+
+    graph = nx.Graph()
+    graph.add_edges_from(sm._bonds)
+
+    halides = []
+    for hi in halogens:
+        neighs = list(graph.neighbors(hi))
+        if len(neighs) != 1:
+            continue
+        if neighs[0] in ring_atoms:
+            halides.append([hi + start_idx, neighs[0] + start_idx])
+
+    return halides
 
 
 def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
@@ -251,28 +273,6 @@ def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
 def get_aryl_halides_protein(mol):
     # TODO: Need to support non-standard residues
     pass
-
-
-def get_ligand_aryl_halides(sm):
-    import networkx as nx
-
-    halogens = ["Cl", "Br", "I"]
-    rings = get_ligand_rings(sm)
-    ring_atoms = np.hstack(rings)
-    halogens = np.where(np.isin(sm._element, halogens))[0]
-
-    graph = nx.Graph()
-    graph.add_edges_from(sm._bonds)
-
-    halides = []
-    for hi in halogens:
-        neighs = list(graph.neighbors(hi))
-        if len(neighs) != 1:
-            continue
-        if neighs[0] in ring_atoms:
-            halides.append([hi, neighs[0]])
-
-    return halides
 
 
 def cationpi_calculate(
@@ -391,9 +391,8 @@ class _TestInteractions(unittest.TestCase):
         lig_idx = np.where(mol.resname == "6RD")[0][0]
 
         prot_rings = get_protein_rings(mol)
-        lig_rings = get_ligand_rings(lig)
+        lig_rings = get_ligand_rings(lig, start_idx=lig_idx)
 
-        lig_rings = [tuple(lll + lig_idx for lll in ll) for ll in lig_rings]
         pipis, distang = pipi_calculate(mol, prot_rings, lig_rings)
 
         assert len(pipis) == 1
@@ -426,12 +425,11 @@ class _TestInteractions(unittest.TestCase):
         mol.append(lig.toMolecule())
         mol.coords = np.tile(mol.coords, (1, 1, 2)).copy()  # Fake second frame
 
-        prot_pos, prot_neg = get_charged(mol)
-        lig_pos, lig_neg = get_ligand_charged(lig)
-
         lig_idx = np.where(mol.resname == "BEN")[0][0]
-        lig_pos = [ll + lig_idx for ll in lig_pos]
-        lig_neg = [ll + lig_idx for ll in lig_neg]
+
+        prot_pos, prot_neg = get_charged(mol)
+        lig_pos, lig_neg = get_ligand_charged(lig, start_idx=lig_idx)
+
         bridges = saltbridge_calculate(
             mol, prot_pos + lig_pos, prot_neg + lig_neg, "protein", "resname BEN"
         )
@@ -479,12 +477,10 @@ class _TestInteractions(unittest.TestCase):
         lig_idx = np.where(mol.resname == "784")[0][0]
 
         prot_rings = get_protein_rings(mol)
-        lig_rings = get_ligand_rings(lig)
-        lig_rings = [tuple(lll + lig_idx for lll in ll) for ll in lig_rings]
+        lig_rings = get_ligand_rings(lig, start_idx=lig_idx)
 
         prot_pos, _ = get_charged(mol)
-        lig_pos, _ = get_ligand_charged(lig)
-        lig_pos = [ll + lig_idx for ll in lig_pos]
+        lig_pos, _ = get_ligand_charged(lig, start_idx=lig_idx)
 
         catpi, distang = cationpi_calculate(
             mol, prot_rings + lig_rings, prot_pos + lig_pos
@@ -508,8 +504,7 @@ class _TestInteractions(unittest.TestCase):
         mol.append(lig.toMolecule())
 
         lig_idx = np.where(mol.resname == "ME5")[0][0]
-        lig_halides = get_ligand_aryl_halides(lig)
-        lig_halides = [[ll[0] + lig_idx, ll[1] + lig_idx] for ll in lig_halides]
+        lig_halides = get_ligand_aryl_halides(lig, start_idx=lig_idx)
 
         prot_rings = get_protein_rings(mol)
 
