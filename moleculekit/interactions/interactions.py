@@ -65,15 +65,20 @@ def view_hbonds(mol, hbonds):
 
     viewname = "mol"
     if mol.viewname is not None:
-        viewname = mol.viewname.copy()
+        viewname = mol.viewname
 
     for f in range(mol.numFrames):
         mol.viewname = f"{viewname}_frame_{f}"
         mol.view()
         for i in range(hbonds[f].shape[0]):
+            end = hbonds[f][i, 2]
+            start = hbonds[f][i, 1]
+            if start == -1:
+                start = hbonds[f][i, 0]
+
             VMDCylinder(
-                mol.coords[hbonds[f][i, 1], :, f],
-                mol.coords[hbonds[f][i, 2], :, f],
+                mol.coords[start, :, f],
+                mol.coords[end, :, f],
                 radius=0.1,
             )
     mol.viewname = viewname
@@ -190,21 +195,131 @@ def hbonds_calculate(
     sel2=None,
     dist_threshold=2.5,
     angle_threshold=120,
+    ignore_hs=False,
 ):
     from moleculekit.interactions import hbonds
 
     sel1 = mol.atomselect(sel1).astype(np.uint32).copy()
     if sel2 is None:
         sel2 = sel1.copy()
+        intra = True
     else:
         sel2 = mol.atomselect(sel2).astype(np.uint32).copy()
+        intra = False
 
-    hb = hbonds.calculate(donors, acceptors, mol.coords, mol.box, sel1, sel2, 2.5, 120)
+    if len(sel1) != mol.numAtoms or len(sel2) != mol.numAtoms:
+        raise RuntimeError(
+            "Selections must be boolean of size equal to number of atoms in the molecule"
+        )
+
+    # Filter donors and acceptors list if they are not in the selections to reduce calculations
+    sel_idx = np.where(sel1 | sel2)[0]
+    donors = donors[np.all(np.isin(donors, sel_idx), axis=1)]
+    acceptors = acceptors[np.isin(acceptors, sel_idx)]
+
+    hb = hbonds.calculate(
+        donors,
+        acceptors,
+        mol.coords,
+        mol.box,
+        sel1,
+        sel2,
+        dist_threshold=dist_threshold,
+        angle_threshold=angle_threshold,
+        intra=intra,
+        ignore_hs=ignore_hs,
+    )
 
     hbond_list = []
     for f in range(mol.numFrames):
         hbond_list.append(np.array(hb[f]).reshape(-1, 3))
     return hbond_list
+
+
+def waterbridge_calculate(
+    mol,
+    donors,
+    acceptors,
+    sel1,
+    sel2,
+    order=1,
+    dist_threshold=2.5,
+    angle_threshold=120,
+    ignore_hs=False,
+):
+    import networkx as nx
+
+    args = {
+        "mol": mol,
+        "donors": donors,
+        "acceptors": acceptors,
+        "dist_threshold": dist_threshold,
+        "angle_threshold": angle_threshold,
+        "ignore_hs": ignore_hs,
+    }
+
+    sel1_b = mol.atomselect(sel1)
+    water_goal = mol.atomselect(
+        f"water or ({sel2})"
+    )  # Add the goal selection to the waters
+    water_goal_idx = np.where(water_goal)[0]
+    water_idx = mol.atomselect("water", indexes=True)
+
+    # Add one because an order 1 water bridge requires two iterations to find the target
+    order += 1
+    edges = []
+    for f in range(mol.numFrames):
+        edges.append([])
+
+    for _ in range(order):
+        curr_shell = hbonds_calculate(sel1=sel1_b, sel2=water_goal, **args)
+        for f in range(mol.numFrames):
+            # Only keep interactions which have at least one water
+            curr_shell[f] = curr_shell[f][
+                np.any(np.isin(curr_shell[f], water_idx), axis=1), :
+            ]
+            if ignore_hs:
+                edges[f].append(curr_shell[f][:, [0, 2]])
+            else:
+                edges[f].append(curr_shell[f][:, :2])
+                edges[f].append(curr_shell[f][:, 1:])
+
+        # Find which water atoms interacted with sel1_b to use them for the next shell
+        shell = np.vstack(curr_shell)[:, [0, 2]]
+        sel1_b = np.zeros(mol.numAtoms, dtype=bool)
+        interacted = np.unique(shell[np.isin(shell, water_goal_idx)])
+        sel1_b[interacted] = True
+
+    # Create networks and check for shortest paths between source and target
+    sel1_idx = mol.atomselect(sel1, indexes=True)
+    sel2_idx = mol.atomselect(sel2, indexes=True)
+
+    water_bridges = []
+    for f in range(mol.numFrames):
+        water_bridges.append([])
+
+    for f in range(mol.numFrames):
+        ee = np.vstack(edges[f])
+        starts = np.unique(ee[np.isin(ee, sel1_idx)])
+        ends = np.unique(ee[np.isin(ee, sel2_idx)])
+
+        # If they never connected skip
+        if not (np.any(starts) and np.any(ends)):
+            continue
+
+        network = nx.Graph()
+        network.add_edges_from(ee)
+        for st in starts:
+            for en in ends:
+                for pp in nx.all_simple_paths(network, source=st, target=en):
+                    if len(pp) < 3:  # Exclude direct source-target hbonds
+                        continue
+                    # Exclude paths which are not pure water bridges
+                    if not np.all(np.isin(pp[1:-1], water_idx)):
+                        continue
+                    water_bridges[f].append(pp)
+
+    return water_bridges
 
 
 def pipi_calculate(
@@ -238,8 +353,6 @@ def pipi_calculate(
         angle_threshold2_min=angle_threshold2_min,
         angle_threshold2_max=angle_threshold2_max,
     )
-
-    # TODO: Add halogens to the pyx code
 
     pp_list = []
     dist_ang_list = []
@@ -526,6 +639,73 @@ class _TestInteractions(unittest.TestCase):
         assert np.array_equal(ref_atms, sh[0]), print(ref_atms, sh[0])
         ref_distang = np.array([[4.26179695, 66.55052185]])
         assert np.allclose(ref_distang, distang)
+
+    def test_water_bridge(self):
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule
+        from moleculekit.smallmol.smallmol import SmallMol
+        import os
+
+        mol = Molecule(
+            os.path.join(home(dataDir="test-interactions"), "5gw6_receptor_H_wet.pdb")
+        )
+        mol.bonds = mol._guessBonds()
+
+        lig = SmallMol(
+            os.path.join(home(dataDir="test-interactions"), "5gw6_ligand-RDK.sdf")
+        )
+        mol.append(lig.toMolecule())
+
+        donors, acceptors = get_donors_acceptors(
+            mol, exclude_water=False, exclude_backbone=False
+        )
+
+        wb = waterbridge_calculate(
+            mol,
+            donors,
+            acceptors,
+            "resname GOL",
+            "protein and resname ASN and resid 155",
+            order=1,
+            dist_threshold=3.8,
+            ignore_hs=True,
+        )
+        assert np.array_equal(wb, [[[3140, 2899, 2024]]]), wb
+
+        wb = waterbridge_calculate(
+            mol,
+            donors,
+            acceptors,
+            "resname GOL",
+            "protein and resname ASN and resid 155",
+            order=2,
+            dist_threshold=3.8,
+            ignore_hs=True,
+        )
+        assert np.array_equal(wb, [[[3140, 2899, 2944, 2023], [3140, 2899, 2024]]]), wb
+
+        wb = waterbridge_calculate(
+            mol,
+            donors,
+            acceptors,
+            "resname GOL",
+            "protein",
+            order=1,
+            dist_threshold=3.8,
+            ignore_hs=True,
+        )
+        assert np.array_equal(
+            wb,
+            [
+                [
+                    [3140, 2899, 2024],
+                    [3142, 2857, 1317],
+                    [3142, 2857, 2720],
+                    [3142, 2857, 2737],
+                    [3142, 2857, 2789],
+                ]
+            ],
+        ), wb
 
 
 if __name__ == "__main__":
