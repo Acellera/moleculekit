@@ -670,7 +670,7 @@ class _TestInteractions(unittest.TestCase):
             dist_threshold=3.8,
             ignore_hs=True,
         )
-        # assert np.array_equal(wb, [[[3140, 2899, 2024]]]), wb
+        assert np.array_equal(wb, [[[3140, 2899, 2024]]]), wb
 
         wb = waterbridge_calculate(
             mol,
@@ -682,7 +682,7 @@ class _TestInteractions(unittest.TestCase):
             dist_threshold=3.8,
             ignore_hs=True,
         )
-        # assert np.array_equal(wb, [[[3140, 2899, 2944, 2023], [3140, 2899, 2024]]]), wb
+        assert np.array_equal(wb, [[[3140, 2899, 2944, 2023], [3140, 2899, 2024]]]), wb
 
         wb = waterbridge_calculate(
             mol,
@@ -694,18 +694,18 @@ class _TestInteractions(unittest.TestCase):
             dist_threshold=3.8,
             ignore_hs=True,
         )
-        # assert np.array_equal(
-        #     wb,
-        #     [
-        #         [
-        #             [3140, 2899, 2024],
-        #             [3142, 2857, 1317],
-        #             [3142, 2857, 2720],
-        #             [3142, 2857, 2737],
-        #             [3142, 2857, 2789],
-        #         ]
-        #     ],
-        # ), wb
+        assert np.array_equal(
+            wb,
+            [
+                [
+                    [3140, 2899, 2024],
+                    [3142, 2857, 1317],
+                    [3142, 2857, 2720],
+                    [3142, 2857, 2737],
+                    [3142, 2857, 2789],
+                ]
+            ],
+        ), wb
 
 
 if __name__ == "__main__":
