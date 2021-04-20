@@ -4,6 +4,7 @@ import numpy as np
 from math import sqrt
 cimport numpy as np
 from libcpp.vector cimport vector
+from libcpp cimport bool
 from libc.math cimport round, sqrt, acos
 
 # We now need to fix a datatype for our arrays. I've used the variable
@@ -30,6 +31,8 @@ def calculate(
         np.ndarray[UINT32_t, ndim=1] sel2, 
         float dist_threshold=2.5,
         float angle_threshold=120,
+        bool intra=False,
+        bool ignore_hs=False,
     ):
     cdef int d, a, f, i
     cdef int n_donors = donors.shape[0]
@@ -40,7 +43,7 @@ def calculate(
     cdef np.ndarray[FLOAT32_t, ndim=1] dist_vec_b = np.zeros(3, dtype=FLOAT32)
     cdef np.ndarray[FLOAT32_t, ndim=1] half_box = np.zeros(3, dtype=FLOAT32)
     cdef FLOAT32_t dist2_a, dist2_b, dotprod, val, angle
-    cdef UINT32_t d_idx_d, d_idx_h, a_idx
+    cdef UINT32_t d_idx_d, d_idx_h, d_idx, a_idx
 
     dist_threshold = dist_threshold * dist_threshold
     angle_threshold = angle_threshold / 57.29578
@@ -60,19 +63,23 @@ def calculate(
                 if a_idx == d_idx_d:
                     continue
 
-                # Donor and acceptor must belong to different selections
-                if sel1[a_idx] != 0:
-                    if sel2[d_idx_d] == 0:
+                if intra:
+                    # Both donor and acceptors must be selected
+                    if sel1[a_idx] == 0 or sel1[d_idx_d] == 0:
                         continue
-                if sel1[d_idx_d] != 0:
-                    if sel2[a_idx] == 0:
+                else:
+                    # Donor and acceptor must belong to different selections
+                    if not ((sel1[a_idx] == 1 and sel2[d_idx_d] == 1) or (sel2[a_idx] == 1 and sel1[d_idx_d] == 1)):
                         continue
 
                 dist2_a = 0
                 dist2_b = 0
-                # Calculate donor hydrogen to acceptor vector
+                d_idx = d_idx_h
+                if ignore_hs: # If we ignore the hydrogen just calculate heavy to heavy distance
+                    d_idx = d_idx_d
+                # Calculate donor hydrogen (or heavy if ignore_hs) to acceptor vector
                 for i in range(3):
-                    val = coords[a_idx, i, f] - coords[d_idx_h, i, f] 
+                    val = coords[a_idx, i, f] - coords[d_idx, i, f] 
                     # Wrap the distance vector into the periodic box
                     if abs(val) > half_box[i] and box[i, f] != 0:
                         val = val - box[i, f] * round(val / box[i, f])
@@ -81,6 +88,13 @@ def calculate(
 
                 # Donor hydrogen too far from acceptor
                 if dist2_a > dist_threshold:
+                    continue
+
+                # If we ignore the hydrogens skip the angle part. We have found a match already
+                if ignore_hs:
+                    results[f].push_back(d_idx_d)
+                    results[f].push_back(-1)  # No hydrogen to add here
+                    results[f].push_back(a_idx)
                     continue
 
                 # Calculate donor heavy to donor hydrogen vector for the angle
