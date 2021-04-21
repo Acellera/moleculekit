@@ -13,6 +13,7 @@ def get_donors_acceptors(mol, exclude_water=True, exclude_backbone=False):
         )
 
     mol_g = nx.Graph()
+    mol_g.add_nodes_from(range(mol.numAtoms))
     mol_g.add_edges_from(mol.bonds)
 
     donor_elements = ("N", "O")
@@ -85,7 +86,6 @@ def view_hbonds(mol, hbonds):
 
 
 def get_protein_rings(mol):
-    from moleculekit.util import sequenceID
     import networkx as nx
 
     _aromatics = ["PHE", "HIS", "HID", "HIE", "HIP", "TYR", "TRP"]
@@ -108,38 +108,68 @@ def get_protein_rings(mol):
     return cycles
 
 
+def get_nucleic_rings(mol):
+    import networkx as nx
+
+    nucleic_sel = mol.atomselect("nucleic and not backbone")
+    original_idx = np.where(nucleic_sel)[0]
+
+    mol2 = mol.copy()
+    mol2.filter(nucleic_sel, _logger=False)
+    bonds = mol2._guessBonds()
+
+    graph = nx.Graph()
+    graph.add_edges_from(bonds)
+    cycles = nx.cycle_basis(graph)
+
+    cycles = [tuple(original_idx[cc]) for cc in cycles]
+
+    return cycles
+
+
 def get_protein_aryl_halides(mol):
     # TODO: Need to support non-standard residues
     pass
 
 
-def get_charged(mol):
-    metals = [
-        "Fe",
-        "Cu",
-        "Ni",
-        "Mo",
-        "Rh",
-        "Re",
-        "Mn",
-        "Mg",
-        "Ca",
-        "Na",
-        "K",
-        "Cs",
-        "Zn",
-        "Se",
-    ]
-    metal = np.isin(mol.element, metals)
+metals = [
+    "Fe",
+    "Cu",
+    "Ni",
+    "Mo",
+    "Rh",
+    "Re",
+    "Mn",
+    "Mg",
+    "Ca",
+    "Na",
+    "K",
+    "Cs",
+    "Zn",
+    "Se",
+]
+
+
+def get_metal_charged(mol):
+    return list(np.where(np.isin(mol.element, metals))[0]), []
+
+
+def get_protein_charged(mol):
     lys_n = (mol.resname == "LYS") & (mol.name == "NZ")
     arg_c = (mol.resname == "ARG") & (mol.name == "CZ")
     hip_c = (mol.resname == "HIP") & (mol.name == "CE1")
-    pos = metal | lys_n | arg_c | hip_c
+    pos = lys_n | arg_c | hip_c
 
     asp_c = (mol.resname == "ASP") & (mol.name == "CG")
     glu_c = (mol.resname == "GLU") & (mol.name == "CD")
     neg = asp_c | glu_c
+
     return list(np.where(pos)[0]), list(np.where(neg)[0])
+
+
+def get_nucleic_charged(mol):
+    nuc = mol.atomselect("nucleic and backbone and name OP2")
+    return [], list(np.where(nuc)[0])
 
 
 def get_ligand_rings(sm, start_idx=0):
@@ -170,6 +200,9 @@ def get_ligand_aryl_halides(sm, start_idx=0):
 
     halogens = ["Cl", "Br", "I"]
     rings = get_ligand_rings(sm)
+    if len(rings) == 0:
+        return []
+
     ring_atoms = np.hstack(rings)
     halogens = np.where(np.isin(sm._element, halogens))[0]
 
@@ -198,6 +231,9 @@ def hbonds_calculate(
     ignore_hs=False,
 ):
     from moleculekit.interactions import hbonds
+
+    if len(donors) == 0 or len(acceptors) == 0:
+        return [[] for _ in range(mol.numAtoms)]
 
     sel1 = mol.atomselect(sel1).astype(np.uint32).copy()
     if sel2 is None:
@@ -249,6 +285,9 @@ def waterbridge_calculate(
 ):
     import networkx as nx
 
+    if len(donors) == 0 or len(acceptors) == 0:
+        return [[] for _ in range(mol.numAtoms)]
+
     args = {
         "mol": mol,
         "donors": donors,
@@ -286,6 +325,8 @@ def waterbridge_calculate(
         shell = np.vstack(curr_shell)[:, [0, 2]]
         sel1_b = np.zeros(mol.numAtoms, dtype=bool)
         interacted = np.unique(shell[np.isin(shell, water_goal_idx)])
+        if len(interacted) == 0:
+            break
         sel1_b[interacted] = True
 
     # Create networks and check for shortest paths between source and target
@@ -335,6 +376,9 @@ def pipi_calculate(
 ):
     from moleculekit.interactions import pipi
 
+    if len(rings1) == 0 or len(rings2) == 0:
+        return [[] for _ in range(mol.numAtoms)], [[] for _ in range(mol.numAtoms)]
+
     ring_atoms = np.hstack((np.hstack(rings1), np.hstack(rings2)))
     ring_starts1 = np.insert(np.cumsum([len(rr) for rr in rings1]), 0, 0)
     ring_starts2 = np.insert(np.cumsum([len(rr) for rr in rings2]), 0, 0)
@@ -364,6 +408,9 @@ def pipi_calculate(
 
 def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
     from moleculekit.projections.util import pp_calcDistances
+
+    if len(pos) == 0 or len(neg) == 0:
+        return [[] for _ in range(mol.numAtoms)]
 
     sel1 = mol.atomselect(sel1).astype(np.uint32).copy()
     if sel2 is None:
@@ -410,6 +457,9 @@ def cationpi_calculate(
 ):
     from moleculekit.interactions import cationpi
 
+    if len(rings) == 0 or len(cations) == 0:
+        return [[] for _ in range(mol.numAtoms)], [[] for _ in range(mol.numAtoms)]
+
     ring_atoms = np.hstack(rings)
     ring_starts = np.insert(np.cumsum([len(rr) for rr in rings]), 0, 0)
 
@@ -441,6 +491,9 @@ def sigmahole_calculate(
     angle_threshold_max=120,
 ):
     from moleculekit.interactions import sigmahole
+
+    if len(rings) == 0 or len(halides) == 0:
+        return [[] for _ in range(mol.numAtoms)], [[] for _ in range(mol.numAtoms)]
 
     ring_atoms = np.hstack(rings)
     ring_starts = np.insert(np.cumsum([len(rr) for rr in rings]), 0, 0)
@@ -552,7 +605,7 @@ class _TestInteractions(unittest.TestCase):
 
         lig_idx = np.where(mol.resname == "BEN")[0][0]
 
-        prot_pos, prot_neg = get_charged(mol)
+        prot_pos, prot_neg = get_protein_charged(mol)
         lig_pos, lig_neg = get_ligand_charged(lig, start_idx=lig_idx)
 
         bridges = saltbridge_calculate(
@@ -572,9 +625,10 @@ class _TestInteractions(unittest.TestCase):
 
         mol = Molecule(os.path.join(home(dataDir="test-interactions"), "1LPI.pdb"))
         prot_rings = get_protein_rings(mol)
-        prot_pos, _ = get_charged(mol)
+        prot_pos, _ = get_protein_charged(mol)
+        metal_pos, _ = get_metal_charged(mol)
 
-        catpi, distang = cationpi_calculate(mol, prot_rings, prot_pos)
+        catpi, distang = cationpi_calculate(mol, prot_rings, prot_pos + metal_pos)
 
         ref_atms = np.array([[0, 8], [17, 1001], [18, 1001]])
         assert np.array_equal(ref_atms, catpi[0]), print(ref_atms, catpi[0])
@@ -604,7 +658,7 @@ class _TestInteractions(unittest.TestCase):
         prot_rings = get_protein_rings(mol)
         lig_rings = get_ligand_rings(lig, start_idx=lig_idx)
 
-        prot_pos, _ = get_charged(mol)
+        prot_pos, _ = get_protein_charged(mol)
         lig_pos, _ = get_ligand_charged(lig, start_idx=lig_idx)
 
         catpi, distang = cationpi_calculate(

@@ -21,26 +21,6 @@ def closestDistance(mol1, mol2):
     return pp_calcMinDistances(mol1, sel1, sel2, periodic=None).squeeze()
 
 
-# def isProteinProtonated(mol):
-#     from moleculekit.tools.autosegment import autoSegment
-#     from moleculekit.tools.preparation import proteinPrepare
-#     import logging
-
-#     mol = mol.copy()
-#     mol.filter("protein")
-
-#     numberHs = mol.atomselect("hydrogen").sum()
-#     pmol = proteinPrepare(mol, _loggerLevel=logging.ERROR)
-#     prepNumberHs = pmol.atomselect("hydrogen").sum()
-#     addedHs = prepNumberHs - numberHs
-
-#     if addedHs > (
-#         mol.numAtoms / 3
-#     ):  # Rough heuristic of what is a significant number of hydrogens to add
-#         return False
-#     return True
-
-
 def isProteinProtonated(mol):
     numberHs = mol.atomselect("protein and hydrogen").sum()
     numberProt = mol.atomselect("protein").sum()
@@ -131,6 +111,15 @@ def areLigandsOptimized(sdf_file, num_planes=3, max_check=None):
             not_optimized.append(ligname)
 
     return len(not_optimized) == 0, not_optimized
+
+
+def proteinHasBonds(mol):
+    import numpy as np
+
+    prot_idx = mol.atomselect("protein", indexes=True)
+    num_prot_bonds = np.sum(np.all(np.isin(mol.bonds, prot_idx), axis=1))
+
+    return num_prot_bonds >= len(prot_idx) - 1
 
 
 import unittest

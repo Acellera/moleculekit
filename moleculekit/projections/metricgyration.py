@@ -4,6 +4,7 @@
 # No redistribution in whole or part
 #
 from moleculekit.projections.projection import Projection
+from moleculekit.periodictable import periodictable
 import numpy as np
 import logging
 
@@ -33,18 +34,28 @@ class MetricGyration(Projection):
         self._atomsel = atomsel
 
     def _calculateMolProp(self, mol, props="all"):
-        props = ("atomsel", "total_mass") if props == "all" else props
+        props = ("atomsel", "masses") if props == "all" else props
         res = {}
         if "atomsel" in props:
             res["atomsel"] = mol.atomselect(self._atomsel)
             if np.sum(res["atomsel"]) == 0:
                 raise RuntimeError("Atom selection resulted in 0 atoms.")
 
-        res["total_mass"] = np.sum(mol.masses[mol.atomselect(self._atomsel)])
-        if res["total_mass"] == 0:
-            raise RuntimeError(
-                "The molecule selection has 0 total mass. Please read atom masses from a prmtop or psf file."
-            )
+        if "masses" in props:
+            sel = mol.atomselect(self._atomsel)
+            res["masses"] = mol.masses[sel]
+            if np.any(res["masses"] == 0):
+                logger.warning(
+                    "The Molecule has atoms with 0 mass. Guessing the masses from the elements."
+                )
+                res["masses"] = np.array(
+                    [periodictable[el].mass for el in mol.element[sel]]
+                )
+                if np.sum(res["masses"]) == 0:
+                    raise RuntimeError(
+                        "The molecule selection has 0 total mass. Please read atom masses from a prmtop or psf file."
+                    )
+
         return res
 
     def project(self, mol):
@@ -62,9 +73,9 @@ class MetricGyration(Projection):
         """
         getMolProp = lambda prop: self._getMolProp(mol, prop)
         atomsel = getMolProp("atomsel")
-        total_mass = getMolProp("total_mass")
+        masses = getMolProp("masses")
+        total_mass = np.sum(masses)
 
-        masses = mol.masses[atomsel]
         coords = mol.coords[atomsel].copy()
 
         # Calculate center of mass
