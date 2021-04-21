@@ -12,10 +12,6 @@ def get_donors_acceptors(mol, exclude_water=True, exclude_backbone=False):
             "The protein seems to not be protonated. You must provide a protonated system for H-bonds to be detected."
         )
 
-    mol_g = nx.Graph()
-    mol_g.add_nodes_from(range(mol.numAtoms))
-    mol_g.add_edges_from(mol.bonds)
-
     donor_elements = ("N", "O")
     acceptor_elements = ("N", "O")
     potential_donors = np.in1d(mol.element, donor_elements)
@@ -48,17 +44,25 @@ def get_donors_acceptors(mol, exclude_water=True, exclude_backbone=False):
 
     hydrogens = tuple(np.where(mol.element == "H")[0])
     donor_pairs = []
-    for pot_do in np.where(potential_donors)[0]:
-        neighbours = np.array(list(mol_g.neighbors(pot_do)))
-        h_neighbours = neighbours[np.in1d(neighbours, hydrogens)]
-        for hn in h_neighbours:
-            donor_pairs.append([pot_do, hn])
+    potential_donors = np.where(potential_donors)[0]
+
+    mask1 = np.isin(mol.bonds[:, 0], potential_donors) & np.isin(
+        mol.bonds[:, 1], hydrogens
+    )
+    mask2 = np.isin(mol.bonds[:, 1], potential_donors) & np.isin(
+        mol.bonds[:, 0], hydrogens
+    )
+    donor_pairs1 = mol.bonds[mask1, :]
+    donor_pairs2 = mol.bonds[
+        mask2, ::-1
+    ]  # Invert the order here to have the hyd second
+    donor_pairs = np.vstack((donor_pairs1, donor_pairs2))
 
     acceptors = np.where(potential_acceptors)[0]
 
     if not len(donor_pairs) or not len(acceptors):
         return [], []
-    return np.vstack(donor_pairs).astype(np.uint32), acceptors.astype(np.uint32)
+    return donor_pairs.astype(np.uint32), acceptors.astype(np.uint32)
 
 
 def view_hbonds(mol, hbonds):
@@ -233,7 +237,7 @@ def hbonds_calculate(
     from moleculekit.interactions import hbonds
 
     if len(donors) == 0 or len(acceptors) == 0:
-        return [[] for _ in range(mol.numAtoms)]
+        return [[] for _ in range(mol.numFrames)]
 
     sel1 = mol.atomselect(sel1).astype(np.uint32).copy()
     if sel2 is None:
@@ -286,7 +290,11 @@ def waterbridge_calculate(
     import networkx as nx
 
     if len(donors) == 0 or len(acceptors) == 0:
-        return [[] for _ in range(mol.numAtoms)]
+        return [[] for _ in range(mol.numFrames)]
+
+    sel1_b = mol.atomselect(sel1)
+    sel2_b = mol.atomselect(sel2)
+    water_b = mol.atomselect("water")
 
     args = {
         "mol": mol,
@@ -297,10 +305,9 @@ def waterbridge_calculate(
         "ignore_hs": ignore_hs,
     }
 
-    sel1_b = mol.atomselect(sel1)
-    water_goal = mol.atomselect(f"water or ({sel2})")
+    water_goal = water_b | sel2_b
     water_goal_idx = np.where(water_goal)[0]
-    water_idx = mol.atomselect("water", indexes=True)
+    water_idx = np.where(water_b)[0]
 
     # Add one because an order 1 water bridge requires two iterations to find the target
     order += 1
@@ -308,8 +315,9 @@ def waterbridge_calculate(
     for f in range(mol.numFrames):
         edges.append([])
 
+    sel1_b_curr = sel1_b.copy()
     for _ in range(order):
-        curr_shell = hbonds_calculate(sel1=sel1_b, sel2=water_goal, **args)
+        curr_shell = hbonds_calculate(sel1=sel1_b_curr, sel2=water_goal, **args)
         for f in range(mol.numFrames):
             # Only keep interactions which have at least one water
             has_water = np.any(np.isin(curr_shell[f], water_idx), axis=1)
@@ -321,17 +329,17 @@ def waterbridge_calculate(
                 edges[f].append(curr_shell[f][:, :2])
                 edges[f].append(curr_shell[f][:, 1:])
 
-        # Find which water atoms interacted with sel1_b to use them for the next shell
+        # Find which water atoms interacted with sel1_b_curr to use them for the next shell
         shell = np.vstack(curr_shell)[:, [0, 2]]
-        sel1_b = np.zeros(mol.numAtoms, dtype=bool)
+        sel1_b_curr = np.zeros(mol.numAtoms, dtype=bool)
         interacted = np.unique(shell[np.isin(shell, water_goal_idx)])
         if len(interacted) == 0:
             break
-        sel1_b[interacted] = True
+        sel1_b_curr[interacted] = True
 
     # Create networks and check for shortest paths between source and target
-    sel1_idx = mol.atomselect(sel1, indexes=True)
-    sel2_idx = mol.atomselect(sel2, indexes=True)
+    sel1_idx = np.where(sel1_b)[0]
+    sel2_idx = np.where(sel2_b)[0]
 
     water_bridges = []
     for f in range(mol.numFrames):
@@ -377,7 +385,7 @@ def pipi_calculate(
     from moleculekit.interactions import pipi
 
     if len(rings1) == 0 or len(rings2) == 0:
-        return [[] for _ in range(mol.numAtoms)], [[] for _ in range(mol.numAtoms)]
+        return [[] for _ in range(mol.numFrames)], [[] for _ in range(mol.numFrames)]
 
     ring_atoms = np.hstack((np.hstack(rings1), np.hstack(rings2)))
     ring_starts1 = np.insert(np.cumsum([len(rr) for rr in rings1]), 0, 0)
@@ -410,7 +418,7 @@ def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
     from moleculekit.projections.util import pp_calcDistances
 
     if len(pos) == 0 or len(neg) == 0:
-        return [[] for _ in range(mol.numAtoms)]
+        return [[] for _ in range(mol.numFrames)]
 
     sel1 = mol.atomselect(sel1).astype(np.uint32).copy()
     if sel2 is None:
@@ -458,7 +466,7 @@ def cationpi_calculate(
     from moleculekit.interactions import cationpi
 
     if len(rings) == 0 or len(cations) == 0:
-        return [[] for _ in range(mol.numAtoms)], [[] for _ in range(mol.numAtoms)]
+        return [[] for _ in range(mol.numFrames)], [[] for _ in range(mol.numFrames)]
 
     ring_atoms = np.hstack(rings)
     ring_starts = np.insert(np.cumsum([len(rr) for rr in rings]), 0, 0)
@@ -493,7 +501,7 @@ def sigmahole_calculate(
     from moleculekit.interactions import sigmahole
 
     if len(rings) == 0 or len(halides) == 0:
-        return [[] for _ in range(mol.numAtoms)], [[] for _ in range(mol.numAtoms)]
+        return [[] for _ in range(mol.numFrames)], [[] for _ in range(mol.numFrames)]
 
     ring_atoms = np.hstack(rings)
     ring_starts = np.insert(np.cumsum([len(rr) for rr in rings]), 0, 0)
