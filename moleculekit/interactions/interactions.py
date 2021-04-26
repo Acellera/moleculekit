@@ -485,8 +485,8 @@ def cationpi_calculate(
     index_list = []
     dist_ang_list = []
     for f in range(mol.numFrames):
-        index_list.append(np.array(pp[f]).reshape(-1, 2))
-        dist_ang_list.append(np.array(da[f]).reshape(-1, 2))
+        index_list.append(np.array(pp[f], dtype=np.int64).reshape(-1, 2))
+        dist_ang_list.append(np.array(da[f], dtype=np.int64).reshape(-1, 2))
     return index_list, dist_ang_list
 
 

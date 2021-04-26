@@ -25,13 +25,32 @@ class MetricGyration(Projection):
     metr : MetricGyration object
     """
 
-    def __init__(self, atomsel):
+    def __init__(
+        self,
+        atomsel,
+        refmol=None,
+        trajalnsel=None,
+        refalnsel=None,
+        centersel="protein",
+        pbc=True,
+    ):
         super().__init__()
 
         if atomsel is None:
             raise ValueError("Atom selection cannot be None")
 
         self._atomsel = atomsel
+        self._trajalnsel = trajalnsel
+        self._centersel = centersel
+        self._pbc = pbc
+        self._refmol = refmol
+
+        if self._refmol is not None:
+            if self._trajalnsel is None:
+                self._trajalnsel = "protein and name CA"
+            self._refalnsel = refalnsel if refalnsel is not None else self._trajalnsel
+            self._refmol = refmol.copy()
+            self._cache["refalnsel"] = self._refmol.atomselect(self._refalnsel)
 
     def _calculateMolProp(self, mol, props="all"):
         props = ("atomsel", "masses") if props == "all" else props
@@ -56,6 +75,17 @@ class MetricGyration(Projection):
                         "The molecule selection has 0 total mass. Please read atom masses from a prmtop or psf file."
                     )
 
+        if "trajalnsel" in props:
+            res["trajalnsel"] = None
+            if self._trajalnsel is not None:
+                res["trajalnsel"] = mol.atomselect(self._trajalnsel)
+                if np.sum(res["trajalnsel"]) == 0:
+                    raise RuntimeError("Alignment selection resulted in 0 atoms.")
+
+        if "centersel" in props and self._pbc:
+            res["centersel"] = mol.atomselect(self._centersel)
+            if np.sum(res["centersel"]) == 0:
+                raise RuntimeError("Centering selection resulted in 0 atoms.")
         return res
 
     def project(self, mol):
@@ -72,6 +102,21 @@ class MetricGyration(Projection):
             An array containing the projected data.
         """
         getMolProp = lambda prop: self._getMolProp(mol, prop)
+
+        mol = mol.copy()
+        if self._pbc:
+            mol.wrap(getMolProp("centersel"))
+
+        trajalnsel = getMolProp("trajalnsel")
+
+        if trajalnsel is not None:
+            if self._refmol is None:
+                mol.align(trajalnsel)
+            else:
+                mol.align(
+                    trajalnsel, refmol=self._refmol, refsel=getMolProp("refalnsel")
+                )
+
         atomsel = getMolProp("atomsel")
         masses = getMolProp("masses")
         total_mass = np.sum(masses)
@@ -83,9 +128,14 @@ class MetricGyration(Projection):
 
         # Calculate radius of gyration
         coords -= com  # Remove COM from the coordinates
-        rog = np.sqrt(
-            np.sum(masses[:, None] * np.sum(coords ** 2, axis=1), axis=0) / total_mass
-        )
+        sq_coords = coords ** 2
+        sq = np.sum(sq_coords, axis=1)
+        sq_x = np.sum(sq_coords[:, [1, 2]], axis=1)
+        sq_y = np.sum(sq_coords[:, [0, 2]], axis=1)
+        sq_z = np.sum(sq_coords[:, [0, 1]], axis=1)
+        sq_radius = np.array([sq, sq_x, sq_y, sq_z])
+
+        rog = np.sqrt(np.sum(masses[None, :, None] * sq_radius, axis=1) / total_mass).T
 
         return rog
 
@@ -107,9 +157,14 @@ class MetricGyration(Projection):
         getMolProp = lambda prop: self._getMolProp(mol, prop)
 
         atomidx = np.where(getMolProp("atomsel"))[0]
-        types = ["rog"]
-        indexes = [atomidx]
-        description = ["Radius of gyration"]
+        types = ["rog", "rog", "rog", "rog"]
+        indexes = [atomidx, atomidx, atomidx, atomidx]
+        description = [
+            "Radius of gyration",
+            "x component",
+            "y component",
+            "z component",
+        ]
         return DataFrame(
             {"type": types, "atomIndexes": indexes, "description": description}
         )
@@ -162,7 +217,7 @@ class _TestMetricCoordinate(unittest.TestCase):
             dtype=np.float32,
         )
         assert np.all(
-            np.abs(data[-20:] - lastrog) < 0.001
+            np.abs(data[-20:, 0] - lastrog) < 0.001
         ), "Radius of gyration calculation is broken"
 
 
