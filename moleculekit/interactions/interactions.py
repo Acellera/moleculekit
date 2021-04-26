@@ -486,7 +486,7 @@ def cationpi_calculate(
     dist_ang_list = []
     for f in range(mol.numFrames):
         index_list.append(np.array(pp[f], dtype=np.int64).reshape(-1, 2))
-        dist_ang_list.append(np.array(da[f], dtype=np.int64).reshape(-1, 2))
+        dist_ang_list.append(np.array(da[f], dtype=np.float64).reshape(-1, 2))
     return index_list, dist_ang_list
 
 
@@ -647,7 +647,7 @@ class _TestInteractions(unittest.TestCase):
                 [4.12248421, 82.81176758],
             ]
         )
-        assert np.allclose(ref_distang, distang)
+        assert np.allclose(ref_distang, distang), distang
 
     def test_cationpi_protein_ligand(self):
         from moleculekit.home import home
@@ -676,7 +676,7 @@ class _TestInteractions(unittest.TestCase):
         ref_atms = np.array([[11, 3494]])
         assert np.array_equal(ref_atms, catpi[0]), print(ref_atms, catpi[0])
         ref_distang = np.array([[4.74848127, 74.07044983]])
-        assert np.allclose(ref_distang, distang)
+        assert np.allclose(ref_distang, distang), distang
 
     def test_sigma_holes(self):
         from moleculekit.home import home
