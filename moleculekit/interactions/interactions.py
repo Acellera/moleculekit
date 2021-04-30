@@ -272,7 +272,7 @@ def hbonds_calculate(
 
     hbond_list = []
     for f in range(mol.numFrames):
-        hbond_list.append(np.array(hb[f]).reshape(-1, 3))
+        hbond_list.append([hb[f][i : i + 3] for i in range(0, len(hb[f]), 3)])
     return hbond_list
 
 
@@ -320,6 +320,7 @@ def waterbridge_calculate(
         curr_shell = hbonds_calculate(sel1=sel1_b_curr, sel2=water_goal, **args)
         for f in range(mol.numFrames):
             # Only keep interactions which have at least one water
+            curr_shell[f] = np.array(curr_shell[f])
             has_water = np.any(np.isin(curr_shell[f], water_idx), axis=1)
             curr_shell[f] = curr_shell[f][has_water, :]
             # Append the valid edges for this frame
@@ -413,8 +414,8 @@ def pipi_calculate(
     pp_list = []
     dist_ang_list = []
     for f in range(mol.numFrames):
-        pp_list.append(np.array(pp[f]).reshape(-1, 2))
-        dist_ang_list.append(np.array(da[f]).reshape(-1, 2))
+        pp_list.append([pp[f][i : i + 2] for i in range(0, len(pp[f]), 2)])
+        dist_ang_list.append([da[f][i : i + 2] for i in range(0, len(da[f]), 2)])
     return pp_list, dist_ang_list
 
 
@@ -490,8 +491,8 @@ def cationpi_calculate(
     index_list = []
     dist_ang_list = []
     for f in range(mol.numFrames):
-        index_list.append(np.array(pp[f], dtype=np.int64).reshape(-1, 2))
-        dist_ang_list.append(np.array(da[f], dtype=np.float64).reshape(-1, 2))
+        index_list.append([pp[f][i : i + 2] for i in range(0, len(pp[f]), 2)])
+        dist_ang_list.append([da[f][i : i + 2] for i in range(0, len(da[f]), 2)])
     return index_list, dist_ang_list
 
 
@@ -526,8 +527,8 @@ def sigmahole_calculate(
     index_list = []
     dist_ang_list = []
     for f in range(mol.numFrames):
-        index_list.append(np.array(indexes[f]).reshape(-1, 2))
-        dist_ang_list.append(np.array(da[f]).reshape(-1, 2))
+        index_list.append([indexes[f][i : i + 2] for i in range(0, len(indexes[f]), 2)])
+        dist_ang_list.append([da[f][i : i + 2] for i in range(0, len(da[f]), 2)])
     return index_list, dist_ang_list
 
 
@@ -569,7 +570,7 @@ class _TestInteractions(unittest.TestCase):
 
         hb = hbonds_calculate(mol, donors, acceptors, "all")
         assert len(hb) == 2
-        assert hb[0].shape == (178, 3), hb[0].shape
+        assert np.array(hb[0]).shape == (178, 3), np.array(hb[0]).shape
 
     def test_pipi(self):
         from moleculekit.home import home
