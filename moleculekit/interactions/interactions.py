@@ -376,13 +376,19 @@ def pipi_calculate(
     rings1,
     rings2,
     dist_threshold1=4.4,
-    angle_threshold1_min=0,
     angle_threshold1_max=30,
     dist_threshold2=5.5,
     angle_threshold2_min=60,
-    angle_threshold2_max=120,
 ):
     from moleculekit.interactions import pipi
+
+    if (
+        angle_threshold1_max < 0
+        or angle_threshold1_max > 90
+        or angle_threshold2_min < 0
+        or angle_threshold2_min > 90
+    ):
+        raise RuntimeError("Values for angles should be [0, 90] degrees")
 
     if len(rings1) == 0 or len(rings2) == 0:
         return [[] for _ in range(mol.numFrames)], [[] for _ in range(mol.numFrames)]
@@ -399,11 +405,9 @@ def pipi_calculate(
         mol.coords,
         mol.box,
         dist_threshold1=dist_threshold1,
-        angle_threshold1_min=angle_threshold1_min,
         angle_threshold1_max=angle_threshold1_max,
         dist_threshold2=dist_threshold2,
         angle_threshold2_min=angle_threshold2_min,
-        angle_threshold2_max=angle_threshold2_max,
     )
 
     pp_list = []
@@ -461,9 +465,11 @@ def cationpi_calculate(
     cations,
     dist_threshold=5,
     angle_threshold_min=60,
-    angle_threshold_max=120,
 ):
     from moleculekit.interactions import cationpi
+
+    if angle_threshold_min < 0 or angle_threshold_min > 90:
+        raise RuntimeError("Values for angles should be [0, 90] degrees")
 
     if len(rings) == 0 or len(cations) == 0:
         return [[] for _ in range(mol.numFrames)], [[] for _ in range(mol.numFrames)]
@@ -479,7 +485,6 @@ def cationpi_calculate(
         mol.box,
         dist_threshold=dist_threshold,
         angle_threshold_min=angle_threshold_min,
-        angle_threshold_max=angle_threshold_max,
     )
 
     index_list = []
@@ -496,9 +501,11 @@ def sigmahole_calculate(
     halides,
     dist_threshold=4.5,
     angle_threshold_min=60,
-    angle_threshold_max=120,
 ):
     from moleculekit.interactions import sigmahole
+
+    if angle_threshold_min < 0 or angle_threshold_min > 90:
+        raise RuntimeError("Values for angles should be [0, 90] degrees")
 
     if len(rings) == 0 or len(halides) == 0:
         return [[] for _ in range(mol.numFrames)], [[] for _ in range(mol.numFrames)]
@@ -514,7 +521,6 @@ def sigmahole_calculate(
         mol.box,
         dist_threshold=dist_threshold,
         angle_threshold_min=angle_threshold_min,
-        angle_threshold_max=angle_threshold_max,
     )
 
     index_list = []
@@ -588,9 +594,35 @@ class _TestInteractions(unittest.TestCase):
 
         ref_distang = np.array(
             [
-                [5.33927107, 97.67315674],
+                [5.33927107, 82.32684326],
                 [5.23078251, 85.32985687],
                 [5.16490269, 81.33213806],
+            ]
+        )
+        assert np.allclose(distang[0], ref_distang)
+
+        mol = Molecule(os.path.join(home(dataDir="test-interactions"), "6dn1.pdb"))
+        lig = SmallMol(
+            os.path.join(home(dataDir="test-interactions"), "6dn1_ligand-RDK.sdf")
+        )
+
+        lig_idx = np.where(mol.resname == "MOL")[0][0]
+
+        prot_rings = get_nucleic_rings(mol)
+        lig_rings = get_ligand_rings(lig, start_idx=lig_idx)
+
+        pipis, distang = pipi_calculate(mol, prot_rings, lig_rings)
+
+        assert len(pipis) == 1
+
+        ref_rings = np.array([[72, 2], [73, 1], [74, 1]])
+        assert np.array_equal(pipis[0], ref_rings)
+
+        ref_distang = np.array(
+            [
+                [4.1462903, 22.34738922],
+                [3.52108073, 11.22733593],
+                [4.05929375, 4.60079527],
             ]
         )
         assert np.allclose(distang[0], ref_distang)

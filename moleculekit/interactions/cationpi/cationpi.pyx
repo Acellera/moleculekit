@@ -97,7 +97,6 @@ def calculate(
         np.ndarray[FLOAT32_t, ndim=2] box,
         float dist_threshold=5,
         float angle_threshold_min=60,
-        float angle_threshold_max=120,
     ):
     cdef int r1, r2, f, i
     cdef int n_rings = rings_start_indexes.shape[0] - 1 # Subtract 1 for the added 0 index at the start
@@ -158,9 +157,11 @@ def calculate(
                 for i in range(3):
                     dot_prod = dot_prod + ring_normal[i] * tmp1[i]
                 angle = acos(dot_prod) * 57.29578  # Convert radians to degrees
-                angle = angle - 90 # We want the angle to the plane, not the normal of the plane
-
-                if angle >= angle_threshold_min and angle <= angle_threshold_max:
+                if angle > 90:  # minimal angle to line. necessary as perpendicular can point either way
+                    angle = 180 - angle
+                angle = 90 - angle # We want the angle to the plane, not the normal of the plane so 90 - angle
+                
+                if angle >= angle_threshold_min:
                     results[f].push_back(r1)
                     results[f].push_back(cations[r2])
                     distangles[f].push_back(sqrt(dist2))

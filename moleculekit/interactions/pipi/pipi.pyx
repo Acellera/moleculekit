@@ -90,11 +90,9 @@ def calculate(
         np.ndarray[FLOAT32_t, ndim=3] coords, 
         np.ndarray[FLOAT32_t, ndim=2] box,
         float dist_threshold1=4.4,
-        float angle_threshold1_min=0,
         float angle_threshold1_max=30,
         float dist_threshold2=5.5,
         float angle_threshold2_min=60,
-        float angle_threshold2_max=120,
     ):
     cdef int r1, r2, f, i
     cdef int n_rings1 = rings1_start_indexes.shape[0] - 1  # Remove one for the index which we append to the start
@@ -147,6 +145,7 @@ def calculate(
 
                 # Ring centroids too far apart
                 if dist2 > dist_threshold2:
+                    # print(r1, r2, sqrt(dist2))
                     continue
 
                 # Calculate the plane normals
@@ -164,11 +163,14 @@ def calculate(
                 for i in range(3):
                     dot_prod = dot_prod + ring1_normal[i] * ring2_normal[i]
                 angle = acos(dot_prod) * 57.29578  # Convert radians to degrees
+                if angle > 90:  # minimal angle to line. necessary as perpendicular can point either way
+                    angle = 180-angle
 
                 # If dist < 4.4 and angle <= 30 deg
                 # If dist < 5.5 and angle in range [60, 120]
-                if (dist2 < dist_threshold1 and (angle >= angle_threshold1_min and angle <= angle_threshold1_max) or 
-                    (dist2 < dist_threshold2 and (angle >= angle_threshold2_min and angle <= angle_threshold2_max))):
+                # print(r1, r2, sqrt(dist2), angle)
+                if ((dist2 < dist_threshold1 and angle <= angle_threshold1_max) or 
+                    (dist2 < dist_threshold2 and angle >= angle_threshold2_min)):
                     results[f].push_back(r1)
                     results[f].push_back(r2)
                     distangles[f].push_back(sqrt(dist2))
