@@ -183,7 +183,7 @@ def get_ligand_rings(sm, start_idx=0):
         aromatics = sum([sm._mol.GetAtomWithIdx(idx).GetIsAromatic() for idx in ring])
         if aromatics != len(ring):
             continue
-        ligandAtomAromaticRings.append([r + start_idx for r in ring])
+        ligandAtomAromaticRings.append(tuple([r + start_idx for r in ring]))
     return ligandAtomAromaticRings
 
 
@@ -380,6 +380,7 @@ def pipi_calculate(
     angle_threshold1_max=30,
     dist_threshold2=5.5,
     angle_threshold2_min=60,
+    return_rings=False,
 ):
     from moleculekit.interactions import pipi
 
@@ -414,7 +415,11 @@ def pipi_calculate(
     pp_list = []
     dist_ang_list = []
     for f in range(mol.numFrames):
-        pp_list.append([pp[f][i : i + 2] for i in range(0, len(pp[f]), 2)])
+        reshaped = [pp[f][i : i + 2] for i in range(0, len(pp[f]), 2)]
+        if return_rings:
+            pp_list.append([[rings1[pp[0]], rings2[pp[1]]] for pp in reshaped])
+        else:
+            pp_list.append(reshaped)
         dist_ang_list.append([da[f][i : i + 2] for i in range(0, len(da[f]), 2)])
     return pp_list, dist_ang_list
 
@@ -466,6 +471,7 @@ def cationpi_calculate(
     cations,
     dist_threshold=5,
     angle_threshold_min=60,
+    return_rings=False,
 ):
     from moleculekit.interactions import cationpi
 
@@ -491,7 +497,11 @@ def cationpi_calculate(
     index_list = []
     dist_ang_list = []
     for f in range(mol.numFrames):
-        index_list.append([pp[f][i : i + 2] for i in range(0, len(pp[f]), 2)])
+        reshaped = [pp[f][i : i + 2] for i in range(0, len(pp[f]), 2)]
+        if return_rings:
+            index_list.append([[rings[pp[0]], pp[1]] for pp in reshaped])
+        else:
+            index_list.append(reshaped)
         dist_ang_list.append([da[f][i : i + 2] for i in range(0, len(da[f]), 2)])
     return index_list, dist_ang_list
 
@@ -502,6 +512,7 @@ def sigmahole_calculate(
     halides,
     dist_threshold=4.5,
     angle_threshold_min=60,
+    return_rings=False,
 ):
     from moleculekit.interactions import sigmahole
 
@@ -527,7 +538,11 @@ def sigmahole_calculate(
     index_list = []
     dist_ang_list = []
     for f in range(mol.numFrames):
-        index_list.append([indexes[f][i : i + 2] for i in range(0, len(indexes[f]), 2)])
+        reshaped = [indexes[f][i : i + 2] for i in range(0, len(indexes[f]), 2)]
+        if return_rings:
+            index_list.append([[rings[pp[0]], pp[1]] for pp in reshaped])
+        else:
+            index_list.append(reshaped)
         dist_ang_list.append([da[f][i : i + 2] for i in range(0, len(da[f]), 2)])
     return index_list, dist_ang_list
 
