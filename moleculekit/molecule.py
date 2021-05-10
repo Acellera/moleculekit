@@ -1601,15 +1601,16 @@ class Molecule(object):
 
         return segSequences
 
-    def dropFrames(self, keep="all", drop=None):
+    def dropFrames(self, drop=None, keep="all"):
         """Removes trajectory frames from the Molecule
 
         Parameters
         ----------
-        keep : int or list of ints
-            Index of frame, or list of frame indexes which we want to keep (and drop all others).
         drop : int or list of ints
             Index of frame, or list of frame indexes which we want to drop (and keep all others).
+        keep : int or list of ints
+            Index of frame, or list of frame indexes which we want to keep (and drop all others).
+
         Examples
         --------
         >>> mol = Molecule('1sb0')
