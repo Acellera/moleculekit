@@ -1601,13 +1601,14 @@ class Molecule(object):
 
         return segSequences
 
-    def dropFrames(self, drop=None, keep="all"):
+    def dropFrames(self, drop=None, keep=None):
         """Removes trajectory frames from the Molecule
 
         Parameters
         ----------
         drop : int or list of ints
             Index of frame, or list of frame indexes which we want to drop (and keep all others).
+            By default it will remove all frames from the Molecule.
         keep : int or list of ints
             Index of frame, or list of frame indexes which we want to keep (and drop all others).
 
@@ -1623,13 +1624,16 @@ class Molecule(object):
         """
         from moleculekit.util import ensurelist
 
-        if not (isinstance(keep, str) and keep == "all") and drop is not None:
+        if drop is not None and keep is not None:
             raise RuntimeError(
                 "Cannot both drop and keep trajectories. Please use only one of the two arguments."
             )
         numframes = self.numFrames
-        if drop is not None:
+        if keep is None and drop is not None:
             keep = np.setdiff1d(np.arange(numframes), drop)
+        elif keep is None and drop is None:
+            keep = []
+
         keep = ensurelist(keep)
         if not (isinstance(keep, str) and keep == "all"):
             self.coords = np.atleast_3d(
