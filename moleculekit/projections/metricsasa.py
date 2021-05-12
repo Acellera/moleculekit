@@ -47,7 +47,7 @@ class MetricSasa(Projection):
     ):
         super().__init__()
 
-        self._probeRadius = probeRadius
+        self._probeRadius = probeRadius / 10  # Convert to nanometers
         self._numSpherePoints = numSpherePoints
         self._mode = mode
         self._sel = sel
@@ -83,17 +83,9 @@ class MetricSasa(Projection):
             res["tokeep"] = filterselmod[sel]
 
         if "radii" in props:
-            _ATOMIC_RADII = {
-                "C": 1.5,
-                "F": 1.2,
-                "H": 0.4,
-                "N": 1.10,
-                "O": 1.05,
-                "S": 1.6,
-                "P": 1.6,
-            }
-            elements = [n[0] for n in mol.name[filtersel]]
-            atom_radii = np.vectorize(_ATOMIC_RADII.__getitem__)(elements)
+            from mdtraj.geometry.sasa import _ATOMIC_RADII
+
+            atom_radii = np.vectorize(_ATOMIC_RADII.__getitem__)(mol.element[filtersel])
             res["radii"] = np.array(atom_radii, np.float32) + self._probeRadius
 
         if "atom_mapping" in props:
@@ -148,9 +140,7 @@ class MetricSasa(Projection):
             )
 
         out = np.zeros((mol.numFrames, atom_mapping.max() + 1), dtype=np.float32)
-        sasa(
-            xyz, radii / 10, int(self._numSpherePoints), atom_mapping, out
-        )  # Divide radii by 10 for nm
+        sasa(xyz, radii, int(self._numSpherePoints), atom_mapping, out)
         return out[:, tokeep]
 
     def getMapping(self, mol):
@@ -261,19 +251,19 @@ class _TestMetricSasa(unittest.TestCase):
         )
 
         metr = MetricSasa(
-            mode="atom", sel="index 3000"
-        )  # Get just the SASA of the 3000th atom
+            mode="atom", sel="index 20"
+        )  # Get just the SASA of the 20th atom
         sasaR = metr.project(self.mol.copy())
         assert np.allclose(
-            sasaR, sasaR_ref[:, [3000]], atol=3e-3
+            sasaR, sasaR_ref[:, [20]], atol=3e-3
         ), "SASA atom selection failed to give same results as without selection"
 
         metr = MetricSasa(
-            mode="atom", sel="index 3000", filtersel="index 3000"
-        )  # Get just the SASA of the 3000th atom, remove all else
+            mode="atom", sel="index 20", filtersel="index 20"
+        )  # Get just the SASA of the 20th atom, remove all else
         sasaR = metr.project(self.mol.copy())
         assert not np.allclose(
-            sasaR, sasaR_ref[:, [3000]], atol=3e-3
+            sasaR, sasaR_ref[:, [20]], atol=3e-3
         ), "SASA filtering gave same results as without filtering. Bad."
 
     def test_mappings(self):
