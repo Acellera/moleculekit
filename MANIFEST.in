@@ -1,2 +1,5 @@
 include requirements.txt
+include moleculekit/interactions/cationpi/cationpi.pyx
 include moleculekit/interactions/hbonds/hbonds.pyx
+include moleculekit/interactions/pipi/pipi.pyx
+include moleculekit/interactions/sigmahole/sigmahole.pyx
