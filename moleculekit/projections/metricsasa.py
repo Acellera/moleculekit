@@ -14,6 +14,7 @@ class MetricSasa(Projection):
     """Calculate solvent accessible surface area of a molecule.
 
     Implementation and documentation taken from MDtraj shrake_rupley code.
+    It returns the SASA in units of Angstrom squared.
 
     Parameters
     ----------
@@ -99,9 +100,7 @@ class MetricSasa(Projection):
                 ).astype(np.int32)
             else:
                 raise ValueError(
-                    'mode must be one of "residue", "atom". "{}" supplied'.format(
-                        self._mode
-                    )
+                    f'mode must be one of "residue", "atom". "{self._mode}" supplied'
                 )
 
         return res
@@ -141,7 +140,7 @@ class MetricSasa(Projection):
 
         out = np.zeros((mol.numFrames, atom_mapping.max() + 1), dtype=np.float32)
         sasa(xyz, radii, int(self._numSpherePoints), atom_mapping, out)
-        return out[:, tokeep]
+        return out[:, tokeep] * 100  # Convert from square nm to square A
 
     def getMapping(self, mol):
         """Returns the description of each projected dimension.
@@ -169,9 +168,7 @@ class MetricSasa(Projection):
             atomidx = np.where(atomsel)[0][firstidx]
         else:
             raise ValueError(
-                'mode must be one of "residue", "atom". "{}" supplied'.format(
-                    self._mode
-                )
+                f'mode must be one of "residue", "atom". "{self._mode}" supplied'
             )
 
         from pandas import DataFrame
@@ -182,9 +179,7 @@ class MetricSasa(Projection):
         for i in atomidx:
             types += ["SASA"]
             indexes += [i]
-            description += [
-                "SASA of {} {} {}".format(mol.resname[i], mol.resid[i], mol.name[i])
-            ]
+            description += [f"SASA of {mol.resname[i]} {mol.resid[i]} {mol.name[i]}"]
         return DataFrame(
             {"type": types, "atomIndexes": indexes, "description": description}
         )
@@ -213,8 +208,13 @@ class _TestMetricSasa(unittest.TestCase):
 
         metr = MetricSasa(mode="atom")
         sasaA = metr.project(self.mol.copy())
-        sasaA_ref = np.load(
-            path.join(home(dataDir="test-projections"), "metricsasa", "sasa_atom.npy")
+        sasaA_ref = (
+            np.load(
+                path.join(
+                    home(dataDir="test-projections"), "metricsasa", "sasa_atom.npy"
+                )
+            )
+            * 100
         )
         assert np.allclose(sasaA, sasaA_ref, atol=7e-4)
 
@@ -224,10 +224,13 @@ class _TestMetricSasa(unittest.TestCase):
 
         metr = MetricSasa(mode="residue")
         sasaR = metr.project(self.mol.copy())
-        sasaR_ref = np.load(
-            path.join(
-                home(dataDir="test-projections"), "metricsasa", "sasa_residue.npy"
+        sasaR_ref = (
+            np.load(
+                path.join(
+                    home(dataDir="test-projections"), "metricsasa", "sasa_residue.npy"
+                )
             )
+            * 100
         )
         assert np.allclose(sasaR, sasaR_ref, atol=3e-3)
 
@@ -246,8 +249,13 @@ class _TestMetricSasa(unittest.TestCase):
         from os import path
         from moleculekit.home import home
 
-        sasaR_ref = np.load(
-            path.join(home(dataDir="test-projections"), "metricsasa", "sasa_atom.npy")
+        sasaR_ref = (
+            np.load(
+                path.join(
+                    home(dataDir="test-projections"), "metricsasa", "sasa_atom.npy"
+                )
+            )
+            * 100
         )
 
         metr = MetricSasa(
