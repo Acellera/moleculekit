@@ -144,9 +144,7 @@ class MetricFluctuation(_MetricCoordinate):
             return meanresfluct
         else:
             raise RuntimeError(
-                "Invalid mode {} given. Choose between `atom` and `residue`".format(
-                    self._mode
-                )
+                f"Invalid mode {self._mode} given. Choose between `atom` and `residue`"
             )
 
     def getMapping(self, mol):
@@ -175,9 +173,7 @@ class MetricFluctuation(_MetricCoordinate):
                 types += ["fluctuation"]
                 indexes += [i]
                 description += [
-                    "Fluctuation of {} {} {}".format(
-                        mol.resname[i], mol.resid[i], mol.name[i]
-                    )
+                    f"Fluctuation of {mol.resname[i]} {mol.resid[i]} {mol.name[i]}"
                 ]
         elif self._mode == "residue":
             resids = mol.resid[atomidx]
@@ -185,14 +181,10 @@ class MetricFluctuation(_MetricCoordinate):
                 types += ["fluctuation"]
                 i = atomidx[np.where(resids == r)[0][0]]
                 indexes += [i]
-                description += [
-                    "Mean fluctuation of {} {}".format(mol.resname[i], mol.resid[i])
-                ]
+                description += [f"Mean fluctuation of {mol.resname[i]} {mol.resid[i]}"]
         else:
             raise RuntimeError(
-                "Invalid mode {} given. Choose between `atom` and `residue`".format(
-                    self._mode
-                )
+                f"Invalid mode {self._mode} given. Choose between `atom` and `residue`"
             )
 
         return DataFrame(
