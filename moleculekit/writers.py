@@ -156,15 +156,11 @@ def checkTruncations(mol):
         ):
             if fieldsizes[f] == 1:
                 logger.warning(
-                    'Field "{}" of PDB overflows. Your data will be truncated to 1 character.'.format(
-                        f
-                    )
+                    f'Field "{f}" of PDB overflows. Your data will be truncated to 1 character.'
                 )
             else:
                 logger.warning(
-                    'Field "{}" of PDB overflows. Your data will be truncated to {} characters.'.format(
-                        f, fieldsizes[f]
-                    )
+                    f'Field "{f}" of PDB overflows. Your data will be truncated to {fieldsizes[f]} characters.'
                 )
 
 
@@ -515,8 +511,7 @@ def MOL2write(mol, filename):
     uqresname = np.unique(mol.resname)
     if len(uqresname) > 1:
         raise RuntimeError(
-            "MOL2 file can only be written for a single residue. We detected {} resnames in the "
-            "Molecule.".format(len(uqresname))
+            f"MOL2 file can only be written for a single residue. We detected {len(uqresname)} resnames in the Molecule."
         )
     if len(uqresname[0]) == 0:
         raise RuntimeError(
@@ -526,7 +521,7 @@ def MOL2write(mol, filename):
 
     with open(filename, "w", encoding="ascii") as f:
         f.write("@<TRIPOS>MOLECULE\n")
-        f.write("    {}\n".format(uqresname[0]))
+        f.write(f"    {uqresname[0]}\n")
         unique_bonds = [
             list(t) for t in set(map(tuple, [sorted(x) for x in mol.bonds]))
         ]
@@ -594,9 +589,7 @@ def MOL2write(mol, filename):
                 tmp = np.unique(mol.bondtype[idx])
                 assert (
                     len(tmp) == 1
-                ), "There should only exist one bond type for atoms {} {}".format(
-                    unique_bonds[i, 0], unique_bonds[i, 1]
-                )
+                ), f"There should only exist one bond type for atoms {unique_bonds[i, 0]} {unique_bonds[i, 1]}"
                 bt = tmp[0]
             f.write(
                 "{:6d} {:4d} {:4d} {}\n".format(
@@ -708,9 +701,7 @@ def MDTRAJwrite(mol, filename):
         import mdtraj as md
     except ImportError:
         raise ImportError(
-            "To support extension {} please install the `mdtraj` package".format(
-                os.path.splitext(filename)[1]
-            )
+            f"To support extension {os.path.splitext(filename)[1]} please install the `mdtraj` package"
         )
 
     try:
@@ -719,7 +710,7 @@ def MDTRAJwrite(mol, filename):
         ext = os.path.splitext(filename)[1][1:]
         if ext == "gz":
             pieces = filename.split(".")
-            ext = "{}.{}".format(pieces[-2], pieces[-1])
+            ext = f"{pieces[-2]}.{pieces[-1]}"
 
         if ext in _MDTRAJ_TOPOLOGY_SAVERS:
             tmppdb = tempname(suffix=".pdb")
@@ -737,15 +728,13 @@ def MDTRAJwrite(mol, filename):
             os.remove(tmppdb)
             os.remove(tmpxtc)
         else:
-            raise ValueError("Unknown file type for file {}".format(filename))
+            raise ValueError(f"Unknown file type for file {filename}")
         # traj.xyz = np.swapaxes(np.swapaxes(self.coords, 1, 2), 0, 1) / 10
         # traj.time = self.time
         # traj.unitcell_lengths = self.box.T / 10
         traj.save(filename)
     except Exception as e:
-        raise ValueError(
-            'MDtraj reader failed for file {} with error "{}"'.format(filename, e)
-        )
+        raise ValueError(f'MDtraj reader failed for file {filename} with error "{e}"')
 
 
 _WRITERS = {
@@ -834,11 +823,7 @@ class _TestWriters(unittest.TestCase):
                         if ext == "sdf":
                             filelines = filelines[2:]
                 except UnicodeDecodeError:
-                    print(
-                        "Could not compare file {} due to not being unicode".format(
-                            reffile
-                        )
-                    )
+                    print(f"Could not compare file {reffile} due to not being unicode")
                     continue
                 with open(reffile, "r") as f:
                     reflines = f.readlines()
