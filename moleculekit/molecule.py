@@ -56,6 +56,11 @@ _residueNameTable = {
     "PHE": "F",
     "TYR": "Y",
     "TRP": "W",
+    "G": "G",
+    "C": "C",
+    "U": "U",
+    "A": "A",
+    "T": "T",
 }
 
 _modResidueNameTable = {"MLZ": "K", "MLY": "K", "MSE": "M"}
@@ -1552,20 +1557,24 @@ class Molecule(object):
         from moleculekit.util import sequenceID
 
         prot = self.atomselect("protein")
+        nucl = self.atomselect("nucleic")
 
         increm = sequenceID((self.resid, self.insertion, self.chain))
-        segs = np.unique(self.segid[prot])
+        segs = np.unique(self.segid[prot | nucl])
         segSequences = {}
         if noseg:
-            segs = ["protein"]
+            segs = ["protein", "nucleic"]
 
         # Iterate over segments
         for seg in segs:
             segSequences[seg] = []
-            if seg != "protein":
-                segatoms = prot & (self.segid == seg)
-            else:
+            if seg == "protein":
                 segatoms = prot
+            elif seg == "nucleic":
+                segatoms = nucl
+            else:
+                segatoms = (prot | nucl) & (self.segid == seg)
+
             resnames = self.resname[segatoms]
             incremseg = increm[segatoms]
             for i in np.unique(incremseg):  # Iterate over residues
@@ -1581,15 +1590,14 @@ class Molecule(object):
                     elif resname in _modResidueNameTable:
                         rescode = _modResidueNameTable[resname]
                         logger.warning(
-                            "Modified residue {} was detected in the protein and mapped to one-letter "
-                            "code {}".format(resname, rescode)
+                            f"Modified residue {resname} was detected in the protein and mapped to one-letter code {rescode}"
                         )
+                    elif len(resname) == 1:
+                        rescode = resname
                     else:
                         rescode = "X"
                         logger.warning(
-                            "Cannot provide one-letter code for non-standard residue {}".format(
-                                resname
-                            )
+                            f"Cannot provide one-letter code for non-standard residue {resname}"
                         )
                 else:
                     rescode = resname
