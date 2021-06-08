@@ -40,9 +40,12 @@ def getOpenBabelProperties(mol):
     with open(outfile, "r") as f:
         for line in f:
             pieces = line.split(",")
-            pieces[1] = int(pieces[1])
-            pieces[4] = float(pieces[4])
+            pieces[0] = int(pieces[0])
+            pieces[2] = int(pieces[2])
+            pieces[5] = float(pieces[5])
             atoms.append(pieces)
+
+    atoms.sort(key=lambda x: x[0])  # Sort by index
 
     return atoms
 

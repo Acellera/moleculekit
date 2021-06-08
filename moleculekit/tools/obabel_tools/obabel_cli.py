@@ -16,10 +16,7 @@
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-
-from tempfile import NamedTemporaryFile
 import traceback
-import os
 import sys
 
 
@@ -43,7 +40,7 @@ def getOpenBabelProperties(pdb, outfile):
             for r in pybel.ob.OBResidueIter(mpybel.OBMol):
                 for at in pybel.ob.OBResidueAtomIter(r):
                     f.write(
-                        f"{r.GetName()},{r.GetNum()},{r.GetAtomID(at)},{at.GetType()},{at.GetPartialCharge():.3f}\n"
+                        f"{at.GetIndex()},{r.GetName()},{r.GetNum()},{r.GetAtomID(at)},{at.GetType()},{at.GetPartialCharge():.3f}\n"
                     )
     except Exception:
         traceback.print_exc()

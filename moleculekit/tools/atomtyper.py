@@ -3,14 +3,7 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
-import os
-import string
-from tempfile import NamedTemporaryFile
 import numpy as np
-from moleculekit.tools.autosegment import autoSegment2
-from moleculekit.molecule import Molecule
-from moleculekit.writers import _deduce_PDB_atom_name, checkTruncations
-from moleculekit.util import ensurelist
 import logging
 
 
@@ -277,16 +270,15 @@ def getPDBQTAtomTypesAndCharges(mol, aromaticNitrogen=False, validitychecks=True
         atomtypingValidityChecks(mol)
 
     atomsProp = getOpenBabelProperties(mol)
-    for a in atomsProp:
-        if a[0] == "HIP":
-            if a[2].strip().startswith("C") and a[2].strip() not in ["CA", "C", "CB"]:
-                a[3] = "Car"
+    pdbqtATypes = [""] * mol.numAtoms
+    charges = [np.nan] * mol.numAtoms
 
-    charges = ["{0:.3f}".format(a[-1]) for a in atomsProp]
-    pdbqtATypes = [
-        getPDBQTAtomType(a[3], n, mol, aromaticNitrogen)
-        for n, a in enumerate(atomsProp)
-    ]
+    for idx, resname, resid, name, attype, charge in atomsProp:
+        if resname == "HIP":
+            if name.strip().startswith("C") and name.strip() not in ["CA", "C", "CB"]:
+                attype = "Car"
+        charges[idx] = f"{charge:.3f}"
+        pdbqtATypes[idx] = getPDBQTAtomType(attype, idx, mol, aromaticNitrogen)
 
     return np.array(pdbqtATypes, dtype="O"), np.array(charges, dtype="float32")
 
