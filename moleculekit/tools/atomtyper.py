@@ -471,6 +471,20 @@ class _TestAtomTyper(unittest.TestCase):
 
         assert mol_equal(mol2, ref, exceptFields=("coords",))
 
+    def test_obabel_atomtyping(self):
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule, mol_equal
+        from os import path
+
+        mol = Molecule(path.join(home(dataDir="test-voxeldescriptors"), "3K4X.pdb"))
+        at, ch = getPDBQTAtomTypesAndCharges(mol, validitychecks=False)
+        atref, chref = np.load(
+            path.join(home(dataDir="test-voxeldescriptors"), "3K4X_atomtypes.npy"),
+            allow_pickle=True,
+        )
+        assert np.array_equal(at, atref)
+        assert np.array_equal(ch, chref)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
