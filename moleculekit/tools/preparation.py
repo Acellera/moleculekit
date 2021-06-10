@@ -4,57 +4,33 @@
 # No redistribution in whole or part
 #
 import logging
+from moleculekit.util import sequenceID, tempname
 import tempfile
 import numpy as np
 import os
-from moleculekit.tools.preparationdata import PreparationData
 from moleculekit.molecule import Molecule
-try:
-    from pdb2pqr.main import runPDB2PQR
-    from pdb2pqr.src.pdb import readPDB
-except ImportError:
-    raise ImportError('pdb2pqr not installed. To use the molecule preparation features please do `conda install htmd-pdb2pqr -c acellera`')
 
 try:
-    import propka.lib
+    from pdb2pqr.main import main_driver, build_main_parser
 except ImportError:
-    raise ImportError('propka package not installed. To use the molecule preparation features please do `conda install propka -c acellera`')
+    raise ImportError(
+        "pdb2pqr not installed. To use the molecule preparation features please do `conda install pdb2pqr -c conda-forge`"
+    )
 
 
 logger = logging.getLogger(__name__)
 
 
 def _selToHoldList(mol, sel):
+    ret = None
     if sel:
         tx = mol.copy()
         tx.filter(sel)
-        tx.filter("name CA")
-        ret = list(zip(tx.resid, tx.chain, tx.insertion))
-    else:
-        ret = None
+        ret = [
+            list(x)
+            for x in set(tuple(x) for x in zip(tx.resid, tx.chain, tx.insertion))
+        ]
     return ret
-
-
-def _fillMolecule(name, resname, chain, resid, insertion, coords, segid, element,
-                  occupancy, beta, charge, record):
-    numAtoms = len(name)
-    mol = Molecule()
-    mol.empty(numAtoms)
-
-    mol.name = np.array(name, dtype=mol._dtypes['name'])
-    mol.resname = np.array(resname, dtype=mol._dtypes['resname'])
-    mol.chain = np.array(chain, dtype=mol._dtypes['chain'])
-    mol.resid = np.array(resid, dtype=mol._dtypes['resid'])
-    mol.insertion = np.array(insertion, dtype=mol._dtypes['insertion'])
-    mol.coords = np.array(np.atleast_3d(np.vstack(coords)), dtype=mol._dtypes['coords'])
-    mol.segid = np.array(segid, dtype=mol._dtypes['segid'])
-    mol.element = np.array(element, dtype=mol._dtypes['element'])
-    mol.occupancy = np.array(occupancy, dtype=mol._dtypes['occupancy'])
-    mol.beta = np.array(beta, dtype=mol._dtypes['beta'])
-    mol.box = np.zeros((3, mol.coords.shape[2]), dtype=mol._dtypes['box'])
-    # mol.charge = np.array(charge, dtype=mol._dtypes['charge'])
-    # mol.record = np.array(record, dtype=mol._dtypes['record'])
-    return mol
 
 
 def _fixupWaterNames(mol):
@@ -67,133 +43,77 @@ def _fixupWaterNames(mol):
 def _warnIfContainsDUM(mol):
     """Warn if any DUM atom is there"""
     if any(mol.atomselect("resname DUM")):
-        logger.warning("OPM's DUM residues must be filtered out before preparation. Continuing, but crash likely.")
+        logger.warning(
+            "OPM's DUM residues must be filtered out before preparation. Continuing, but crash likely."
+        )
+
 
 def _checkChainAndSegid(mol, _loggerLevel):
     from moleculekit.util import sequenceID
     import string
-    emptychains = mol.chain == ''
-    emptysegids = mol.segid == ''
+
+    emptychains = mol.chain == ""
+    emptysegids = mol.segid == ""
 
     if np.all(emptychains) and np.all(emptysegids):
-        raise RuntimeError('No chains or segments defined in Molecule.chain / Molecule.segid. Please assign either to continue with preparation.')
+        raise RuntimeError(
+            "No chains or segments defined in Molecule.chain / Molecule.segid. Please assign either to continue with preparation."
+        )
 
     if np.all(emptychains) and np.any(~emptysegids):
-        logger.info('No chains defined in Molecule. Using segment IDs as chains for protein preparation.')
+        logger.info(
+            "No chains defined in Molecule. Using segment IDs as chains for protein preparation."
+        )
         mol = mol.copy()
-        chain_alphabet = np.array(list(string.digits + string.ascii_uppercase + string.ascii_lowercase))
+        chain_alphabet = np.array(
+            list(string.digits + string.ascii_uppercase + string.ascii_lowercase)
+        )
         mol.chain[:] = chain_alphabet[sequenceID(mol.segid)]
-        
+
     if np.any(~emptysegids) and np.any(~emptychains):
         chainseq = sequenceID(mol.chain)
         segidseq = sequenceID(mol.segid)
         if not np.array_equal(chainseq, segidseq):
-            logger.warning('Both chains and segments are defined in Molecule.chain / Molecule.segid, however they are inconsistent. ' \
-                           'Protein preparation will use the chain information.')
+            logger.warning(
+                "Both chains and segments are defined in Molecule.chain / Molecule.segid, however they are inconsistent. "
+                "Protein preparation will use the chain information."
+            )
 
-    if _loggerLevel is None or _loggerLevel == 'INFO':
+    if _loggerLevel is None or _loggerLevel == "INFO":
         chainids = np.unique(mol.chain)
         if np.any([len(cc) > 1 for cc in chainids]):
-            raise RuntimeError('The chain field should only contain a single character.')
-            
-        print('\n---- Molecule chain report ----')
+            raise RuntimeError(
+                "The chain field should only contain a single character."
+            )
+
+        print("\n---- Molecule chain report ----")
         for c in chainids:
             chainatoms = np.where(mol.chain == c)[0]
             firstatom = chainatoms[0]
             lastatom = chainatoms[-1]
-            print(f'Chain {c}:')
-            print(f'    First residue: {mol.resname[firstatom]}:{mol.resid[firstatom]}:{mol.insertion[firstatom]}')
-            print(f'    Final residue: {mol.resname[lastatom]}:{mol.resid[lastatom]}:{mol.insertion[lastatom]}')
-        print('---- End of chain report ----\n')
-    
+            print(f"Chain {c}:")
+            print(
+                f"    First residue: {mol.resname[firstatom]}:{mol.resid[firstatom]}:{mol.insertion[firstatom]}"
+            )
+            print(
+                f"    Final residue: {mol.resname[lastatom]}:{mol.resid[lastatom]}:{mol.insertion[lastatom]}"
+            )
+        print("---- End of chain report ----\n")
+
     return mol
 
 
-def _buildResAndMol(pdb2pqr_protein):
-    # Here I parse the returned protein object and recreate a Molecule,
-    # because I need to access the properties.
-    logger.debug("Building Molecule object.")
-
-    name = []
-    resid = []
-    chain = []
-    insertion = []
-    coords = []
-    resname = []
-    segid = []
-    element = []
-    occupancy = []
-    beta = []
-    record = []
-    charge = []
-
-    prepData = PreparationData()
-
-    for i, residue in enumerate(pdb2pqr_protein.residues):
-        # if 'ffname' in residue.__dict__:
-        if getattr(residue, 'ffname', None):
-            curr_resname = residue.ffname
-            if len(curr_resname) >= 4:
-                curr_resname = curr_resname[-3:]
-                logger.debug("Residue %s has internal name %s, replacing with %s" %
-                             (residue, residue.ffname, curr_resname))
-        else:
-            curr_resname = residue.name
-
-        prepData._setProtonationState(residue, curr_resname)
-
-        # Removed because not really useful
-        # if getattr(residue, 'patches', None):
-        #     for patch in residue.patches:
-        #         prepData._appendPatches(residue, patch)
-        #         if patch != "PEPTIDE":
-        #             logger.debug("Residue %s has patch %s set" % (residue, patch))
-
-        if getattr(residue, 'wasFlipped', 'UNDEF') != 'UNDEF':
-            prepData._setFlipped(residue, residue.wasFlipped)
-
-        prepData._set(residue, 'pdb2pqr_idx', i)
-
-        for atom in residue.atoms:
-            name.append(atom.name)
-            resid.append(residue.resSeq)
-            chain.append(residue.chainID)
-            insertion.append(residue.iCode)
-            coords.append([atom.x, atom.y, atom.z])
-            resname.append(curr_resname)
-            segid.append(atom.segID)
-            # Fixup element fields for added H (routines.addHydrogens)
-            elt = "H" if atom.added and atom.name.startswith("H") else atom.element
-            element.append(elt.capitalize())
-            occupancy.append(0.0 if atom.added else atom.occupancy)
-            beta.append(99.0 if atom.added else atom.tempFactor)
-            charge.append(atom.charge)
-            record.append(atom.type)
-            if atom.added:
-                logger.debug("Coordinates of atom {:s} in residue {:s} were guessed".format(residue.__str__(),atom.name))
-                prepData._set(residue, 'guessedAtoms', atom.name, append=True)
-
-
-    mol_out = _fillMolecule(name, resname, chain, resid, insertion, coords, segid, element,
-                            occupancy, beta, charge, record)
-    # mol_out.set("element", " ")
-    # Re-calculating elements
-    # mol_out.element[:] = ''
-    assert not np.any(mol_out.element == 'X'), "pdb2pqr left some lonepair atoms in. report this issue to moleculekit github issue tracker"
-    mol_out.element = mol_out._guessMissingElements()
-
-    prepData._importPKAs(pdb2pqr_protein.pka_protein)
-
-    return mol_out, prepData
-
-
-def proteinPrepare(mol_in,
-                   pH=7.0,
-                   verbose=0,
-                   returnDetails=False,
-                   hydrophobicThickness=None,
-                   holdSelection=None,
-                   _loggerLevel=None):
+def proteinPrepare(
+    mol_in,
+    titration=True,
+    pH=7.0,
+    verbose=True,
+    returnDetails=False,
+    hydrophobicThickness=None,
+    holdSelection=None,
+    plotpka=None,
+    _loggerLevel=None,
+):
     """A system preparation wizard for HTMD.
 
     Returns a Molecule object, where residues have been renamed to follow
@@ -253,9 +173,11 @@ def proteinPrepare(mol_in,
     ----------
     mol_in : moleculekit.molecule.Molecule
         the object to be optimized
+    titration : bool
+        If set to True it will use propka to set the titration state of residues. Otherwise it will just add and optimize the hydrogens.
     pH : float
         pH to decide titration
-    verbose : int
+    verbose : bool
         verbosity
     returnDetails : bool
         whether to return just the prepared Molecule (False, default) or a molecule *and* a ResidueInfo
@@ -265,8 +187,6 @@ def proteinPrepare(mol_in,
         Used to provide a warning about membrane-exposed residues.
     holdSelection : str
         (Untested) Atom selection to be excluded from optimization.
-        Only the carbon-alpha atom will be considered for the corresponding residue.
-
 
     Returns
     -------
@@ -312,18 +232,6 @@ def proteinPrepare(mol_in,
     >>> prepData.missedLigands
     ['NAG', 'ZN', 'OIR']
 
-    >>> his = prepData.data.resname == "HIS"
-    >>> prepData.data[his][["resid","insertion","chain","resname","protonation"]]
-         resid insertion chain resname protonation
-    160    214               A     HIS         HID
-    163    217               A     HIS         HID
-    383    437               A     HIS         HID
-    529    583               A     HIS         HID
-    533    587               A     HIS         HIP
-    583    637               A     HIS         HID
-    627    681               A     HIS         HID
-    657    711               A     HIS         HIP
-    679    733               A     HIS         HID
 
     >>> mor = Molecule("4dkl")
     >>> mor.filter("protein and noh")
@@ -336,147 +244,423 @@ def proteinPrepare(mol_in,
     >>> imo,imd=proteinPrepare(im,returnDetails=True)
     >>> imd.data.to_excel("/tmp/imatinib_report.xlsx")
 
-    See Also
-    --------
-    :class:`moleculekit.tools.preparationdata.PreparationData`
-
     Notes
     -----
     Unsupported/To Do/To Check:
      - ligands
      - termini
-     - multiple chains
      - nucleic acids
      - coupled titrating residues
      - Disulfide bridge detection (implemented but unused)
     """
-    from moleculekit.tools.preparationdata import logger as datalogger
-    oldLoggingLevel = [logger.level, datalogger.level]
-    if verbose:
-        logger.setLevel(logging.DEBUG)
-        datalogger.setLevel(logging.DEBUG)
+    from pdb2pqr.config import VERSION
+
+    old_level = logger.getEffectiveLevel()
+    if not verbose:
+        logger.setLevel(logging.WARNING)
+
     if _loggerLevel is not None:
-        logger.setLevel(_loggerLevel)
-        datalogger.setLevel(_loggerLevel)
+        # logger.setLevel(_loggerLevel)
+        logging.getLogger(f"PDB2PQR{VERSION}").setLevel(_loggerLevel)
+        logging.getLogger(f"PDB2PQR{VERSION}").propagate = False
+        logging.getLogger("propka").setLevel(_loggerLevel)
     logger.debug("Starting.")
 
     _warnIfContainsDUM(mol_in)
 
     mol_in = _checkChainAndSegid(mol_in, _loggerLevel)
 
-    # We could transform the molecule into an internal object, but for
-    # now I prefer to rely on the strange internal parser to avoid
-    # hidden quirks.
-    tmpin = tempfile.NamedTemporaryFile(suffix=".pdb", mode="w+")
-    logger.debug("Temporary file is " + tmpin.name)
-    mol_in.write(tmpin.name)  # Not sure this is good unix
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpin = os.path.join(tmpdir, "input.pdb")
+        mol_in.write(tmpin)
 
-    pdblist, errlist = readPDB(tmpin)
-    if len(pdblist) == 0 and len(errlist) == 0:
-        raise Exception('Internal error in preparing input to pdb2pqr')
+        hlist = _selToHoldList(mol_in, holdSelection)
+        if hlist:
+            logger.warning(
+                "The holdSelection option is untested and deprecated. Please use reprepare()"
+            )
 
-    # An ugly hack to silence non-prefixed logging messages
-    for h in propka.lib.logger.handlers:
-        if h.formatter._fmt == '%(message)s':
-            propka.lib.logger.removeHandler(h)
+        pqrout = os.path.join(tmpdir, "out.pqr")
+        pdbout = os.path.join(tmpdir, "out.pdb")
+        parser = build_main_parser()
+        args = [
+            "--log-level",
+            "WARNING",
+            "--pdb-output",
+            pdbout,
+            "--with-ph",
+            str(pH),
+            "--ff",
+            "PARSE",
+            "--ffout",
+            "AMBER",
+            "--quiet",
+            tmpin,
+            pqrout,
+        ]
+        if titration:
+            args = ["--titration-state-method", "propka"] + args
+        args = parser.parse_args(args)
 
-    propka_opts, dummy = propka.lib.loadOptions('--quiet')
-    propka_opts.verbosity = verbose
-    propka_opts.verbose = verbose  # Will be removed in future propKas
-
-    # Note on naming. The behavior of PDB2PQR is controlled by two
-    # parameters, ff and ffout. My understanding is that the ff
-    # parameter sets which residues are SUPPORTED by the underlying
-    # FF, PLUS the charge and radii.  The ffout parameter sets the
-    # naming scheme. Therefore, I want ff to be as general as
-    # possible, which turns out to be "parse". Then I pick a
-    # convenient ffout.
-
-    # Hold list (None -> None)
-    hlist = _selToHoldList(mol_in, holdSelection)
-    if hlist:
-        logger.warning("The holdSelection option is untested and deprecated. Please use reprepare()")
-
-    # Relying on defaults
-    pqr_res = runPDB2PQR(pdblist,
-                         ph=pH, verbose=verbose,
-                         ff="parse", ffout="amber",
-                         ph_calc_method="propka31",
-                         ph_calc_options=propka_opts,
-                         holdList=hlist)
-    try:
-        header, pqr, missedLigands, pdb2pqr_protein, pdb2pqr_routines = \
-            pqr_res['header'], pqr_res['lines'], pqr_res['missedligands'], pqr_res['protein'], pqr_res['routines']
-    except:
-        logger.error("Problem calling pdb2pqr. Make sure you have htmd-pdb2pqr >= 2.1.2a9")
-        raise
-
-    tmpin.close()
+        missedres, pka_df, _ = main_driver(args)
+        mol_out = Molecule(pdbout)
 
     # Diagnostics
-    for missedligand in missedLigands:
-        logger.warning("The following residue has not been optimized: " + missedligand)
+    missedres = set([m.residue.name for m in missedres])
+    for resn in missedres:
+        logger.warning(f"The following residue has not been optimized: {resn}")
 
-    mol_out, resData = _buildResAndMol(pdb2pqr_protein)
+    # assert not np.any(
+    #     mol_out.element == "X"
+    # ), "pdb2pqr left some lonepair atoms in. report this issue to moleculekit github issue tracker"
+    # mol_out.element = mol_out._guessMissingElements()
 
     mol_out.box = mol_in.box
     _fixupWaterNames(mol_out)
 
-    # Misc. info
-    resData.header = header
-    resData.pqr = pqr
+    df = _create_table(mol_in, mol_out, pka_df)
 
-    # Return residue information
-    resData.pdb2pqr_protein = pdb2pqr_protein
-    resData.pdb2pqr_routines = pdb2pqr_routines
-    resData.missedLigands = missedLigands
+    _list_modifications(df)
 
-    # Store un-reprepared info
-    resData.data['default_protonation'] = resData.data['protonation']
+    if titration:
+        if plotpka is not None:
+            _get_pka_plot(df, plotpka)
+        _warn_pk_close_to_ph(df, pH)
+        if hydrophobicThickness:
+            # TODO: I think this only works if the protein is assumed aligned to the membrane and the membrane is centered at Z=0
+            _warn_buried_residues(df, mol_out, hydrophobicThickness)
 
-    resData._listNonStandardResidues()
-    resData._warnIfpKCloseTopH(pH)
-    resData.warnIfTerminiSuspect()
+    # resData.warnIfTerminiSuspect()
 
-    if hydrophobicThickness:
-        resData._setMembraneExposureAndWarn(hydrophobicThickness)
-
-    logger.debug("Returning.")
-    logger.setLevel(oldLoggingLevel[0])
-    datalogger.setLevel(oldLoggingLevel[1])
+    logger.setLevel(old_level)
 
     if returnDetails:
-        return mol_out, resData
-    else:
-        return mol_out
+        return mol_out, df
+    return mol_out
+
+
+def _create_table(mol_in, mol_out, pka_df):
+    import pandas as pd
+
+    uqresid_in = sequenceID(
+        (mol_in.resid, mol_in.insertion, mol_in.chain, mol_in.segid)
+    )
+    uqresid_out = sequenceID(
+        (mol_out.resid, mol_out.insertion, mol_out.chain, mol_out.segid)
+    )
+    if uqresid_in.max() != uqresid_out.max():
+        logger.warning("Residue numbering was changed in pdb2pqr!")
+        return None
+
+    data = []
+    for idx in np.unique(uqresid_out):
+        old_resn = mol_in.resname[uqresid_in == idx][0]
+        sel = uqresid_out == idx
+        resname = mol_out.resname[sel][0]
+        resid = mol_out.resid[sel][0]
+        insertion = mol_out.insertion[sel][0]
+        chain = mol_out.chain[sel][0]
+        segid = mol_out.segid[sel][0]
+        curr_data = [old_resn, resname, resid, insertion, chain, segid]
+        for propkadata in pka_df:
+            if (
+                propkadata["res_num"] == resid
+                and propkadata["ins_code"].strip() == insertion.strip()
+                and propkadata["chain_id"] == chain
+            ):
+                curr_data += [propkadata["pKa"], propkadata["buried"]]
+                break
+        data.append(curr_data)
+
+    df = pd.DataFrame(
+        data=data,
+        columns=[
+            "resname",
+            "protonation",
+            "resid",
+            "insertion",
+            "chain",
+            "segid",
+            "pKa",
+            "buried",
+        ],
+    )
+    return df
+
+
+def _list_modifications(df):
+    for _, row in df[df.resname != df.protonation].iterrows():
+        if row.resname in ["HOH", "WAT"]:
+            continue
+
+        old_resn = row.resname
+        new_resn = row.protonation
+        ch = row.chain
+        seg = row.segid
+        rid = row.resid
+        ins = row.insertion.strip()
+        logger.info(
+            f"Modified residue {ch}:{seg}:{rid}{ins} from {old_resn} to {new_resn}"
+        )
+
+
+def _warn_pk_close_to_ph(df, pH, tol=1.0):
+    dubious = df[abs(df.pKa - pH) < tol]
+    if len(dubious):
+        logger.warning(
+            f"Dubious protonation state: the pKa of {len(dubious)} residues is within {tol:.1f} units of pH {pH:.1f}."
+        )
+        for _, dr in dubious.iterrows():
+            logger.warning(
+                f"Dubious protonation state:    {dr.resname:4s} {dr.resid:>4d}{dr.insertion.strip()} {dr.chain:1s} (pKa={dr.pKa:5.2f})"
+            )
+
+
+def _warn_buried_residues(df, mol_out, hydrophobicThickness, maxBuried=0.75):
+    ht = hydrophobicThickness / 2.0
+    count = 0
+    for _, row in df[df.buried > maxBuried].iterrows():
+        sele = (
+            (mol_out.chain == row.chain)
+            & (mol_out.resid == row.resid)
+            & (mol_out.insertion == row.insertion)
+        )
+        mean_z = np.mean(mol_out.coords[sele, 2, 0])
+        if -ht < mean_z < ht:
+            count += 1
+
+    if count:
+        logger.warning(
+            f"Predictions for {count} residues may be incorrect because they are "
+            + f"exposed to the membrane ({-ht:.1f}<z<{ht:.2f} and buried<{maxBuried:.1f}%)."
+        )
+
+
+def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
+    """Internal function to build the protonation diagram"""
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+    from matplotlib.colors import LinearSegmentedColormap
+    import matplotlib.patheffects as PathEffects
+
+    # Shading
+    Xe = np.array([[1, 0], [1, 0]])
+
+    # Shading colors http://matplotlib.org/examples/pylab_examples/custom_cmap.html
+    neutral_grey = (0.7, 0.7, 0.7)
+    my_red = (0.98, 0.41, 0.29)
+    my_blue = (0.42, 0.68, 0.84)
+    grey_red = LinearSegmentedColormap.from_list("grey_red", [neutral_grey, my_red])
+    grey_blue = LinearSegmentedColormap.from_list("grey_blue", [neutral_grey, my_blue])
+    eps = 0.01  # Tiny overprint to avoid very thin white lines
+    outline = [PathEffects.withStroke(linewidth=2, foreground="w")]
+
+    # Color for pk values
+    pKa_color = "black"
+    pKa_fontsize = 8
+    dtxt = 0  # Displacement
+
+    # Or we could change the figure size, which scales axes
+    # http://stackoverflow.com/questions/3899980/how-to-change-the-font-size-on-a-matplotlib-plot
+    plt.rc("font", family="monospace")
+    plt.rc("font", size=font_size)  # controls default text sizes
+    plt.rc("axes", titlesize=font_size)  # fontsize of the axes title
+    plt.rc("axes", labelsize=font_size)  # fontsize of the x and y labels
+    plt.rc("xtick", labelsize=font_size)  # fontsize of the tick labels
+    plt.rc("ytick", labelsize=font_size)  # fontsize of the tick labels
+    plt.rc("legend", fontsize=font_size)  # legend fontsize
+    plt.rc("figure", titlesize=font_size)  # fontsize of the figure title
+
+    # Constants
+    acidicResidues = ["ASP", "GLU", "TYR", "C-"]
+    basicResidues = ["HIS", "LYS", "ARG", "N+"]
+
+    df = df[df.pKa < 99]
+
+    # Format residue labels
+    labels = []
+    pKas = []
+    restypes = []
+    for _, row in df.iterrows():
+        dub = "(!)" if abs(row.pKa - pH) < dpk else ""
+        labels.append(
+            f"{dub} {row.chain}:{row.resid}{row.insertion.strip()}-{row.resname}"
+        )
+        pKas.append(row.pKa)
+        restypes.append("neg" if row.resname in acidicResidues else "pos")
+
+    N = len(df)
+    xmin, xmax = xlim = 0, 14
+    ymin, ymax = ylim = -1, N
+
+    width = 0.8  # Of each band
+
+    # So, arbitrarily, 40 residues are square
+    sizePerBand = figSizeX * (N / 40)
+    figsize = (figSizeX, sizePerBand)
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111, xlim=xlim, ylim=ylim, autoscale_on=False)
+
+    ax.xaxis.tick_top()
+    ax.set_xlabel("pKa")
+    ax.xaxis.set_label_position("top")
+
+    ax.yaxis.set_ticks(range(N))
+    ax.yaxis.set_ticklabels(labels)
+    ax.invert_yaxis()
+
+    for i in range(N):
+        left = xmin
+        right = xmax
+        top = i + width / 2
+        bottom = i - width / 2
+        pk = pKas[i]
+        restype = restypes[i]
+
+        if restype == "neg":
+            ax.imshow(
+                Xe * 0,
+                interpolation="none",
+                cmap=grey_blue,
+                vmin=0,
+                vmax=1,
+                extent=(left, pk - dpk, bottom, top),
+                alpha=1,
+            )
+            ax.imshow(
+                np.fliplr(Xe),
+                interpolation="bicubic",
+                cmap=grey_blue,
+                vmin=0,
+                vmax=1,
+                extent=(pk - dpk - eps, pk + dpk, bottom, top),
+                alpha=1,
+            )
+            ax.imshow(
+                1 + Xe * 0,
+                interpolation="none",
+                cmap=grey_blue,
+                vmin=0,
+                vmax=1,
+                extent=(pk + dpk - eps, right, bottom, top),
+                alpha=1,
+            )
+            ax.text(
+                pk - dtxt,
+                i,
+                " {:.2f} ".format(pk),
+                color=pKa_color,
+                fontsize=pKa_fontsize,
+                horizontalalignment="right",
+                zorder=30,
+                path_effects=outline,
+                weight="bold",
+            )
+        else:
+            ax.imshow(
+                1 + Xe * 0,
+                interpolation="none",
+                cmap=grey_red,
+                vmin=0,
+                vmax=1,
+                extent=(left, pk - dpk, bottom, top),
+                alpha=1,
+            )
+            ax.imshow(
+                Xe,
+                interpolation="bicubic",
+                cmap=grey_red,
+                vmin=0,
+                vmax=1,
+                extent=(pk - dpk - eps, pk + dpk, bottom, top),
+                alpha=1,
+            )
+            ax.imshow(
+                Xe * 0,
+                interpolation="none",
+                cmap=grey_red,
+                vmin=0,
+                vmax=1,
+                extent=(pk + dpk - eps, right, bottom, top),
+                alpha=1,
+            )
+            ax.text(
+                pk + dtxt,
+                i,
+                " {:.2f} ".format(pk),
+                color=pKa_color,
+                fontsize=pKa_fontsize,
+                horizontalalignment="left",
+                zorder=30,
+                path_effects=outline,
+                weight="bold",
+            )
+        ax.add_line(
+            Line2D([pk, pk], [bottom, top], linewidth=3, color="white", zorder=2)
+        )
+
+        # ax.add_line(Line2D([pk,pk], [bottom,top], linewidth=3, color='blue'))
+
+    ## Shaded vertical band at pH
+    ax.axvline(x=pH - dpk, linewidth=2, color="black", alpha=0.2, linestyle="dashed")
+    ax.axvline(x=pH + dpk, linewidth=2, color="black", alpha=0.2, linestyle="dashed")
+    ax.axvline(x=pH, linewidth=3, color="black", alpha=0.5)
+    ax.text(
+        pH - dpk,
+        ymax,
+        " 90% protonated",
+        rotation=90,
+        horizontalalignment="right",
+        verticalalignment="bottom",
+        style="italic",
+        path_effects=outline,
+    )
+    ax.text(
+        pH + dpk,
+        ymax,
+        " 10% protonated",
+        rotation=90,
+        horizontalalignment="left",
+        verticalalignment="bottom",
+        style="italic",
+        path_effects=outline,
+    )
+
+    ax.set_aspect("auto")
+    plt.savefig(outname, dpi=300)
+    plt.close(fig)
 
 
 import unittest
+
+
 class _TestPreparation(unittest.TestCase):
     def test_proteinPrepare(self):
         tryp_op, prepData = proteinPrepare(Molecule("3PTB"), returnDetails=True)
         d = prepData.data
-        assert d.protonation[d.resid == 40].iloc[0] == 'HIE'
-        assert d.protonation[d.resid == 57].iloc[0] == 'HIP'
-        assert d.protonation[d.resid == 91].iloc[0] == 'HID'
-        
-    @unittest.skipUnless(os.environ.get('HTMD_LONGTESTS') == 'yes', 'Too long')
+        assert d.protonation[d.resid == 40].iloc[0] == "HIE"
+        assert d.protonation[d.resid == 57].iloc[0] == "HIP"
+        assert d.protonation[d.resid == 91].iloc[0] == "HID"
+
+    @unittest.skipUnless(os.environ.get("HTMD_LONGTESTS") == "yes", "Too long")
     def test_proteinPrepareLong(self):
         from moleculekit.home import home
         from moleculekit.util import assertSameAsReferenceDir
-        
-        pdbids = ['3PTB', '1A25', '1GZM', '1U5U']
+
+        pdbids = ["3PTB", "1A25", "1GZM", "1U5U"]
         for pdb in pdbids:
             mol = Molecule(pdb)
             mol.filter("protein")
             mol_op, prepData = proteinPrepare(mol, returnDetails=True)
             mol_op.write("./{}-prepared.pdb".format(pdb))
             prepData.data.to_csv("./{}-prepared.csv".format(pdb), float_format="%.2f")
-            compareDir = home(dataDir=os.path.join('test-proteinprepare', pdb))
+            compareDir = home(dataDir=os.path.join("test-proteinprepare", pdb))
             assertSameAsReferenceDir(compareDir)
 
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
     import doctest
+
     doctest.testmod()
