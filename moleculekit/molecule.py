@@ -289,7 +289,7 @@ class Molecule(object):
 
     @property
     def fstep(self):
-        """ The frame-step of the trajectory """
+        """The frame-step of the trajectory"""
         if self.time is not None and len(self.time) > 1:
             uqf, uqidx = np.unique([f[0] for f in self.fileloc], return_inverse=True)
             firstDiff = None
@@ -322,7 +322,7 @@ class Molecule(object):
 
     @property
     def frame(self):
-        """ The currently active frame of the Molecule on which methods will be applied """
+        """The currently active frame of the Molecule on which methods will be applied"""
         if self._frame < 0 or self._frame >= self.numFrames:
             raise RuntimeError("frame out of range")
         return self._frame
@@ -339,7 +339,7 @@ class Molecule(object):
 
     @property
     def numResidues(self):
-        """ The number of residues in the Molecule """
+        """The number of residues in the Molecule"""
         from moleculekit.util import sequenceID
 
         return len(np.unique(sequenceID((self.resid, self.insertion, self.chain))))
@@ -1912,6 +1912,8 @@ class Molecule(object):
             self._viewVMD(psf, pdb, xtc, viewerhandle, name, guessBonds)
         elif viewer.lower() == "ngl" or viewer.lower() == "webgl":
             retval = self._viewNGL(gui=gui)
+        elif viewer.lower() == "pymol":
+            self._viewPymol(psf, xtc)
         else:
             os.remove(xtc)
             os.remove(psf)
@@ -1926,6 +1928,18 @@ class Molecule(object):
             os.remove(pdb)
         if retval is not None:
             return retval
+
+    def _viewPymol(self, psf, xtc):
+        from pymol import cmd
+        import time
+        from moleculekit.pymolviewer import getCurrentViewer
+        import uuid
+
+        getCurrentViewer()
+        viewname = f"{self.viewname}_{uuid.uuid4().hex[:6].upper()}"
+        cmd.load(psf, viewname)
+        cmd.load(xtc, viewname)
+        cmd.dss()  # Guess SS
 
     def _viewVMD(self, psf, pdb, xtc, vhandle, name, guessbonds):
         from moleculekit.vmdviewer import getCurrentViewer
