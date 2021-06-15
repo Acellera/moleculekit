@@ -106,6 +106,7 @@ def _checkChainAndSegid(mol, _loggerLevel):
 def proteinPrepare(
     mol_in,
     titration=True,
+    ligmol2=None,
     pH=7.0,
     verbose=True,
     returnDetails=False,
@@ -300,10 +301,13 @@ def proteinPrepare(
         ]
         if titration:
             args = ["--titration-state-method", "propka"] + args
+        if ligmol2:
+            args = ["--ligand", ligmol2]
         args = parser.parse_args(args)
 
-        missedres, pka_df, _ = main_driver(args)
-        mol_out = Molecule(pdbout)
+        missedres, pka_df, biomolecule = main_driver(args)
+        mol_out = _biomolecule_to_molecule(biomolecule)
+        # mol_out = Molecule(pdbout)
 
     # Diagnostics
     missedres = set([m.residue.name for m in missedres])
@@ -337,6 +341,42 @@ def proteinPrepare(
     if returnDetails:
         return mol_out, df
     return mol_out
+
+
+def _biomolecule_to_molecule(biomolecule):
+    propmap = [
+        ("type", "record"),
+        ("serial", "serial"),
+        ("name", "name"),
+        ("alt_loc", "altloc"),
+        ("res_name", "resname"),
+        ("chain_id", "chain"),
+        ("res_seq", "resid"),
+        ("ins_code", "insertion"),
+        ("occupancy", "occupancy"),
+        ("temp_factor", "beta"),
+        ("seg_id", "segid"),
+        ("element", "element"),
+        ("charge", "charge"),
+    ]
+    mol = Molecule().empty(len(biomolecule.atoms))
+    mol.coords = np.zeros((mol.numAtoms, 3, 1), dtype=Molecule._dtypes["coords"])
+    bonds = []
+    for i, atom in enumerate(biomolecule.atoms):
+        for pp1, pp2 in propmap:
+            val = getattr(atom, pp1)
+            if pp1 == "charge":
+                val = float(val) if val != "" else 0
+            mol.__dict__[pp2][i] = val
+        mol.coords[i, :, 0] = [atom.x, atom.y, atom.z]
+        bonds += [[i, x.serial - 1] for x in atom.bonds]
+
+    guessedBonds = mol._guessBonds()
+    bb = mol.atomselect("backbone", indexes=True)
+    bb = guessedBonds[np.all(np.isin(guessedBonds, bb), axis=1)]
+    mol.bonds = np.vstack(bb.tolist() + bonds)
+
+    return mol
 
 
 def _create_table(mol_in, mol_out, pka_df):
