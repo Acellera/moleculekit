@@ -235,7 +235,7 @@ def autoSegment2(
     sel_mask = mol.atomselect(orig_sel)
     used_chains = set(mol.chain[~sel_mask])
     available_chains = [x for x in chain_alphabet if x not in used_chains]
-    used_segids = set([x[0] for x in mol.segid[~sel_mask]])
+    used_segids = set([x[0] for x in mol.segid[~sel_mask] if x != ""])
     available_segids = [x for x in [basename] + segid_alphabet if x not in used_segids]
     basename = available_segids[0]
 
