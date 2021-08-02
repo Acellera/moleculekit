@@ -11,20 +11,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def _getChainAlphabet(mode):
-    if mode == "numeric":
-        chain_alphabet = list(string.digits)
-    elif mode == "alphabetic":
-        chain_alphabet = list(string.ascii_uppercase + string.ascii_lowercase)
-    elif mode == "alphanumeric":
-        chain_alphabet = list(
-            string.digits + string.ascii_uppercase + string.ascii_lowercase
-        )
-    else:
-        raise RuntimeError(
-            f"Invalid mode {mode}. Use 'numeric', 'alphabetic' or 'alphanumeric'"
-        )
-    return chain_alphabet
+chain_alphabet = list(string.digits + string.ascii_uppercase + string.ascii_lowercase)
+segid_alphabet = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
 
 
 def autoSegment(
@@ -33,8 +21,8 @@ def autoSegment(
     basename="P",
     spatial=True,
     spatialgap=4.0,
-    field="segid",
-    mode="alphanumeric",
+    fields=("segid",),
+    field=None,
     _logger=True,
 ):
     """Detects resid gaps in a selection and assigns incrementing segid to each fragment
@@ -52,15 +40,11 @@ def autoSegment(
     basename : str
         The basename for segment ids. For example if given 'P' it will name the segments 'P1', 'P2', ...
     spatial : bool
-        Only considers a discontinuity in resid as a gap of the CA atoms have distance more than `spatialgap` Angstrom
+        Only considers a discontinuity in resid as a gap if the CA atoms have distance more than `spatialgap` Angstrom
     spatialgap : float
         The size of a spatial gap which validates a discontinuity (A)
-    field : str
-        Field to fix. Can be "segid" (default), "chain", or "both"
-    mode : str
-        If set to 'numeric' it will use numbers for segment IDs.
-        If set to 'alphabetic' it will use letters for segment IDs.
-        If set to 'alphanumeric' it will use both numbers and letters for segment IDs.
+    fields : list
+        Fields in which to set the segments. Must be a combination of "chain", "segid" or only one of them.
 
     Returns
     -------
@@ -69,9 +53,15 @@ def autoSegment(
 
     Example
     -------
-    >>> newmol = autoSegment(mol,'chain B','P')
+    >>> newmol = autoSegment(mol, "chain B", "P", fields=("chain", "segid"))
     """
     from moleculekit.util import sequenceID
+
+    if field is not None and isinstance(field, str):
+        if field == "both":
+            fields = ("chain", "segid")
+        else:
+            fields = (field,)
 
     mol = mol.copy()
 
@@ -81,19 +71,22 @@ def autoSegment(
     # Points to the index before the gap!
     gappos = np.where((residiff != 1) & (residiff != 0))[0]
 
-    # Letters to be used for chains, if free: 0123456789abcd...ABCD..., minus chain symbols already used
-    used_chains = set(mol.chain)
-    chain_alphabet = _getChainAlphabet(mode)
-
-    available_chains = [x for x in chain_alphabet if x not in used_chains]
-
     idxstartseg = [idx[0]] + idx[gappos + 1].tolist()
     idxendseg = idx[gappos].tolist() + [idx[-1]]
 
-    mol.set("segid", basename, sel)
+    # Letters to be used for chains, if free: 0123456789abcd...ABCD..., minus chain symbols already used
+    sel_mask = mol.atomselect(sel)
+    used_chains = set(mol.chain[~sel_mask])
+    available_chains = [x for x in chain_alphabet if x not in used_chains]
+    used_segids = set([x[0] for x in mol.segid[~sel_mask]])
+    available_segids = [x for x in [basename] + segid_alphabet if x not in used_segids]
+    basename = available_segids[0]
 
     if len(gappos) == 0:
-        mol.set("segid", basename + chain_alphabet[0], sel)
+        if "chain" in fields:
+            mol.set("chain", available_chains[0], sel)
+        if "segid" in fields:
+            mol.set("segid", basename + "0", sel)
         return mol
 
     if spatial:
@@ -119,30 +112,21 @@ def autoSegment(
 
         mol.set("resid", residbackup)  # Restoring the original resids
 
-    i = 0
-    for s, e in zip(idxstartseg, idxendseg):
-        # Fixup segid
-        if field in ["segid", "both"]:
-            newsegid = basename + str(i)
-            if np.any(mol.segid == newsegid):
-                raise RuntimeError(
-                    f"Segid {newsegid} already exists in the molecule. Please choose different prefix."
-                )
-            if _logger:
-                logger.info(
-                    f"Created segment {newsegid} between resid {mol.resid[s]} and {mol.resid[e]}."
-                )
-            mol.segid[s : e + 1] = newsegid
-        # Fixup chain
-        if field in ["chain", "both"]:
-            newchainid = available_chains[i]
+    for i, (s, e) in enumerate(zip(idxstartseg, idxendseg)):
+        if "chain" in fields:
+            newchainid = available_chains[i % len(available_chains)]
             if _logger:
                 logger.info(
                     f"Set chain {newchainid} between resid {mol.resid[s]} and {mol.resid[e]}."
                 )
             mol.chain[s : e + 1] = newchainid
-
-        i += 1
+        if "segid" in fields:
+            newsegid = basename + str(i)
+            if _logger:
+                logger.info(
+                    f"Created segment {newsegid} between resid {mol.resid[s]} and {mol.resid[e]}."
+                )
+            mol.segid[s : e + 1] = newsegid
 
     return mol
 
@@ -155,7 +139,6 @@ def autoSegment2(
     residgaps=False,
     residgaptol=1,
     chaingaps=True,
-    mode="alphanumeric",
     _logger=True,
 ):
     """Detects bonded segments in a selection and assigns incrementing segid to each segment
@@ -178,10 +161,6 @@ def autoSegment2(
         default to 2 because in many PDBs single residues are missing in the proteins without any gaps.
     chaingaps : bool
         Set to True to consider changes in chains as structural gaps. Set to False to ignore chains
-    mode : str
-        If set to 'numeric' it will use numbers for segment IDs.
-        If set to 'alphabetic' it will use letters for segment IDs.
-        If set to 'alphanumeric' it will use both numbers and letters for segment IDs.
 
     Returns
     -------
@@ -198,6 +177,7 @@ def autoSegment2(
     if isinstance(fields, str):
         fields = (fields,)
 
+    orig_sel = sel
     sel += " and backbone or (resname NME ACE and name N C O CH3)"  # Looking for bonds only over the backbone of the protein
     # Keep the original atom indexes to map from submol to mol
     idx = mol.atomselect(sel, indexes=True)
@@ -252,9 +232,12 @@ def autoSegment2(
     numcomp, compidx = connected_components(sparsemat, directed=False)
 
     # Letters to be used for chains, if free: 0123456789abcd...ABCD..., minus chain symbols already used
-    used_chains = set(mol.chain)
-    chain_alphabet = _getChainAlphabet(mode)
+    sel_mask = mol.atomselect(orig_sel)
+    used_chains = set(mol.chain[~sel_mask])
     available_chains = [x for x in chain_alphabet if x not in used_chains]
+    used_segids = set([x[0] for x in mol.segid[~sel_mask]])
+    available_segids = [x for x in [basename] + segid_alphabet if x not in used_segids]
+    basename = available_segids[0]
 
     mol = mol.copy()
     prevsegres = None
@@ -278,10 +261,6 @@ def autoSegment2(
         # Add the new segment ID to all fields the user specified
         for f in fields:
             if f != "chain":
-                if np.any(mol.__dict__[f] == segid):
-                    raise RuntimeError(
-                        f"Segid {segid} already exists in the molecule. Please choose different prefix."
-                    )
                 mol.__dict__[f][segres] = segid  # Assign the segid to the correct atoms
             else:
                 mol.__dict__[f][segres] = available_chains[i % len(available_chains)]
