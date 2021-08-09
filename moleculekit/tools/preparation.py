@@ -678,8 +678,7 @@ import unittest
 
 class _TestPreparation(unittest.TestCase):
     def test_proteinPrepare(self):
-        tryp_op, prepData = proteinPrepare(Molecule("3PTB"), returnDetails=True)
-        d = prepData.data
+        _, d = proteinPrepare(Molecule("3PTB"), returnDetails=True)
         assert d.protonation[d.resid == 40].iloc[0] == "HIE"
         assert d.protonation[d.resid == 57].iloc[0] == "HIP"
         assert d.protonation[d.resid == 91].iloc[0] == "HID"
@@ -695,7 +694,7 @@ class _TestPreparation(unittest.TestCase):
             mol.filter("protein")
             mol_op, prepData = proteinPrepare(mol, returnDetails=True)
             mol_op.write("./{}-prepared.pdb".format(pdb))
-            prepData.data.to_csv("./{}-prepared.csv".format(pdb), float_format="%.2f")
+            prepData.to_csv("./{}-prepared.csv".format(pdb), float_format="%.2f")
             compareDir = home(dataDir=os.path.join("test-proteinprepare", pdb))
             assertSameAsReferenceDir(compareDir)
 
