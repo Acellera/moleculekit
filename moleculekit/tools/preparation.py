@@ -4,7 +4,8 @@
 # No redistribution in whole or part
 #
 import logging
-from moleculekit.util import sequenceID, tempname
+import unittest
+from moleculekit.util import sequenceID
 import tempfile
 import numpy as np
 import os
@@ -515,7 +516,6 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
 
     # Constants
     acidicResidues = ["ASP", "GLU", "TYR", "C-"]
-    basicResidues = ["HIS", "LYS", "ARG", "N+"]
 
     df = df[df.pKa < 99]
 
@@ -643,7 +643,7 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
 
         # ax.add_line(Line2D([pk,pk], [bottom,top], linewidth=3, color='blue'))
 
-    ## Shaded vertical band at pH
+    # Shaded vertical band at pH
     ax.axvline(x=pH - dpk, linewidth=2, color="black", alpha=0.2, linestyle="dashed")
     ax.axvline(x=pH + dpk, linewidth=2, color="black", alpha=0.2, linestyle="dashed")
     ax.axvline(x=pH, linewidth=3, color="black", alpha=0.5)
@@ -673,9 +673,6 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
     plt.close(fig)
 
 
-import unittest
-
-
 class _TestPreparation(unittest.TestCase):
     def test_proteinPrepare(self):
         _, d = proteinPrepare(Molecule("3PTB"), returnDetails=True)
@@ -693,8 +690,11 @@ class _TestPreparation(unittest.TestCase):
         for pdb in pdbids:
             mol = Molecule(pdb)
             mol.filter("protein")
-            mol_op, prepData = proteinPrepare(mol, returnDetails=True)
             with tempfile.TemporaryDirectory() as tmpdir:
+                mol_op, prepData = proteinPrepare(
+                    mol, returnDetails=True, plotpka=os.path.join(tmpdir, "plot.png")
+                )
+
                 mol_op.write(os.path.join(tmpdir, f"{pdb}-prepared.pdb"))
                 prepData.to_csv(
                     os.path.join(tmpdir, f"{pdb}-prepared.csv"), float_format="%.2f"
