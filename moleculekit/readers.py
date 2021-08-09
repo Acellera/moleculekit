@@ -2131,6 +2131,7 @@ def PREPIread(filename, frame=None, topoloc=None):
 
 def SDFread(filename, frame=None, topoloc=None):
     # Some (mostly correct) info here: www.nonlinear.com/progenesis/sdf-studio/v0.9/faq/sdf-file-format-guidance.aspx
+    # Format is correctly specified here: https://www.daylight.com/meetings/mug05/Kappler/ctfile.pdf
     chargemap = {"7": -3, "6": -2, "5": -1, "0": 0, "3": 1, "2": 2, "1": 3, "4": 0}
 
     with open(filename, "r") as f:
@@ -2156,15 +2157,19 @@ def SDFread(filename, frame=None, topoloc=None):
         bond_start = coord_start + n_atoms
         bond_end = bond_start + n_bonds
         for n in range(coord_start, bond_start):
-            pieces = lines[n].strip().split()
-            coords.append(list(map(float, pieces[:3])))
-            topo.element.append(pieces[3])
-            topo.name.append(pieces[3])
+            line = lines[n]
+            coords.append([float(line[:10].strip()), float(line[10:20].strip()), float(line[20:30].strip())])
+            atom_symbol = line[31:34].strip()
+            topo.element.append(atom_symbol)
+            topo.name.append(atom_symbol)
             topo.serial.append(n-coord_start)
-            topo.charge.append(chargemap[pieces[5]])
+            topo.charge.append(chargemap[line[36:39].strip()])
 
         for n in range(bond_start, bond_end):
-            idx1, idx2, bond_type = lines[n].strip().split()[:3]
+            line = lines[n]
+            idx1 = line[:3].strip()
+            idx2 = line[3:6].strip()
+            bond_type = line[6:9].strip()
             topo.bonds.append([int(idx1)-1, int(idx2)-1])
             topo.bondtype.append(bond_type)
 

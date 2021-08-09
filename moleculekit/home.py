@@ -36,19 +36,23 @@ def home(dataDir=None, libDir=False):
     '.../data/dhfr/dhfr.pdb'
     """
 
-    homeDir=os.path.dirname(inspect.getfile(moleculekit))
+    homeDir = os.path.dirname(inspect.getfile(moleculekit))
     try:
-      if sys._MEIPASS:
-         homeDir = sys._MEIPASS
+        if sys._MEIPASS:
+            homeDir = sys._MEIPASS
     except:
-      pass
+        pass
 
     if dataDir:
         return os.path.join(homeDir, "test-data", dataDir)
     elif libDir:
-        libdir = os.path.join(homeDir, "lib", platform.system())
+        if platform.machine() == "ppc64le":
+            libdir = os.path.join(homeDir, "lib", "ppc64le")
+        else:
+            libdir = os.path.join(homeDir, "lib", platform.system())
+
         if not os.path.exists(libdir):
-            raise FileNotFoundError('Could not find libs.')
+            raise FileNotFoundError("Could not find libs.")
         return libdir
     else:
         return homeDir
@@ -56,6 +60,7 @@ def home(dataDir=None, libDir=False):
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()
 
     h = home()
