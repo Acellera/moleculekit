@@ -687,16 +687,20 @@ class _TestPreparation(unittest.TestCase):
     def test_proteinPrepareLong(self):
         from moleculekit.home import home
         from moleculekit.util import assertSameAsReferenceDir
+        import tempfile
 
         pdbids = ["3PTB", "1A25", "1GZM", "1U5U"]
         for pdb in pdbids:
             mol = Molecule(pdb)
             mol.filter("protein")
             mol_op, prepData = proteinPrepare(mol, returnDetails=True)
-            mol_op.write("./{}-prepared.pdb".format(pdb))
-            prepData.to_csv("./{}-prepared.csv".format(pdb), float_format="%.2f")
-            compareDir = home(dataDir=os.path.join("test-proteinprepare", pdb))
-            assertSameAsReferenceDir(compareDir)
+            with tempfile.TemporaryDirectory() as tmpdir:
+                mol_op.write(os.path.join(tmpdir, f"{pdb}-prepared.pdb"))
+                prepData.to_csv(
+                    os.path.join(tmpdir, f"{pdb}-prepared.csv"), float_format="%.2f"
+                )
+                compareDir = home(dataDir=os.path.join("test-proteinprepare", pdb))
+                assertSameAsReferenceDir(compareDir, tmpdir)
 
 
 if __name__ == "__main__":
