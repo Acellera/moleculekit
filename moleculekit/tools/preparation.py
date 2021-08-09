@@ -683,7 +683,7 @@ class _TestPreparation(unittest.TestCase):
         assert d.protonation[d.resid == 57].iloc[0] == "HIP"
         assert d.protonation[d.resid == 91].iloc[0] == "HID"
 
-    @unittest.skipUnless(os.environ.get("HTMD_LONGTESTS") == "yes", "Too long")
+    # @unittest.skipUnless(os.environ.get("HTMD_LONGTESTS") == "yes", "Too long")
     def test_proteinPrepareLong(self):
         from moleculekit.home import home
         from moleculekit.util import assertSameAsReferenceDir
