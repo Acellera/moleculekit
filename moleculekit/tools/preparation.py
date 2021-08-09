@@ -113,7 +113,7 @@ def proteinPrepare(
     hydrophobicThickness=None,
     holdSelection=None,
     plotpka=None,
-    _loggerLevel=None,
+    _loggerLevel="ERROR",
 ):
     """A system preparation wizard for HTMD.
 
@@ -264,6 +264,7 @@ def proteinPrepare(
         # logger.setLevel(_loggerLevel)
         logging.getLogger(f"PDB2PQR{VERSION}").setLevel(_loggerLevel)
         logging.getLogger(f"PDB2PQR{VERSION}").propagate = False
+        logging.getLogger("pdb2pqr").setLevel(_loggerLevel)
         logging.getLogger("propka").setLevel(_loggerLevel)
     logger.debug("Starting.")
 

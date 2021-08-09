@@ -5,7 +5,7 @@ joblib
 scikit-learn
 rdkit>=2020.09.5
 mdtraj
-htmd-pdb2pqr
-propka==3.1.8
+pdb2pqr
+propka
 openbabel>=3.1.1
 vina
