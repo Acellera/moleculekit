@@ -313,8 +313,9 @@ def proteinPrepare(
 
     # Diagnostics
     missedres = set([m.residue.name for m in missedres])
-    for resn in missedres:
-        logger.warning(f"The following residue has not been optimized: {resn}")
+    logger.warning(
+        f"The following residues have not been optimized: {', '.join(missedres)}"
+    )
 
     # assert not np.any(
     #     mol_out.element == "X"
