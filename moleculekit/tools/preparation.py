@@ -360,25 +360,32 @@ def _biomolecule_to_molecule(biomolecule):
 def _create_table(mol_in, mol_out, pka_df):
     import pandas as pd
 
-    uqresid_in = sequenceID(
-        (mol_in.resid, mol_in.insertion, mol_in.chain, mol_in.segid)
-    )
-    uqresid_out = sequenceID(
-        (mol_out.resid, mol_out.insertion, mol_out.chain, mol_out.segid)
-    )
-    if uqresid_in.max() != uqresid_out.max():
-        logger.warning("Residue numbering was changed in pdb2pqr!")
-        return None
+    uq_tuple = []
+    for e in zip(
+        mol_in.resname, mol_in.resid, mol_in.insertion, mol_in.chain, mol_in.segid
+    ):
+        if e not in uq_tuple:
+            uq_tuple.append(e)
 
     data = []
-    for idx in np.unique(uqresid_out):
-        old_resn = mol_in.resname[uqresid_in == idx][0]
-        sel = uqresid_out == idx
-        resname = mol_out.resname[sel][0]
-        resid = mol_out.resid[sel][0]
-        insertion = mol_out.insertion[sel][0]
-        chain = mol_out.chain[sel][0]
-        segid = mol_out.segid[sel][0]
+    for tup in uq_tuple:
+        old_resn = tup[0]
+        new_mask = (
+            (mol_out.resid == tup[1])
+            & (mol_out.insertion == tup[2])
+            & (mol_out.chain == tup[3])
+            & (mol_out.segid == tup[4])
+        )
+        if not np.any(new_mask):
+            raise RuntimeError(
+                f"Unable to find residue {' '.join(tup)} after preparation"
+            )
+        new_idx = np.where(new_mask)[0][0]
+        resname = mol_out.resname[new_idx]
+        resid = mol_out.resid[new_idx]
+        insertion = mol_out.insertion[new_idx]
+        chain = mol_out.chain[new_idx]
+        segid = mol_out.segid[new_idx]
         curr_data = [old_resn, resname, resid, insertion, chain, segid]
         if pka_df is not None:
             for propkadata in pka_df:
@@ -703,6 +710,11 @@ class _TestPreparation(unittest.TestCase):
         assert df2.protonation[df2.resid == 40].iloc[0] == "HID"
         assert df2.protonation[df2.resid == 57].iloc[0] == "HIP"
         assert df2.protonation[df2.resid == 91].iloc[0] == "HID"
+
+    def test_freezing(self):
+        pmol, df = proteinPrepare(Molecule("2B5I"), returnDetails=True)
+
+        pass
 
 
 if __name__ == "__main__":
