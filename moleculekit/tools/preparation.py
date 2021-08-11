@@ -25,11 +25,13 @@ logger = logging.getLogger(__name__)
 def _selToHoldList(mol, sel):
     ret = None
     if sel:
-        tx = mol.copy()
-        tx.filter(sel)
+        sel = mol.atomselect(sel)
         ret = [
             list(x)
-            for x in set(tuple(x) for x in zip(tx.resid, tx.chain, tx.insertion))
+            for x in set(
+                tuple(x)
+                for x in zip(mol.resid[sel], mol.chain[sel], mol.insertion[sel])
+            )
         ]
     return ret
 
@@ -112,7 +114,6 @@ def proteinPrepare(
     verbose=True,
     returnDetails=False,
     hydrophobicThickness=None,
-    holdSelection=None,
     plotpka=None,
     _loggerLevel="ERROR",
 ):
@@ -187,8 +188,6 @@ def proteinPrepare(
     hydrophobicThickness : float
         the thickness of the membrane in which the protein is embedded, or None if globular protein.
         Used to provide a warning about membrane-exposed residues.
-    holdSelection : str
-        (Untested) Atom selection to be excluded from optimization.
 
     Returns
     -------
@@ -277,12 +276,6 @@ def proteinPrepare(
         tmpin = os.path.join(tmpdir, "input.pdb")
         mol_in.write(tmpin)
 
-        hlist = _selToHoldList(mol_in, holdSelection)
-        if hlist:
-            logger.warning(
-                "The holdSelection option is untested and deprecated. Please use reprepare()"
-            )
-
         pqrout = os.path.join(tmpdir, "out.pqr")
         pdbout = os.path.join(tmpdir, "out.pdb")
         parser = build_main_parser()
@@ -304,7 +297,7 @@ def proteinPrepare(
         if titration:
             args = ["--titration-state-method", "propka"] + args
         if ligmol2:
-            args = ["--ligand", ligmol2]
+            args = ["--ligand", ligmol2] + args
         args = parser.parse_args(args)
 
         missedres, pka_df, biomolecule = main_driver(args)
@@ -681,27 +674,42 @@ class _TestPreparation(unittest.TestCase):
         assert d.protonation[d.resid == 57].iloc[0] == "HIP"
         assert d.protonation[d.resid == 91].iloc[0] == "HID"
 
-    # @unittest.skipUnless(os.environ.get("HTMD_LONGTESTS") == "yes", "Too long")
-    def test_proteinPrepareLong(self):
+    # def test_proteinPrepareLong(self):
+    #     from moleculekit.home import home
+    #     from moleculekit.util import assertSameAsReferenceDir
+    #     import tempfile
+
+    #     pdbids = ["3PTB", "1A25", "1GZM", "1U5U"]
+    #     for pdb in pdbids:
+    #         mol = Molecule(pdb)
+    #         mol.filter("protein")
+    #         with tempfile.TemporaryDirectory() as tmpdir:
+    #             mol_op, prepData = proteinPrepare(
+    #                 mol, returnDetails=True, plotpka=os.path.join(tmpdir, "plot.png")
+    #             )
+
+    #             mol_op.write(os.path.join(tmpdir, f"{pdb}-prepared.pdb"))
+    #             prepData.to_csv(
+    #                 os.path.join(tmpdir, f"{pdb}-prepared.csv"), float_format="%.2f"
+    #             )
+    #             compareDir = home(dataDir=os.path.join("test-proteinprepare", pdb))
+    #             assertSameAsReferenceDir(compareDir, tmpdir)
+
+    def test_proteinprepare_ligand(self):
         from moleculekit.home import home
-        from moleculekit.util import assertSameAsReferenceDir
-        import tempfile
 
-        pdbids = ["3PTB", "1A25", "1GZM", "1U5U"]
-        for pdb in pdbids:
-            mol = Molecule(pdb)
-            mol.filter("protein")
-            with tempfile.TemporaryDirectory() as tmpdir:
-                mol_op, prepData = proteinPrepare(
-                    mol, returnDetails=True, plotpka=os.path.join(tmpdir, "plot.png")
-                )
+        datadir = home(dataDir=os.path.join("test-proteinprepare", "3PTB"))
+        mol = Molecule("3ptb")
+        mol.remove("resname HOH CA")
+        pmol = proteinPrepare(
+            mol,
+            ligmol2=os.path.join(datadir, "3PTB_ligand_A:1_BEN:1.mol2"),
+            _loggerLevel="INFO",
+        )
+        from IPython.core.debugger import set_trace
 
-                mol_op.write(os.path.join(tmpdir, f"{pdb}-prepared.pdb"))
-                prepData.to_csv(
-                    os.path.join(tmpdir, f"{pdb}-prepared.csv"), float_format="%.2f"
-                )
-                compareDir = home(dataDir=os.path.join("test-proteinprepare", pdb))
-                assertSameAsReferenceDir(compareDir, tmpdir)
+        set_trace()
+        pmol2 = proteinPrepare(mol, _loggerLevel="INFO")
 
 
 if __name__ == "__main__":
