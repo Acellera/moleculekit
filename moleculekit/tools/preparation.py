@@ -201,26 +201,24 @@ def proteinPrepare(
     --------
     >>> tryp = Molecule('3PTB')
 
-    >>> tryp_op, prepData = proteinPrepare(tryp, returnDetails=True)
+    >>> tryp_op, df = proteinPrepare(tryp, returnDetails=True)
     >>> tryp_op.write('proteinpreparation-test-main-ph-7.pdb')
-    >>> prepData.data.to_excel("/tmp/tryp-report.xlsx")
-    >>> prepData                                                        # doctest: +NORMALIZE_WHITESPACE
-    PreparationData object about 290 residues.
-    Unparametrized residue names: CA, BEN
-    Please find the full info in the .data property, e.g.:
-      resname  resid insertion chain       pKa protonation flipped     buried
-    0     ILE     16               A       NaN         ILE     NaN        NaN
-    1     VAL     17               A       NaN         VAL     NaN        NaN
-    2     GLY     18               A       NaN         GLY     NaN        NaN
-    3     GLY     19               A       NaN         GLY     NaN        NaN
-    4     TYR     20               A  9.590845         TYR     NaN  14.642857
-     . . .
-    >>> x_HIE91_ND1 = tryp_op.get("coords","resid 91 and  name ND1")
-    >>> x_SER93_H =   tryp_op.get("coords","resid 93 and  name H")
-    >>> len(x_SER93_H) == 3
-    True
-    >>> np.linalg.norm(x_HIE91_ND1-x_SER93_H) < 3
-    True
+    >>> df.to_excel("/tmp/tryp-report.xlsx")
+    >>> df                                                        # doctest: +NORMALIZE_WHITESPACE
+    resname protonation  resid insertion chain segid       pKa    buried
+    0       ILE         ILE     16               A     0  7.413075  0.839286
+    1       VAL         VAL     17               A     0       NaN       NaN
+    2       GLY         GLY     18               A     0       NaN       NaN
+    3       GLY         GLY     19               A     0       NaN       NaN
+    4       TYR         TYR     20               A     0  9.590845  0.146429
+    ..      ...         ...    ...       ...   ...   ...       ...       ...
+    282     HOH         WAT    804               A     1       NaN       NaN
+    283     HOH         WAT    805               A     1       NaN       NaN
+    284     HOH         WAT    807               A     1       NaN       NaN
+    285     HOH         WAT    808               A     1       NaN       NaN
+    286     HOH         WAT    809               A     1       NaN       NaN
+
+    [287 rows x 8 columns]
 
     >>> tryp_op = proteinPrepare(tryp, pH=1.0)
     >>> tryp_op.write('proteinpreparation-test-main-ph-1.pdb')
@@ -228,22 +226,8 @@ def proteinPrepare(
     >>> tryp_op = proteinPrepare(tryp, pH=14.0)
     >>> tryp_op.write('proteinpreparation-test-main-ph-14.pdb')
 
-    >>> mol = Molecule("1r1j")
-    >>> mo, prepData = proteinPrepare(mol, returnDetails=True)
-    >>> prepData.missedLigands
-    ['NAG', 'ZN', 'OIR']
-
-
-    >>> mor = Molecule("4dkl")
-    >>> mor.filter("protein and noh")
-    >>> mor_opt, mor_data = proteinPrepare(mor, returnDetails=True,
-    ...                                    hydrophobicThickness=32.0)
-    >>> exposedRes = mor_data.data.membraneExposed
-    >>> mor_data.data[exposedRes].to_excel("/tmp/mor_exposed_residues.xlsx")
-
-    >>> im=Molecule("4bkj")
-    >>> imo,imd=proteinPrepare(im,returnDetails=True)
-    >>> imd.data.to_excel("/tmp/imatinib_report.xlsx")
+    >>> tryp_op.mutateResidue("protein and resid 40", "HID")
+    >>> tryp_reprot, df = proteinPrepare(tryp_op, titration=False, returnDetails=True)
 
     Notes
     -----
@@ -253,6 +237,9 @@ def proteinPrepare(
      - nucleic acids
      - coupled titrating residues
      - Disulfide bridge detection (implemented but unused)
+
+    Reprotonation: To re-protonate a structure first mutate the residue to the desired state and
+    then pass it through proteinPrepare again with titration=False.
     """
     from pdb2pqr.config import VERSION
 
@@ -309,11 +296,6 @@ def proteinPrepare(
     logger.warning(
         f"The following residues have not been optimized: {', '.join(missedres)}"
     )
-
-    # assert not np.any(
-    #     mol_out.element == "X"
-    # ), "pdb2pqr left some lonepair atoms in. report this issue to moleculekit github issue tracker"
-    # mol_out.element = mol_out._guessMissingElements()
 
     mol_out.box = mol_in.box
     _fixupWaterNames(mol_out)
@@ -398,29 +380,28 @@ def _create_table(mol_in, mol_out, pka_df):
         chain = mol_out.chain[sel][0]
         segid = mol_out.segid[sel][0]
         curr_data = [old_resn, resname, resid, insertion, chain, segid]
-        for propkadata in pka_df:
-            if (
-                propkadata["res_num"] == resid
-                and propkadata["ins_code"].strip() == insertion.strip()
-                and propkadata["chain_id"] == chain
-            ):
-                curr_data += [propkadata["pKa"], propkadata["buried"]]
-                break
+        if pka_df is not None:
+            for propkadata in pka_df:
+                if (
+                    propkadata["res_num"] == resid
+                    and propkadata["ins_code"].strip() == insertion.strip()
+                    and propkadata["chain_id"] == chain
+                ):
+                    curr_data += [propkadata["pKa"], propkadata["buried"]]
+                    break
         data.append(curr_data)
 
-    df = pd.DataFrame(
-        data=data,
-        columns=[
-            "resname",
-            "protonation",
-            "resid",
-            "insertion",
-            "chain",
-            "segid",
-            "pKa",
-            "buried",
-        ],
-    )
+    cols = [
+        "resname",
+        "protonation",
+        "resid",
+        "insertion",
+        "chain",
+        "segid",
+    ]
+    if pka_df is not None:
+        cols += ["pKa", "buried"]
+    df = pd.DataFrame(data=data, columns=cols)
     return df
 
 
@@ -669,10 +650,10 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
 
 class _TestPreparation(unittest.TestCase):
     def test_proteinPrepare(self):
-        _, d = proteinPrepare(Molecule("3PTB"), returnDetails=True)
-        assert d.protonation[d.resid == 40].iloc[0] == "HIE"
-        assert d.protonation[d.resid == 57].iloc[0] == "HIP"
-        assert d.protonation[d.resid == 91].iloc[0] == "HID"
+        _, df = proteinPrepare(Molecule("3PTB"), returnDetails=True)
+        assert df.protonation[df.resid == 40].iloc[0] == "HIE"
+        assert df.protonation[df.resid == 57].iloc[0] == "HIP"
+        assert df.protonation[df.resid == 91].iloc[0] == "HID"
 
     # def test_proteinPrepareLong(self):
     #     from moleculekit.home import home
@@ -695,21 +676,33 @@ class _TestPreparation(unittest.TestCase):
     #             compareDir = home(dataDir=os.path.join("test-proteinprepare", pdb))
     #             assertSameAsReferenceDir(compareDir, tmpdir)
 
-    def test_proteinprepare_ligand(self):
-        from moleculekit.home import home
+    # def test_proteinprepare_ligand(self):
+    #     from moleculekit.home import home
 
-        datadir = home(dataDir=os.path.join("test-proteinprepare", "3PTB"))
-        mol = Molecule("3ptb")
-        mol.remove("resname HOH CA")
-        pmol = proteinPrepare(
-            mol,
-            ligmol2=os.path.join(datadir, "3PTB_ligand_A:1_BEN:1.mol2"),
-            _loggerLevel="INFO",
-        )
-        from IPython.core.debugger import set_trace
+    #     datadir = home(dataDir=os.path.join("test-proteinprepare", "3PTB"))
+    #     mol = Molecule("3ptb")
+    #     mol.remove("resname HOH CA")
+    #     pmol = proteinPrepare(
+    #         mol,
+    #         ligmol2=os.path.join(datadir, "3PTB_ligand_A:1_BEN:1.mol2"),
+    #         _loggerLevel="INFO",
+    #     )
+    #     from IPython.core.debugger import set_trace
 
-        set_trace()
-        pmol2 = proteinPrepare(mol, _loggerLevel="INFO")
+    #     set_trace()
+    #     pmol2 = proteinPrepare(mol, _loggerLevel="INFO")
+
+    def test_reprotonate(self):
+        pmol, df = proteinPrepare(Molecule("3PTB"), returnDetails=True)
+        assert df.protonation[df.resid == 40].iloc[0] == "HIE"
+        assert df.protonation[df.resid == 57].iloc[0] == "HIP"
+        assert df.protonation[df.resid == 91].iloc[0] == "HID"
+
+        pmol.mutateResidue("protein and resid 40", "HID")
+        _, df2 = proteinPrepare(pmol, titration=False, returnDetails=True)
+        assert df2.protonation[df2.resid == 40].iloc[0] == "HID"
+        assert df2.protonation[df2.resid == 57].iloc[0] == "HIP"
+        assert df2.protonation[df2.resid == 91].iloc[0] == "HID"
 
 
 if __name__ == "__main__":
