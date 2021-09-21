@@ -5,11 +5,11 @@
 #
 import logging
 import unittest
-from moleculekit.util import sequenceID
 import tempfile
 import numpy as np
 import os
 from moleculekit.molecule import Molecule
+from moleculekit.molecule import UniqueResidueID
 
 try:
     from pdb2pqr.main import main_driver, build_main_parser
@@ -106,11 +106,51 @@ def _checkChainAndSegid(mol, _loggerLevel):
     return mol
 
 
+def _detect_ion_coordination(mol, bond_prot, bond_other):
+    coordination_ions = ("Ca", "Zn")
+    ions = np.isin(mol.element[bond_other], coordination_ions)
+    ionidx = bond_other[ions]
+    protidx = bond_prot[ions]
+    logger.info(f"Found {len(ionidx)} ion coordinations to protein residues")
+    for p, o in zip(protidx, ionidx):
+        logger.info(
+            f"{UniqueResidueID.fromMolecule(mol, idx=p)}, {UniqueResidueID.fromMolecule(mol, idx=o)}"
+        )
+    return protidx, ionidx, bond_prot[~ions], bond_other[~ions]
+
+
+def _detect_nonpeptidic_bonds(mol):
+    prot_idx = mol.atomselect("protein", indexes=True)
+    # Bonds where only 1 atom belongs to protein
+    bond_mask = np.isin(mol.bonds, prot_idx)
+    inter_bonds = np.sum(bond_mask, axis=1) == 1
+    bonds = mol.bonds[inter_bonds, :]
+    bond_prot = bonds[bond_mask[inter_bonds]]
+    bond_other = bonds[~bond_mask[inter_bonds]]
+
+    ionprot, ionidx, bond_prot, bond_other = _detect_ion_coordination(
+        mol, bond_prot, bond_other
+    )
+
+    if not len(bond_prot):
+        return []
+
+    logger.info(
+        f"Found {len(bond_prot)} covalent bonds from non-protein molecules to protein residues"
+    )
+    for p, o in zip(bond_prot, bond_other):
+        logger.info(
+            f"{UniqueResidueID.fromMolecule(mol, idx=p)}, {UniqueResidueID.fromMolecule(mol, idx=o)}"
+        )
+    return np.vstack([bond_prot, bond_other]).T
+
+
 def proteinPrepare(
     mol_in,
     titration=True,
     ligmol2=None,
     pH=7.0,
+    force_protonation=None,
     verbose=True,
     returnDetails=False,
     hydrophobicThickness=None,
@@ -315,6 +355,24 @@ def proteinPrepare(
     # resData.warnIfTerminiSuspect()
 
     logger.setLevel(old_level)
+
+    if force_protonation is not None:
+        # Re-run pdb2pqr without titration and forcing specific residues to user-defined protomers
+        for sel, resn in force_protonation:
+            mol_out.mutateResidue(sel, resn)
+
+        return proteinPrepare(
+            mol_out,
+            titration=False,
+            ligmol2=ligmol2,
+            pH=pH,
+            force_protonation=None,
+            verbose=verbose,
+            returnDetails=returnDetails,
+            hydrophobicThickness=hydrophobicThickness,
+            plotpka=plotpka,
+            _loggerLevel=_loggerLevel,
+        )
 
     if returnDetails:
         return mol_out, df
@@ -710,6 +768,18 @@ class _TestPreparation(unittest.TestCase):
         assert df2.protonation[df2.resid == 40].iloc[0] == "HID"
         assert df2.protonation[df2.resid == 57].iloc[0] == "HIP"
         assert df2.protonation[df2.resid == 91].iloc[0] == "HID"
+
+        pmol, df = proteinPrepare(
+            Molecule("3PTB"),
+            force_protonation=(
+                ("protein and resid 40", "HID"),
+                ("protein and resid 91", "HIE"),
+            ),
+            returnDetails=True,
+        )
+        assert df.protonation[df.resid == 40].iloc[0] == "HID"
+        assert df.protonation[df.resid == 57].iloc[0] == "HIP"
+        assert df.protonation[df.resid == 91].iloc[0] == "HIE"
 
     def test_freezing(self):
         pmol, df = proteinPrepare(Molecule("2B5I"), returnDetails=True)
