@@ -3,6 +3,9 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
+import unittest
+
+from numpy import pi
 
 
 def closestDistance(mol1, mol2):
@@ -32,44 +35,58 @@ def isProteinProtonated(mol):
     return True
 
 
-def isLigandOptimized(mol, num_planes=3):
-    from itertools import combinations
-    import numpy as np
-    import random
+def isLigandOptimized(mol):
+    """Checks if a ligand is optimized. If all dihedral angles are 0 it means it's flat."""
+    from moleculekit.util import guessAnglesAndDihedrals
 
-    if mol.numAtoms < 4:
-        # Can't tell easily if it's optimized or not
-        return True
+    if not len(mol.bonds):
+        mol.bonds = mol._guessBonds()
 
-    def random_combination(iterable, r):
-        "Random selection from itertools.combinations(iterable, r)"
-        pool = tuple(iterable)
-        n = len(pool)
-        indices = sorted(random.sample(range(n), r))
-        return tuple(pool[i] for i in indices)
+    _, dihedrals = guessAnglesAndDihedrals(mol.bonds)
+    for dih in dihedrals:
+        angle = mol.getDihedral(dih)
+        if not (abs(angle) < 1e-08 or abs(abs(angle) - pi) < 1e-08):
+            return True
+    return False
 
-    coords = mol.coords[:, :, 0]
 
-    for _ in range(num_planes):
-        atom_triplet = random_combination(range(mol.numAtoms), 3)
-        atom_coords = coords[list(atom_triplet)]
-        vec1 = atom_coords[1] - atom_coords[0]
-        vec2 = atom_coords[2] - atom_coords[0]
-        plane_normal = np.cross(vec1, vec2)
-        plane_normal /= np.linalg.norm(plane_normal)
+# def isLigandOptimized(mol, num_planes=3):
+#     import numpy as np
+#     import random
 
-        all_vectors = coords - coords[atom_triplet[0]]
-        projections = np.abs(np.dot(all_vectors, plane_normal))
+#     if mol.numAtoms < 4:
+#         # Can't tell easily if it's optimized or not
+#         return True
 
-        atoms_on_plane = np.where(projections < 1e-4)[0]
-        # print(f"{atoms_on_plane} atoms lie on the plane defined by {atom_triplet}")
-        # print(projections)
+#     def random_combination(iterable, r):
+#         "Random selection from itertools.combinations(iterable, r)"
+#         pool = tuple(iterable)
+#         n = len(pool)
+#         indices = sorted(random.sample(range(n), r))
+#         return tuple(pool[i] for i in indices)
 
-        # Arbitrary threshold. 3 Atoms will always be on the plane they define so I assume if two more are exactly on the same plane it's no chance
-        if len(atoms_on_plane) > 5:
-            return False
+#     coords = mol.coords[:, :, 0]
 
-    return True
+#     for _ in range(num_planes):
+#         atom_triplet = random_combination(range(mol.numAtoms), 3)
+#         atom_coords = coords[list(atom_triplet)]
+#         vec1 = atom_coords[1] - atom_coords[0]
+#         vec2 = atom_coords[2] - atom_coords[0]
+#         plane_normal = np.cross(vec1, vec2)
+#         plane_normal /= np.linalg.norm(plane_normal)
+
+#         all_vectors = coords - coords[atom_triplet[0]]
+#         projections = np.abs(np.dot(all_vectors, plane_normal))
+
+#         atoms_on_plane = np.where(projections < 1e-4)[0]
+#         # print(f"{atoms_on_plane} atoms lie on the plane defined by {atom_triplet}")
+#         # print(projections)
+
+#         # Arbitrary threshold. 3 Atoms will always be on the plane they define so I assume if two more are exactly on the same plane it's no chance
+#         if len(atoms_on_plane) > 5:
+#             return False
+
+#     return True
 
 
 def isLigandDocked(prot, lig, threshold=10):
@@ -120,9 +137,6 @@ def proteinHasBonds(mol):
     num_prot_bonds = np.sum(np.all(np.isin(mol.bonds, prot_idx), axis=1))
 
     return num_prot_bonds >= len(prot_idx) - 1
-
-
-import unittest
 
 
 class _TestMoleculeChecks(unittest.TestCase):
