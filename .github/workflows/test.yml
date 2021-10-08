@@ -39,7 +39,7 @@ jobs:
       run: |
         conda install -y -q --file extra_requirements.txt -c acellera -c conda-forge
 
-    -name: Compile cython 
+    - name: Compile cython 
       run: |
         pip install "numpy>=1.18.5" "Cython>=0.29.21"
         export CONDA_PY=${{ matrix.python-version }}
