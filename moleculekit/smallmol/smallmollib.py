@@ -6,6 +6,7 @@
 import os
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem import PandasTools
 from moleculekit.smallmol.smallmol import SmallMol
 import gzip
 import logging
@@ -323,7 +324,7 @@ class SmallMolLib(object):
 
         df = pd.DataFrame(records, columns=fields, index=indexes)
         if molAsImage:
-            Chem.PandasTools.ChangeMoleculeRendering(df)
+            PandasTools.ChangeMoleculeRendering(df)
         return df
 
     def copy(self):
