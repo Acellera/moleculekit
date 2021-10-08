@@ -122,21 +122,3 @@ def toRDKITmol(mol, protidx, sanitize=True, removeHs=False):
     StandardPDBResidueChirality(rdmol)
 
     return rdmol
-
-
-if __name__ == "__main__":
-    from moleculekit.molecule import Molecule
-
-    mol = Molecule("3PTB")
-    mol.filter("resname BEN")
-    res = _convertMoleculeToRDKitMol(mol)
-    assert res is not None
-
-    # # We don't use this yet. It's experimental. So no point in wasting time testing it.
-    # protidx = mol.atomselect('protein', indexes=True)
-
-    # rdmol = toRDKITmol(mol, protidx)
-
-    # fdefName = os.path.join(RDConfig.RDDataDir,'BaseFeatures.fdef')
-    # factory = ChemicalFeatures.BuildFeatureFactory(fdefName)
-    # feats = factory.GetFeaturesForMol(rdmol)
