@@ -10,7 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest"]
-        python-version: ["3.7", "3.8"]
+        python-version: ["3.6", "3.7", "3.8"]
 
     defaults: # Needed for conda
       run:
@@ -50,3 +50,35 @@ jobs:
     - name: Test
       run: |
         coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
+
+  deploy:
+    if: startsWith(github.event.ref, 'refs/tags/')
+    needs: test
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.6", "3.7", "3.8"]
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        activate-environment: deploy
+        python-version: ${{ matrix.python-version }}
+
+    - name: Build moleculekit package
+      shell: bash -l {0}
+      run: |
+        export TAG_DESCRIBE=$(git describe)
+        export BUILD_VERSION=$(echo $TAG_DESCRIBE | sed 's/-/ /g'  | awk '{print $1}')
+        conda install anaconda-client conda-build python=${{ matrix.python-version }}
+        conda build --python ${{ matrix.python-version }} package/moleculekit/ --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload -c acellera -c conda-forge
+
+    - name: Upload to conda
+      shell: bash -l {0}
+      run: |
+        anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ./pkg/*/moleculekit-*.tar.bz2
