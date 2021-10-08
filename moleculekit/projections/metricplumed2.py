@@ -21,9 +21,12 @@ cvcounter = 1
 
 # Local utility functions --------------------------------------------------------
 
+
 def _getTempDirName(prefix=""):
-    return os.path.join(tempfile._get_default_tempdir(),
-                        prefix + next(tempfile._get_candidate_names()))
+    return os.path.join(
+        tempfile._get_default_tempdir(), prefix + next(tempfile._get_candidate_names())
+    )
+
 
 def _plumedExists():
     try:
@@ -32,34 +35,40 @@ def _plumedExists():
         return False
     return True
 
+
 def _getPlumedRoot():
-    """ Return path to plumed executable, or raise an exception if not found. """
+    """Return path to plumed executable, or raise an exception if not found."""
     return _getPlumedInfo("root")
 
 
 def _getPlumedInfo(what):
-    """ Return selected info from plumed executable, or raise an exception if not found. """
-    info = subprocess.check_output(["plumed", "--standalone-executable", "info", "--" + what])
+    """Return selected info from plumed executable, or raise an exception if not found."""
+    info = subprocess.check_output(
+        ["plumed", "--standalone-executable", "info", "--" + what]
+    )
     info = info.strip().decode("utf-8")
     return info
 
+
 def _printDFS(n):
-    """ Depth-first traversal of nodes """
+    """Depth-first traversal of nodes"""
     # https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search
     _L = []
     _tempmarked = dict()
     _marked = dict()
 
     def _printDFS_aux(nn):
-        nonlocal _tempmarked,_marked,_L
+        nonlocal _tempmarked, _marked, _L
         if nn in _tempmarked:
-            raise Exception("Not a DAG! There may be cyclic dependencies in the colvars.")
+            raise Exception(
+                "Not a DAG! There may be cyclic dependencies in the colvars."
+            )
         if not nn in _marked:
-            _tempmarked[nn]=True
-            if hasattr(nn,'prereq'):
+            _tempmarked[nn] = True
+            if hasattr(nn, "prereq"):
                 for d in nn.prereq:
                     _printDFS_aux(d)
-            _marked[nn]=True
+            _marked[nn] = True
             del _tempmarked[nn]
             _L = [str(nn)] + _L
 
@@ -69,34 +78,34 @@ def _printDFS(n):
 
 # Static utility functions ---------------------------------------------------------
 def genTemplate(action, include_optional=False):
-        """ Return the template for the given action
+    """Return the template for the given action
 
-        Parameters
-        ----------
-        action : str
-            The action to be documented
-        include_optional : bool
-            Whether to include optional arguments
+    Parameters
+    ----------
+    action : str
+        The action to be documented
+    include_optional : bool
+        Whether to include optional arguments
 
-        Examples
-        --------
-        >>> genTemplate("GYRATION")
-        'GYRATION ATOMS=<atom selection> TYPE=RADIUS'
-        """
+    Examples
+    --------
+    >>> genTemplate("GYRATION")
+    'GYRATION ATOMS=<atom selection> TYPE=RADIUS'
+    """
 
-        cl = ["plumed", "--standalone-executable", "gentemplate", "--action", action]
-        if include_optional:
-            cl.append("--include-optional")
-        info = subprocess.check_output(cl)
-        info = info.strip().decode("utf-8")
-        return info
+    cl = ["plumed", "--standalone-executable", "gentemplate", "--action", action]
+    if include_optional:
+        cl.append("--include-optional")
+    info = subprocess.check_output(cl)
+    info = info.strip().decode("utf-8")
+    return info
 
 
 def manual(action):
-    """ Return the manual for the given action.
-    
-    The manual is returned as a pseudo-HTML string. 
-    
+    """Return the manual for the given action.
+
+    The manual is returned as a pseudo-HTML string.
+
     Bugs: prints some text on stderr. The returned string should be reformatted to a more readable format.
 
     Parameters
@@ -119,7 +128,8 @@ def manual(action):
 
 # ABC should prevent instantiation but doesn't
 class PlumedStatement(ABC):
-    """ Abstract base class for Plumed statements. Do not use directly. """
+    """Abstract base class for Plumed statements. Do not use directly."""
+
     def __init__(self):
         self.prereq = []
 
@@ -128,7 +138,7 @@ class PlumedStatement(ABC):
 
 
 class PlumedCV(PlumedStatement):
-    """ Define a Plumed2 CV.
+    """Define a Plumed2 CV.
 
     The arguments, optional and mandatory, are passed as python named parameters. The argument
     values can be of type (see examples):
@@ -199,7 +209,7 @@ class PlumedCV(PlumedStatement):
             elif isinstance(v, int):
                 self.args[k] = str(v)
             # Ditto if it is a list-like object, plus expand with commas
-            elif hasattr(v, '__iter__'):
+            elif hasattr(v, "__iter__"):
                 for l in range(len(v)):
                     le = v[l]
                     if isinstance(le, PlumedGenericGroup):
@@ -208,8 +218,8 @@ class PlumedCV(PlumedStatement):
                     elif isinstance(le, PlumedCV):
                         # e.g. for COMBINE
                         self.prereq.append(le)
-                        if hasattr(le,"prereq"):
-                            self.prereq = le.prereq+self.prereq
+                        if hasattr(le, "prereq"):
+                            self.prereq = le.prereq + self.prereq
                         v[l] = le.label
                     elif isinstance(le, Molecule):
                         tmpGrp = PlumedGroup(label=None, mol=le, sel="all")
@@ -220,12 +230,16 @@ class PlumedCV(PlumedStatement):
                     elif isinstance(le, int):
                         v[l] = str(le)
                     else:
-                        raise TypeError("Unexpected type {} passed to argument {} (list context)".
-                                        format(str(type(le)),k))
+                        raise TypeError(
+                            "Unexpected type {} passed to argument {} (list context)".format(
+                                str(type(le)), k
+                            )
+                        )
                 self.args[k] = ",".join(v)
             else:
-                raise TypeError("Unexpected type {} passed to argument {}".
-                                        format(str(type(v)),k))
+                raise TypeError(
+                    "Unexpected type {} passed to argument {}".format(str(type(v)), k)
+                )
 
     def __str__(self):
         r = ""
@@ -246,9 +260,8 @@ class PlumedCV(PlumedStatement):
 
         return r.strip()
 
-
     def genTemplate(self, include_optional=False):
-        """ Return the template for the given action
+        """Return the template for the given action
 
         Examples
         --------
@@ -257,23 +270,23 @@ class PlumedCV(PlumedStatement):
         'GYRATION ATOMS=<atom selection> TYPE=RADIUS'
         """
 
-        tmpl = genTemplate(self.cv,include_optional=include_optional)
+        tmpl = genTemplate(self.cv, include_optional=include_optional)
         return tmpl
 
 
 class PlumedMolinfo(PlumedStatement):
-    """ Add a MOLINFO statement. 
-    
-    The supplied Molecule will also be written to a temporary file, and deleted 
+    """Add a MOLINFO statement.
+
+    The supplied Molecule will also be written to a temporary file, and deleted
     when the object goes off scope.
-    
-    Note: this may not behave well under multiprocessing. 
-    
+
+    Note: this may not behave well under multiprocessing.
+
     Parameters
     ----------
     mol: Molecule
         Will be written to file, and the corresponding MOLINFO statement generated.
-        
+
     Examples
     --------
     >>> m = Molecule("1kdx")
@@ -304,8 +317,8 @@ class PlumedMolinfo(PlumedStatement):
 
 
 class PlumedVerbatim(PlumedStatement):
-    """ An arbitrary Plumed statement, as a string. 
-    
+    """An arbitrary Plumed statement, as a string.
+
     Parameters
     ----------
     txt:
@@ -313,9 +326,10 @@ class PlumedVerbatim(PlumedStatement):
     comment: bool
         Whether it is a comment.
     """
+
     def __init__(self, txt, comment=False):
         if comment:
-            self.txt = "# "+txt
+            self.txt = "# " + txt
         else:
             self.txt = txt
 
@@ -324,7 +338,7 @@ class PlumedVerbatim(PlumedStatement):
 
 
 class PlumedGenericGroup(PlumedStatement):
-    """ Abstract class from which PLUMED groups are inherited. Do not use directly. """
+    """Abstract class from which PLUMED groups are inherited. Do not use directly."""
 
     def __init__(self, mol, label, sel, type=""):
         global cvcounter
@@ -344,7 +358,7 @@ class PlumedGenericGroup(PlumedStatement):
 
 
 class PlumedGroup(PlumedGenericGroup):
-    """ An atom GROUP for use in the Plumed interface
+    """An atom GROUP for use in the Plumed interface
 
     Parameters
     ----------
@@ -370,7 +384,7 @@ class PlumedGroup(PlumedGenericGroup):
 
 
 class PlumedCOM(PlumedGenericGroup):
-    """ An atom center-of-mass for use in the Plumed interface
+    """An atom center-of-mass for use in the Plumed interface
 
     Parameters
     ----------
@@ -394,8 +408,9 @@ class PlumedCOM(PlumedGenericGroup):
 
 # Plumed projector --------------------------------------------------------
 
+
 class MetricPlumed2(Projection):
-    """ Calculates generic collective variables through Plumed 2
+    """Calculates generic collective variables through Plumed 2
 
     The collective variables are defined in PLUMED 2's syntax. PLUMED needs be installed
     separately; see http://www.plumed.org/.
@@ -403,7 +418,7 @@ class MetricPlumed2(Projection):
     The script can be defined as
      * a string, or a list of strings (which are concatenated), or
      * a list of PlumedCV objects (see PlumedCV for examples)
-     
+
      TODO: allow selection of CVs to print
 
     Parameters
@@ -429,7 +444,9 @@ class MetricPlumed2(Projection):
             pp = _getPlumedRoot()
             logger.info("Plumed path is " + pp)
         except Exception as e:
-            raise Exception("To use MetricPlumed2 please ensure PLUMED 2's executable is installed and in path")
+            raise Exception(
+                "To use MetricPlumed2 please ensure PLUMED 2's executable is installed and in path"
+            )
 
         # Sanitize if single element
         if type(plumed_inp) == str:
@@ -437,6 +454,7 @@ class MetricPlumed2(Projection):
         else:
             # This should keep the CVs etc in scope
             from moleculekit.util import ensurelist
+
             self.stmt = PlumedStatement()
             self.stmt.prereq = ensurelist(plumed_inp)
             stmts = _printDFS(self.stmt)
@@ -453,7 +471,7 @@ class MetricPlumed2(Projection):
         data = []
         with open(self.colvar, "r") as file:
             headerline = file.readline()
-            self.cvnames = headerline.strip().replace('#! FIELDS time ', '').split()
+            self.cvnames = headerline.strip().replace("#! FIELDS time ", "").split()
 
             for line in file:
                 if line[0] == "#":
@@ -463,14 +481,14 @@ class MetricPlumed2(Projection):
                 data.append(cols)
         return numpy.array(data, dtype=numpy.float32)
 
-    def _calculateMolProp(self, mol, props='all'):
+    def _calculateMolProp(self, mol, props="all"):
         pass
 
     def getMapping(self, mol):
-        """ Return the labels of the colvars used in this projection.
+        """Return the labels of the colvars used in this projection.
 
         Can only be used after the projection has been executed.
-        
+
         TODO: Update to pandas.
 
         Returns
@@ -481,12 +499,14 @@ class MetricPlumed2(Projection):
         if self.cvnames:
             return self.cvnames
         else:
-            logger.warning("MetricPlumed's getMapping can only be called after the projection")
+            logger.warning(
+                "MetricPlumed's getMapping can only be called after the projection"
+            )
             # raise Exception("MetricPlumed's getMapping can only be called after the projection")
 
     # Arguments are actually self, mol
     def project(self, mol, debug=False):
-        """ Project molecule.
+        """Project molecule.
 
         Parameters
         ------------
@@ -526,22 +546,32 @@ class MetricPlumed2(Projection):
         metainp_fp = open(metainp, "w+")
         metainp_fp.write("UNITS  LENGTH=A  ENERGY=kcal/mol  TIME=ps\n")
         metainp_fp.write(self._plumed_inp)
-        metainp_fp.write('\nPRINT ARG=* FILE=%s\n# FLUSH STRIDE=1\n' % colvar)
+        metainp_fp.write("\nPRINT ARG=* FILE=%s\n# FLUSH STRIDE=1\n" % colvar)
         metainp_fp.close()
 
-        cmd = [self._plumed_exe, '--standalone-executable',
-               'driver',
-               '--mf_xtc', xtc,
-               '--pdb', pdb,
-               '--plumed', metainp]
+        cmd = [
+            self._plumed_exe,
+            "--standalone-executable",
+            "driver",
+            "--mf_xtc",
+            xtc,
+            "--pdb",
+            pdb,
+            "--plumed",
+            metainp,
+        ]
         logger.debug("Invoking " + " ".join(cmd))
         try:
-            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(
+                cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
         except subprocess.CalledProcessError as e:
             logger.error("Error from PLUMED (stdout): " + e.stdout.decode("utf-8"))
             logger.error("Error from PLUMED (stderr):" + e.stderr.decode("utf-8"))
             logger.error("Leaving temporary data in " + td)
-            errstr=[x for x in e.stdout.decode("utf-8").split("\n") if "PLUMED: ERROR" in x]
+            errstr = [
+                x for x in e.stdout.decode("utf-8").split("\n") if "PLUMED: ERROR" in x
+            ]
             raise Exception("".join(errstr))
 
         data = self._readColvar()
@@ -554,23 +584,50 @@ class MetricPlumed2(Projection):
 
 
 import unittest
+
+
 class _TestMetricPlumed2(unittest.TestCase):
-    @unittest.skipUnless(_plumedExists(), 'plumed2 is not installed in this system')
+    @unittest.skipUnless(_plumedExists(), "plumed2 is not installed in this system")
     def test_metricplumed2(self):
         import os
         import numpy as np
         from moleculekit.home import home
 
-        mol = Molecule(os.path.join(home(dataDir='test-projections'), 'metricplumed2', '1kdx_0.pdb'))
-        mol.read(os.path.join(home(dataDir='test-projections'), 'metricplumed2', '1kdx.dcd'))
+        mol = Molecule(
+            os.path.join(
+                home(dataDir="test-projections"), "metricplumed2", "1kdx_0.pdb"
+            )
+        )
+        mol.read(
+            os.path.join(home(dataDir="test-projections"), "metricplumed2", "1kdx.dcd")
+        )
 
-        metric = MetricPlumed2(['d1: DISTANCE ATOMS=1,200',
-                                'd2: DISTANCE ATOMS=5,6'])
+        metric = MetricPlumed2(["d1: DISTANCE ATOMS=1,200", "d2: DISTANCE ATOMS=5,6"])
         data = metric.project(mol)
-        ref = np.array([0.536674, 21.722393, 22.689391, 18.402114, 23.431387, 23.13392, 19.16376, 20.393544,
-                        23.665517, 22.298349, 22.659769, 22.667669, 22.484084, 20.893447, 18.791701,
-                        21.833056, 19.901318])
-        assert np.all(np.abs(ref - data[:, 0]) < 0.01), 'Plumed demo calculation is broken'
+        ref = np.array(
+            [
+                0.536674,
+                21.722393,
+                22.689391,
+                18.402114,
+                23.431387,
+                23.13392,
+                19.16376,
+                20.393544,
+                23.665517,
+                22.298349,
+                22.659769,
+                22.667669,
+                22.484084,
+                20.893447,
+                18.791701,
+                21.833056,
+                19.901318,
+            ]
+        )
+        assert np.all(
+            np.abs(ref - data[:, 0]) < 0.01
+        ), "Plumed demo calculation is broken"
 
 
 if __name__ == "__main__":

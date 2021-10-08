@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class MetricDistance(Projection):
-    """ Creates a MetricDistance object
+    """Creates a MetricDistance object
 
     Parameters
     ----------
@@ -100,7 +100,7 @@ class MetricDistance(Projection):
             )
 
     def project(self, mol):
-        """ Project molecule.
+        """Project molecule.
 
         Parameters
         ----------
@@ -206,7 +206,7 @@ class MetricDistance(Projection):
         return newsel
 
     def getMapping(self, mol):
-        """ Returns the description of each projected dimension.
+        """Returns the description of each projected dimension.
 
         Parameters
         ----------
@@ -293,7 +293,7 @@ class MetricSelfDistance(MetricDistance):
         pbc=None,
         truncate=None,
     ):
-        """ Creates a MetricSelfDistance object
+        """Creates a MetricSelfDistance object
 
         Parameters
         ----------
@@ -378,7 +378,7 @@ def reconstructContactMap(
     outfile=None,
     colors=None,
 ):
-    """ Plots a given vector as a contact map
+    """Plots a given vector as a contact map
 
     Parameters
     ----------
@@ -473,7 +473,9 @@ def reconstructContactMap(
 
         # Labels for major ticks
         ax.set_xticklabels([x[0] for x in uqAtomGroups])
-        ax.set_yticklabels([x[0] for x in uqAtomGroups],)
+        ax.set_yticklabels(
+            [x[0] for x in uqAtomGroups],
+        )
 
         # Minor ticks
         ax.set_xticks(np.arange(-0.5, num, 1), minor=True)
@@ -560,7 +562,9 @@ class _TestMetricDistance(unittest.TestCase):
 
         # Manual group atomselection with integers
         ca_atoms = self.mol_skipped.atomselect("protein and name CA", indexes=True)
-        metr = MetricSelfDistance([ca_atoms[0::3], ca_atoms[1::3], ca_atoms[2::3]],)
+        metr = MetricSelfDistance(
+            [ca_atoms[0::3], ca_atoms[1::3], ca_atoms[2::3]],
+        )
         data = metr.project(self.mol_skipped)
         mapping = metr.getMapping(self.mol_skipped)
         assert data.shape == (20, 3) and mapping.shape == (3, 3)

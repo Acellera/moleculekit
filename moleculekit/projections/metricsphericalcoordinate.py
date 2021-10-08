@@ -6,11 +6,12 @@
 from moleculekit.projections.projection import Projection
 import numpy as np
 import logging
+
 logger = logging.getLogger(__name__)
 
 
 class MetricSphericalCoordinate(Projection):
-    """ Creates a MetricSphericalCoordinate object that calculates the spherical coordinates between two centers of
+    """Creates a MetricSphericalCoordinate object that calculates the spherical coordinates between two centers of
     masses from a set of trajectories.
 
     Parameters
@@ -39,7 +40,17 @@ class MetricSphericalCoordinate(Projection):
     -------
     metr : MetricCoordinate object
     """
-    def __init__(self, refmol, targetcom, refcom, trajalnsel='protein and name CA', refalnsel=None, centersel='protein', pbc=True):
+
+    def __init__(
+        self,
+        refmol,
+        targetcom,
+        refcom,
+        trajalnsel="protein and name CA",
+        refalnsel=None,
+        centersel="protein",
+        pbc=True,
+    ):
         super().__init__()
 
         if refalnsel is None:
@@ -53,7 +64,7 @@ class MetricSphericalCoordinate(Projection):
         self._pbc = pbc
 
     def project(self, mol):
-        """ Project molecule.
+        """Project molecule.
 
         Parameters
         ----------
@@ -70,10 +81,10 @@ class MetricSphericalCoordinate(Projection):
         mol = mol.copy()
         if self._pbc:
             mol.wrap(self._centersel)
-        mol.align(getMolProp('trajalnsel'), refmol=self._refmol, refsel=self._refalnsel)
+        mol.align(getMolProp("trajalnsel"), refmol=self._refmol, refsel=self._refalnsel)
 
-        refcom = np.mean(mol.coords[getMolProp('refcom'), :, :], axis=0)
-        targetcom = np.mean(mol.coords[getMolProp('targetcom'), :, :], axis=0)
+        refcom = np.mean(mol.coords[getMolProp("refcom"), :, :], axis=0)
+        targetcom = np.mean(mol.coords[getMolProp("targetcom"), :, :], axis=0)
         xyz = targetcom - refcom
 
         r = np.sqrt(np.sum(xyz ** 2, axis=0))
@@ -82,26 +93,32 @@ class MetricSphericalCoordinate(Projection):
 
         return np.stack((r, theta, phi), axis=1)
 
-    def _calculateMolProp(self, mol, props='all'):
-        props = ('trajalnsel', 'targetcom', 'refcom', 'centersel') if props == 'all' else props
+    def _calculateMolProp(self, mol, props="all"):
+        props = (
+            ("trajalnsel", "targetcom", "refcom", "centersel")
+            if props == "all"
+            else props
+        )
         res = {}
 
-        if 'trajalnsel' in props:
-            res['trajalnsel'] = mol.atomselect(self._trajalnsel)
-            if np.sum(res['trajalnsel']) == 0:
-                raise RuntimeError('Alignment selection resulted in 0 atoms.')
-        if 'targetcom' in props:
-            res['targetcom'] = mol.atomselect(self._targetcom)
-            if np.sum(res['targetcom']) == 0:
-                raise RuntimeError('Atom selection for `targetcom` resulted in 0 atoms.')
-        if 'refcom' in props:
-            res['refcom'] = mol.atomselect(self._refcom)
-            if np.sum(res['refcom']) == 0:
-                raise RuntimeError('Atom selection for `refcom` resulted in 0 atoms.')
+        if "trajalnsel" in props:
+            res["trajalnsel"] = mol.atomselect(self._trajalnsel)
+            if np.sum(res["trajalnsel"]) == 0:
+                raise RuntimeError("Alignment selection resulted in 0 atoms.")
+        if "targetcom" in props:
+            res["targetcom"] = mol.atomselect(self._targetcom)
+            if np.sum(res["targetcom"]) == 0:
+                raise RuntimeError(
+                    "Atom selection for `targetcom` resulted in 0 atoms."
+                )
+        if "refcom" in props:
+            res["refcom"] = mol.atomselect(self._refcom)
+            if np.sum(res["refcom"]) == 0:
+                raise RuntimeError("Atom selection for `refcom` resulted in 0 atoms.")
         return res
 
     def getMapping(self, mol):
-        """ Returns the description of each projected dimension.
+        """Returns the description of each projected dimension.
 
         Parameters
         ----------
@@ -115,35 +132,48 @@ class MetricSphericalCoordinate(Projection):
         """
         getMolProp = lambda prop: self._getMolProp(mol, prop)
 
-        targetatomidx = np.where(getMolProp('targetcom'))[0]
-        refatomidx = np.where(getMolProp('refcom'))[0]
+        targetatomidx = np.where(getMolProp("targetcom"))[0]
+        refatomidx = np.where(getMolProp("refcom"))[0]
         from pandas import DataFrame
-        types = ['r', 'theta', 'phi']
+
+        types = ["r", "theta", "phi"]
         indexes = [[targetatomidx, refatomidx]] * 3
-        description = ['r', 'theta', 'phi']
-        return DataFrame({'type': types, 'atomIndexes': indexes, 'description': description})
+        description = ["r", "theta", "phi"]
+        return DataFrame(
+            {"type": types, "atomIndexes": indexes, "description": description}
+        )
 
 
 import unittest
+
+
 class _TestMetricSphericalCoordinate(unittest.TestCase):
     def test_metricsphericalcoordinate(self):
         from moleculekit.molecule import Molecule
         from moleculekit.home import home
         from os import path
 
-        mol = Molecule(path.join(home(dataDir='test-projections'), 'trajectory', 'filtered.pdb'))
+        mol = Molecule(
+            path.join(home(dataDir="test-projections"), "trajectory", "filtered.pdb")
+        )
         ref = mol.copy()
-        mol.read(path.join(home(dataDir='test-projections'), 'trajectory', 'traj.xtc'))
+        mol.read(path.join(home(dataDir="test-projections"), "trajectory", "traj.xtc"))
         mol.bonds = mol._guessBonds()
 
-        res = MetricSphericalCoordinate(ref, 'resname MOL', 'within 8 of resid 98').project(mol)
-        _ = MetricSphericalCoordinate(ref, 'resname MOL', 'within 8 of resid 98').getMapping(mol)
+        res = MetricSphericalCoordinate(
+            ref, "resname MOL", "within 8 of resid 98"
+        ).project(mol)
+        _ = MetricSphericalCoordinate(
+            ref, "resname MOL", "within 8 of resid 98"
+        ).getMapping(mol)
 
-        ref_array = np.load(path.join(home(dataDir='test-projections'), 'metricsphericalcoordinate', 'res.npy'))
+        ref_array = np.load(
+            path.join(
+                home(dataDir="test-projections"), "metricsphericalcoordinate", "res.npy"
+            )
+        )
         assert np.allclose(res, ref_array, rtol=0, atol=1e-04)
-
 
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
-

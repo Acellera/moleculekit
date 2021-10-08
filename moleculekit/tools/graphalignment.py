@@ -5,8 +5,10 @@
 #
 try:
     import networkx as nx
-except ImportError as e:
-    print('Could not import networkx which is necessary for graph alignment. You can install it with `conda install networkx`.')
+except ImportError:
+    print(
+        "Could not import networkx which is necessary for graph alignment. You can install it with `conda install networkx`."
+    )
 
 import numpy as np
 from unittest import TestCase
@@ -36,14 +38,14 @@ def createProductGraph(G, H, tolerance, fields):
             pair2 = newnodes[np2]
             if not G.has_edge(pair1[0], pair2[0]) or not H.has_edge(pair1[1], pair2[1]):
                 continue
-            dist1 = G.edges[pair1[0], pair2[0]]['distance']
-            dist2 = H.edges[pair1[1], pair2[1]]['distance']
+            dist1 = G.edges[pair1[0], pair2[0]]["distance"]
+            dist2 = H.edges[pair1[1], pair2[1]]["distance"]
             if abs(dist1 - dist2) < tolerance:
                 Gprod.add_edge(newnodes[np1], newnodes[np2])
     return Gprod
 
 
-def compareGraphs(G, H, fields=('element',), tolerance=0.5, returnmatching=False):
+def compareGraphs(G, H, fields=("element",), tolerance=0.5, returnmatching=False):
     # Comparison algorithm based on:
     # "Chemoisosterism in the Proteome", X. Jalencas, J. Mestres, JCIM 2013
     # http://pubs.acs.org/doi/full/10.1021/ci3002974
@@ -64,7 +66,7 @@ def compareGraphs(G, H, fields=('element',), tolerance=0.5, returnmatching=False
     # Calculate the maximal cliques and return the length of the largest one
     maxcliques = np.array(list(nx.find_cliques(Gprod)))
     cllen = np.array([len(x) for x in maxcliques])
-    score = (cllen.max() / max(len(G.nodes()), len(H.nodes())))
+    score = cllen.max() / max(len(G.nodes()), len(H.nodes()))
 
     if returnmatching:
         return score, cllen.max(), maxcliques[cllen.argmax()]
@@ -75,7 +77,7 @@ def compareGraphs(G, H, fields=('element',), tolerance=0.5, returnmatching=False
 def makeMolGraph(mol, sel, fields):
     from scipy.spatial.distance import pdist, squareform
 
-    if sel != 'all':
+    if sel != "all":
         sel = mol.atomselect(sel, indexes=True)
     else:
         sel = np.arange(mol.numAtoms)
@@ -88,14 +90,22 @@ def makeMolGraph(mol, sel, fields):
     distances = squareform(pdist(mol.coords[sel, :, mol.frame]))
     nodes = list(g.nodes())
     for i in range(len(g)):
-        for j in range(i+1, len(g)):
+        for j in range(i + 1, len(g)):
             g.add_edge(nodes[i], nodes[j], distance=distances[i, j])
 
     return g
 
 
-def maximalSubstructureAlignment(mol1, mol2, sel1='all', sel2='all', fields=('element',), tolerance=0.5, visualize=False):
-    """ Aligns two molecules on the largest common substructure
+def maximalSubstructureAlignment(
+    mol1,
+    mol2,
+    sel1="all",
+    sel2="all",
+    fields=("element",),
+    tolerance=0.5,
+    visualize=False,
+):
+    """Aligns two molecules on the largest common substructure
 
     Parameters
     ----------
@@ -125,7 +135,9 @@ def maximalSubstructureAlignment(mol1, mol2, sel1='all', sel2='all', fields=('el
     g1 = makeMolGraph(mol1, sel1, fields)
     g2 = makeMolGraph(mol2, sel2, fields)
 
-    _, _, matching = compareGraphs(g1, g2, fields=fields, tolerance=tolerance, returnmatching=True)
+    _, _, matching = compareGraphs(
+        g1, g2, fields=fields, tolerance=tolerance, returnmatching=True
+    )
 
     matchnodes1 = np.array([x[0] for x in matching])
     matchnodes2 = np.array([x[1] for x in matching])
@@ -133,11 +145,19 @@ def maximalSubstructureAlignment(mol1, mol2, sel1='all', sel2='all', fields=('el
     mol2.align(sel=matchnodes2, refmol=mol1, refsel=matchnodes1)
 
     if visualize:
-        mol1.view(sel='index {}'.format(' '.join(map(str, matchnodes1))), style='CPK', hold=True)
-        mol1.view(sel='all', style='Lines')
+        mol1.view(
+            sel="index {}".format(" ".join(map(str, matchnodes1))),
+            style="CPK",
+            hold=True,
+        )
+        mol1.view(sel="all", style="Lines")
 
-        mol2.view(sel='index {}'.format(' '.join(map(str, matchnodes2))), style='CPK', hold=True)
-        mol2.view(sel='all', style='Lines')
+        mol2.view(
+            sel="index {}".format(" ".join(map(str, matchnodes2))),
+            style="CPK",
+            hold=True,
+        )
+        mol2.view(sel="all", style="Lines")
 
     return mol2
 
@@ -147,14 +167,17 @@ class _TestGraphAlignment(TestCase):
         from moleculekit.home import home
         from moleculekit.molecule import Molecule
 
-        path = home(dataDir='test-molecule-graphalignment')
-        ref_lig = Molecule(os.path.join(path, 'ref_lig.pdb'))
-        lig2align = Molecule(os.path.join(path, 'lig2align.pdb'))
+        path = home(dataDir="test-molecule-graphalignment")
+        ref_lig = Molecule(os.path.join(path, "ref_lig.pdb"))
+        lig2align = Molecule(os.path.join(path, "lig2align.pdb"))
         lig_aligned = maximalSubstructureAlignment(ref_lig, lig2align)
-        lig_reference = Molecule(os.path.join(path, 'lig_aligned.pdb'))
+        lig_reference = Molecule(os.path.join(path, "lig_aligned.pdb"))
 
-        self.assertTrue(np.allclose(lig_aligned.coords, lig_reference.coords, rtol=1e-4),
-                        'maximalSubstructureAlignment produced different coords')
+        self.assertTrue(
+            np.allclose(lig_aligned.coords, lig_reference.coords, rtol=1e-4),
+            "maximalSubstructureAlignment produced different coords",
+        )
+
 
 if __name__ == "__main__":
     import unittest

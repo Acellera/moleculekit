@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class MetricShell(Projection):
-    """ Calculates the density of atoms around other atoms.
+    """Calculates the density of atoms around other atoms.
 
     The MetricShell class calculates the density of a set of
     interchangeable atoms in concentric spherical shells around some
@@ -108,7 +108,7 @@ class MetricShell(Projection):
         return res
 
     def project(self, mol):
-        """ Project molecule.
+        """Project molecule.
 
         Parameters
         ----------
@@ -139,7 +139,7 @@ class MetricShell(Projection):
         )
 
     def getMapping(self, mol):
-        """ Returns the description of each projected dimension.
+        """Returns the description of each projected dimension.
 
         Parameters
         ----------

@@ -10,6 +10,9 @@ from moleculekit.home import home
 import platform
 import tempfile
 import logging
+from unittest import TestCase
+
+
 logger = logging.getLogger(__name__)
 
 libdir = home(libDir=True)
@@ -19,7 +22,7 @@ else:
     tmalignlib = ct.cdll.LoadLibrary(os.path.join(libdir, "tmalign.so"))
 
 
-def tempname(suffix='', create=False):
+def tempname(suffix="", create=False):
     if create:
         file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     else:
@@ -41,12 +44,14 @@ def ensurelist(tocheck, tomod=None):
     if isinstance(tocheck, range):
         return list(tocheck)
     if not isinstance(tocheck, list) and not isinstance(tocheck, tuple):
-        return [tomod, ]
+        return [
+            tomod,
+        ]
     return tomod
 
 
 def rotationMatrix(axis, theta):
-    """ Produces a rotation matrix given an axis and radians
+    """Produces a rotation matrix given an axis and radians
 
     Return the rotation matrix associated with counterclockwise rotation about
     the given axis by theta radians.
@@ -86,13 +91,17 @@ def rotationMatrix(axis, theta):
     b, c, d = -axis * sin(theta / 2)
     aa, bb, cc, dd = a * a, b * b, c * c, d * d
     bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
-    return np.array([[aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
-                     [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
-                     [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
+    return np.array(
+        [
+            [aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
+            [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
+            [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc],
+        ]
+    )
 
 
 def molTMscore(mol, ref, selCAmol, selCAref):
-    """ Calculates the TMscore between two Molecules
+    """Calculates the TMscore between two Molecules
 
     Parameters
     ----------
@@ -120,13 +129,15 @@ def molTMscore(mol, ref, selCAmol, selCAref):
     from moleculekit.molecule import _residueNameTable
 
     def calculateVariables(currmol):
-        res = sequenceID((currmol.resid, currmol.insertion, currmol.segid, currmol.chain))
-        caidx = currmol.name == 'CA'
+        res = sequenceID(
+            (currmol.resid, currmol.insertion, currmol.segid, currmol.chain)
+        )
+        caidx = currmol.name == "CA"
         res = np.unique(res)
         reslen = len(res)
         # Calculate the protein sequence
-        seq = ''.join([_residueNameTable[x] for x in currmol.resname[caidx]])
-        seq = ct.c_char_p(seq.encode('utf-8'))
+        seq = "".join([_residueNameTable[x] for x in currmol.resname[caidx]])
+        seq = ct.c_char_p(seq.encode("utf-8"))
 
         # Keep only CA coordinates
         coords = currmol.coords[caidx, :, :].copy()
@@ -150,26 +161,27 @@ def molTMscore(mol, ref, selCAmol, selCAref):
     resTM1 = (ct.c_double * mol.numFrames)()
     resTM2 = (ct.c_double * mol.numFrames)()
     resRMSD = (ct.c_double * mol.numFrames)()
-    tmalignlib.tmalign(ct.c_int(reslenREF),
-                       ct.c_int(reslenMOL),
-                       residREF.ctypes.data_as(ct.POINTER(ct.c_int32)),
-                       residMOL.ctypes.data_as(ct.POINTER(ct.c_int32)),
-                       seqREF,
-                       seqMOL,
-                       coordsREF.ctypes.data_as(ct.POINTER(ct.c_float)),
-                       coordsMOL.ctypes.data_as(ct.POINTER(ct.c_float)),
-                       ct.c_int(mol.numFrames),
-                       ct.byref(resTM1),
-                       ct.byref(resTM2),
-                       ct.byref(resRMSD))
+    tmalignlib.tmalign(
+        ct.c_int(reslenREF),
+        ct.c_int(reslenMOL),
+        residREF.ctypes.data_as(ct.POINTER(ct.c_int32)),
+        residMOL.ctypes.data_as(ct.POINTER(ct.c_int32)),
+        seqREF,
+        seqMOL,
+        coordsREF.ctypes.data_as(ct.POINTER(ct.c_float)),
+        coordsMOL.ctypes.data_as(ct.POINTER(ct.c_float)),
+        ct.c_int(mol.numFrames),
+        ct.byref(resTM1),
+        ct.byref(resTM2),
+        ct.byref(resRMSD),
+    )
     resTM1 = np.ctypeslib.as_array(resTM1)
     resRMSD = np.ctypeslib.as_array(resRMSD)
     return resTM1.astype(np.float32), resRMSD.astype(np.float32)
 
 
-
 def molRMSD(mol, refmol, rmsdsel1, rmsdsel2):
-    """ Calculates the RMSD between two Molecules
+    """Calculates the RMSD between two Molecules
 
     Parameters
     ----------
@@ -221,15 +233,15 @@ def orientOnAxes(mol, sel="all"):
     logger.info("Moments of inertia: {}".format(eigenvalues))
     eigenvectors = eigenvectors.T
 
-    if np.linalg.det(eigenvectors) < 0: 
-        eigenvectors = -eigenvectors # avoid inversions
+    if np.linalg.det(eigenvectors) < 0:
+        eigenvectors = -eigenvectors  # avoid inversions
 
     mol.rotateBy(eigenvectors)
     return mol
 
 
 def sequenceID(field, prepend=None, step=1):
-    """ Array of integers which increments at value change of another array
+    """Array of integers which increments at value change of another array
 
     Parameters
     ----------
@@ -274,12 +286,14 @@ def sequenceID(field, prepend=None, step=1):
         seq[0] = prepend + str(c)
 
     for i in range(1, fieldlen):
-        if isinstance(field, tuple):  # Support tuples of multiple fields. Change in any of them will cause an increment
+        if isinstance(
+            field, tuple
+        ):  # Support tuples of multiple fields. Change in any of them will cause an increment
             for t in field:
-                if t[i-1] != t[i]:
+                if t[i - 1] != t[i]:
                     c += step  # new sequence id
                     break
-        elif field[i-1] != field[i]:
+        elif field[i - 1] != field[i]:
             c += step  # new sequence id
         if prepend is None:
             seq[i] = c
@@ -290,34 +304,54 @@ def sequenceID(field, prepend=None, step=1):
 
 def _missingChain(mol):
     if mol.chain is None or np.size(mol.chain) == 0:
-        raise RuntimeError('Segid fields have to be set for all atoms in the Molecule object before building.')
+        raise RuntimeError(
+            "Segid fields have to be set for all atoms in the Molecule object before building."
+        )
     empty = [True if len(c) == 0 else False for c in mol.chain]
     if np.any(empty):
         idx = np.where(empty)[0]
         if len(idx) == 1:
-            raise RuntimeError('Atom ' + str(idx) + ' does not have a chain defined.')
+            raise RuntimeError("Atom " + str(idx) + " does not have a chain defined.")
         elif len(idx) <= 5:
-            raise RuntimeError('Atoms ' + str(idx) + ' do not have a chain defined.')
+            raise RuntimeError("Atoms " + str(idx) + " do not have a chain defined.")
         else:
-            raise RuntimeError('Atoms [' + str(idx[0]) + ',' + str(idx[1]) + ',...,' + str(idx[-1]) + '] do not have chain defined.')
+            raise RuntimeError(
+                "Atoms ["
+                + str(idx[0])
+                + ","
+                + str(idx[1])
+                + ",...,"
+                + str(idx[-1])
+                + "] do not have chain defined."
+            )
 
 
 def _missingSegID(mol):
     if mol.segid is None or np.size(mol.segid) == 0:
-        raise RuntimeError('Segid fields have to be set for all atoms in the Molecule object before building.')
+        raise RuntimeError(
+            "Segid fields have to be set for all atoms in the Molecule object before building."
+        )
     empty = [True if len(s) == 0 else False for s in mol.segid]
     if np.any(empty):
         idx = np.where(empty)[0]
         if len(idx) == 1:
-            raise RuntimeError('Atom ' + str(idx) + ' does not have a segid defined.')
+            raise RuntimeError("Atom " + str(idx) + " does not have a segid defined.")
         elif len(idx) <= 5:
-            raise RuntimeError('Atoms ' + str(idx) + ' do not have a segid defined.')
+            raise RuntimeError("Atoms " + str(idx) + " do not have a segid defined.")
         else:
-            raise RuntimeError('Atoms [' + str(idx[0]) + ',' + str(idx[1]) + ',...,' + str(idx[-1]) + '] do not have segid defined.')
+            raise RuntimeError(
+                "Atoms ["
+                + str(idx[0])
+                + ","
+                + str(idx[1])
+                + ",...,"
+                + str(idx[-1])
+                + "] do not have segid defined."
+            )
 
 
-def maxDistance(mol, sel='all', origin=None):
-    """ Calculates the max distance of a set of atoms from an origin
+def maxDistance(mol, sel="all", origin=None):
+    """Calculates the max distance of a set of atoms from an origin
 
     Parameters
     ----------
@@ -344,13 +378,13 @@ def maxDistance(mol, sel='all', origin=None):
 
     if origin is None:
         origin = [0, 0, 0]
-    coors = mol.get('coords', sel=sel)
+    coors = mol.get("coords", sel=sel)
     dists = cdist(np.atleast_2d(coors), np.atleast_2d(origin))
     return np.max(dists)
 
 
-def boundingBox(mol, sel='all'):
-    """ Calculates the bounding box of a selection of atoms.
+def boundingBox(mol, sel="all"):
+    """Calculates the bounding box of a selection of atoms.
 
     Parameters
     ----------
@@ -371,7 +405,7 @@ def boundingBox(mol, sel='all'):
            [ 25.40600014,  27.03800011,  46.46300125]], dtype=float32)
 
     """
-    coords = mol.get('coords', sel=sel)
+    coords = mol.get("coords", sel=sel)
     maxc = np.squeeze(np.max(coords, axis=0))
     minc = np.squeeze(np.min(coords, axis=0))
     return np.vstack((minc, maxc))
@@ -403,7 +437,7 @@ def uniformRandomRotation():
 
 
 def writeVoxels(arr, filename, vecMin, vecRes):
-    """ Writes grid free energy to cube file
+    """Writes grid free energy to cube file
 
     Parameters
     ----------
@@ -428,14 +462,19 @@ def writeVoxels(arr, filename, vecMin, vecRes):
     ngrid = arr.shape
 
     # write header
-    with open(filename, 'w') as outFile:
+    with open(filename, "w") as outFile:
         outFile.write("CUBE FILE\n")
         outFile.write("OUTER LOOP: X, MIDDLE LOOP: Y, INNER LOOP: Z\n")
-        outFile.write("%5d %12.6f %12.6f %12.6f\n" % (1, minCorner[0], minCorner[1], minCorner[2]))
+        outFile.write(
+            "%5d %12.6f %12.6f %12.6f\n" % (1, minCorner[0], minCorner[1], minCorner[2])
+        )
         outFile.write("%5d %12.6f %12.6f %12.6f\n" % (ngrid[0], gauss_bin[0], 0, 0))
         outFile.write("%5d %12.6f %12.6f %12.6f\n" % (ngrid[1], 0, gauss_bin[1], 0))
         outFile.write("%5d %12.6f %12.6f %12.6f\n" % (ngrid[2], 0, 0, gauss_bin[2]))
-        outFile.write("%5d %12.6f %12.6f %12.6f %12.6f\n" % (1, 0, minCorner[0], minCorner[1], minCorner[2]))
+        outFile.write(
+            "%5d %12.6f %12.6f %12.6f %12.6f\n"
+            % (1, 0, minCorner[0], minCorner[1], minCorner[2])
+        )
 
         # main loop
         cont = 0
@@ -449,8 +488,8 @@ def writeVoxels(arr, filename, vecMin, vecRes):
                     cont += 1
 
 
-def opm(pdb, keep=False, keepaltloc='A'):
-    """ Download a molecule from the OPM.
+def opm(pdb, keep=False, keepaltloc="A"):
+    """Download a molecule from the OPM.
 
     Parameters
     ----------
@@ -484,9 +523,11 @@ def opm(pdb, keep=False, keepaltloc='A'):
     from moleculekit.support import string_to_tempfile
     from moleculekit.molecule import Molecule
 
-    response = urllib.request.urlopen("https://storage.googleapis.com/opm-assets/pdb/{:s}.pdb".format(pdb.lower()))
+    response = urllib.request.urlopen(
+        "https://storage.googleapis.com/opm-assets/pdb/{:s}.pdb".format(pdb.lower())
+    )
     text = response.read()
-    tempfile = string_to_tempfile(text.decode('ascii'), 'pdb')
+    tempfile = string_to_tempfile(text.decode("ascii"), "pdb")
 
     mol = Molecule(tempfile, keepaltloc=keepaltloc)
     if not keep:
@@ -495,7 +536,7 @@ def opm(pdb, keep=False, keepaltloc='A'):
     # Assuming the half-thickness is the last word in the matched line
     # REMARK      1/2 of bilayer thickness:   14.1
     tmp = open(tempfile)
-    pattern = re.compile('^REMARK.+thickness')
+    pattern = re.compile("^REMARK.+thickness")
 
     thickness = None
     for line in tmp:
@@ -523,7 +564,7 @@ def guessAnglesAndDihedrals(bonds, cyclicdih=False):
     for n in g.nodes():
         neighbors = list(g.neighbors(n))
         for e1 in range(len(neighbors)):
-            for e2 in range(e1+1, len(neighbors)):
+            for e2 in range(e1 + 1, len(neighbors)):
                 angles.append((neighbors[e1], n, neighbors[e2]))
 
     angles = sorted([sorted([angle, angle[::-1]])[0] for angle in angles])
@@ -531,10 +572,12 @@ def guessAnglesAndDihedrals(bonds, cyclicdih=False):
 
     dihedrals = []
     for a1 in range(len(angles)):
-        for a2 in range(a1+1, len(angles)):
+        for a2 in range(a1 + 1, len(angles)):
             a1a = angles[a1]
             a2a = angles[a2]
-            a2f = a2a[::-1]  # Flipped a2a. We don't need flipped a1a as it produces the flipped versions of these 4
+            a2f = a2a[
+                ::-1
+            ]  # Flipped a2a. We don't need flipped a1a as it produces the flipped versions of these 4
             if np.all(a1a[1:] == a2a[:2]) and (cyclicdih or (a1a[0] != a2a[2])):
                 dihedrals.append(list(a1a) + [a2a[2]])
             if np.all(a1a[1:] == a2f[:2]) and (cyclicdih or (a1a[0] != a2f[2])):
@@ -544,7 +587,9 @@ def guessAnglesAndDihedrals(bonds, cyclicdih=False):
             if np.all(a2f[1:] == a1a[:2]) and (cyclicdih or (a2f[0] != a1a[2])):
                 dihedrals.append(list(a2f) + [a1a[2]])
 
-    dihedrals = sorted([sorted([dihedral, dihedral[::-1]])[0] for dihedral in dihedrals])
+    dihedrals = sorted(
+        [sorted([dihedral, dihedral[::-1]])[0] for dihedral in dihedrals]
+    )
     dihedrals = np.array(dihedrals, dtype=np.uint32)
 
     if len(dihedrals) == 0:
@@ -564,57 +609,99 @@ def assertSameAsReferenceDir(compareDir, outdir="."):
     import os
 
     toCompare = os.listdir(compareDir)
-    match, mismatch, error = filecmp.cmpfiles(outdir, compareDir, toCompare, shallow=False)
+    match, mismatch, error = filecmp.cmpfiles(
+        outdir, compareDir, toCompare, shallow=False
+    )
     if len(mismatch) != 0 or len(error) != 0 or len(match) != len(toCompare):
-        logger.error("Mismatch while checking directory {} versus reference {}".format(outdir,compareDir))
+        logger.error(
+            "Mismatch while checking directory {} versus reference {}".format(
+                outdir, compareDir
+            )
+        )
         logger.error("Files being checked: {}".format(toCompare))
         for f in mismatch:
-            logger.error("    diff {} {}".format(os.path.join(outdir, f),
-                                                 os.path.join(compareDir, f)   ))
-        raise Exception('Mismatch in regression testing.')
+            logger.error(
+                "    diff {} {}".format(
+                    os.path.join(outdir, f), os.path.join(compareDir, f)
+                )
+            )
+        raise Exception("Mismatch in regression testing.")
+
 
 def natsorted(items):
     import re
 
     def natural_sort_key(s, _nsre=re.compile("([0-9]+)")):
-        return [int(text) if text.isdigit() else text.lower() for text in _nsre.split(s)]
+        return [
+            int(text) if text.isdigit() else text.lower() for text in _nsre.split(s)
+        ]
 
     return sorted(items, key=natural_sort_key)
 
-
-from unittest import TestCase
 
 class _TestUtils(TestCase):
     @classmethod
     def setUpClass(self):
         from moleculekit.molecule import Molecule
-        
-        self.moldiala = Molecule(os.path.join(home(dataDir='pdb'), 'alanine.pdb'))
+
+        self.moldiala = Molecule(os.path.join(home(dataDir="pdb"), "alanine.pdb"))
 
     def test_guessAnglesDihedrals(self):
         from moleculekit.home import home
         from moleculekit.molecule import Molecule
 
-        mol = Molecule(os.path.join(home(dataDir='test-molecule-utils'), 'NH4.pdb'))
+        mol = Molecule(os.path.join(home(dataDir="test-molecule-utils"), "NH4.pdb"))
         angles, dihedrals = guessAnglesAndDihedrals(mol.bonds)
 
-        self.assertTrue(angles.dtype == np.uint32, 'Returned wrong dtype for angles')
-        self.assertTrue(dihedrals.dtype == np.uint32, 'Returned wrong dtype for dihedrals')
-        self.assertTrue(np.all(angles.shape == (6, 3)), 'Returned wrong number of angles')
-        self.assertTrue(np.all(dihedrals.shape == (0, 4)), 'Returned wrong number of dihedrals')
+        self.assertTrue(angles.dtype == np.uint32, "Returned wrong dtype for angles")
+        self.assertTrue(
+            dihedrals.dtype == np.uint32, "Returned wrong dtype for dihedrals"
+        )
+        self.assertTrue(
+            np.all(angles.shape == (6, 3)), "Returned wrong number of angles"
+        )
+        self.assertTrue(
+            np.all(dihedrals.shape == (0, 4)), "Returned wrong number of dihedrals"
+        )
 
     def test_tmscore(self):
         from moleculekit.molecule import Molecule
 
-        expectedTMscore = np.array([0.21418524, 0.2367377, 0.23433833, 0.21362964, 0.20935164,
-                                    0.20279461, 0.27012895, 0.22675238, 0.21230793, 0.2372011])
-        expectedRMSD = np.array([3.70322128, 3.43637027, 3.188193, 3.84455877, 3.53053882,
-                                 3.46781854, 2.93777629, 2.97978692, 2.70792428, 2.63051318])
+        expectedTMscore = np.array(
+            [
+                0.21418524,
+                0.2367377,
+                0.23433833,
+                0.21362964,
+                0.20935164,
+                0.20279461,
+                0.27012895,
+                0.22675238,
+                0.21230793,
+                0.2372011,
+            ]
+        )
+        expectedRMSD = np.array(
+            [
+                3.70322128,
+                3.43637027,
+                3.188193,
+                3.84455877,
+                3.53053882,
+                3.46781854,
+                2.93777629,
+                2.97978692,
+                2.70792428,
+                2.63051318,
+            ]
+        )
 
-        mol = Molecule(os.path.join(home(dataDir='tmscore'), 'filtered.pdb'))
-        mol.read(os.path.join(home(dataDir='tmscore'), 'traj.xtc'))
-        ref = Molecule(os.path.join(home(dataDir='tmscore'), 'ntl9_2hbb.pdb'))
-        tmscore, rmsd = molTMscore(mol, ref, mol.atomselect('protein'), ref.atomselect('protein'))
+        mol = Molecule(os.path.join(home(dataDir="tmscore"), "filtered.pdb"))
+        mol.read(os.path.join(home(dataDir="tmscore"), "traj.xtc"))
+        ref = Molecule(os.path.join(home(dataDir="tmscore"), "ntl9_2hbb.pdb"))
+        tmscore, rmsd = molTMscore(
+            mol, ref, mol.atomselect("protein"), ref.atomselect("protein")
+        )
 
         self.assertTrue(np.allclose(tmscore, expectedTMscore))
         self.assertTrue(np.allclose(rmsd, expectedRMSD))
@@ -624,7 +711,7 @@ class _TestUtils(TestCase):
         mol2 = mol.copy()
         mol2.rotateBy(rotationMatrix([1, 0, 0], np.pi / 3))
         rmsd = molRMSD(mol, mol2, np.arange(mol.numAtoms), np.arange(mol2.numAtoms))
-        
+
         assert np.allclose(rmsd, 5.4344)
 
     def test_orientOnAxes(self):
@@ -634,11 +721,13 @@ class _TestUtils(TestCase):
         _, eigenvectors = np.linalg.eigh(covariance)
 
         assert np.allclose(np.diag(eigenvectors), np.array([1, 1, 1]))
-        assert eigenvectors[~np.eye(eigenvectors.shape[0],dtype=bool)].max() < 1e-8  # off diagonals close to 0
+        assert (
+            eigenvectors[~np.eye(eigenvectors.shape[0], dtype=bool)].max() < 1e-8
+        )  # off diagonals close to 0
 
     def test_missingChain(self):
         mol = self.moldiala.copy()
-        
+
         try:
             _missingChain(mol)
         except RuntimeError:
@@ -646,13 +735,13 @@ class _TestUtils(TestCase):
         else:
             self.fail("_missingChain() did not raise RuntimeError!")
 
-        mol.chain[:] = 'A'
+        mol.chain[:] = "A"
         try:
             _missingChain(mol)
         except RuntimeError:
             self.fail("_missingChain() raised RuntimeError unexpectedly!")
 
-        mol.chain[6] = ''
+        mol.chain[6] = ""
         try:
             _missingChain(mol)
         except RuntimeError:
@@ -662,7 +751,7 @@ class _TestUtils(TestCase):
 
     def test_missingSegid(self):
         mol = self.moldiala.copy()
-        
+
         try:
             _missingSegID(mol)
         except RuntimeError:
@@ -670,13 +759,13 @@ class _TestUtils(TestCase):
         else:
             self.fail("_missingSegID() did not raise RuntimeError!")
 
-        mol.segid[:] = 'A'
+        mol.segid[:] = "A"
         try:
             _missingSegID(mol)
         except RuntimeError:
             self.fail("_missingSegID() raised RuntimeError unexpectedly!")
 
-        mol.segid[6] = ''
+        mol.segid[6] = ""
         try:
             _missingSegID(mol)
         except RuntimeError:

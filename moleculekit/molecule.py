@@ -9,7 +9,6 @@ from copy import deepcopy
 from os import path
 import logging
 import os
-import abc
 
 logger = logging.getLogger(__name__)
 

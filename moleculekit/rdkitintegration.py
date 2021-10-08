@@ -2,14 +2,10 @@ try:
     import rdkit
 except ImportError as e:
     raise ImportError(
-        "{}. You are probably missing the rdkit package. Please install it to support rdkit integration "
-        "features".format(e)
+        f"{e}. You are probably missing the rdkit package. Please install it to support rdkit integration features"
     )
 from rdkit import Chem
-from rdkit.Chem import ChemicalFeatures
-from rdkit import RDConfig
 from rdkit.Geometry import Point3D
-import os
 import numpy as np
 
 

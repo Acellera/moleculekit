@@ -5,15 +5,16 @@
 #
 import os
 
-_config = {'viewer': 'VMD',
-           'configfile': os.getenv('HTMD_CONFIG') if os.getenv('HTMD_CONFIG') else None,
-           'ncpus': 1
-           }
+_config = {
+    "viewer": "VMD",
+    "configfile": os.getenv("HTMD_CONFIG") if os.getenv("HTMD_CONFIG") else None,
+    "ncpus": 1,
+}
 
 
-def config(viewer=_config['viewer'],
-           configfile=_config['configfile'],
-           ncpus=_config['ncpus']):
+def config(
+    viewer=_config["viewer"], configfile=_config["configfile"], ncpus=_config["ncpus"]
+):
     """
     Function to change HTMD configuration variables.
 
@@ -30,6 +31,6 @@ def config(viewer=_config['viewer'],
     slurm : str
         Defines a YAML file that can contain default profile configurations for an SlurmQueue
     """
-    _config['viewer'] = viewer
-    _config['configfile'] = configfile
-    _config['ncpus'] = ncpus
+    _config["viewer"] = viewer
+    _config["configfile"] = configfile
+    _config["ncpus"] = ncpus

@@ -13,6 +13,7 @@ import copy
 from tqdm import tqdm
 import logging
 import unittest
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,8 +26,11 @@ def _get_cellloc(center, angles, box_size):
     """
     change = np.zeros(3)
     change[0] = center[1] / np.tan(angles[2]) + center[2] / np.tan(
-        angles[1])  # get min_value x unit cell at given y,z
-    return np.floor((center - change) / box_size)  # correct x axis boundaries according to angles
+        angles[1]
+    )  # get min_value x unit cell at given y,z
+    return np.floor(
+        (center - change) / box_size
+    )  # correct x axis boundaries according to angles
 
 
 def _is_outside(center, cellloc):
@@ -52,10 +56,16 @@ def _move_inside(mol, axes, cellloc, center):
     Takes as argument the vectors defining the Unit Cell the molecule
     object is currently in and translates it inside another Unit Cell.
     """
-    neworigin = np.multiply(axes.transpose(), cellloc).transpose()  # computes translation to be applied to copy
+    neworigin = np.multiply(
+        axes.transpose(), cellloc
+    ).transpose()  # computes translation to be applied to copy
     neworigin = np.sum(neworigin, axis=0)
-    newcenter = center - neworigin  # computes difference between copy center and origin of its unit cell
-    mol.center(loc=newcenter)  # places copy in the target unit cell (at an equivalent position to that of original unit cell)
+    newcenter = (
+        center - neworigin
+    )  # computes difference between copy center and origin of its unit cell
+    mol.center(
+        loc=newcenter
+    )  # places copy in the target unit cell (at an equivalent position to that of original unit cell)
 
 
 def _place_crystal(mol, size, angles, axes):
@@ -63,8 +73,10 @@ def _place_crystal(mol, size, angles, axes):
     Places MoleculeCopy object inside crystal.
     Uses methods 'is_outside' and 'move_inside'.
     """
-    center = np.mean(mol.get('coords'), axis=0)
-    cellloc = _get_cellloc(center, angles, size)  # integer from division for each axis = unit cell identifier
+    center = np.mean(mol.get("coords"), axis=0)
+    cellloc = _get_cellloc(
+        center, angles, size
+    )  # integer from division for each axis = unit cell identifier
     if _is_outside(center, cellloc):
         _move_inside(mol, axes, cellloc, center)
 
@@ -93,64 +105,81 @@ def generateCrystalPacking(pdbid, hexagonal=False, visualize=False, viewerhandle
     """
 
     if not isinstance(pdbid, str):
-        raise ValueError('pdbid should be a string')
+        raise ValueError("pdbid should be a string")
 
     filename, _ = _getPDB(pdbid)
 
     mol = Molecule(filename)
 
     if viewerhandle is not None and not visualize:
-        logger.warning('A viewerhandle was passed. Setting visualize to True.')
+        logger.warning("A viewerhandle was passed. Setting visualize to True.")
         visualize = True
     if visualize and viewerhandle is None:
         from moleculekit.vmdviewer import getCurrentViewer
+
         viewerhandle = getCurrentViewer()
 
-    if mol.crystalinfo is None or 'numcopies' not in mol.crystalinfo:
-        raise RuntimeError('No crystallography data found in Molecule.')
+    if mol.crystalinfo is None or "numcopies" not in mol.crystalinfo:
+        raise RuntimeError("No crystallography data found in Molecule.")
     ci = mol.crystalinfo
 
-    alpha, beta, gamma, a, b, c = ci['alpha'], ci['beta'], ci['gamma'], ci['a'], ci['b'], ci['c']
+    alpha, beta, gamma, a, b, c = (
+        ci["alpha"],
+        ci["beta"],
+        ci["gamma"],
+        ci["a"],
+        ci["b"],
+        ci["c"],
+    )
     alpha = np.deg2rad(float(alpha))
     beta = np.deg2rad(float(beta))
     gamma = np.deg2rad(float(gamma))
 
     caux = (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
-    axes = np.array([[a, 0, 0], [b * np.cos(gamma), b * np.sin(gamma), 0], [c * np.cos(beta), c * caux,
-                    c * np.sqrt(1 - np.cos(beta) ** 2 - caux ** 2)]])
+    axes = np.array(
+        [
+            [a, 0, 0],
+            [b * np.cos(gamma), b * np.sin(gamma), 0],
+            [
+                c * np.cos(beta),
+                c * caux,
+                c * np.sqrt(1 - np.cos(beta) ** 2 - caux ** 2),
+            ],
+        ]
+    )
     size = np.array([axes[0][0], axes[1][1], axes[2][2]])
 
     molunit = Molecule()
 
     # Creates copies of the molecule and places them correctly inside the complete Unit Cell
     hexagonal_molunit = None
-    for i in tqdm(range(ci['numcopies']), desc='Generating symmetry mates'):
+    for i in tqdm(range(ci["numcopies"]), desc="Generating symmetry mates"):
         molecule = mol.copy()
-        molecule.segid[:] = str(i+1)
+        molecule.segid[:] = str(i + 1)
         # apply SMTRY (Crystal Symmetry) operations
-        molecule.rotateBy(ci['rotations'][i])
-        molecule.moveBy(ci['translations'][i])
+        molecule.rotateBy(ci["rotations"][i])
+        molecule.moveBy(ci["translations"][i])
         # apply translation to inside of same Unit Cell.
         _place_crystal(molecule, size, [alpha, beta, gamma], axes)
         # pack copies to target Unit Cell
         molunit.append(molecule)
-    if ci['sGroup'][0] == 'H' and hexagonal:
+    if ci["sGroup"][0] == "H" and hexagonal:
         hexagonal_molunit = Molecule()
         _build_hexagon(molunit, hexagonal_molunit)
 
     if hexagonal_molunit is not None:
         if visualize:
-            hexagonal_molunit.view(style='NewCartoon', viewerhandle=viewerhandle)
+            hexagonal_molunit.view(style="NewCartoon", viewerhandle=viewerhandle)
         else:
             return hexagonal_molunit
     else:
         if visualize:
-            molunit.view(style='NewCartoon', viewerhandle=viewerhandle)
+            molunit.view(style="NewCartoon", viewerhandle=viewerhandle)
         else:
             return molunit
 
     if visualize:
-        _draw_cell(axes, ci['sGroup'], viewerhandle, hexagonal=hexagonal)
+        _draw_cell(axes, ci["sGroup"], viewerhandle, hexagonal=hexagonal)
 
 
 def _draw_cell(axes, group, viewerhandle, hexagonal=False):
@@ -173,26 +202,43 @@ def _draw_cell(axes, group, viewerhandle, hexagonal=False):
     top_lo_r = axes.sum(axis=0)
     points = np.vstack((baseorigin, base_lo_l, base_up_r, base_lo_r))
     points = np.vstack((points, top_origin, top_lo_l, top_up_r, top_lo_r))
-    if group[0] == 'H' and hexagonal:
+    if group[0] == "H" and hexagonal:
         # Lattice is hexagonal, can be constructed by applying two 120º
         # rotations over the z axis
         alpha = np.deg2rad(120)
-        rot_mat = np.array([[np.cos(alpha), -np.sin(alpha), 0],
-                            [np.sin(alpha), np.cos(alpha), 0],
-                            [0, 0, 1]])
+        rot_mat = np.array(
+            [
+                [np.cos(alpha), -np.sin(alpha), 0],
+                [np.sin(alpha), np.cos(alpha), 0],
+                [0, 0, 1],
+            ]
+        )
         rotpoints1 = np.dot(rot_mat, points.transpose())
         rotpoints2 = np.dot(rot_mat, rotpoints1)
-        points = np.vstack((points, rotpoints1.transpose(),
-                            rotpoints2.transpose()))
-        lines_draw = np.array([[1, 3], [1, 5], [2, 3], [2, 6], [3, 7],
-                               [5, 7], [6, 7]])
+        points = np.vstack((points, rotpoints1.transpose(), rotpoints2.transpose()))
+        lines_draw = np.array([[1, 3], [1, 5], [2, 3], [2, 6], [3, 7], [5, 7], [6, 7]])
         lines_draw = np.vstack((lines_draw, lines_draw + 8, lines_draw + 16))
     else:
-        lines_draw = [[0, 1], [0, 2], [0, 4], [1, 3], [1, 5], [2, 3],
-                      [2, 6], [3, 7], [4, 5], [4, 6], [5, 7], [6, 7]]
+        lines_draw = [
+            [0, 1],
+            [0, 2],
+            [0, 4],
+            [1, 3],
+            [1, 5],
+            [2, 3],
+            [2, 6],
+            [3, 7],
+            [4, 5],
+            [4, 6],
+            [5, 7],
+            [6, 7],
+        ]
     for row in lines_draw:
-        viewerhandle.send('draw line {{{0} {1} {2}}} {{{3} {4} {5}}}'.format(
-            *(tuple(points[row[0]]) + tuple(points[row[1]]))))
+        viewerhandle.send(
+            "draw line {{{0} {1} {2}}} {{{3} {4} {5}}}".format(
+                *(tuple(points[row[0]]) + tuple(points[row[1]]))
+            )
+        )
 
 
 def _build_hexagon(molunit, hexagonal_molunit):
@@ -205,9 +251,13 @@ def _build_hexagon(molunit, hexagonal_molunit):
     for i in range(1, 4):
         cellunit = copy.deepcopy(molunit)  # TODO: This cant possibly work
         alpha = np.deg2rad(120 * i)
-        rot_mat = np.array([[np.cos(alpha), -np.sin(alpha), 0],
-                            [np.sin(alpha), np.cos(alpha), 0],
-                            [0, 0, 1]])
+        rot_mat = np.array(
+            [
+                [np.cos(alpha), -np.sin(alpha), 0],
+                [np.sin(alpha), np.cos(alpha), 0],
+                [0, 0, 1],
+            ]
+        )
         cellunit.rotateBy(rot_mat)
         hexagonal_molunit.append(cellunit)
 
@@ -216,26 +266,26 @@ class _TestCrystalPacking(unittest.TestCase):
     def test_crystalpacking_visualization(self):
         from moleculekit.vmdviewer import getCurrentViewer
 
-        viewer = getCurrentViewer(dispdev='text')
-        generateCrystalPacking('3ptb', visualize=True, viewerhandle=viewer)
+        viewer = getCurrentViewer(dispdev="text")
+        generateCrystalPacking("3ptb", visualize=True, viewerhandle=viewer)
 
     def test_crystalpacking_asymmetric_unit(self):
         from moleculekit.home import home
         from os.path import join
         from moleculekit.molecule import mol_equal
 
-        mol = generateCrystalPacking('2hhb')
-        refmol = Molecule(join(home(dataDir='test-crystalpacking'), '2hhb_packing.pdb'))
-        assert mol_equal(mol, refmol, fieldPrecision={'coords': 1e-3})
+        mol = generateCrystalPacking("2hhb")
+        refmol = Molecule(join(home(dataDir="test-crystalpacking"), "2hhb_packing.pdb"))
+        assert mol_equal(mol, refmol, fieldPrecision={"coords": 1e-3})
 
     def test_crystalpacking_biological_unit(self):
         from moleculekit.home import home
         from os.path import join
         from moleculekit.molecule import mol_equal
 
-        mol = generateCrystalPacking('1out')
-        refmol = Molecule(join(home(dataDir='test-crystalpacking'), '1out_packing.pdb'))
-        assert mol_equal(mol, refmol, fieldPrecision={'coords': 1e-3})
+        mol = generateCrystalPacking("1out")
+        refmol = Molecule(join(home(dataDir="test-crystalpacking"), "1out_packing.pdb"))
+        assert mol_equal(mol, refmol, fieldPrecision={"coords": 1e-3})
 
 
 if __name__ == "__main__":

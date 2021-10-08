@@ -10,12 +10,13 @@ class Projection(abc.ABC):
     """
     Parent class for all trajectory projecting classes. Defines abstract functions.
     """
+
     def __init__(self):
         self._cache = {}
 
     @abc.abstractmethod
     def project(self, mol):
-        """ Subclasses need to implement and overload this method """
+        """Subclasses need to implement and overload this method"""
         return
 
     @abc.abstractmethod
@@ -23,7 +24,7 @@ class Projection(abc.ABC):
         return
 
     @abc.abstractmethod
-    def _calculateMolProp(self, mol, props='all'):
+    def _calculateMolProp(self, mol, props="all"):
         return
 
     def _setCache(self, mol):
@@ -34,15 +35,15 @@ class Projection(abc.ABC):
         if prop in self._cache:
             resdict = self._cache
         else:
-            resdict = self._calculateMolProp(mol, [prop] if prop != 'all' else 'all')
-            
-        if prop == 'all':
+            resdict = self._calculateMolProp(mol, [prop] if prop != "all" else "all")
+
+        if prop == "all":
             return resdict
         else:
             return resdict[prop]
 
     def copy(self):
-        """ Produces a deep copy of the object
-        """
+        """Produces a deep copy of the object"""
         from copy import deepcopy
+
         return deepcopy(self)

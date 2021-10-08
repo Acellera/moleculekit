@@ -2,7 +2,11 @@ from numba import jit
 import numpy as np
 
 
-@jit('Tuple((float32[:, :], float64))(float32[:, :], float32[:, :])', nopython=True, nogil=True)
+@jit(
+    "Tuple((float32[:, :], float64))(float32[:, :], float32[:, :])",
+    nopython=True,
+    nogil=True,
+)
 def _pp_measure_fit(P, Q):
     """
     WARNING: ASSUMES CENTERED COORDINATES!!!!
@@ -15,7 +19,9 @@ def _pp_measure_fit(P, Q):
     """
     covariance = np.dot(P.T, Q)
 
-    (V, S, W) = np.linalg.svd(covariance)  # Matlab svd returns the W transposed compared to numpy.svd
+    (V, S, W) = np.linalg.svd(
+        covariance
+    )  # Matlab svd returns the W transposed compared to numpy.svd
     W = W.T
 
     E0 = np.sum(P * P) + np.sum(Q * Q)
@@ -29,8 +35,11 @@ def _pp_measure_fit(P, Q):
     return U, RMSD
 
 
-@jit('float32[:, :, :](float32[:, :, :], float32[:, :, :], int64[:], int64[:], int64[:], int64, boolean)', nopython=True,
-     nogil=True)
+@jit(
+    "float32[:, :, :](float32[:, :, :], float32[:, :, :], int64[:], int64[:], int64[:], int64, boolean)",
+    nopython=True,
+    nogil=True,
+)
 def _pp_align(coords, refcoords, sel, refsel, frames, refframe, matchingframes):
     newcoords = coords.copy()
     for f in frames:

@@ -7,7 +7,6 @@ from moleculekit.molecule import Molecule
 from moleculekit.smallmol.smallmol import SmallMol
 import rdkit
 import numpy as np
-from rdkit.Chem import MolFromSmiles
 
 BENZAMIDINE_N_ATOMS = 18
 BENZAMIDINE_N_HEAVYATOMS = 9

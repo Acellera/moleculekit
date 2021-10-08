@@ -4,16 +4,12 @@
 # No redistribution in whole or part
 #
 import os
-import sys
-import tempfile
 from copy import deepcopy
-import multiprocessing
-import math
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdchem import HybridizationType, BondType
 from collections import defaultdict
-from moleculekit.smallmol.util import _depictMol, depictMultipleMols, convertToString
+from moleculekit.smallmol.util import _depictMol, convertToString
 from moleculekit.tools.obabel_tools import openbabelConvert
 import logging
 
@@ -154,8 +150,6 @@ class SmallMol(object):
             The smallMol object if SmallMol was passed
         """
         from moleculekit.molecule import Molecule
-
-        message = None
 
         # If we are converting a Molecule object to a SmallMol object
         remove = False
@@ -514,7 +508,7 @@ class SmallMol(object):
         if key == "hybridization":
             try:
                 selector = [_hybridizations_StringToType[s.upper()] for s in selector]
-            except:
+            except Exception:
                 pass
 
         _dtype = self._dtypes[key]
@@ -995,7 +989,7 @@ class SmallMol(object):
             chirals = ["" if c == "" else "*" for c in chirals]
             values = [elements, indexes, formalcharges, chirals]
 
-            idxs = [_labelsFunc.index(l) for l in labels]
+            idxs = [_labelsFunc.index(lab) for lab in labels]
             labels_required = [values[i] for i in idxs]
             atomlabels = [
                 "".join([str(i) for i in a]) for a in list(zip(*labels_required))
@@ -1058,9 +1052,7 @@ class SmallMol(object):
 
 
 if __name__ == "__main__":
-
     import doctest
-    import os
     from moleculekit.home import home
     from moleculekit.smallmol.smallmollib import SmallMolLib
 

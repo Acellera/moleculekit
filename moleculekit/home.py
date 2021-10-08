@@ -40,7 +40,7 @@ def home(dataDir=None, libDir=False):
     try:
         if sys._MEIPASS:
             homeDir = sys._MEIPASS
-    except:
+    except Exception:
         pass
 
     if dataDir:

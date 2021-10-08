@@ -12,11 +12,12 @@ from moleculekit.home import home
 
 def wrap(coords, bonds, box, centersel=None):
     """
-    Wrap the coords back into the unit cell. 
+    Wrap the coords back into the unit cell.
     Molecules will remain continuous, so they may escape the bounds of the prinary unit cell.
     """
 
     import platform
+
     libdir = home(libDir=True)
 
     if coords.dtype != np.float32:
@@ -60,31 +61,32 @@ def wrap(coords, bonds, box, centersel=None):
     c_centersel = centersel.ctypes.data_as(ct.POINTER(ct.c_int))
 
     c_coords = coords.ctypes.data_as(ct.POINTER(ct.c_float))
-    c_bonds = bonds.flatten().astype(np.int32).copy().ctypes.data_as(ct.POINTER(ct.c_int))
-    c_box = box.T.flatten().astype(np.float64).copy().ctypes.data_as(ct.POINTER(ct.c_double))
-
-    lib.wrap(
-        c_bonds,
-        c_coords,
-        c_box, 
-        c_nbonds, 
-        c_natoms, 
-        c_nframes, 
-        c_centersel
+    c_bonds = (
+        bonds.flatten().astype(np.int32).copy().ctypes.data_as(ct.POINTER(ct.c_int))
     )
+    c_box = (
+        box.T.flatten()
+        .astype(np.float64)
+        .copy()
+        .ctypes.data_as(ct.POINTER(ct.c_double))
+    )
+
+    lib.wrap(c_bonds, c_coords, c_box, c_nbonds, c_natoms, c_nframes, c_centersel)
 
     return coords
 
 
 from unittest import TestCase
+
+
 class _TestWrap(TestCase):
     def test_wrap(self):
         from moleculekit.molecule import Molecule
         from moleculekit.home import home
 
-        datadir = os.path.join(home(dataDir='molecule-readers'), 'multi-traj')
-        mol = Molecule(os.path.join(datadir, 'structure.pdb'))
-        mol.read(os.path.join(datadir, 'data', 'e1s1_1', 'output.xtc'))
+        datadir = os.path.join(home(dataDir="molecule-readers"), "multi-traj")
+        mol = Molecule(os.path.join(datadir, "structure.pdb"))
+        mol.read(os.path.join(datadir, "data", "e1s1_1", "output.xtc"))
         mol.wrap()
 
         boxsize = mol.coords.max(axis=0) - mol.coords.min(axis=0)

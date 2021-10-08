@@ -6,11 +6,12 @@
 from moleculekit.projections.projection import Projection
 import numpy as np
 import logging
+
 logger = logging.getLogger(__name__)
 
 
 class MetricRmsd(Projection):
-    """ Calculates the RMSD of a set of trajectories to a reference structure
+    """Calculates the RMSD of a set of trajectories to a reference structure
 
     Parameters
     ----------
@@ -35,7 +36,17 @@ class MetricRmsd(Projection):
     pbc : bool, optional
         Enable or disable simulation wrapping.
     """
-    def __init__(self, refmol, trajrmsdstr, trajalnstr=None, refrmsdstr=None, refalnstr=None, centerstr='protein', pbc=True):
+
+    def __init__(
+        self,
+        refmol,
+        trajrmsdstr,
+        trajalnstr=None,
+        refrmsdstr=None,
+        refalnstr=None,
+        centerstr="protein",
+        pbc=True,
+    ):
         super().__init__()
 
         if trajalnstr is None:
@@ -47,7 +58,9 @@ class MetricRmsd(Projection):
 
         self._refmol = refmol.copy()
         if self._refmol.numFrames > 1:
-            logger.warning('Reference molecule contains multiple frames. MetricRmsd will calculate the RMSD to the frame set in the refmol.frame variable.')
+            logger.warning(
+                "Reference molecule contains multiple frames. MetricRmsd will calculate the RMSD to the frame set in the refmol.frame variable."
+            )
             self._refmol.dropFrames(keep=self._refmol.frame)
 
         self._refalnsel = self._refmol.atomselect(refalnstr)
@@ -57,27 +70,27 @@ class MetricRmsd(Projection):
         self._centersel = centerstr
         self._pbc = pbc
 
-    def _calculateMolProp(self, mol, props='all'):
-        props = ('trajalnsel', 'trajrmsdsel', 'centersel') if props == 'all' else props
+    def _calculateMolProp(self, mol, props="all"):
+        props = ("trajalnsel", "trajrmsdsel", "centersel") if props == "all" else props
         res = {}
 
-        if 'trajalnsel' in props:
-            res['trajalnsel'] = mol.atomselect(self._trajalnsel)
-            if np.sum(res['trajalnsel']) == 0:
-                raise RuntimeError('Alignment selection resulted in 0 atoms.')
-        if 'trajrmsdsel' in props:
-            res['trajrmsdsel'] = mol.atomselect(self._trajrmsdsel)
-            if np.sum(res['trajrmsdsel']) == 0:
-                raise RuntimeError('RMSD selection resulted in 0 atoms.')
-        if 'centersel' in props and self._pbc:
-            res['centersel'] = mol.atomselect(self._centersel)
-            if np.sum(res['centersel']) == 0:
-                raise RuntimeError('Center selection resulted in 0 atoms.')
+        if "trajalnsel" in props:
+            res["trajalnsel"] = mol.atomselect(self._trajalnsel)
+            if np.sum(res["trajalnsel"]) == 0:
+                raise RuntimeError("Alignment selection resulted in 0 atoms.")
+        if "trajrmsdsel" in props:
+            res["trajrmsdsel"] = mol.atomselect(self._trajrmsdsel)
+            if np.sum(res["trajrmsdsel"]) == 0:
+                raise RuntimeError("RMSD selection resulted in 0 atoms.")
+        if "centersel" in props and self._pbc:
+            res["centersel"] = mol.atomselect(self._centersel)
+            if np.sum(res["centersel"]) == 0:
+                raise RuntimeError("Center selection resulted in 0 atoms.")
 
         return res
 
     def project(self, mol):
-        """ Project molecule.
+        """Project molecule.
 
         Parameters
         ----------
@@ -95,14 +108,16 @@ class MetricRmsd(Projection):
         getMolProp = lambda prop: self._getMolProp(mol, prop)
 
         if self._pbc:
-            mol.wrap(getMolProp('centersel'))
-        #mol.coords = self._wrapPositions(mol.box, mol.coords, centersel)
-        mol.align(sel=getMolProp('trajalnsel'), refmol=self._refmol, refsel=self._refalnsel)
+            mol.wrap(getMolProp("centersel"))
+        # mol.coords = self._wrapPositions(mol.box, mol.coords, centersel)
+        mol.align(
+            sel=getMolProp("trajalnsel"), refmol=self._refmol, refsel=self._refalnsel
+        )
 
-        return molRMSD(mol, self._refmol, getMolProp('trajrmsdsel'), self._refrmsdsel)
+        return molRMSD(mol, self._refmol, getMolProp("trajrmsdsel"), self._refrmsdsel)
 
     def getMapping(self, mol):
-        """ Returns the description of each projected dimension.
+        """Returns the description of each projected dimension.
 
         Parameters
         ----------
@@ -114,16 +129,21 @@ class MetricRmsd(Projection):
         map : :class:`DataFrame <pandas.core.frame.DataFrame>` object
             A DataFrame containing the descriptions of each dimension
         """
-        trajrmsdsel = self._getMolProp(mol, 'trajrmsdsel')
+        trajrmsdsel = self._getMolProp(mol, "trajrmsdsel")
         from pandas import DataFrame
-        types = ['rmsd']
+
+        types = ["rmsd"]
         indexes = [np.where(trajrmsdsel)[0]]
-        description = ['RMSD to reference structure.']
-        return DataFrame({'type': types, 'atomIndexes': indexes, 'description': description})
+        description = ["RMSD to reference structure."]
+        return DataFrame(
+            {"type": types, "atomIndexes": indexes, "description": description}
+        )
 
     def _wrapPositions(self, box, pos, centersel):
         if box is None or np.sum(box) == 0:
-            logger.warning('MetricRmsd: The given molecule does not contain box dimensions for wrapping.')
+            logger.warning(
+                "MetricRmsd: The given molecule does not contain box dimensions for wrapping."
+            )
             return pos
         center = np.mean(pos[centersel, :, :], axis=0)
         origin = center - (box / 2)
@@ -132,6 +152,8 @@ class MetricRmsd(Projection):
 
 
 import unittest
+
+
 class _TestMetricRMSD(unittest.TestCase):
     def test_metricrmsd(self):
         from moleculekit.molecule import Molecule
@@ -139,21 +161,48 @@ class _TestMetricRMSD(unittest.TestCase):
         import numpy as np
         from os import path
 
-        mol = Molecule(path.join(home(dataDir='test-projections'), 'trajectory', 'filtered.pdb'))
-        mol.read(path.join(home(dataDir='test-projections'), 'trajectory', 'traj.xtc'))
+        mol = Molecule(
+            path.join(home(dataDir="test-projections"), "trajectory", "filtered.pdb")
+        )
+        mol.read(path.join(home(dataDir="test-projections"), "trajectory", "traj.xtc"))
         ref = mol.copy()
 
         ref.dropFrames(keep=0)
-        mol.dropFrames(keep=np.arange(mol.numFrames-20, mol.numFrames)) # Keep only last 20 frames
+        mol.dropFrames(
+            keep=np.arange(mol.numFrames - 20, mol.numFrames)
+        )  # Keep only last 20 frames
 
-        metr = MetricRmsd(ref, 'protein and name CA')
+        metr = MetricRmsd(ref, "protein and name CA")
         data = metr.project(mol)
 
-        lastrmsd = np.array([1.30797791,  1.29860222,  1.25042927,  1.31319737,  1.27044261,
-                            1.40294552,  1.25354612,  1.30127883,  1.40618336,  1.18303752,
-                            1.24414587,  1.34513164,  1.31932807,  1.34282494,  1.2261436 ,
-                            1.36359048,  1.26243281,  1.21157813,  1.26476419,  1.29413617], dtype=np.float32)
-        assert np.all(np.abs(data[-20:] - lastrmsd) < 0.001), 'RMSD calculation is broken'
+        lastrmsd = np.array(
+            [
+                1.30797791,
+                1.29860222,
+                1.25042927,
+                1.31319737,
+                1.27044261,
+                1.40294552,
+                1.25354612,
+                1.30127883,
+                1.40618336,
+                1.18303752,
+                1.24414587,
+                1.34513164,
+                1.31932807,
+                1.34282494,
+                1.2261436,
+                1.36359048,
+                1.26243281,
+                1.21157813,
+                1.26476419,
+                1.29413617,
+            ],
+            dtype=np.float32,
+        )
+        assert np.all(
+            np.abs(data[-20:] - lastrmsd) < 0.001
+        ), "RMSD calculation is broken"
 
 
 if __name__ == "__main__":

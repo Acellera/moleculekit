@@ -4,7 +4,6 @@
 # No redistribution in whole or part
 #
 import os
-import math
 import numpy as np
 from rdkit.Chem import ChemicalFeatures
 from rdkit import RDConfig
@@ -111,7 +110,7 @@ def getChemblLigandByDrugName(drugname, returnSmile=False):
 
     try:
         from chembl_webresource_client.new_client import new_client
-    except ImportError as e:
+    except ImportError:
         raise ImportError(
             "You need to install the chembl_webresource package to use this function. Try using `conda install "
             "-c chembl chembl_webresource_client`."
@@ -180,7 +179,7 @@ def getChemblSimilarLigandsBySmile(smi, threshold=85, returnSmiles=False):
 
     try:
         from chembl_webresource_client.new_client import new_client
-    except ImportError as e:
+    except ImportError:
         raise ImportError(
             "You need to install the chembl_webresource package to use this function. Try using `conda install "
             "-c chembl chembl_webresource_client`."
@@ -358,7 +357,6 @@ def depictMultipleMols(
         If ipython set as True, the SVG rendering is returned
 
     """
-    import rdkit
     from rdkit.Chem.Draw import MolsToGridImage
     from IPython.display import SVG
     from os.path import splitext

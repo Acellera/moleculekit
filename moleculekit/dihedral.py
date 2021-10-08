@@ -3,14 +3,14 @@ import numpy as np
 from math import sqrt, atan2
 
 
-@jit('float32(float32, float32)', nopython=True)
+@jit("float32(float32, float32)", nopython=True)
 def wrapDistance(d, box):
     if box == 0:
         return d
     return d - box * round(d / box)
 
 
-@jit('float32(float32, float32)', nopython=True)
+@jit("float32(float32, float32)", nopython=True)
 def wrapBondedDistance(d, box):
     if box == 0:
         return d
@@ -22,8 +22,9 @@ def wrapBondedDistance(d, box):
         return d - box
     return d
 
+
 def dihedralAngle(pos, box=None):
-    """ Calculates a dihedral angle.
+    """Calculates a dihedral angle.
 
     Parameters
     ----------
@@ -46,6 +47,7 @@ def dihedralAngle(pos, box=None):
             box = box.squeeze()
         return dihedralAngleFull(pos.squeeze(), box)[0]
 
+
 @jit(nopython=True)
 def dihedralAngleFrames(pos, box):
     res = np.zeros(pos.shape[2], dtype=pos.dtype)
@@ -53,9 +55,10 @@ def dihedralAngleFrames(pos, box):
         res[f] = dihedralAngleFull(pos[:, :, f], box[:, f])[0]
     return res
 
+
 @jit(nopython=True)
 def dihedralAngleFull(pos, box=None):
-    """ Calculates a dihedral angle.
+    """Calculates a dihedral angle.
 
     Parameters
     ----------
@@ -65,7 +68,9 @@ def dihedralAngleFull(pos, box=None):
         The size of the periodic box
     """
     if pos.shape[0] != 4 or pos.shape[1] != 3:
-        raise RuntimeError('dihedralAngles requires a 4x3 sized coordinate matrix as input.')
+        raise RuntimeError(
+            "dihedralAngles requires a 4x3 sized coordinate matrix as input."
+        )
     if box is None:
         box = np.zeros(3, dtype=pos.dtype)
 
