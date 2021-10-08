@@ -1,4 +1,4 @@
-name: Test code
+name: Test code and publish package
 
 on: [push]
 
@@ -76,6 +76,8 @@ jobs:
         export TAG_DESCRIBE=$(git describe)
         export BUILD_VERSION=$(echo $TAG_DESCRIBE | sed 's/-/ /g'  | awk '{print $1}')
         conda install anaconda-client conda-build python=${{ matrix.python-version }}
+        export CONDA_PY=${{ matrix.python-version }}
+        python ci/insert_placeholder_values.py
         conda build --python ${{ matrix.python-version }} package/moleculekit/ --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload -c acellera -c conda-forge
 
     - name: Upload to conda
