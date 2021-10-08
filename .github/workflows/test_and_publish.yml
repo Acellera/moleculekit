@@ -10,7 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest"]
-        python-version: ["3.6", "3.7", "3.8"]
+        python-version: ["3.6", "3.7", "3.8", "3.9"]
 
     defaults: # Needed for conda
       run:
@@ -51,6 +51,39 @@ jobs:
       run: |
         coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
 
+  deploypypi:
+    if: startsWith(github.event.ref, 'refs/tags/')
+    needs: test
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.9"]
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        activate-environment: deploy
+        python-version: ${{ matrix.python-version }}
+
+    - name: Build PyPI 📦
+      run: |
+        export TAG_DESCRIBE=$(git describe)
+        export BUILD_VERSION=$(echo $TAG_DESCRIBE | sed 's/-/ /g'  | awk '{print $1}')
+        export CONDA_PY=${{ matrix.python-version }}
+        pip install numpy>=1.18.5 Cython>=0.29.21 build
+        python ci/insert_placeholder_values.py
+        python -m build --sdist --outdir dist/ .
+
+    - name: Publish distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+
   deploy:
     if: startsWith(github.event.ref, 'refs/tags/')
     needs: test
@@ -60,7 +93,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest"]
-        python-version: ["3.6", "3.7", "3.8"]
+        python-version: ["3.6", "3.7", "3.8", "3.9"]
 
     steps:
     - uses: actions/checkout@v1
