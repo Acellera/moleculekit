@@ -5,7 +5,6 @@
 #
 import numpy as np
 import logging
-import moleculekit.molecule
 
 logger = logging.getLogger(__name__)
 

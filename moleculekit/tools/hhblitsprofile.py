@@ -7,7 +7,6 @@ import tempfile
 import re
 import numpy as np
 import subprocess
-from subprocess import check_output
 
 try:
     import pandas
@@ -53,7 +52,7 @@ def getSequenceProfile(sequence, hhblits, hhblitsdb, ncpu=6, niter=4):
             fp.write(">\n{}\n".format(sequence))
 
         try:
-            check_output(
+            subprocess.check_output(
                 "{} -i {}/input.fasta -d {} -cpu {} -M first -n {} -ohhm {}/output.hhm -v 0".format(
                     hhblits, tmpdir, hhblitsdb, ncpu, niter, tmpdir
                 ),
