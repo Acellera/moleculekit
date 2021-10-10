@@ -37,7 +37,7 @@ jobs:
 
     - name: Install HTMD conda deps
       run: |
-        conda install -y -q --file extra_requirements.txt -c acellera -c conda-forge
+        conda install -y -q --file extra_requirements.txt python=${{ matrix.python-version }} -c acellera -c conda-forge
 
     - name: Compile cython 
       run: |
