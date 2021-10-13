@@ -374,21 +374,15 @@ def PSFwrite(m, filename, explicitbonds=None):
     print("%8d !NTITLE\n" % (0), file=f)
     print("%8d !NATOM" % (len(m.serial)), file=f)
     for i in range(len(m.serial)):
-        atomtype = (
-            m.atomtype[i] if m.atomtype[i] != "" else "NULL"
-        )  # Write default atomtype otherwise the PSF reader will fail to read correctly the PSF
-
-        segid = available_segids[0]
-        if m.segid[i] != "":
-            segid = m.segid[i]
-        elif m.segid[i] == "" and m.chain[i] != "":
-            segid = m.chain[i]
+        # Defaults. PSF readers will fail if any are empty since it's a space delimited format
+        resname = m.resname[i] if m.resname[i] != "" else "MOL"
+        atomtype = m.atomtype[i] if m.atomtype[i] != "" else "NULL"
 
         string_format = (
             f"{m.serial[i]:>{fs['serial']}} "
             f"{segments[i]:<{fs['segid']}} "
             f"{str(m.resid[i]) + str(m.insertion[i]):<{fs['resid']}} "
-            f"{m.resname[i]:<{fs['resname']}} "
+            f"{resname:<{fs['resname']}} "
             f"{m.name[i]:<{fs['name']}} "
             f"{atomtype:<{fs['atomtype']}} "
             f"{m.charge[i]:>9.6f} "
