@@ -501,29 +501,28 @@ def XSCwrite(mol, filename, frames=None):
         )
 
 
-def MOL2write(mol, filename):
+def MOL2write(mol, filename, explicitbonds=None):
     uqresname = np.unique(mol.resname)
-    if len(uqresname) > 1:
-        raise RuntimeError(
-            f"MOL2 file can only be written for a single residue. We detected {len(uqresname)} resnames in the Molecule."
-        )
+    if len(uqresname) == 1:
+        molname = uqresname[0]
     if len(uqresname[0]) == 0:
-        raise RuntimeError(
-            "MOL2 file can only be written if a resname is defined for the Molecule. Currently the "
-            "resname is empty."
-        )
+        molname = "MOL"
+    else:
+        molname = mol.viewname
+
+    bonds = mol.bonds
+    if explicitbonds is not None:
+        bonds = explicitbonds
 
     with open(filename, "w", encoding="ascii") as f:
         f.write("@<TRIPOS>MOLECULE\n")
-        f.write(f"    {uqresname[0]}\n")
-        unique_bonds = [
-            list(t) for t in set(map(tuple, [sorted(x) for x in mol.bonds]))
-        ]
+        f.write(f"    {molname}\n")
+        unique_bonds = [list(t) for t in set(map(tuple, [sorted(x) for x in bonds]))]
         unique_bonds = np.array(sorted(unique_bonds, key=lambda x: (x[0], x[1])))
         f.write(
             "%5d %5d %5d %5d %5d\n" % (mol.numAtoms, unique_bonds.shape[0], 0, 0, 0)
         )
-        f.write("SMALL\nUSER_CHARGES\n\n\n")
+        f.write("SMALL\nUSER_CHARGES\n\n")
         """
         @<TRIPOS>ATOM
         Each data record associated with this RTI consists of a single data line. This
@@ -564,21 +563,21 @@ def MOL2write(mol, filename):
                 )
             )
             if isinstance(mol.resid[i], numbers.Integral):
-                f.write("{:3d} ".format(mol.resid[i]))
+                f.write(f"{mol.resid[i]} ")
                 if mol.resname[i] != "":
-                    f.write("{:4s} ".format(mol.resname[i]))
+                    f.write(f"{mol.resname[i]}{mol.resid[i]:<d} ")
                     if isinstance(mol.charge[i], numbers.Real):
-                        f.write("{:12.6f}".format(mol.charge[i]))
+                        f.write("{:12.4f}".format(mol.charge[i]))
             f.write("\n")
         f.write("@<TRIPOS>BOND\n")
         for i in range(unique_bonds.shape[0]):
             bt = "un"
-            if len(mol.bondtype) > 0:
-                idx = (mol.bonds[:, 0] == unique_bonds[i, 0]) & (
-                    mol.bonds[:, 1] == unique_bonds[i, 1]
+            if len(mol.bondtype) == bonds.shape[0]:
+                idx = (bonds[:, 0] == unique_bonds[i, 0]) & (
+                    bonds[:, 1] == unique_bonds[i, 1]
                 )
-                idx |= (mol.bonds[:, 0] == unique_bonds[i, 1]) & (
-                    mol.bonds[:, 1] == unique_bonds[i, 0]
+                idx |= (bonds[:, 0] == unique_bonds[i, 1]) & (
+                    bonds[:, 1] == unique_bonds[i, 0]
                 )
                 tmp = np.unique(mol.bondtype[idx])
                 assert (
