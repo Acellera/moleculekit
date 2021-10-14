@@ -505,7 +505,7 @@ def MOL2write(mol, filename, explicitbonds=None):
     uqresname = np.unique(mol.resname)
     if len(uqresname) == 1:
         molname = uqresname[0]
-    if len(uqresname[0]) == 0:
+    elif len(uqresname[0]) == 0:
         molname = "MOL"
     else:
         molname = mol.viewname
