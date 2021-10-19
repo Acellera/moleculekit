@@ -113,7 +113,7 @@ def areLigandsDocked(prot_file, sdf_file, threshold=10, max_check=None):
     return len(not_docked) == 0, not_docked
 
 
-def areLigandsOptimized(sdf_file, num_planes=3, max_check=None):
+def areLigandsOptimized(sdf_file, max_check=None):
     from moleculekit.smallmol.smallmollib import SmallMolLib
 
     not_optimized = []
@@ -124,7 +124,7 @@ def areLigandsOptimized(sdf_file, num_planes=3, max_check=None):
         ligname = lig.ligname
         lig = lig.toMolecule()
 
-        if not isLigandOptimized(lig, num_planes=num_planes):
+        if not isLigandOptimized(lig):
             not_optimized.append(ligname)
 
     return len(not_optimized) == 0, not_optimized
