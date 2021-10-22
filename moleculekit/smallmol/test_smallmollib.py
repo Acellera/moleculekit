@@ -148,35 +148,6 @@ class _TestSmallMol(unittest.TestCase):
             ligname_99, ref_ligname, msg="The ligand name found is not the expected one"
         )
 
-    @unittest.skipIf(
-        rdkit.__version__ == "2019.03.4", "new rdkit versions break 2D depiction"
-    )
-    def test_depict(self):
-        import IPython
-
-        refimg = os.path.join(self.dataDir, "sdf.svg")
-        sdffile = os.path.join(self.dataDir, "fda_drugs_light.sdf")
-
-        lib = SmallMolLib(sdffile)
-
-        img_name = NamedTemporaryFile().name + ".svg"
-        lib.depict(sketch=True, filename=img_name)
-        _img = lib.depict(sketch=True, ipython=True)
-
-        refimg_size = os.path.getsize(refimg)
-        sm_img_size = os.path.getsize(img_name)
-
-        self.assertIsInstance(
-            _img,
-            IPython.core.display.SVG,
-            msg="The object is not an IPython image as expected",
-        )
-        self.assertEqual(
-            sm_img_size,
-            refimg_size,
-            msg="The svg image does not have the same size of the reference",
-        )
-
     def test_writeSmiles(self):
         sdffile = os.path.join(self.dataDir, "fda_drugs_light.sdf")
 
