@@ -1747,7 +1747,10 @@ def MDTRAJread(filename, frame=None, topoloc=None):
 
     traj = md.load(filename, top=topoloc)
     coords = np.swapaxes(np.swapaxes(traj.xyz, 0, 1), 1, 2) * 10
-    step = traj.time / traj.timestep
+    try:
+        step = traj.time / traj.timestep
+    except Exception:
+        step = [0]
     time = traj.time * 1000  # need to go from picoseconds to femtoseconds
 
     if traj.unitcell_lengths is None:

@@ -1,6 +1,5 @@
 numpy>=1.17
 scipy
-numba
 pandas>=1.1.2
 networkx
 tqdm
