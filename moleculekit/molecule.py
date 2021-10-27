@@ -141,6 +141,8 @@ class Molecule(object):
         The mass of each atom.
     atomtype : np.ndarray
         The atom type of each atom.
+    formal_charge : np.ndarray
+        The formal charge of each atom
 
     coords : np.ndarray
         A float32 array with shape (natoms, 3, nframes) containing the coordinates of the Molecule.
@@ -194,6 +196,7 @@ class Molecule(object):
         "charge",
         "masses",
         "atomtype",
+        "formal_charge",
     )
     _connectivity_fields = ("bonds", "bondtype", "angles", "dihedrals", "impropers")
     _topo_fields = tuple(
@@ -226,6 +229,7 @@ class Molecule(object):
         "masses": np.float32,
         "box": np.float32,
         "boxangles": np.float32,
+        "formal_charge": np.int32,
     }
 
     _dims = {
@@ -252,6 +256,7 @@ class Molecule(object):
         "masses": (0,),
         "box": (3, 0),
         "boxangles": (3, 0),
+        "formal_charge": (0,),
     }
 
     def __init__(self, filename=None, name=None, **kwargs):
@@ -1056,7 +1061,6 @@ class Molecule(object):
             _MDTRAJ_TRAJECTORY_EXTS,
             _ALL_READERS,
             FormatError,
-            _TRAJECTORY_READERS,
         )
 
         # If a single filename is specified, turn it into an array so we can iterate

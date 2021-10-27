@@ -569,6 +569,13 @@ def MOL2write(mol, filename, explicitbonds=None):
                     if isinstance(mol.charge[i], numbers.Real):
                         f.write("{:12.4f}".format(mol.charge[i]))
             f.write("\n")
+
+        if np.any(mol.formal_charge != 0):
+            f.write("@<TRIPOS>UNITY_ATOM_ATTR\n")
+            idx = np.where(mol.formal_charge != 0)[0]
+            for i in idx:
+                f.write(f"{i+1} 1\ncharge {mol.formal_charge[i]}\n")
+
         f.write("@<TRIPOS>BOND\n")
         for i in range(unique_bonds.shape[0]):
             bt = "un"
@@ -585,7 +592,7 @@ def MOL2write(mol, filename, explicitbonds=None):
                 ), f"There should only exist one bond type for atoms {unique_bonds[i, 0]} {unique_bonds[i, 1]}"
                 bt = tmp[0]
             f.write(
-                "{:6d} {:4d} {:4d} {}\n".format(
+                "{:6d} {:5d} {:5d} {:>4s}\n".format(
                     i + 1, unique_bonds[i, 0] + 1, unique_bonds[i, 1] + 1, bt
                 )
             )
@@ -595,7 +602,6 @@ def SDFwrite(mol, filename):
     import datetime
 
     mol2bonds = {"1": 1, "2": 2, "3": 3, "ar": 4, "4": 4}
-    chargemap = {-3: 7, -2: 6, -1: 5, 0: 0, 1: 3, 2: 2, 3: 1}
     with open(filename, "w", encoding="ascii") as fh:
         fh.write(f"{mol.viewname}\n")
         currtime = datetime.datetime.now().strftime("%m%d%y%H%M")
@@ -612,10 +618,8 @@ def SDFwrite(mol, filename):
             if element == "":
                 element = mol.name[i]
 
-            charge = 0
-            if mol.charge[i] != 0 and mol.charge[i] in chargemap:
-                charge = chargemap[mol.charge[i]]
-                charges.append([i + 1, int(mol.charge[i])])
+            if mol.formal_charge[i] != 0:
+                charges.append([i + 1, int(mol.formal_charge[i])])
 
             fh.write(
                 f"{coor[i, 0]:>10.4f}{coor[i, 1]:>10.4f}{coor[i, 2]:>10.4f} {element:<2}  0  0  0  0  0  0  0  0  0  0  0  0\n"
