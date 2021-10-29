@@ -570,11 +570,12 @@ def MOL2write(mol, filename, explicitbonds=None):
                         f.write("{:12.4f}".format(mol.charge[i]))
             f.write("\n")
 
-        if np.any(mol.formal_charge != 0):
-            f.write("@<TRIPOS>UNITY_ATOM_ATTR\n")
-            idx = np.where(mol.formal_charge != 0)[0]
-            for i in idx:
-                f.write(f"{i+1} 1\ncharge {mol.formal_charge[i]}\n")
+        # # Disabled because RDKit has issues with this section
+        # if np.any(mol.formalcharge != 0):
+        #     f.write("@<TRIPOS>UNITY_ATOM_ATTR\n")
+        #     idx = np.where(mol.formalcharge != 0)[0]
+        #     for i in idx:
+        #         f.write(f"{i+1} 1\ncharge {mol.formalcharge[i]}\n")
 
         f.write("@<TRIPOS>BOND\n")
         for i in range(unique_bonds.shape[0]):
@@ -618,8 +619,8 @@ def SDFwrite(mol, filename):
             if element == "":
                 element = mol.name[i]
 
-            if mol.formal_charge[i] != 0:
-                charges.append([i + 1, int(mol.formal_charge[i])])
+            if mol.formalcharge[i] != 0:
+                charges.append([i + 1, int(mol.formalcharge[i])])
 
             fh.write(
                 f"{coor[i, 0]:>10.4f}{coor[i, 1]:>10.4f}{coor[i, 2]:>10.4f} {element:<2}  0  0  0  0  0  0  0  0  0  0  0  0\n"

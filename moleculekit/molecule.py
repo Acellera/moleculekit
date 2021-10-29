@@ -141,7 +141,7 @@ class Molecule(object):
         The mass of each atom.
     atomtype : np.ndarray
         The atom type of each atom.
-    formal_charge : np.ndarray
+    formalcharge : np.ndarray
         The formal charge of each atom
 
     coords : np.ndarray
@@ -196,7 +196,7 @@ class Molecule(object):
         "charge",
         "masses",
         "atomtype",
-        "formal_charge",
+        "formalcharge",
     )
     _connectivity_fields = ("bonds", "bondtype", "angles", "dihedrals", "impropers")
     _topo_fields = tuple(
@@ -229,7 +229,7 @@ class Molecule(object):
         "masses": np.float32,
         "box": np.float32,
         "boxangles": np.float32,
-        "formal_charge": np.int32,
+        "formalcharge": np.int32,
     }
 
     _dims = {
@@ -256,7 +256,7 @@ class Molecule(object):
         "masses": (0,),
         "box": (3, 0),
         "boxangles": (3, 0),
-        "formal_charge": (0,),
+        "formalcharge": (0,),
     }
 
     def __init__(self, filename=None, name=None, **kwargs):

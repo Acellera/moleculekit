@@ -72,7 +72,7 @@ class Topology(object):
         self.impropers = []
         self.atomtype = []
         self.bondtype = []
-        self.formal_charge = []
+        self.formalcharge = []
         self.crystalinfo = None
 
         if pandasdata is not None:
@@ -553,7 +553,7 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
                 topo.name.append(pieces[1])
                 coords.append([float(x) for x in pieces[2:5]])
                 topo.atomtype.append(pieces[5])
-                topo.formal_charge.append(0)
+                topo.formalcharge.append(0)
                 if len(pieces) > 6:
                     topo.resid.append(int(pieces[6]))
                 if len(pieces) > 7:
@@ -584,9 +584,9 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
                     atom_attr_idx, atom_attr_num = map(int, line.strip().split())
                     continue
                 if line.startswith("charge"):
-                    formal_charge = int(line.strip().split()[-1])
+                    formalcharge = int(line.strip().split()[-1])
                     idx = topo.serial.index(atom_attr_idx)
-                    topo.formal_charge[idx] = formal_charge
+                    topo.formalcharge[idx] = formalcharge
                 atom_attr_num -= 1
 
     trajectories = []
@@ -2176,7 +2176,7 @@ def SDFread(filename, frame=None, topoloc=None):
             topo.element.append(atom_symbol)
             topo.name.append(atom_symbol)
             topo.serial.append(n-coord_start)
-            topo.formal_charge.append(chargemap[line[36:39].strip()])
+            topo.formalcharge.append(chargemap[line[36:39].strip()])
 
         for n in range(bond_start, bond_end):
             line = lines[n]
@@ -2192,7 +2192,7 @@ def SDFread(filename, frame=None, topoloc=None):
             if line.startswith("M  CHG"):  # These charges are more correct
                 pairs = line.strip().split()[3:]
                 for cc in range(0, len(pairs), 2):
-                    topo.formal_charge[int(pairs[cc])-1] = int(pairs[cc+1])
+                    topo.formalcharge[int(pairs[cc])-1] = int(pairs[cc+1])
             
     traj = Trajectory(coords=np.vstack(coords))
     return MolFactory.construct(topo, traj, filename, frame)
@@ -2323,7 +2323,7 @@ class _TestReaders(unittest.TestCase):
         assert np.all(mol.name == mol.element)
         assert np.array_equal(mol.element, ref_data["element"])
         assert np.array_equal(mol.coords, ref_data["coords"])
-        assert np.array_equal(mol.formal_charge, ref_data["formal_charge"])
+        assert np.array_equal(mol.formalcharge, ref_data["formalcharge"])
         assert np.array_equal(mol.bonds, ref_data["bonds"])
         assert np.array_equal(mol.bondtype, ref_data["bondtype"])
 
@@ -2337,7 +2337,7 @@ class _TestReaders(unittest.TestCase):
         assert np.all(mol.name == mol.element)
         assert np.array_equal(mol.element, ref_data["element"])
         assert np.array_equal(mol.coords, ref_data["coords"])
-        assert np.array_equal(mol.formal_charge, ref_data["formal_charge"])
+        assert np.array_equal(mol.formalcharge, ref_data["formalcharge"])
         assert np.array_equal(mol.bonds, ref_data["bonds"])
         assert np.array_equal(mol.bondtype, ref_data["bondtype"])
 

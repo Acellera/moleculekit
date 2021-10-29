@@ -217,7 +217,7 @@ class _TestSmallMol(unittest.TestCase):
         from moleculekit.molecule import mol_equal
 
         sm = SmallMol(self.benzamidine_mol2)
-        mol = sm.toMolecule(formalcharges=False)
+        mol = sm.toMolecule()
 
         assert mol_equal(sm, mol, exceptFields=["serial", "name"], _logger=False)
 
@@ -227,7 +227,9 @@ class _TestSmallMol(unittest.TestCase):
         mol = Molecule(self.benzamidine_mol2)
         sm = SmallMol(mol)
 
-        assert mol_equal(sm, mol, exceptFields=["serial", "name"], _logger=False)
+        assert mol_equal(
+            sm, mol, exceptFields=["serial", "name", "formalcharge"], _logger=False
+        )
 
         mol = Molecule(self.indole_mol2)
         sm = SmallMol(mol, force_reading=True)

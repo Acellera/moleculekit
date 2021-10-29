@@ -839,14 +839,12 @@ class SmallMol(object):
             mol.write(tmpmol2)
             return tmpmol2
 
-    def toMolecule(self, formalcharges=False, ids=None):
+    def toMolecule(self, ids=None):
         """
         Return the moleculekit.molecule.Molecule
 
         Parameters
         ----------
-        formalcharges: bool
-            If True,the formal charges are used instead of partial ones
         ids: list
             The list of conformer ids to store in the moleculekit Molecule object- If None, all are returned
             Default: None
@@ -880,10 +878,8 @@ class SmallMol(object):
         mol.coords = self._coords[:, :, ids]
         mol.name[:] = self._name
         mol.element[:] = self._element
-        if formalcharges:
-            mol.charge[:] = self._formalcharge
-        else:
-            mol.charge[:] = self._charge
+        mol.formalcharge[:] = self._formalcharge
+        mol.charge[:] = self._charge
         mol.box = np.zeros((3, self.numFrames), dtype=np.float32)
         mol.viewname = self.ligname
         mol.bonds = self._bonds

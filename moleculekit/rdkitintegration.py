@@ -63,7 +63,7 @@ def toRDKITmol(mol, protidx, sanitize=True, removeHs=False):
     atomlist = []
     for ii, i in enumerate(protidx):
         a = Chem.Atom(mol.element[i])
-        a.SetFormalCharge(int(mol.charge[i]))
+        a.SetFormalCharge(int(mol.formalcharge[i]))
         info = Chem.AtomPDBResidueInfo(
             atomName=mol.name[i],
             serialNumber=int(mol.serial[i]),
