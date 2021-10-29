@@ -542,7 +542,8 @@ def proteinPrepare(
     if force_protonation is not None:
         # Re-run pdb2pqr without titration and forcing specific residues to user-defined protomers
         for sel, resn in force_protonation:
-            mol_out.mutateResidue(sel, resn)
+            mol_out.remove(sel + " and hydrogen")
+            mol_out.set("resname", resn, sel=sel)
 
         return proteinPrepare(
             mol_out,
