@@ -148,7 +148,6 @@ def vmdselection(
     ll = natoms * nframes
     c_output_buffer = (ct.c_int * ll)()
 
-    lenv = natoms * 3 * nframes
     c_coords = coordinates.ctypes.data_as(ct.POINTER(ct.c_float))
 
     retval = parser.atomselect(

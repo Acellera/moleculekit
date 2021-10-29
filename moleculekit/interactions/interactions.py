@@ -236,6 +236,9 @@ def hbonds_calculate(
 ):
     from moleculekit.interactions import hbonds
 
+    if mol.box.shape[1] != mol.coords.shape[2]:
+        raise RuntimeError("mol.box should have same number of frames as mol.coords")
+
     if len(donors) == 0 or len(acceptors) == 0:
         return [[] for _ in range(mol.numFrames)]
 
@@ -453,10 +456,15 @@ def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
     sel2 = np.where(sel2)[0]
 
     salt_bridge_list = []
+    triui = np.triu_indices(len(sel1), k=1)
     for f in range(mol.numFrames):
         idx = np.where(dists[f] < threshold)[0]
-        sel1_sub = sel1[(idx % len(sel1)).astype(int)]
-        sel2_sub = sel2[(idx / len(sel1)).astype(int)]
+        if np.array_equal(sel1, sel2):
+            sel1_sub = sel1[triui[0][idx]]
+            sel2_sub = sel2[triui[1][idx]]
+        else:
+            sel1_sub = sel1[(idx / len(sel2)).astype(int)]
+            sel2_sub = sel2[(idx % len(sel2)).astype(int)]
         inter = np.vstack((sel1_sub, sel2_sub)).T
         # Should only have one positive per row (the other is necessarily negative)
         opposite_charges = np.sum(np.isin(inter, pos), axis=1) == 1
@@ -567,6 +575,7 @@ class _TestInteractions(unittest.TestCase):
         # TODO: Add check if bonds exist in molecule! Add it to moleculechecks
         mol.bonds = mol._guessBonds()
         mol.coords = np.tile(mol.coords, (1, 1, 2)).copy()  # Fake second frame
+        mol.box = np.tile(mol.box, (1, 2)).copy()
         donors, acceptors = get_donors_acceptors(
             mol, exclude_water=True, exclude_backbone=False
         )
@@ -649,8 +658,6 @@ class _TestInteractions(unittest.TestCase):
         from moleculekit.smallmol.smallmol import SmallMol
         import os
 
-        # 3ptb 5tvn 5l87
-
         prot = os.path.join(home(dataDir="test-interactions"), "3PTB_prepared.pdb")
         lig = os.path.join(home(dataDir="test-interactions"), "3PTB_BEN.sdf")
 
@@ -672,6 +679,16 @@ class _TestInteractions(unittest.TestCase):
 
         ref_bridge = np.array([[2470, 3414]])
         assert np.array_equal(bridges[0], ref_bridge)
+
+        prot = os.path.join(home(dataDir="test-interactions"), "5ME6_prepared.pdb")
+        mol = Molecule(prot)
+        prot_pos, prot_neg = get_protein_charged(mol)
+
+        bridges = saltbridge_calculate(mol, prot_pos, prot_neg, "protein", "protein")
+        expected = np.array([[694, 725], [2146, 2183], [2158, 2346]])
+        assert np.array_equal(
+            expected, bridges[0]
+        ), f"Failed test_salt_bridge test due to bridges: {expected} {bridges[0]}"
 
     def test_cationpi_protein(self):
         from moleculekit.home import home

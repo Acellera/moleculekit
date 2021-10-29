@@ -109,14 +109,18 @@ def dock(
 
         vinaexe = shutil.which(vinaexe, mode=os.X_OK)
         if not vinaexe:
-            raise RuntimeError("Could not find vina, or no execute permissions are given")
+            raise RuntimeError(
+                "Could not find vina, or no execute permissions are given"
+            )
     except:
         raise RuntimeError("Could not find vina, or no execute permissions are given")
 
     try:
         babelexe = shutil.which(babelexe, mode=os.X_OK)
         if babelexe is None:
-            raise RuntimeError("Could not find babel, or no execute permissions are given")
+            raise RuntimeError(
+                "Could not find babel, or no execute permissions are given"
+            )
     except:
         raise RuntimeError("Could not find babel, or no execute permissions are given")
 

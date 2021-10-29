@@ -9,7 +9,6 @@ from copy import deepcopy
 from os import path
 import logging
 import os
-import abc
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +141,8 @@ class Molecule(object):
         The mass of each atom.
     atomtype : np.ndarray
         The atom type of each atom.
+    formalcharge : np.ndarray
+        The formal charge of each atom
 
     coords : np.ndarray
         A float32 array with shape (natoms, 3, nframes) containing the coordinates of the Molecule.
@@ -195,6 +196,7 @@ class Molecule(object):
         "charge",
         "masses",
         "atomtype",
+        "formalcharge",
     )
     _connectivity_fields = ("bonds", "bondtype", "angles", "dihedrals", "impropers")
     _topo_fields = tuple(
@@ -227,6 +229,7 @@ class Molecule(object):
         "masses": np.float32,
         "box": np.float32,
         "boxangles": np.float32,
+        "formalcharge": np.int32,
     }
 
     _dims = {
@@ -253,6 +256,7 @@ class Molecule(object):
         "masses": (0,),
         "box": (3, 0),
         "boxangles": (3, 0),
+        "formalcharge": (0,),
     }
 
     def __init__(self, filename=None, name=None, **kwargs):
@@ -1057,7 +1061,6 @@ class Molecule(object):
             _MDTRAJ_TRAJECTORY_EXTS,
             _ALL_READERS,
             FormatError,
-            _TRAJECTORY_READERS,
         )
 
         # If a single filename is specified, turn it into an array so we can iterate
@@ -1874,6 +1877,16 @@ class Molecule(object):
         """
         from moleculekit.util import tempname
 
+        if viewer is None:
+            try:
+                from htmd.config import _config
+
+                viewer = _config["viewer"]
+            except Exception:
+                from moleculekit.config import _config
+
+                viewer = _config["viewer"]
+
         if self.numFrames == 0:
             raise RuntimeError("No frames in this molecule to visualize.")
 
@@ -1887,58 +1900,44 @@ class Molecule(object):
         if guessBonds:
             bonds = self._getBonds()
 
-        # Write out PSF and XTC files
-        pdb = None
-        psf = tempname(suffix=".psf")
-        self.write(psf, explicitbonds=bonds)
-
-        xtc = tempname(suffix=".xtc")
-        self.write(xtc)
-
         # Call the specified backend
         retval = None
-        if viewer is None:
-            try:
-                from htmd.config import _config
-
-                viewer = _config["viewer"]
-            except:
-                from moleculekit.config import _config
-
-                viewer = _config["viewer"]
         if viewer.lower() == "vmd":
+            psf = tempname(suffix=".psf")
+            self.write(psf, explicitbonds=bonds)
+            xtc = tempname(suffix=".xtc")
+            self.write(xtc)
             pdb = tempname(suffix=".pdb")
             self.write(pdb, writebonds=False)
             self._viewVMD(psf, pdb, xtc, viewerhandle, name, guessBonds)
+            os.remove(xtc)
+            os.remove(psf)
+            os.remove(pdb)
         elif viewer.lower() == "ngl" or viewer.lower() == "webgl":
             retval = self._viewNGL(gui=gui)
         elif viewer.lower() == "pymol":
-            self._viewPymol(psf, xtc)
-        else:
+            mol2 = tempname(suffix=".mol2")
+            self.write(mol2, explicitbonds=bonds)
+            xtc = tempname(suffix=".xtc")
+            self.write(xtc)
+            self._viewPymol(mol2, xtc)
             os.remove(xtc)
-            os.remove(psf)
-            if pdb is not None:
-                os.remove(pdb)
+            os.remove(mol2)
+        else:
             raise ValueError("Unknown viewer.")
 
-        # Remove temporary files
-        os.remove(xtc)
-        os.remove(psf)
-        if pdb is not None:
-            os.remove(pdb)
         if retval is not None:
             return retval
 
-    def _viewPymol(self, psf, xtc):
+    def _viewPymol(self, mol2, xtc):
         from pymol import cmd
-        import time
         from moleculekit.pymolviewer import getCurrentViewer
         import uuid
 
         getCurrentViewer()
         viewname = f"{self.viewname}_{uuid.uuid4().hex[:6].upper()}"
-        cmd.load(psf, viewname)
-        cmd.load(xtc, viewname)
+        cmd.load(mol2, viewname)
+        cmd.load_traj(xtc, viewname, state=1)
         cmd.dss()  # Guess SS
 
     def _viewVMD(self, psf, pdb, xtc, vhandle, name, guessbonds):
@@ -1952,7 +1951,6 @@ class Molecule(object):
         if guessbonds:
             vhandle.send("mol new " + pdb)
             vhandle.send("mol addfile " + psf)
-
         else:
             vhandle.send("mol new " + pdb + " autobonds off")
             vhandle.send("mol addfile " + psf + " autobonds off")

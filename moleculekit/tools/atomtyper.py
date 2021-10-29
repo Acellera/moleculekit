@@ -5,6 +5,7 @@
 #
 import numpy as np
 import logging
+import unittest
 
 
 logger = logging.getLogger(__name__)
@@ -81,7 +82,7 @@ def getPDBQTAtomType(atype, aidx, mol, aromaticNitrogen=False):
         # print(np.where(mol.bonds == aidx))
         try:
             bond = np.where(mol.bonds == aidx)[0][0]
-        except Exception as e:
+        except Exception:
             raise RuntimeError(
                 f"Could not atomtype hydrogen atom with index {aidx} due to no bonding partners."
             )
@@ -454,9 +455,6 @@ def parallel(func, listobj, n_cpus=-1, *args):
     return results
 
 
-import unittest
-
-
 class _TestAtomTyper(unittest.TestCase):
     def test_preparation(self):
         from moleculekit.home import home
@@ -473,7 +471,7 @@ class _TestAtomTyper(unittest.TestCase):
 
     def test_obabel_atomtyping(self):
         from moleculekit.home import home
-        from moleculekit.molecule import Molecule, mol_equal
+        from moleculekit.molecule import Molecule
         from os import path
 
         mol = Molecule(path.join(home(dataDir="test-voxeldescriptors"), "3K4X.pdb"))

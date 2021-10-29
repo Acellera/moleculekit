@@ -8,9 +8,7 @@ import numpy as np
 import ctypes
 import moleculekit.home
 import os
-from numba import cuda, jit
-import numba
-from math import sqrt, exp
+import unittest
 from functools import lru_cache
 import logging
 
@@ -51,7 +49,6 @@ def viewVoxelFeatures(
     >>> viewVoxelFeatures(feats, centers, N)
     """
     from moleculekit.vmdgraphics import VMDIsosurface
-    from moleculekit.vmdviewer import getCurrentViewer
 
     if voxelsize is None:
         voxelsize = abs(centers[0, 2] - centers[1, 2])
@@ -224,8 +221,6 @@ def getVoxelDescriptors(
         of passing a `mol` object (set it to None if that's the case).
     aromaticNitrogen : bool
         Set to True if you want nitrogens in aromatic rings to be added to the aromatic channel.
-    method : str
-        Voxel descriptors can be calculated either with our C implementation or CUDA or NUMBA implementations.
     version : int
         Setting version to 1 will use the old voxelization code which requires you to first obtain pdbqt atom types for the protein.
         By default it uses version 2 which does the atom typing internally.
@@ -282,10 +277,10 @@ def getVoxelDescriptors(
     # Calculate features
     if method.upper() == "C":
         features = _getOccupancyC(coords, centers.copy(), channels)
-    elif method.upper() == "CUDA":
-        features = _getOccupancyCUDA(coords, centers, channels)
-    elif method.upper() == "NUMBA":
-        features = _getOccupancyNUMBA(coords, centers, channels, 5)
+    else:
+        raise RuntimeError(
+            "As of moleculekit 0.9.2 we only support C implementation of voxelization"
+        )
 
     if nvoxels is None:
         return features, centers
@@ -441,7 +436,7 @@ def _findDonors(mol, bonds):
 
 
 def _getOccupancyC(coords, centers, channelsigmas):
-    """ Calls the C code to calculate the voxels values for each property."""
+    """Calls the C code to calculate the voxels values for each property."""
     coords = coords.astype(np.float32)
     centers = centers.astype(np.float64)
     channelsigmas = channelsigmas.astype(np.float64)
@@ -466,119 +461,6 @@ def _getOccupancyC(coords, centers, channelsigmas):
         ctypes.c_int(nchannels),
     )  # n of channels
     return occus
-
-
-@jit("float64[:,:](float32[:,:], float64[:,:], float64[:,:], float64)", nopython=True)
-def _getOccupancyNUMBA(coords, centers, channelsigmas, trunc):
-    ncenters = centers.shape[0]
-    natoms = coords.shape[0]
-    nchannels = channelsigmas.shape[1]
-    trunc = trunc * trunc  # Since we calculate the d**2 we need to get trunc**2
-    occus = np.zeros((ncenters, nchannels))
-    for a in range(natoms):
-        coo = coords[a, :]
-        atomsigmas = channelsigmas[a, :]
-
-        for c in range(ncenters):
-            cent = centers[c, :]
-            d = np.zeros(3)
-            d[0] = coo[0] - cent[0]
-            d[1] = coo[1] - cent[1]
-            d[2] = coo[2] - cent[2]
-            d2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2]
-            if d2 < trunc:
-                d1 = 1 / sqrt(d2)
-                for h in range(nchannels):
-                    if atomsigmas[h] == 0:
-                        continue
-                    x = atomsigmas[h] * d1
-                    x3 = x * x * x
-                    x12 = x3 * x3 * x3 * x3
-                    value = 1 - exp(-x12)
-                    occus[c, h] = max(occus[c, h], value)
-    return occus
-
-
-def _memsetArray(array, val=0, threadsperblock=256):
-    from math import ceil
-
-    totalelem = np.prod(array.shape)
-    nblocks = ceil(totalelem / threadsperblock)
-    _memsetArrayCUDAkernel[nblocks, threadsperblock](array.reshape(totalelem), val)
-
-
-@cuda.jit
-def _memsetArrayCUDAkernel(array, val):
-    threadidx = cuda.threadIdx.x + (cuda.blockDim.x * cuda.blockIdx.x)
-    if threadidx >= array.shape[0]:
-        return
-    array[threadidx] = val
-
-
-def _getOccupancyCUDA(
-    coords,
-    centers,
-    channelsigmas,
-    trunc=5,
-    device=0,
-    resD=None,
-    asnumpy=True,
-    threadsperblock=256,
-):
-    # cuda.select_device(device)
-    if resD is None:
-        resD = cuda.device_array(
-            (centers.shape[0], channelsigmas.shape[1]), dtype=np.float32
-        )
-    _memsetArray(resD, val=0)
-
-    natomblocks = int(np.ceil(coords.shape[0] / threadsperblock))
-    blockspergrid = (centers.shape[0], natomblocks)
-
-    centers = cuda.to_device(centers)
-    coords = cuda.to_device(coords)
-    channelsigmas = cuda.to_device(channelsigmas)
-    _getOccupancyCUDAkernel[blockspergrid, threadsperblock](
-        resD, coords, centers, channelsigmas, trunc * trunc
-    )
-
-    if asnumpy:
-        return resD.copy_to_host()
-
-
-@cuda.jit
-def _getOccupancyCUDAkernel(occus, coords, centers, channelsigmas, trunc):
-    centeridx = cuda.blockIdx.x
-    blockidx = cuda.blockIdx.y
-    atomidx = cuda.threadIdx.x + (cuda.blockDim.x * blockidx)
-
-    if atomidx >= coords.shape[0] or centeridx >= centers.shape[0]:
-        return
-
-    # TODO: Can remove this. Barely any speedup
-    centcoor = cuda.shared.array(shape=(3), dtype=numba.float32)
-    centcoor[0] = centers[centeridx, 0]
-    centcoor[1] = centers[centeridx, 1]
-    centcoor[2] = centers[centeridx, 2]
-    cuda.syncthreads()
-
-    dx = coords[atomidx, 0] - centcoor[0]
-    dy = coords[atomidx, 1] - centcoor[1]
-    dz = coords[atomidx, 2] - centcoor[2]
-    d2 = dx * dx + dy * dy + dz * dz
-    if d2 >= trunc:
-        return
-
-    d1 = 1 / sqrt(d2)
-    for h in range(channelsigmas.shape[1]):
-        if channelsigmas[atomidx, h] == 0:
-            continue
-        x = channelsigmas[atomidx, h] * d1
-        value = 1 - exp(-(x ** 12))
-        cuda.atomic.max(occus, (centeridx, h), value)
-
-
-import unittest
 
 
 class _TestVoxel(unittest.TestCase):
@@ -653,38 +535,6 @@ class _TestVoxel(unittest.TestCase):
         assert np.allclose(features, reffeatures)
         assert np.array_equal(centers, refcenters)
         assert np.array_equal(nvoxels, refnvoxels)
-
-    def test_featNUMBA(self):
-        features, centers, nvoxels = getVoxelDescriptors(
-            self.mol, method="NUMBA", version=2
-        )
-        reffeatures, refcenters, refnvoxels = np.load(
-            os.path.join(self.testf, "3PTB_voxres.npy"), allow_pickle=True
-        )
-        assert np.allclose(features, reffeatures)
-        assert np.array_equal(centers, refcenters)
-        assert np.array_equal(nvoxels, refnvoxels)
-
-    def test_compare_c_numba(self):
-        import numpy as np
-
-        centers = np.load(
-            os.path.join(self.testf, "3PTB_centers_inp.npy"), allow_pickle=True
-        )
-        coords = np.load(
-            os.path.join(self.testf, "3PTB_coords_inp.npy"), allow_pickle=True
-        )
-        sigmas = np.load(
-            os.path.join(self.testf, "3PTB_channels_inp.npy"), allow_pickle=True
-        )
-        centers = centers[::10, :].copy()
-
-        res_C = _getOccupancyC(coords, centers, sigmas)
-        # res_cuda = _getOccupancyCUDA(coords, centers, sigmas, 5)
-        res_numba = _getOccupancyNUMBA(coords, centers, sigmas, 5)
-
-        # assert np.abs(res_C - res_cuda).max() < 1e-4
-        assert np.abs(res_C - res_numba).max() < 1e-4
 
     def test_channels_with_metals(self):
         from moleculekit.home import home

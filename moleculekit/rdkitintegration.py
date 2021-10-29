@@ -2,14 +2,10 @@ try:
     import rdkit
 except ImportError as e:
     raise ImportError(
-        "{}. You are probably missing the rdkit package. Please install it to support rdkit integration "
-        "features".format(e)
+        f"{e}. You are probably missing the rdkit package. Please install it to support rdkit integration features"
     )
 from rdkit import Chem
-from rdkit.Chem import ChemicalFeatures
-from rdkit import RDConfig
 from rdkit.Geometry import Point3D
-import os
 import numpy as np
 
 
@@ -67,7 +63,7 @@ def toRDKITmol(mol, protidx, sanitize=True, removeHs=False):
     atomlist = []
     for ii, i in enumerate(protidx):
         a = Chem.Atom(mol.element[i])
-        a.SetFormalCharge(int(mol.charge[i]))
+        a.SetFormalCharge(int(mol.formalcharge[i]))
         info = Chem.AtomPDBResidueInfo(
             atomName=mol.name[i],
             serialNumber=int(mol.serial[i]),
@@ -122,21 +118,3 @@ def toRDKITmol(mol, protidx, sanitize=True, removeHs=False):
     StandardPDBResidueChirality(rdmol)
 
     return rdmol
-
-
-if __name__ == "__main__":
-    from moleculekit.molecule import Molecule
-
-    mol = Molecule("3PTB")
-    mol.filter("resname BEN")
-    res = _convertMoleculeToRDKitMol(mol)
-    assert res is not None
-
-    # # We don't use this yet. It's experimental. So no point in wasting time testing it.
-    # protidx = mol.atomselect('protein', indexes=True)
-
-    # rdmol = toRDKITmol(mol, protidx)
-
-    # fdefName = os.path.join(RDConfig.RDDataDir,'BaseFeatures.fdef')
-    # factory = ChemicalFeatures.BuildFeatureFactory(fdefName)
-    # feats = factory.GetFeaturesForMol(rdmol)

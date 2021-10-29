@@ -1,0 +1,119 @@
+name: Test code and publish package
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.6", "3.7", "3.8", "3.9"]
+
+    defaults: # Needed for conda
+      run:
+        shell: bash -l {0}
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        lfs: true
+        submodules: true
+
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
+
+    - name: Lint with flake8
+      run: |
+        pip install flake8 coverage codecov
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Install HTMD conda deps
+      run: |
+        conda install -y -q --file extra_requirements.txt python=${{ matrix.python-version }} -c acellera -c conda-forge
+
+    - name: Compile cython 
+      run: |
+        pip install "numpy>=1.18.5" "Cython>=0.29.21"
+        export CONDA_PY=${{ matrix.python-version }}
+        python ci/insert_placeholder_values.py
+        pip install .
+        python setup.py build_ext --inplace
+
+    - name: Test
+      run: |
+        coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
+
+  deploypypi:
+    if: startsWith(github.event.ref, 'refs/tags/')
+    needs: test
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.9"]
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        activate-environment: deploy
+        python-version: ${{ matrix.python-version }}
+
+    - name: Build PyPI 📦
+      run: |
+        export TAG_DESCRIBE=$(git describe)
+        export BUILD_VERSION=$(echo $TAG_DESCRIBE | sed 's/-/ /g'  | awk '{print $1}')
+        export CONDA_PY=${{ matrix.python-version }}
+        pip install numpy>=1.18.5 Cython>=0.29.21 build
+        python ci/insert_placeholder_values.py
+        python -m build --sdist --outdir dist/ .
+
+    - name: Publish distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+
+  deploy:
+    if: startsWith(github.event.ref, 'refs/tags/')
+    needs: test
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.6", "3.7", "3.8", "3.9"]
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        activate-environment: deploy
+        python-version: ${{ matrix.python-version }}
+
+    - name: Build moleculekit package
+      shell: bash -l {0}
+      run: |
+        export TAG_DESCRIBE=$(git describe)
+        export BUILD_VERSION=$(echo $TAG_DESCRIBE | sed 's/-/ /g'  | awk '{print $1}')
+        conda install anaconda-client conda-build python=${{ matrix.python-version }}
+        export CONDA_PY=${{ matrix.python-version }}
+        python ci/insert_placeholder_values.py
+        conda build --python ${{ matrix.python-version }} package/moleculekit/ --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload -c acellera -c conda-forge
+
+    - name: Upload to conda
+      shell: bash -l {0}
+      run: |
+        anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ./pkg/*/moleculekit-*.tar.bz2

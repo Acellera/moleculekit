@@ -72,6 +72,7 @@ class Topology(object):
         self.impropers = []
         self.atomtype = []
         self.bondtype = []
+        self.formalcharge = []
         self.crystalinfo = None
 
         if pandasdata is not None:
@@ -523,6 +524,7 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
 
             if line.startswith("@<TRIPOS>MOLECULE"):
                 section = None
+                atom_attr_num = 0
                 molnum += 1
                 if molnum > 1:  # New Molecule, create new topology
                     if singlemol:
@@ -537,6 +539,9 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
             if line.startswith("@<TRIPOS>BOND"):
                 section = "bond"
                 continue
+            if line.startswith("@<TRIPOS>UNITY_ATOM_ATTR"):
+                section = "atom_attr"
+                continue
             if line.startswith("@<TRIPOS>"):  # Skip all other sections
                 section = None
                 continue
@@ -548,6 +553,7 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
                 topo.name.append(pieces[1])
                 coords.append([float(x) for x in pieces[2:5]])
                 topo.atomtype.append(pieces[5])
+                topo.formalcharge.append(0)
                 if len(pieces) > 6:
                     topo.resid.append(int(pieces[6]))
                 if len(pieces) > 7:
@@ -556,12 +562,10 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
                     topo.charge.append(float(pieces[8]))
 
                 element = pieces[5].split(".")[0]
-                if (
-                    element == "Du"
-                ):  # Corina, SYBYL and Tripos dummy atoms. Don't catch Du.C which is a dummy carbon and should be recognized as carbon
-                    topo.name[-1] = "{:<4}".format(
-                        topo.name[-1]
-                    )  # We are using the PDB convention of left aligning the name in 4 spaces to signify ion/metal
+                if element == "Du":
+                    # Corina, SYBYL and Tripos dummy atoms. Don't catch Du.C which is a dummy carbon and should be recognized as carbon
+                    # We are using the PDB convention of left aligning the name in 4 spaces to signify ion/metal
+                    topo.name[-1] = "{:<4}".format(topo.name[-1])
                     topo.element.append("")
                 elif element in periodictable:
                     topo.element.append(element)
@@ -571,12 +575,19 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
                 pieces = line.strip().split()
                 if len(pieces) < 4:
                     raise RuntimeError(
-                        "Less than 4 values encountered in bonds definition in line {}".format(
-                            line
-                        )
+                        f"Less than 4 values encountered in bonds definition in line {line}"
                     )
                 topo.bonds.append([int(pieces[1]) - 1, int(pieces[2]) - 1])
                 topo.bondtype.append(pieces[3])
+            elif section == "atom_attr":
+                if atom_attr_num == 0:
+                    atom_attr_idx, atom_attr_num = map(int, line.strip().split())
+                    continue
+                if line.startswith("charge"):
+                    formalcharge = int(line.strip().split()[-1])
+                    idx = topo.serial.index(atom_attr_idx)
+                    topo.formalcharge[idx] = formalcharge
+                atom_attr_num -= 1
 
     trajectories = []
     for cc in coordinates:
@@ -585,9 +596,7 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
     if singlemol:
         if molnum > 1:
             logger.warning(
-                "Mol2 file {} contained multiple molecules. Only the first was read.".format(
-                    filename
-                )
+                f"Mol2 file {filename} contained multiple molecules. Only the first was read."
             )
         return MolFactory.construct(topologies[0], trajectories[0], filename, frame)
     else:
@@ -1747,7 +1756,10 @@ def MDTRAJread(filename, frame=None, topoloc=None):
 
     traj = md.load(filename, top=topoloc)
     coords = np.swapaxes(np.swapaxes(traj.xyz, 0, 1), 1, 2) * 10
-    step = traj.time / traj.timestep
+    try:
+        step = traj.time / traj.timestep
+    except Exception:
+        step = [0]
     time = traj.time * 1000  # need to go from picoseconds to femtoseconds
 
     if traj.unitcell_lengths is None:
@@ -2129,6 +2141,7 @@ def PREPIread(filename, frame=None, topoloc=None):
 
     return MolFactory.construct(topo, None, filename, frame)
 
+
 def SDFread(filename, frame=None, topoloc=None):
     # Some (mostly correct) info here: www.nonlinear.com/progenesis/sdf-studio/v0.9/faq/sdf-file-format-guidance.aspx
     # Format is correctly specified here: https://www.daylight.com/meetings/mug05/Kappler/ctfile.pdf
@@ -2163,7 +2176,7 @@ def SDFread(filename, frame=None, topoloc=None):
             topo.element.append(atom_symbol)
             topo.name.append(atom_symbol)
             topo.serial.append(n-coord_start)
-            topo.charge.append(chargemap[line[36:39].strip()])
+            topo.formalcharge.append(chargemap[line[36:39].strip()])
 
         for n in range(bond_start, bond_end):
             line = lines[n]
@@ -2179,7 +2192,7 @@ def SDFread(filename, frame=None, topoloc=None):
             if line.startswith("M  CHG"):  # These charges are more correct
                 pairs = line.strip().split()[3:]
                 for cc in range(0, len(pairs), 2):
-                    topo.charge[int(pairs[cc])-1] = int(pairs[cc+1])
+                    topo.formalcharge[int(pairs[cc])-1] = int(pairs[cc+1])
             
     traj = Trajectory(coords=np.vstack(coords))
     return MolFactory.construct(topo, traj, filename, frame)
@@ -2299,27 +2312,32 @@ class _TestReaders(unittest.TestCase):
         mol = Molecule(os.path.join(testfolder, 'ligand.mol2'))
 
     def test_sdf(self):
+        import pickle
         sdf_file = os.path.join(self.testfolder(), 'benzamidine-3PTB-pH7.sdf')
-        ref_file = os.path.join(self.testfolder(), 'benzamidine-3PTB-pH7.npz')
-        ref_data = np.load(ref_file, allow_pickle=True)
+        ref_file = os.path.join(self.testfolder(), 'benzamidine-3PTB-pH7.pkl')
+        with open(ref_file, "rb") as f:
+            ref_data = pickle.load(f)
+
         mol = Molecule(sdf_file)
         assert mol.numAtoms == 18
         assert np.all(mol.name == mol.element)
         assert np.array_equal(mol.element, ref_data["element"])
         assert np.array_equal(mol.coords, ref_data["coords"])
-        assert np.array_equal(mol.charge, ref_data["charge"])
+        assert np.array_equal(mol.formalcharge, ref_data["formalcharge"])
         assert np.array_equal(mol.bonds, ref_data["bonds"])
         assert np.array_equal(mol.bondtype, ref_data["bondtype"])
 
         sdf_file = os.path.join(self.testfolder(), 'S98_ideal.sdf')
-        ref_file = os.path.join(self.testfolder(), 'S98_ideal.npz')
-        ref_data = np.load(ref_file, allow_pickle=True)
+        ref_file = os.path.join(self.testfolder(), 'S98_ideal.pkl')
+        with open(ref_file, "rb") as f:
+            ref_data = pickle.load(f)
+
         mol = Molecule(sdf_file)
         assert mol.numAtoms == 34
         assert np.all(mol.name == mol.element)
         assert np.array_equal(mol.element, ref_data["element"])
         assert np.array_equal(mol.coords, ref_data["coords"])
-        assert np.array_equal(mol.charge, ref_data["charge"])
+        assert np.array_equal(mol.formalcharge, ref_data["formalcharge"])
         assert np.array_equal(mol.bonds, ref_data["bonds"])
         assert np.array_equal(mol.bondtype, ref_data["bondtype"])
 

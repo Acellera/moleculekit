@@ -12,10 +12,10 @@
 """
 
 __docformat__ = "restructuredtext en"
-__author__    = "John Westbrook"
-__email__     = "jwest@rcsb.rutgers.edu"
-__license__   = "Creative Commons Attribution 3.0 Unported"
-__version__   = "V0.01"
+__author__ = "John Westbrook"
+__email__ = "jwest@rcsb.rutgers.edu"
+__license__ = "Creative Commons Attribution 3.0 Unported"
+__version__ = "V0.01"
 
 import sys, unittest, traceback
 
@@ -29,194 +29,211 @@ import os
 
 class _PdbxReadWriteTests(unittest.TestCase):
     def setUp(self):
-        self.lfh=sys.stdout
-        self.verbose=False
-        self.pathPdbxDataFile     = os.path.join(home(dataDir='molecule-readers'), "1kip.cif")
-        self.pathOutputFile       = tempname(suffix='.cif')
+        self.lfh = sys.stdout
+        self.verbose = False
+        self.pathPdbxDataFile = os.path.join(
+            home(dataDir="molecule-readers"), "1kip.cif"
+        )
+        self.pathOutputFile = tempname(suffix=".cif")
 
     def tearDown(self):
         pass
 
-
     def testSimpleInitialization(self):
-        """Test case -  Simple initialization of a data category and data block
-        """
-        self.lfh.write("\nStarting %s %s\n" % (self.__class__.__name__,
-                                               sys._getframe().f_code.co_name))
+        """Test case -  Simple initialization of a data category and data block"""
+        self.lfh.write(
+            "\nStarting %s %s\n"
+            % (self.__class__.__name__, sys._getframe().f_code.co_name)
+        )
         try:
             #
-            fn = tempname(suffix='.cif')
-            attributeNameList=['aOne','aTwo','aThree','aFour','aFive','aSix','aSeven','aEight','aNine','aTen']
-            rowList=[[1,2,3,4,5,6,7,8,9,10],
-                     [1,2,3,4,5,6,7,8,9,10],
-                     [1,2,3,4,5,6,7,8,9,10],
-                     [1,2,3,4,5,6,7,8,9,10],
-                     [1,2,3,4,5,6,7,8,9,10],
-                     [1,2,3,4,5,6,7,8,9,10],
-                     [1,2,3,4,5,6,7,8,9,10],
-                     [1,2,3,4,5,6,7,8,9,10],
-                     [1,2,3,4,5,6,7,8,9,10],
-                     [1,2,3,4,5,6,7,8,9,10] 
-                     ]
-            nameCat='myCategory'
+            fn = tempname(suffix=".cif")
+            attributeNameList = [
+                "aOne",
+                "aTwo",
+                "aThree",
+                "aFour",
+                "aFive",
+                "aSix",
+                "aSeven",
+                "aEight",
+                "aNine",
+                "aTen",
+            ]
+            rowList = [
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            ]
+            nameCat = "myCategory"
             #
             #
-            curContainer=DataContainer("myblock")
-            aCat=DataCategory(nameCat,attributeNameList,rowList)
+            curContainer = DataContainer("myblock")
+            aCat = DataCategory(nameCat, attributeNameList, rowList)
             aCat.printIt()
             curContainer.append(aCat)
             curContainer.printIt()
             #
-            myContainerList=[]
+            myContainerList = []
             myContainerList.append(curContainer)
-            ofh = open(fn, "w")        
-            pdbxW=PdbxWriter(ofh)
+            ofh = open(fn, "w")
+            pdbxW = PdbxWriter(ofh)
             pdbxW.write(myContainerList)
             ofh.close()
 
-            myContainerList=[]            
+            myContainerList = []
             ifh = open(fn, "r")
-            pRd=PdbxReader(ifh)
+            pRd = PdbxReader(ifh)
             pRd.read(myContainerList)
             ifh.close()
             for container in myContainerList:
                 for objName in container.getObjNameList():
-                    name,aList,rList=container.getObj(objName).get()
+                    name, aList, rList = container.getObj(objName).get()
                     self.lfh.write("Recovered data category  %s\n" % name)
                     self.lfh.write("Attribute list           %r\n" % repr(aList))
-                    self.lfh.write("Row list                 %r\n" % repr(rList))                                        
+                    self.lfh.write("Row list                 %r\n" % repr(rList))
         except:
             traceback.print_exc(file=self.lfh)
             self.fail()
-            
-        
-    def testWriteDataFile(self): 
-        """Test case -  write data file 
-        """
-        self.lfh.write("\nStarting %s %s\n" % (self.__class__.__name__,
-                                               sys._getframe().f_code.co_name))
+
+    def testWriteDataFile(self):
+        """Test case -  write data file"""
+        self.lfh.write(
+            "\nStarting %s %s\n"
+            % (self.__class__.__name__, sys._getframe().f_code.co_name)
+        )
         try:
             #
-            myDataList=[]
-            ofh = open(tempname(suffix='.cif'), "w")
-            curContainer=DataContainer("myblock")
-            aCat=DataCategory("pdbx_seqtool_mapping_ref")
+            myDataList = []
+            ofh = open(tempname(suffix=".cif"), "w")
+            curContainer = DataContainer("myblock")
+            aCat = DataCategory("pdbx_seqtool_mapping_ref")
             aCat.appendAttribute("ordinal")
             aCat.appendAttribute("entity_id")
             aCat.appendAttribute("auth_mon_id")
             aCat.appendAttribute("auth_mon_num")
             aCat.appendAttribute("pdb_chain_id")
             aCat.appendAttribute("ref_mon_id")
-            aCat.appendAttribute("ref_mon_num")                        
-            aCat.append([1,2,3,4,5,6,7])
-            aCat.append([1,2,3,4,5,6,7])
-            aCat.append([1,2,3,4,5,6,7])
-            aCat.append([1,2,3,4,5,6,7])
-            aCat.append([7,6,5,4,3,2,1])
-            aCat.printIt()            
+            aCat.appendAttribute("ref_mon_num")
+            aCat.append([1, 2, 3, 4, 5, 6, 7])
+            aCat.append([1, 2, 3, 4, 5, 6, 7])
+            aCat.append([1, 2, 3, 4, 5, 6, 7])
+            aCat.append([1, 2, 3, 4, 5, 6, 7])
+            aCat.append([7, 6, 5, 4, 3, 2, 1])
+            aCat.printIt()
             curContainer.append(aCat)
             curContainer.printIt()
             #
             myDataList.append(curContainer)
-            pdbxW=PdbxWriter(ofh)
+            pdbxW = PdbxWriter(ofh)
             pdbxW.write(myDataList)
             ofh.close()
         except:
             traceback.print_exc(file=self.lfh)
             self.fail()
 
-    def testUpdateDataFile(self): 
-        """Test case -  update data file 
-        """
-        self.lfh.write("\nStarting %s %s\n" % (self.__class__.__name__,
-                                               sys._getframe().f_code.co_name))
+    def testUpdateDataFile(self):
+        """Test case -  update data file"""
+        self.lfh.write(
+            "\nStarting %s %s\n"
+            % (self.__class__.__name__, sys._getframe().f_code.co_name)
+        )
         try:
             # Create a initial data file --
             #
-            myDataList=[]
+            myDataList = []
 
-            curContainer=DataContainer("myblock")
-            aCat=DataCategory("pdbx_seqtool_mapping_ref")
+            curContainer = DataContainer("myblock")
+            aCat = DataCategory("pdbx_seqtool_mapping_ref")
             aCat.appendAttribute("ordinal")
             aCat.appendAttribute("entity_id")
             aCat.appendAttribute("auth_mon_id")
             aCat.appendAttribute("auth_mon_num")
             aCat.appendAttribute("pdb_chain_id")
             aCat.appendAttribute("ref_mon_id")
-            aCat.appendAttribute("ref_mon_num")                        
-            aCat.append([9,2,3,4,5,6,7])
-            aCat.append([10,2,3,4,5,6,7])
-            aCat.append([11,2,3,4,5,6,7])
-            aCat.append([12,2,3,4,5,6,7])
-            
-            #self.lfh.write("Assigned data category state-----------------\n")            
-            #aCat.dumpIt(fh=self.lfh)
-            tmpf = tempname(suffix='.cif')
+            aCat.appendAttribute("ref_mon_num")
+            aCat.append([9, 2, 3, 4, 5, 6, 7])
+            aCat.append([10, 2, 3, 4, 5, 6, 7])
+            aCat.append([11, 2, 3, 4, 5, 6, 7])
+            aCat.append([12, 2, 3, 4, 5, 6, 7])
+
+            # self.lfh.write("Assigned data category state-----------------\n")
+            # aCat.dumpIt(fh=self.lfh)
+            tmpf = tempname(suffix=".cif")
 
             curContainer.append(aCat)
             myDataList.append(curContainer)
             ofh = open(tmpf, "w")
-            pdbxW=PdbxWriter(ofh)
+            pdbxW = PdbxWriter(ofh)
             pdbxW.write(myDataList)
             ofh.close()
             #
             #
             # Read and update the data -
-            # 
-            myDataList=[]
+            #
+            myDataList = []
             ifh = open(tmpf, "r")
-            pRd=PdbxReader(ifh)
+            pRd = PdbxReader(ifh)
             pRd.read(myDataList)
             ifh.close()
             #
-            myBlock=myDataList[0]
+            myBlock = myDataList[0]
             myBlock.printIt()
-            myCat=myBlock.getObj('pdbx_seqtool_mapping_ref')
+            myCat = myBlock.getObj("pdbx_seqtool_mapping_ref")
             myCat.printIt()
-            for iRow in range(0,myCat.getRowCount()):
-                myCat.setValue('some value', 'ref_mon_id',iRow)
-                myCat.setValue(100, 'ref_mon_num',iRow)
-            ofh = open(tempname(suffix='.cif'), "w")
-            pdbxW=PdbxWriter(ofh)
+            for iRow in range(0, myCat.getRowCount()):
+                myCat.setValue("some value", "ref_mon_id", iRow)
+                myCat.setValue(100, "ref_mon_num", iRow)
+            ofh = open(tempname(suffix=".cif"), "w")
+            pdbxW = PdbxWriter(ofh)
             pdbxW.write(myDataList)
             ofh.close()
             #
-            
+
         except:
             traceback.print_exc(file=self.lfh)
             self.fail()
 
-    def testReadDataFile(self): 
-        """Test case -  read data file 
-        """
-        self.lfh.write("\nStarting %s %s\n" % (self.__class__.__name__,
-                                               sys._getframe().f_code.co_name))
+    def testReadDataFile(self):
+        """Test case -  read data file"""
+        self.lfh.write(
+            "\nStarting %s %s\n"
+            % (self.__class__.__name__, sys._getframe().f_code.co_name)
+        )
         try:
             #
-            myDataList=[]
+            myDataList = []
             ifh = open(self.pathPdbxDataFile, "r")
-            pRd=PdbxReader(ifh)
+            pRd = PdbxReader(ifh)
             pRd.read(myDataList)
-            ifh.close()            
+            ifh.close()
         except:
             traceback.print_exc(file=self.lfh)
             self.fail()
 
-    def testReadWriteDataFile(self): 
-        """Test case -  data file read write test
-        """
-        self.lfh.write("\nStarting %s %s\n" % (self.__class__.__name__,
-                                               sys._getframe().f_code.co_name))
+    def testReadWriteDataFile(self):
+        """Test case -  data file read write test"""
+        self.lfh.write(
+            "\nStarting %s %s\n"
+            % (self.__class__.__name__, sys._getframe().f_code.co_name)
+        )
         try:
-            myDataList=[]            
+            myDataList = []
             ifh = open(self.pathPdbxDataFile, "r")
-            pRd=PdbxReader(ifh)
+            pRd = PdbxReader(ifh)
             pRd.read(myDataList)
-            ifh.close()            
-            
+            ifh.close()
+
             ofh = open(self.pathOutputFile, "w")
-            pWr=PdbxWriter(ofh)
-            pWr.write(myDataList)        
+            pWr = PdbxWriter(ofh)
+            pWr.write(myDataList)
             ofh.close()
         except:
             traceback.print_exc(file=self.lfh)
@@ -225,15 +242,14 @@ class _PdbxReadWriteTests(unittest.TestCase):
 
 def simpleSuite():
     suiteSelect = unittest.TestSuite()
-    suiteSelect.addTest(PdbxReadWriteTests("testSimpleInitialization"))
-    suiteSelect.addTest(PdbxReadWriteTests("testUpdateDataFile"))        
-    suiteSelect.addTest(PdbxReadWriteTests("testReadWriteDataFile"))    
+    suiteSelect.addTest(_PdbxReadWriteTests("testSimpleInitialization"))
+    suiteSelect.addTest(_PdbxReadWriteTests("testUpdateDataFile"))
+    suiteSelect.addTest(_PdbxReadWriteTests("testReadWriteDataFile"))
     return suiteSelect
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     #
-    mySuite=simpleSuite()      
+    mySuite = simpleSuite()
     unittest.TextTestRunner(verbosity=2).run(mySuite)
     #
-

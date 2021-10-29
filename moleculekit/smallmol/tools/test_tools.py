@@ -1,11 +1,7 @@
 import os
 import unittest
-from tempfile import NamedTemporaryFile
-from glob import glob
 from moleculekit.home import home
-from moleculekit.smallmol.smallmol import SmallMol
 from moleculekit.smallmol.smallmollib import SmallMolLib
-from pandas import core
 from moleculekit.smallmol.tools.clustering import cluster, getMaximumCommonSubstructure
 import numpy as np
 import rdkit

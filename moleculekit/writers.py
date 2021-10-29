@@ -374,21 +374,15 @@ def PSFwrite(m, filename, explicitbonds=None):
     print("%8d !NTITLE\n" % (0), file=f)
     print("%8d !NATOM" % (len(m.serial)), file=f)
     for i in range(len(m.serial)):
-        atomtype = (
-            m.atomtype[i] if m.atomtype[i] != "" else "NULL"
-        )  # Write default atomtype otherwise the PSF reader will fail to read correctly the PSF
-
-        segid = available_segids[0]
-        if m.segid[i] != "":
-            segid = m.segid[i]
-        elif m.segid[i] == "" and m.chain[i] != "":
-            segid = m.chain[i]
+        # Defaults. PSF readers will fail if any are empty since it's a space delimited format
+        resname = m.resname[i] if m.resname[i] != "" else "MOL"
+        atomtype = m.atomtype[i] if m.atomtype[i] != "" else "NULL"
 
         string_format = (
             f"{m.serial[i]:>{fs['serial']}} "
             f"{segments[i]:<{fs['segid']}} "
             f"{str(m.resid[i]) + str(m.insertion[i]):<{fs['resid']}} "
-            f"{m.resname[i]:<{fs['resname']}} "
+            f"{resname:<{fs['resname']}} "
             f"{m.name[i]:<{fs['name']}} "
             f"{atomtype:<{fs['atomtype']}} "
             f"{m.charge[i]:>9.6f} "
@@ -507,29 +501,28 @@ def XSCwrite(mol, filename, frames=None):
         )
 
 
-def MOL2write(mol, filename):
+def MOL2write(mol, filename, explicitbonds=None):
     uqresname = np.unique(mol.resname)
-    if len(uqresname) > 1:
-        raise RuntimeError(
-            f"MOL2 file can only be written for a single residue. We detected {len(uqresname)} resnames in the Molecule."
-        )
-    if len(uqresname[0]) == 0:
-        raise RuntimeError(
-            "MOL2 file can only be written if a resname is defined for the Molecule. Currently the "
-            "resname is empty."
-        )
+    if len(uqresname) == 1:
+        molname = uqresname[0]
+    elif len(uqresname[0]) == 0:
+        molname = "MOL"
+    else:
+        molname = mol.viewname
+
+    bonds = mol.bonds
+    if explicitbonds is not None:
+        bonds = explicitbonds
 
     with open(filename, "w", encoding="ascii") as f:
         f.write("@<TRIPOS>MOLECULE\n")
-        f.write(f"    {uqresname[0]}\n")
-        unique_bonds = [
-            list(t) for t in set(map(tuple, [sorted(x) for x in mol.bonds]))
-        ]
+        f.write(f"    {molname}\n")
+        unique_bonds = [list(t) for t in set(map(tuple, [sorted(x) for x in bonds]))]
         unique_bonds = np.array(sorted(unique_bonds, key=lambda x: (x[0], x[1])))
         f.write(
             "%5d %5d %5d %5d %5d\n" % (mol.numAtoms, unique_bonds.shape[0], 0, 0, 0)
         )
-        f.write("SMALL\nUSER_CHARGES\n\n\n")
+        f.write("SMALL\nUSER_CHARGES\n\n")
         """
         @<TRIPOS>ATOM
         Each data record associated with this RTI consists of a single data line. This
@@ -570,21 +563,29 @@ def MOL2write(mol, filename):
                 )
             )
             if isinstance(mol.resid[i], numbers.Integral):
-                f.write("{:3d} ".format(mol.resid[i]))
+                f.write(f"{mol.resid[i]} ")
                 if mol.resname[i] != "":
-                    f.write("{:4s} ".format(mol.resname[i]))
+                    f.write(f"{mol.resname[i]}{mol.resid[i]:<d} ")
                     if isinstance(mol.charge[i], numbers.Real):
-                        f.write("{:12.6f}".format(mol.charge[i]))
+                        f.write("{:12.4f}".format(mol.charge[i]))
             f.write("\n")
+
+        # # Disabled because RDKit has issues with this section
+        # if np.any(mol.formalcharge != 0):
+        #     f.write("@<TRIPOS>UNITY_ATOM_ATTR\n")
+        #     idx = np.where(mol.formalcharge != 0)[0]
+        #     for i in idx:
+        #         f.write(f"{i+1} 1\ncharge {mol.formalcharge[i]}\n")
+
         f.write("@<TRIPOS>BOND\n")
         for i in range(unique_bonds.shape[0]):
             bt = "un"
-            if len(mol.bondtype) > 0:
-                idx = (mol.bonds[:, 0] == unique_bonds[i, 0]) & (
-                    mol.bonds[:, 1] == unique_bonds[i, 1]
+            if len(mol.bondtype) == bonds.shape[0]:
+                idx = (bonds[:, 0] == unique_bonds[i, 0]) & (
+                    bonds[:, 1] == unique_bonds[i, 1]
                 )
-                idx |= (mol.bonds[:, 0] == unique_bonds[i, 1]) & (
-                    mol.bonds[:, 1] == unique_bonds[i, 0]
+                idx |= (bonds[:, 0] == unique_bonds[i, 1]) & (
+                    bonds[:, 1] == unique_bonds[i, 0]
                 )
                 tmp = np.unique(mol.bondtype[idx])
                 assert (
@@ -592,7 +593,7 @@ def MOL2write(mol, filename):
                 ), f"There should only exist one bond type for atoms {unique_bonds[i, 0]} {unique_bonds[i, 1]}"
                 bt = tmp[0]
             f.write(
-                "{:6d} {:4d} {:4d} {}\n".format(
+                "{:6d} {:5d} {:5d} {:>4s}\n".format(
                     i + 1, unique_bonds[i, 0] + 1, unique_bonds[i, 1] + 1, bt
                 )
             )
@@ -602,7 +603,6 @@ def SDFwrite(mol, filename):
     import datetime
 
     mol2bonds = {"1": 1, "2": 2, "3": 3, "ar": 4, "4": 4}
-    chargemap = {-3: 7, -2: 6, -1: 5, 0: 0, 1: 3, 2: 2, 3: 1}
     with open(filename, "w", encoding="ascii") as fh:
         fh.write(f"{mol.viewname}\n")
         currtime = datetime.datetime.now().strftime("%m%d%y%H%M")
@@ -619,10 +619,8 @@ def SDFwrite(mol, filename):
             if element == "":
                 element = mol.name[i]
 
-            charge = 0
-            if mol.charge[i] != 0 and mol.charge[i] in chargemap:
-                charge = chargemap[mol.charge[i]]
-                charges.append([i + 1, int(mol.charge[i])])
+            if mol.formalcharge[i] != 0:
+                charges.append([i + 1, int(mol.formalcharge[i])])
 
             fh.write(
                 f"{coor[i, 0]:>10.4f}{coor[i, 1]:>10.4f}{coor[i, 2]:>10.4f} {element:<2}  0  0  0  0  0  0  0  0  0  0  0  0\n"

@@ -7,7 +7,6 @@ from moleculekit.molecule import Molecule
 from moleculekit.smallmol.smallmol import SmallMol
 import rdkit
 import numpy as np
-from rdkit.Chem import MolFromSmiles
 
 BENZAMIDINE_N_ATOMS = 18
 BENZAMIDINE_N_HEAVYATOMS = 9
@@ -218,7 +217,7 @@ class _TestSmallMol(unittest.TestCase):
         from moleculekit.molecule import mol_equal
 
         sm = SmallMol(self.benzamidine_mol2)
-        mol = sm.toMolecule(formalcharges=False)
+        mol = sm.toMolecule()
 
         assert mol_equal(sm, mol, exceptFields=["serial", "name"], _logger=False)
 
@@ -228,7 +227,9 @@ class _TestSmallMol(unittest.TestCase):
         mol = Molecule(self.benzamidine_mol2)
         sm = SmallMol(mol)
 
-        assert mol_equal(sm, mol, exceptFields=["serial", "name"], _logger=False)
+        assert mol_equal(
+            sm, mol, exceptFields=["serial", "name", "formalcharge"], _logger=False
+        )
 
         mol = Molecule(self.indole_mol2)
         sm = SmallMol(mol, force_reading=True)
@@ -253,39 +254,6 @@ class _TestSmallMol(unittest.TestCase):
             sm._bondtype.tolist(),
             BENZAMIDINE_BONDTYPES,
             msg="The bonds type are not the same of the reference",
-        )
-
-    @unittest.skipIf(
-        rdkit.__version__ == "2019.03.4", "new rdkit versions break 2D depiction"
-    )
-    def test_depict(self):
-        import IPython
-
-        refimg = os.path.join(self.dataDir, "benzamidine.svg")
-
-        sm = SmallMol(self.benzamidine_mol2)
-
-        img_name = NamedTemporaryFile().name + ".svg"
-        sm.depict(sketch=True, filename=img_name, atomlabels="%a%i%c")
-        png_name = NamedTemporaryFile().name + ".png"
-        sm.depict(sketch=True, filename=png_name, atomlabels="%a%i%c")
-        noext_name = NamedTemporaryFile().name
-        sm.depict(sketch=True, filename=noext_name, atomlabels="%a%i%c")
-        sm.depict(sketch=False, optimize=True)
-        _img = sm.depict(sketch=True, ipython=True)
-
-        refimg_size = os.path.getsize(refimg)
-        sm_img_size = os.path.getsize(img_name)
-
-        self.assertIsInstance(
-            _img,
-            IPython.core.display.SVG,
-            msg="The object is not an IPython image as expected",
-        )
-        self.assertEqual(
-            sm_img_size,
-            refimg_size,
-            msg="The svg image does not have the same size of the reference",
         )
 
     def test_repr(self):

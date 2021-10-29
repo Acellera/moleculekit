@@ -17,7 +17,13 @@ from rdkit import Chem
 from rdkit.Chem import rdchem
 from rdkit.Chem.rdchem import BondType
 from moleculekit.smallmol.smallmol import SmallMol
-from moleculekit.smallmol.tools.molvstautomer import TAUTOMER_TRANSFORMS, TAUTOMER_SCORES, MAX_TAUTOMERS, pairwise, memoized_property
+from moleculekit.smallmol.tools.molvstautomer import (
+    TAUTOMER_TRANSFORMS,
+    TAUTOMER_SCORES,
+    MAX_TAUTOMERS,
+    pairwise,
+    memoized_property,
+)
 import numpy as np
 import logging
 
@@ -43,8 +49,9 @@ class MolFragmenter:
 
 
     """
+
     # conjugate scores. 1pt for each double bond
-    SCORE_dict = {'aromatic': 3, 'double': 1}
+    SCORE_dict = {"aromatic": 3, "double": 1}
 
     def __init__(self, mol):
         if isinstance(mol, SmallMol):
@@ -60,30 +67,44 @@ class MolFragmenter:
         """
 
         # storing all double bonds idences by using rdkit.GetBondType
-        all_double = [b.GetIdx() for b in self.mol.GetBonds() if b.GetBondType() == DOUBLE]
+        all_double = [
+            b.GetIdx() for b in self.mol.GetBonds() if b.GetBondType() == DOUBLE
+        ]
         # storing all aromatic bonds idences by using rdkit.GetBondType
         all_aromatics = []
         for ring in self.mol.GetRingInfo().BondRings():
-            if sum([1 for bidx in ring if self.mol.GetBondWithIdx(bidx).GetBondType() == AROMATIC]) == len(ring):
+            if sum(
+                [
+                    1
+                    for bidx in ring
+                    if self.mol.GetBondWithIdx(bidx).GetBondType() == AROMATIC
+                ]
+            ) == len(ring):
                 all_aromatics.append(list(ring))
         # storing all others bonds type
         try:  # for aromatics
-            all_others = [b.GetIdx() for b in self.mol.GetBonds() if
-                          b.GetIdx() not in np.concatenate(all_aromatics) and b.GetIdx() not in all_double]
-        except:
-            all_others = [b.GetIdx() for b in self.mol.GetBonds() if b.GetIdx() not in all_double]
+            all_others = [
+                b.GetIdx()
+                for b in self.mol.GetBonds()
+                if b.GetIdx() not in np.concatenate(all_aromatics)
+                and b.GetIdx() not in all_double
+            ]
+        except Exception:
+            all_others = [
+                b.GetIdx() for b in self.mol.GetBonds() if b.GetIdx() not in all_double
+            ]
 
         # generating Fragment object for each bond in the molecules based on their types
         nameint = 1
         for f in all_double:
-            fr = Fragment(str(nameint), 'double')
+            fr = Fragment(str(nameint), "double")
             bond = self.mol.GetBondWithIdx(f)
             atoms = [bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()]
             fr.atoms = atoms
             self.fragments.append(fr)
             nameint += 1
         for f in all_aromatics:
-            fr = Fragment(str(nameint), 'aromatic')
+            fr = Fragment(str(nameint), "aromatic")
             atoms = []
             for bidx in f:
                 bond = self.mol.GetBondWithIdx(bidx)
@@ -92,7 +113,7 @@ class MolFragmenter:
             self.fragments.append(fr)
             nameint += 1
         for f in all_others:
-            fr = Fragment(str(nameint), 'single')
+            fr = Fragment(str(nameint), "single")
             bond = self.mol.GetBondWithIdx(f)
             atoms = [bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()]
             fr.atoms = atoms
@@ -132,7 +153,7 @@ class MolFragmenter:
         """
 
         if fragmenttype is not None:
-            fragments = self.get_fragment('ftype', fragmenttype)
+            fragments = self.get_fragment("ftype", fragmenttype)
         else:
             fragments = self.fragments
 
@@ -154,18 +175,18 @@ class MolFragmenter:
         that will set as connections
         """
 
-        for fr in self.get_fragment('ftype', 'double'):
+        for fr in self.get_fragment("ftype", "double"):
             graphs = []
-            for frsingle in self.get_fragment('ftype', 'single'):
+            for frsingle in self.get_fragment("ftype", "single"):
                 graphs.extend([frsingle for a in fr.atoms if a in frsingle.atoms])
             fr.connections = [fr.name for fr in graphs]
             fr.graphs = graphs
 
-        for fr in self.get_fragment('ftype', 'aromatic'):
+        for fr in self.get_fragment("ftype", "aromatic"):
             graphs = []
-            for frsingle in self.get_fragment('ftype', 'single'):
+            for frsingle in self.get_fragment("ftype", "single"):
                 graphs.extend([frsingle for a in fr.atoms if a in frsingle.atoms])
-            for fraromatic in self.get_fragment('ftype', 'aromatic'):
+            for fraromatic in self.get_fragment("ftype", "aromatic"):
                 if fr != fraromatic:
                     if len([a for a in fr.atoms if a in fraromatic.atoms]) == 2:
                         graphs.append(fraromatic)
@@ -178,18 +199,27 @@ class MolFragmenter:
         The function inpect and detect all the possible conjugate paths
         """
 
-        fragments = self.get_fragment('ftype', 'aromatic') + self.get_fragment('ftype', 'double')
+        fragments = self.get_fragment("ftype", "aromatic") + self.get_fragment(
+            "ftype", "double"
+        )
         for fr in fragments:
             path = [fr]
             for fr2 in fragments:
                 if fr == fr2:
                     continue
-            path.extend([fr2 for f in path if f.ftype == 'aromatic' and
-                         fr2.ftype == 'aromatic' and
-                         f.name in fr2.connections])
-            path.extend([fr2 for f in path for conn in f.connections if conn in fr2.connections])
+            path.extend(
+                [
+                    fr2
+                    for f in path
+                    if f.ftype == "aromatic"
+                    and fr2.ftype == "aromatic"
+                    and f.name in fr2.connections
+                ]
+            )
+            path.extend(
+                [fr2 for f in path for conn in f.connections if conn in fr2.connections]
+            )
         self.paths.append(list(set(path)))
-
 
     def get_longest_path(self):
         """
@@ -279,9 +309,14 @@ class Fragment:
 
 
 class TautomerCanonicalizer:
-    """ The molvs class refactores"""
+    """The molvs class refactores"""
 
-    def __init__(self, transforms=TAUTOMER_TRANSFORMS, scores=TAUTOMER_SCORES, max_tautomers=MAX_TAUTOMERS):
+    def __init__(
+        self,
+        transforms=TAUTOMER_TRANSFORMS,
+        scores=TAUTOMER_SCORES,
+        max_tautomers=MAX_TAUTOMERS,
+    ):
         """
 
         :param transforms: A list of TautomerTransforms to use to enumerate tautomers.
@@ -317,61 +352,71 @@ class TautomerCanonicalizer:
         highest = None
         for t in tautomers:
             smiles = Chem.MolToSmiles(t, isomericSmiles=True)
-            logger.debug('Tautomer: %s', smiles)
+            logger.debug("Tautomer: %s", smiles)
             score = 0
             # Add aromatic ring scores
             ssr = Chem.GetSymmSSSR(t)
             for ring in ssr:
-                btypes = {t.GetBondBetweenAtoms(*pair).GetBondType() for pair in pairwise(ring)}
+                btypes = {
+                    t.GetBondBetweenAtoms(*pair).GetBondType()
+                    for pair in pairwise(ring)
+                }
                 elements = {t.GetAtomWithIdx(idx).GetAtomicNum() for idx in ring}
                 if btypes == {BondType.AROMATIC}:
-                    logger.debug('Score +100 (aromatic ring)')
+                    logger.debug("Score +100 (aromatic ring)")
                     score += 100
                     if elements == {6}:
-                        logger.debug('Score +150 (carbocyclic aromatic ring)')
+                        logger.debug("Score +150 (carbocyclic aromatic ring)")
                         score += 150
             # Add SMARTS scores
             for tscore in self.scores:
                 for _ in t.GetSubstructMatches(tscore.smarts):
-                    logger.debug('Score %+d (%s)', tscore.score, tscore.name)
+                    logger.debug("Score %+d (%s)", tscore.score, tscore.name)
                     score += tscore.score
             # Add (P,S,Se,Te)-H scores
             for atom in t.GetAtoms():
                 if atom.GetAtomicNum() in {15, 16, 34, 52}:
                     hs = atom.GetTotalNumHs()
                     if hs:
-                        logger.debug('Score %+d (%s-H bonds)', -hs, atom.GetSymbol())
+                        logger.debug("Score %+d (%s-H bonds)", -hs, atom.GetSymbol())
                         score -= hs
             # Set as highest if score higher or if score equal and smiles comes first alphabetically
-            if not highest or highest['score'] < score or (highest['score'] == score and smiles < highest['smiles']):
-                logger.debug('New highest tautomer: %s (%s)', smiles, score)
-                highest = {'smiles': smiles, 'tautomer': t, 'score': score}
-        return highest['tautomer']
+            if (
+                not highest
+                or highest["score"] < score
+                or (highest["score"] == score and smiles < highest["smiles"])
+            ):
+                logger.debug("New highest tautomer: %s (%s)", smiles, score)
+                highest = {"smiles": smiles, "tautomer": t, "score": score}
+        return highest["tautomer"]
 
     @memoized_property
     def _enumerate_tautomers(self):
         from moleculekit.smallmol.tools.molvstautomer import TautomerEnumerator
+
         return TautomerEnumerator(self.transforms, self.max_tautomers)
 
     def depict_tautomers(self, tautomers, scores, atoms, details=None):
         import matplotlib.pyplot as plt
         from rdkit.Chem import Draw
         from math import ceil
-        
+
         dep_for_row = len(tautomers) if len(tautomers) < 3 else 3
         legends_tmp = [s for s in scores]
         legends = []
         if details is not None:
             for n, l in enumerate(legends_tmp):
-                l = 'TotalScore: {}\n {}'.format(l, "\n".join(['{}: {}'.format(k, v) for k, v in details[n].items()]))
-                legends.append(l)
+                leg = "TotalScore: {}\n {}".format(
+                    l, "\n".join(["{}: {}".format(k, v) for k, v in details[n].items()])
+                )
+                legends.append(leg)
 
         fig = plt.figure(figsize=(10, 10), dpi=100, tight_layout=True)
         for n, (t, l, a) in enumerate(zip(tautomers, legends, atoms)):
             depcition = Draw.MolToImage(t, subImgSize=(300, 300), highlightAtoms=a)
             ax = fig.add_subplot(ceil(len(tautomers) / dep_for_row), dep_for_row, n + 1)
             ax.set_xlabel(l, fontsize=5)
-            ax.imshow(depcition, aspect='equal')
+            ax.imshow(depcition, aspect="equal")
         plt.show()
 
     def get_conjugate(self, tautomer):
@@ -423,40 +468,45 @@ class TautomerCanonicalizer:
         tautomers = self._enumerate_tautomers(mol)
 
         for t in tautomers:
-            tmp_score_details = {'ArRing': 0,
-                                 'CarbArRing': 0,
-                                 'MatchFeature': [0, []],
-                                 'Penalty': [0, []],
-                                 'Conjugate': 0}
+            tmp_score_details = {
+                "ArRing": 0,
+                "CarbArRing": 0,
+                "MatchFeature": [0, []],
+                "Penalty": [0, []],
+                "Conjugate": 0,
+            }
             smiles = Chem.MolToSmiles(t, isomericSmiles=True)
             if log:
-                print('Tautomer: %s', smiles)
+                print("Tautomer: %s", smiles)
             score = 0
             # Add aromatic ring scores
             ssr = Chem.GetSymmSSSR(t)
             for ring in ssr:
-                btypes = {t.GetBondBetweenAtoms(*pair).GetBondType() for pair in pairwise(ring)}
+                btypes = {
+                    t.GetBondBetweenAtoms(*pair).GetBondType()
+                    for pair in pairwise(ring)
+                }
                 elements = {t.GetAtomWithIdx(idx).GetAtomicNum() for idx in ring}
                 if btypes == {BondType.AROMATIC}:
                     if log:
-                        print('Score +100 (aromatic ring)')
+                        print("Score +100 (aromatic ring)")
                     score += 100
-                    tmp_score_details['ArRing'] += 1
+                    tmp_score_details["ArRing"] += 1
                     if elements == {6}:
                         if log:
-                            print('Score +150 (carbocyclic aromatic ring)')
+                            print("Score +150 (carbocyclic aromatic ring)")
                         score += 150
-                        tmp_score_details['CarbArRing'] += 1
+                        tmp_score_details["CarbArRing"] += 1
 
             # Add SMARTS scores, Chem.MolToSmiles(t))
             for tscore in self.scores:
 
                 for match in t.GetSubstructMatches(tscore.smarts):
                     if log:
-                        print('Score %+d (%s)' % (tscore.score, tscore.name))
+                        print("Score %+d (%s)" % (tscore.score, tscore.name))
                     score += tscore.score
-                    tmp_score_details['MatchFeature'][0] += 1
-                    tmp_score_details['MatchFeature'][1].append(tscore.name)
+                    tmp_score_details["MatchFeature"][0] += 1
+                    tmp_score_details["MatchFeature"][1].append(tscore.name)
 
             # Add (P,S,Se,Te)-H scores
             for atom in t.GetAtoms():
@@ -464,27 +514,32 @@ class TautomerCanonicalizer:
                     hs = atom.GetTotalNumHs()
                     if hs:
                         if log:
-                            print('Score %+d (%s-H bonds)' % (-hs, atom.GetSymbol()))
+                            print("Score %+d (%s-H bonds)" % (-hs, atom.GetSymbol()))
                         score -= hs
-                        tmp_score_details['Penalty'][0] += 1
-                        tmp_score_details['Penalty'][1].append(atom.GetSymbol())
+                        tmp_score_details["Penalty"][0] += 1
+                        tmp_score_details["Penalty"][1].append(atom.GetSymbol())
 
             # compute the conjuggate system
             n_conjugate, depictionatoms = self.get_conjugate(t)
             t_depict.append(depictionatoms)
 
-            tmp_score_details['Conjugate'] = n_conjugate
+            tmp_score_details["Conjugate"] = n_conjugate
             score += n_conjugate * 2
 
             scores_detail.append(tmp_score_details)
             t_scores.append(score)
         if returndetails:
-            return [SmallMol(tautomer) for tautomer in tautomers], t_scores, t_depict, scores_detail
+            return (
+                [SmallMol(tautomer) for tautomer in tautomers],
+                t_scores,
+                t_depict,
+                scores_detail,
+            )
         return tautomers, t_scores
 
     @staticmethod
     def filter_tautomers(tautomers, scores, threshold=2):
-        """ The function returns the tautomers as rdkit molecule objects based on the scores and the threshold
+        """The function returns the tautomers as rdkit molecule objects based on the scores and the threshold
 
         Parameters
         ----------
@@ -497,9 +552,18 @@ class TautomerCanonicalizer:
         t_filtered: list - List of rdkit.Chem.Molecule of the tautomers filtered
         """
 
-        tautomers = [mol._mol if isinstance(mol, SmallMol) else mol for mol in tautomers]
+        tautomers = [
+            mol._mol if isinstance(mol, SmallMol) else mol for mol in tautomers
+        ]
 
-        tautomers_sorted = [x for _, x in sorted(zip(scores, tautomers), key=lambda pair: pair[0], reverse=True)]
+        tautomers_sorted = [
+            x
+            for _, x in sorted(
+                zip(scores, tautomers), key=lambda pair: pair[0], reverse=True
+            )
+        ]
         scores.sort(reverse=True)
-        t_filterd = [t for t, s in zip(tautomers_sorted, scores) if s >= max(scores) - threshold]
+        t_filterd = [
+            t for t, s in zip(tautomers_sorted, scores) if s >= max(scores) - threshold
+        ]
         return [SmallMol(rdmol) for rdmol in t_filterd]
