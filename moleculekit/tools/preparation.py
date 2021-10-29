@@ -11,13 +11,6 @@ import os
 from moleculekit.molecule import Molecule
 from moleculekit.molecule import UniqueResidueID
 
-try:
-    from pdb2pqr.main import main_driver, build_main_parser
-except ImportError:
-    raise ImportError(
-        "pdb2pqr not installed. To use the molecule preparation features please do `conda install pdb2pqr -c conda-forge`"
-    )
-
 
 logger = logging.getLogger(__name__)
 
@@ -138,11 +131,205 @@ def _detect_nonpeptidic_bonds(mol):
     logger.info(
         f"Found {len(bond_prot)} covalent bonds from non-protein molecules to protein residues"
     )
-    for p, o in zip(bond_prot, bond_other):
-        logger.info(
-            f"{UniqueResidueID.fromMolecule(mol, idx=p)}, {UniqueResidueID.fromMolecule(mol, idx=o)}"
-        )
     return np.vstack([bond_prot, bond_other]).T
+
+
+def _pdb2pqr(
+    pdb_file,
+    ph=7.0,
+    assign_only=False,
+    clean=False,
+    debump=True,
+    opt=True,
+    drop_water=False,
+    ligand=None,
+    ff="parse",
+    ffout="amber",
+    userff=None,
+    usernames=None,
+    titrate=True,
+    neutraln=False,
+    neutralc=False,
+    no_prot=None,
+    no_opt=None,
+    propka_args=None,
+):
+    try:
+        from pdb2pqr.main import main_driver
+    except ImportError:
+        raise ImportError(
+            "pdb2pqr not installed. To use the molecule preparation features please do `conda install pdb2pqr -c conda-forge`"
+        )
+    from pdb2pqr.io import get_definitions, get_molecule
+    from pdb2pqr import forcefield, hydrogens
+    from pdb2pqr.debump import Debump
+    from pdb2pqr.main import is_repairable, run_propka, setup_molecule
+    from pdb2pqr.main import drop_water as drop_water_func
+    from propka.lib import build_parser
+    from math import isclose
+
+    propka_parser = build_parser()
+    propka_parser.add_argument("--keep-chain", action="store_true", default=False)
+
+    if propka_args is None:
+        propka_args = {}
+    propka_args_list = []
+    for key, value in propka_args.items():
+        propka_args_list += [key, value]
+    propka_args_list += ["--log-level", "WARNING", "--pH", str(ph), "xxx"]
+    propka_args = propka_parser.parse_args(propka_args_list)
+
+    if assign_only or clean:
+        debump = False
+        opt = False
+
+    definition = get_definitions()
+    pdblist, _ = get_molecule(pdb_file)
+    if drop_water:
+        pdblist = drop_water_func(pdblist)
+
+    biomolecule, definition, ligand = setup_molecule(pdblist, definition, ligand)
+    biomolecule.set_termini(neutraln, neutralc)
+    biomolecule.update_bonds()
+    if clean:
+        return None, None, biomolecule
+
+    forcefield_ = forcefield.Forcefield(ff, definition, userff, usernames)
+    hydrogen_handler = hydrogens.create_handler()
+    debumper = Debump(biomolecule)
+    pka_df = None
+    if assign_only:
+        # TODO - I don't understand why HIS needs to be set to HIP for
+        # assign-only
+        biomolecule.set_hip()
+    else:
+        if is_repairable(biomolecule, ligand is not None):
+            biomolecule.repair_heavy()
+
+        biomolecule.update_ss_bridges()
+        if debump:
+            try:
+                debumper.debump_biomolecule()
+            except ValueError as err:
+                err = f"Unable to debump biomolecule. {err}"
+                raise ValueError(err)
+        if titrate:
+            biomolecule.remove_hydrogens()
+            pka_df, pka_str = run_propka(propka_args, biomolecule)
+            # logger.info(f"PROPKA information:\n{pka_str}")
+            biomolecule.apply_pka_values(
+                forcefield_.name,
+                ph,
+                {row["group_label"]: row["pKa"] for row in pka_df},
+            )
+
+        biomolecule.add_hydrogens(no_prot)
+        if debump:
+            debumper.debump_biomolecule()
+
+        hydrogen_routines = hydrogens.HydrogenRoutines(debumper, hydrogen_handler)
+        if opt:
+            hydrogen_routines.set_optimizeable_hydrogens()
+            biomolecule.hold_residues(no_opt)
+            hydrogen_routines.initialize_full_optimization()
+        else:
+            hydrogen_routines.initialize_wat_optimization()
+        hydrogen_routines.optimize_hydrogens()
+        hydrogen_routines.cleanup()
+
+    biomolecule.set_states()
+    matched_atoms, missing_atoms = biomolecule.apply_force_field(forcefield_)
+    if ligand is not None:
+        logger.warning("Using ZAP9 forcefield for ligand radii.")
+        ligand.assign_parameters()
+        lig_atoms = []
+        for residue in biomolecule.residues:
+            tot_charge = 0
+            for pdb_atom in residue.atoms:
+                # Only check residues with HETATM
+                if pdb_atom.type == "ATOM":
+                    break
+                try:
+                    mol2_atom = ligand.atoms[pdb_atom.name]
+                    pdb_atom.radius = mol2_atom.radius
+                    pdb_atom.ffcharge = mol2_atom.charge
+                    tot_charge += mol2_atom.charge
+                    lig_atoms.append(pdb_atom)
+                except KeyError:
+                    err = f"Can't find HETATM {residue.name} {residue.res_seq} {pdb_atom.name} in MOL2 file"
+                    logger.warning(err)
+                    missing_atoms.append(pdb_atom)
+        matched_atoms += lig_atoms
+
+    total_charge = 0
+    for residue in biomolecule.residues:
+        reskey = (residue.res_seq, residue.chain_id, residue.ins_code)
+        if reskey in no_prot:  # Exclude non-protonated residues
+            continue
+        total_charge += residue.charge
+    if not isclose(total_charge, int(total_charge), abs_tol=1e-3):
+        err = f"Biomolecule charge is non-integer: {total_charge}"
+        raise ValueError(err)
+
+    if ffout is not None:
+        if ffout != ff:
+            name_scheme = forcefield.Forcefield(ffout, definition, None)
+        else:
+            name_scheme = forcefield_
+        biomolecule.apply_name_scheme(name_scheme)
+
+    return missing_atoms, pka_df, biomolecule
+
+
+def _atomsel_to_hold(mol_in, sel):
+    idx = mol_in.atomselect(sel, indexes=True)
+    if len(idx) == 0:
+        raise RuntimeError(f"Could not select any atoms with atomselection {sel}")
+    residues = [(mol_in.resid[i], mol_in.chain[i], mol_in.insertion[i]) for i in idx]
+    residues = list(set(residues))
+    if len(residues) != 1:
+        raise RuntimeError(
+            f"no_opt selection {sel} selected multiple residues {residues}. Please be more specific on which residues to hold."
+        )
+    return residues[0]
+
+
+def _get_hold_residues(mol_in, no_opt, no_prot, hold_nonpeptidic_bonds):
+    _no_opt = None
+    if no_opt is not None:
+        _no_opt = []
+        for sel in no_opt:
+            _no_opt.append(_atomsel_to_hold(sel))
+
+    _no_prot = None
+    if no_prot is not None:
+        _no_prot = []
+        for sel in no_prot:
+            _no_prot.append(_atomsel_to_hold(sel))
+
+    if hold_nonpeptidic_bonds:
+        nonpept = _detect_nonpeptidic_bonds(mol_in)
+        if len(nonpept) != 0:
+            if _no_opt is None:
+                _no_opt = []
+            if _no_prot is None:
+                _no_prot = []
+            for nn in nonpept:
+                r1 = UniqueResidueID.fromMolecule(mol_in, idx=nn[0])
+                r1 = f"{r1.resname}:{r1.chain}:{r1.resid}{r1.insertion}"
+                r2 = UniqueResidueID.fromMolecule(mol_in, idx=nn[1])
+                r2 = f"{r2.resname}:{r2.chain}:{r2.resid}{r2.insertion}"
+                logger.info(
+                    f"Freezing protein residue {r1} linked to non-protein molecule {r2}"
+                )
+                val = [
+                    (mol_in.resid[nn[0]], mol_in.chain[nn[0]], mol_in.insertion[nn[0]]),
+                    (mol_in.resid[nn[1]], mol_in.chain[nn[1]], mol_in.insertion[nn[1]]),
+                ]
+                _no_opt += val
+                _no_prot += val
+
+    return _no_opt, _no_prot
 
 
 def proteinPrepare(
@@ -151,6 +338,9 @@ def proteinPrepare(
     ligmol2=None,
     pH=7.0,
     force_protonation=None,
+    no_opt=None,
+    no_prot=None,
+    hold_nonpeptidic_bonds=True,
     verbose=True,
     returnDetails=False,
     hydrophobicThickness=None,
@@ -299,37 +489,30 @@ def proteinPrepare(
 
     mol_in = _checkChainAndSegid(mol_in, _loggerLevel)
 
+    _no_opt, _no_prot = _get_hold_residues(
+        mol_in, no_opt, no_prot, hold_nonpeptidic_bonds
+    )
+
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpin = os.path.join(tmpdir, "input.pdb")
         mol_in.write(tmpin)
 
-        pqrout = os.path.join(tmpdir, "out.pqr")
-        pdbout = os.path.join(tmpdir, "out.pdb")
-        parser = build_main_parser()
-        args = [
-            "--log-level",
-            "WARNING",
-            "--pdb-output",
-            pdbout,
-            "--with-ph",
-            str(pH),
-            "--ff",
-            "PARSE",
-            "--ffout",
-            "AMBER",
-            "--quiet",
+        missedres, pka_df, biomolecule = _pdb2pqr(
             tmpin,
-            pqrout,
-        ]
-        if titration:
-            args = ["--titration-state-method", "propka"] + args
-        if ligmol2:
-            args = ["--ligand", ligmol2] + args
-        args = parser.parse_args(args)
-
-        missedres, pka_df, biomolecule = main_driver(args)
+            ph=pH,
+            titrate=titration,
+            ligand=ligmol2,
+            no_opt=_no_opt,
+            no_prot=_no_prot,
+        )
         mol_out = _biomolecule_to_molecule(biomolecule)
-        # mol_out = Molecule(pdbout)
+        for nn in no_prot:
+            raise NotImplementedError(
+                "Rename non-protonated residues to their original name"
+            )
+            # TODO: Rename residues to their original name
+            # mol_out.resname
+            pass
 
     # Diagnostics
     missedres = set([m.residue.name for m in missedres])
@@ -367,6 +550,9 @@ def proteinPrepare(
             ligmol2=ligmol2,
             pH=pH,
             force_protonation=None,
+            no_opt=no_opt,
+            no_prot=no_prot,
+            hold_nonpeptidic_bonds=hold_nonpeptidic_bonds,
             verbose=verbose,
             returnDetails=returnDetails,
             hydrophobicThickness=hydrophobicThickness,
@@ -407,10 +593,10 @@ def _biomolecule_to_molecule(biomolecule):
         mol.coords[i, :, 0] = [atom.x, atom.y, atom.z]
         bonds += [[i, x.serial - 1] for x in atom.bonds]
 
-    guessedBonds = mol._guessBonds()
-    bb = mol.atomselect("backbone", indexes=True)
-    bb = guessedBonds[np.all(np.isin(guessedBonds, bb), axis=1)]
-    mol.bonds = np.vstack(bb.tolist() + bonds)
+    # guessedBonds = mol._guessBonds()
+    # bb = mol.atomselect("backbone", indexes=True)
+    # bb = guessedBonds[np.all(np.isin(guessedBonds, bb), axis=1)]
+    # mol.bonds = np.vstack(bb.tolist() + bonds)
 
     return mol
 
@@ -478,12 +664,9 @@ def _list_modifications(df):
         old_resn = row.resname
         new_resn = row.protonation
         ch = row.chain
-        seg = row.segid
         rid = row.resid
         ins = row.insertion.strip()
-        logger.info(
-            f"Modified residue {ch}:{seg}:{rid}{ins} from {old_resn} to {new_resn}"
-        )
+        logger.info(f"Modified residue {old_resn}:{ch}:{rid}{ins} to {new_resn}")
 
 
 def _warn_pk_close_to_ph(df, pH, tol=1.0):
@@ -715,7 +898,9 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
 
 class _TestPreparation(unittest.TestCase):
     def test_proteinPrepare(self):
-        _, df = proteinPrepare(Molecule("3PTB"), returnDetails=True)
+        _, df = proteinPrepare(
+            Molecule("3PTB"), returnDetails=True, hold_residues=["protein and resid 42"]
+        )
         assert df.protonation[df.resid == 40].iloc[0] == "HIE"
         assert df.protonation[df.resid == 57].iloc[0] == "HIP"
         assert df.protonation[df.resid == 91].iloc[0] == "HID"
@@ -782,7 +967,8 @@ class _TestPreparation(unittest.TestCase):
         assert df.protonation[df.resid == 91].iloc[0] == "HIE"
 
     def test_freezing(self):
-        pmol, df = proteinPrepare(Molecule("2B5I"), returnDetails=True)
+        mol = Molecule("2B5I")
+        pmol, df = proteinPrepare(mol, returnDetails=True, hold_nonpeptidic_bonds=True)
 
         pass
 
