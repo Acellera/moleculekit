@@ -503,7 +503,7 @@ def XSCwrite(mol, filename, frames=None):
 
 def MOL2write(mol, filename, explicitbonds=None):
     uqresname = np.unique(mol.resname)
-    if len(uqresname) == 1:
+    if len(uqresname) == 1 and uqresname[0] != "":
         molname = uqresname[0]
     elif len(uqresname[0]) == 0:
         molname = "MOL"
@@ -550,12 +550,32 @@ def MOL2write(mol, filename, explicitbonds=None):
         DSPMOD, TYPECOL, CAP, BACKBONE, DICT, ESSENTIAL, WATER and
         DIRECT.
         """
+        # Guarantee unique residues
+        resnames = []
+        for i in range(mol.numAtoms):
+            resn = mol.resname[i] if mol.resname[i] != "" else "MOL"
+            resnames.append(f"{resn}{mol.resid[i]:<d}{mol.insertion[i]}{mol.chain[i]}")
+
+        # Guarantee unique atom names for each unique residue
+        seen_names = {}
+        atomnames = []
+        for i in range(mol.numAtoms):
+            if resnames[i] not in seen_names:
+                seen_names[resnames[i]] = {}
+            name = mol.name[i]
+            if name not in seen_names[resnames[i]]:
+                seen_names[resnames[i]][name] = 0
+                atomnames.append(name)
+            else:
+                seen_names[resnames[i]][name] += 1
+                atomnames.append(f"{name}{seen_names[resnames[i]][name]}")
+
         f.write("@<TRIPOS>ATOM\n")
         for i in range(mol.coords.shape[0]):
             f.write(
                 "{:7d} {:8s} {:9.4f} {:9.4f} {:9.4f} {:8s} ".format(
                     i + 1,
-                    mol.name[i],
+                    atomnames[i],
                     mol.coords[i, 0, mol.frame],
                     mol.coords[i, 1, mol.frame],
                     mol.coords[i, 2, mol.frame],
@@ -563,11 +583,9 @@ def MOL2write(mol, filename, explicitbonds=None):
                 )
             )
             if isinstance(mol.resid[i], numbers.Integral):
-                f.write(f"{mol.resid[i]} ")
-                if mol.resname[i] != "":
-                    f.write(f"{mol.resname[i]}{mol.resid[i]:<d} ")
-                    if isinstance(mol.charge[i], numbers.Real):
-                        f.write("{:12.4f}".format(mol.charge[i]))
+                f.write(f"{mol.resid[i]} {resnames[i]} ")
+                if isinstance(mol.charge[i], numbers.Real):
+                    f.write("{:12.4f}".format(mol.charge[i]))
             f.write("\n")
 
         # # Disabled because RDKit has issues with this section
