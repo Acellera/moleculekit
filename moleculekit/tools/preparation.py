@@ -540,6 +540,7 @@ def proteinPrepare(
     logger.setLevel(old_level)
 
     if force_protonation is not None:
+        raise NotImplementedError("Find more correct way of forcing protonations!")
         # Re-run pdb2pqr without titration and forcing specific residues to user-defined protomers
         for sel, resn in force_protonation:
             mol_out.remove(sel + " and hydrogen")
