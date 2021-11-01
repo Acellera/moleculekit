@@ -2173,6 +2173,7 @@ def SDFread(filename, frame=None, topoloc=None):
             line = lines[n]
             coords.append([float(line[:10].strip()), float(line[10:20].strip()), float(line[20:30].strip())])
             atom_symbol = line[31:34].strip()
+            topo.record.append("HETATM")
             topo.element.append(atom_symbol)
             topo.name.append(atom_symbol)
             topo.serial.append(n-coord_start)
