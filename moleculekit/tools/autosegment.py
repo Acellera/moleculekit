@@ -245,7 +245,7 @@ def autoSegment2(
         segid = basename + str(i)
         backboneSegIdx = idx[compidx == i]  # The backbone atoms of the segment
         segres = mol.atomselect(
-            "same residue as index {}".format(" ".join(map(str, backboneSegIdx)))
+            f"same residue as index {' '.join(map(str, backboneSegIdx))}"
         )  # Get whole residues
 
         # Warning about separating segments with continuous resids

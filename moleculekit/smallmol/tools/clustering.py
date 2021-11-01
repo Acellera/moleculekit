@@ -59,9 +59,7 @@ def getMaximumCommonSubstructure(smallmol_list, removeHs=True, returnAtomIdxs=Fa
     mcs = rdFMCS.FindMCS(rdkitMols_list)
 
     logger.info(
-        "MCS found a substructure of {} atoms and {} bonds".format(
-            mcs.numAtoms, mcs.numBonds
-        )
+        f"MCS found a substructure of {mcs.numAtoms} atoms and {mcs.numBonds} bonds"
     )
 
     mcs_mol = Chem.MolFromSmarts(mcs.smartsString)
@@ -75,8 +73,8 @@ def getMaximumCommonSubstructure(smallmol_list, removeHs=True, returnAtomIdxs=Fa
         match = m.GetSubstructMatch(mcs_mol)
         sel_str = convertToString(match)
 
-        atoms_mcs = sm.get("idx", "idx {}".format(sel_str))
-        atoms_no_mcs = sm.get("idx", "idx {}".format(sel_str), invert=True)
+        atoms_mcs = sm.get("idx", f"idx {sel_str}")
+        atoms_no_mcs = sm.get("idx", f"idx {sel_str}", invert=True)
 
         atoms_mcs_list.append(atoms_mcs.tolist())
         atoms_no_mcs_list.append(atoms_no_mcs.tolist())
@@ -145,14 +143,14 @@ def cluster(
             sm._mol = Chem.RemoveHs(sm._mol)
     rdkitMols_list = [sm._mol for sm in smallmol_list]
 
-    clustmethod = getattr(this_module, "_{}Clustering".format(method))
+    clustmethod = getattr(this_module, f"_{method}Clustering")
 
     if method not in ["shape", "mcs"]:
         matrix = clustmethod(rdkitMols_list)
 
     else:
         aprun = ParallelExecutor(n_jobs=-1)  # _config['ncpus'])
-        matrix = aprun(total=len(rdkitMols_list), desc="{} Distance".format(method))(
+        matrix = aprun(total=len(rdkitMols_list), desc=f"{method} Distance")(
             delayed(clustmethod)(mol1, rdkitMols_list) for mol1 in rdkitMols_list
         )
 

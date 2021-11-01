@@ -230,7 +230,7 @@ def orientOnAxes(mol, sel="all"):
 
     covariance = np.cov(mol.coords[sel, :, 0].T)
     eigenvalues, eigenvectors = np.linalg.eigh(covariance)
-    logger.info("Moments of inertia: {}".format(eigenvalues))
+    logger.info(f"Moments of inertia: {eigenvalues}")
     eigenvectors = eigenvectors.T
 
     if np.linalg.det(eigenvectors) < 0:
@@ -482,7 +482,7 @@ def writeVoxels(arr, filename, vecMin, vecRes):
         for i in range(ngrid[0]):
             for j in range(ngrid[1]):
                 for k in range(ngrid[2]):
-                    outFile.write("%13.5g" % arr[i][j][k])
+                    outFile.write(f"{arr[i][j][k]:13.5g}")
                     if np.mod(cont, 6) == 5:
                         outFile.write("\n")
                     cont += 1
@@ -524,7 +524,7 @@ def opm(pdb, keep=False, keepaltloc="A"):
     from moleculekit.molecule import Molecule
 
     response = urllib.request.urlopen(
-        "https://storage.googleapis.com/opm-assets/pdb/{:s}.pdb".format(pdb.lower())
+        f"https://storage.googleapis.com/opm-assets/pdb/{pdb.lower()}.pdb"
     )
     text = response.read()
     tempfile = string_to_tempfile(text.decode("ascii"), "pdb")
@@ -614,16 +614,12 @@ def assertSameAsReferenceDir(compareDir, outdir="."):
     )
     if len(mismatch) != 0 or len(error) != 0 or len(match) != len(toCompare):
         logger.error(
-            "Mismatch while checking directory {} versus reference {}".format(
-                outdir, compareDir
-            )
+            f"Mismatch while checking directory {outdir} versus reference {compareDir}"
         )
-        logger.error("Files being checked: {}".format(toCompare))
+        logger.error(f"Files being checked: {toCompare}")
         for f in mismatch:
             logger.error(
-                "    diff {} {}".format(
-                    os.path.join(outdir, f), os.path.join(compareDir, f)
-                )
+                f"    diff {os.path.join(outdir, f)} {os.path.join(compareDir, f)}"
             )
         raise Exception("Mismatch in regression testing.")
 

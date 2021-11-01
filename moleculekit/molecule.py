@@ -918,9 +918,7 @@ class Molecule(object):
         >>> mol.rotateBy(rotationMatrix([0, 1, 0], 1.57))
         """
         if abs(np.linalg.det(M) - 1) > 1e-5:
-            logger.warning(
-                "Suspicious non-unitary determinant: {:f}".format(np.linalg.det(M))
-            )
+            logger.warning(f"Suspicious non-unitary determinant: {np.linalg.det(M)}")
         coords = self.get("coords", sel=sel)
         newcoords = coords - center
         newcoords = np.dot(newcoords, np.transpose(M)) + center
@@ -1077,14 +1075,14 @@ class Molecule(object):
         else:
             frames = [None] * len(filename)
 
-        for f in filename:
+        for ff in filename:
             if (
-                not isinstance(f, Sim)
-                and not isinstance(f, Frame)
-                and len(f) != 4
-                and not os.path.exists(f)
+                not isinstance(ff, Sim)
+                and not isinstance(ff, Frame)
+                and len(ff) != 4
+                and not os.path.exists(ff)
             ):
-                raise FileNotFoundError("File {} was not found.".format(f))
+                raise FileNotFoundError(f"File {ff} was not found.")
 
         if len(filename) == 1 and isinstance(filename[0], Sim):
             self.read(filename[0].molfile)  # TODO: Should pass all parameters here!!!
@@ -1108,7 +1106,7 @@ class Molecule(object):
                 self.write(tmppdb)
 
             if ext not in _ALL_READERS:
-                raise ValueError('Unknown file type with extension "{}".'.format(ext))
+                raise ValueError(f'Unknown file type with extension "{ext}".')
             readers = _ALL_READERS[ext]
             mol = None
             for rr in readers:
@@ -1190,7 +1188,7 @@ class Molecule(object):
             from moleculekit.util import tempname
 
             with gzip.open(fname, "r") as f:
-                fname = tempname(suffix=".{}".format(fname.split(".")[-2]))
+                fname = tempname(suffix=f".{fname.split('.')[-2]}")
                 with open(fname, "w") as fo:
                     fo.write(f.read().decode("utf-8", errors="ignore"))
         return fname
@@ -1318,7 +1316,7 @@ class Molecule(object):
         ext = os.path.splitext(filename)[1][1:]
         if ext == "gz":
             pieces = filename.split(".")
-            ext = "{}.{}".format(pieces[-2], pieces[-1])
+            ext = f"{pieces[-2]}.{pieces[-1]}"
 
         src = self
         if not (sel is None or (isinstance(sel, str) and sel == "all")):
@@ -1815,11 +1813,11 @@ class Molecule(object):
     def __str__(self):
         def formatstr(name, field):
             if isinstance(field, np.ndarray) or isinstance(field, list):
-                rep = "{} shape: {}".format(name, np.shape(field))
+                rep = f"{name} shape: {np.shape(field)}"
             elif field == "reps":
-                rep = "{}: {}".format(name, len(self.reps.replist))
+                rep = f"{name}: {len(self.reps.replist)}"
             else:
-                rep = "{}: {}".format(name, field)
+                rep = f"{name}: {field}"
             return rep
 
         rep = (
@@ -2071,7 +2069,7 @@ class UniqueAtomID:
             fieldvs.append(
                 "{}: {}".format(f, "'{}'".format(v) if isinstance(v, str) else v)
             )
-        return "UniqueAtomID<{}>".format(", ".join(fieldvs))
+        return f"UniqueAtomID<{', '.join(fieldvs)}>"
 
     def __repr__(self):
         return (
@@ -2168,7 +2166,7 @@ class UniqueResidueID:
             fieldvs.append(
                 "{}: {}".format(f, "'{}'".format(v) if isinstance(v, str) else v)
             )
-        return "UniqueResidueID<{}>".format(", ".join(fieldvs))
+        return f"UniqueResidueID<{', '.join(fieldvs)}>"
 
     def __repr__(self):
         return (
@@ -2259,9 +2257,7 @@ def mol_equal(
             difffields += [field]
 
     if len(difffields) > 0:
-        print(
-            "Differences detected in mol1 and mol2 in field(s) {}.".format(difffields)
-        )
+        print(f"Differences detected in mol1 and mol2 in field(s) {difffields}.")
         return False
     return True
 
@@ -2399,9 +2395,7 @@ class Representations:
     def __str__(self):
         s = ""
         for i, r in enumerate(self.replist):
-            s += "rep {}: sel='{}', style='{}', color='{}'\n".format(
-                i, r.sel, r.style, r.color
-            )
+            s += f"rep {i}: sel='{r.sel}', style='{r.style}', color='{r.color}'\n"
         return s
 
     def _translateNGL(self, rep):
@@ -2459,12 +2453,12 @@ class Representations:
                     color = colortrans[rep.color.lower()]
                 else:
                     color = rep.color
-                viewer.send("mol selection {}".format(rep.sel))
-                viewer.send("mol representation {}".format(rep.style))
+                viewer.send(f"mol selection {rep.sel}")
+                viewer.send(f"mol representation {rep.style}")
                 if isinstance(rep.color, str) and not rep.color.isnumeric():
-                    viewer.send("mol color {}".format(color))
+                    viewer.send(f"mol color {color}")
                 else:
-                    viewer.send("mol color ColorID {}".format(color))
+                    viewer.send(f"mol color ColorID {color}")
 
                 viewer.send("mol addrep top")
 

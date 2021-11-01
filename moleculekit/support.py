@@ -25,7 +25,7 @@ def xtc_lib():
     else:
         # lib['libc'] = cdll.LoadLibrary("libc.so.6")
         lib["libc"] = ct.cdll.LoadLibrary(
-            "libc.{}".format("so.6" if platform.uname()[0] != "Darwin" else "dylib")
+            f"libc.{'so.6' if platform.uname()[0] != 'Darwin' else 'dylib'}"
         )
         lib["libxtc"] = ct.cdll.LoadLibrary(os.path.join(libdir, "libxtc.so"))
     return lib

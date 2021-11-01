@@ -42,7 +42,7 @@ def rcsbFindMutatedResidues(pdbid):
         )
     tomutate = {}
 
-    url = "http://www.rcsb.org/pdb/explore.do?structureId={}".format(pdbid)
+    url = f"http://www.rcsb.org/pdb/explore.do?structureId={pdbid}"
     text = _getRCSBtext(url)
     soup = BeautifulSoup(text, "lxml")
     table = soup.find(id="ModifiedResidueTable")
@@ -75,7 +75,7 @@ def rcsbFindLigands(pdbid):
         )
     ligands = []
 
-    url = "http://www.rcsb.org/pdb/explore.do?structureId={}".format(pdbid)
+    url = f"http://www.rcsb.org/pdb/explore.do?structureId={pdbid}"
     text = _getRCSBtext(url)
     soup = BeautifulSoup(text, "lxml")
     table = soup.find(id="LigandsTable")

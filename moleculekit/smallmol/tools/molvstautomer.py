@@ -29,7 +29,7 @@ def memoized_property(fget):
     import functools
 
     """Decorator to create memoized properties."""
-    attr_name = "_{}".format(fget.__name__)
+    attr_name = f"_{fget.__name__}"
 
     @functools.wraps(fget)
     def fget_memoized(self):
@@ -118,9 +118,7 @@ class TautomerScore(object):
         return Chem.MolFromSmarts(self.smarts_str)
 
     def __repr__(self):
-        return "TautomerScore({!r}, {!r}, {!r})".format(
-            self.name, self.smarts_str, self.score
-        )
+        return f"TautomerScore({self.name!r}, {self.smarts_str!r}, {self.score!r})"
 
     def __str__(self):
         return self.name
@@ -298,15 +296,13 @@ class TautomerEnumerator(object):
                             smiles = Chem.MolToSmiles(product, isomericSmiles=True)
                             log.debug("Applied rule: %s to %s", transform.name, tsmiles)
                             if smiles not in tautomers:
-                                log.debug("New tautomer produced: %s" % smiles)
+                                log.debug(f"New tautomer produced: {smiles}")
                                 kekulized_product = copy.deepcopy(product)
                                 Chem.Kekulize(kekulized_product)
                                 tautomers[smiles] = product
                                 kekulized[smiles] = kekulized_product
                             else:
-                                log.debug(
-                                    "Previous tautomer produced again: %s" % smiles
-                                )
+                                log.debug(f"Previous tautomer produced again: {smiles}")
                         except ValueError:
                             log.debug("ValueError Applying rule: %s", transform.name)
                 done.add(tsmiles)

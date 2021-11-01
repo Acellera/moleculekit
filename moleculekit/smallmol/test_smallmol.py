@@ -92,8 +92,7 @@ class _TestSmallMol(unittest.TestCase):
         self.assertEqual(
             n_atoms,
             LIGAND_N_ATOMS,
-            "Atoms not correctly loaded. "
-            "Expected: {}; Now: {}".format(LIGAND_N_ATOMS, n_atoms),
+            f"Atoms not correctly loaded. Expected: {LIGAND_N_ATOMS}; Now: {n_atoms}",
         )
 
     def test_loadSmile(self):
@@ -103,8 +102,7 @@ class _TestSmallMol(unittest.TestCase):
         self.assertEqual(
             n_atoms,
             SMILE_N_ATOMS,
-            "Atoms not correctly loaded. "
-            "Expected: {}; Now: {}".format(SMILE_N_ATOMS, n_atoms),
+            f"Atoms not correctly loaded. Expected: {SMILE_N_ATOMS}; Now: {n_atoms}",
         )
 
     def test_getAtoms(self):
@@ -143,8 +141,7 @@ class _TestSmallMol(unittest.TestCase):
         self.assertListEqual(
             details,
             CHIRAL_DETAILS,
-            "chiral atom does not match."
-            "Expected: {}; Now: {}".format(CHIRAL_DETAILS, details),
+            f"chiral atom does not match.Expected: {CHIRAL_DETAILS}; Now: {details}",
         )
 
     def test_foundBond(self):
@@ -264,14 +261,14 @@ class _TestSmallMol(unittest.TestCase):
         sm = SmallMol(self.benzamidine_mol2)
         assert (
             sm.toSMILES() == "NC(=[NH2+])C1=CC=CC=C1"
-        ), "Failed with SMILES: {}".format(sm.toSMILES())
+        ), f"Failed with SMILES: {sm.toSMILES()}"
 
     def test_toSMARTS(self):
         sm = SmallMol(self.benzamidine_mol2)
         assert (
             sm.toSMARTS()
             == "[#6]1(:[#6H]:[#6H]:[#6H]:[#6H]:[#6H]:1)-[#6](=[#7H2+])-[#7H2]"
-        ), "Failed with SMARTS: {}".format(sm.toSMARTS())
+        ), f"Failed with SMARTS: {sm.toSMARTS()}"
 
     def test_align(self):
         from moleculekit.util import rotationMatrix

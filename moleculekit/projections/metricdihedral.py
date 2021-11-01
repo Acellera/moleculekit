@@ -60,7 +60,7 @@ class Dihedral:
     def __str__(self):
         descr = ""
         if self.dihedraltype is not None:
-            descr = '"{}" dihedral angle including atoms:\n'.format(self.dihedraltype)
+            descr = f'"{self.dihedraltype}" dihedral angle including atoms:\n'
         descr += "name\tresid\tinsertion\tchain\tsegid\n"
         for a in self.atoms:
             descr += "{}\t{}\t{}\t\t{}\t{}\n".format(
@@ -145,19 +145,19 @@ class Dihedral:
     @staticmethod
     def _findResidue(mol, resid, insertion=None, chain=None, segid=None):
         idx = mol.resid == resid
-        descr = 'Resid "{}"'.format(resid)
+        descr = f'Resid "{resid}"'
         if insertion is not None:
             idx &= mol.insertion == insertion
-            descr += ' Insertion "{}"'.format(insertion)
+            descr += f' Insertion "{insertion}"'
         if chain is not None:
             idx &= mol.chain == chain
-            descr += ' Chain "{}"'.format(chain)
+            descr += f' Chain "{chain}"'
         if segid is not None:
             idx &= mol.segid == segid
-            descr += ' Segid "{}"'.format(segid)
+            descr += f' Segid "{segid}"'
 
         if np.sum(idx) == 0:
-            raise RuntimeError("No residues found with description ({})".format(descr))
+            raise RuntimeError(f"No residues found with description ({descr})")
 
         idx2 = np.where(idx)[0]
         if not np.array_equal(idx2, np.arange(idx2[0], idx2[-1] + 1)):
@@ -201,9 +201,7 @@ class Dihedral:
         atomidx = resdict["idx"] & (mol.name == name)
         if np.sum(atomidx) == 0:
             raise AtomNotFoundException(
-                'No atoms found with description ({}) and name "{}".'.format(
-                    resdict, name
-                )
+                f'No atoms found with description ({resdict}) and name "{name}".'
             )
         newresdict = {
             "name": name,
@@ -225,9 +223,7 @@ class Dihedral:
         uqresname = np.unique(mol.resname[residx])
 
         if len(uqresname) > 1:
-            raise RuntimeError(
-                "Multiple resnames ({}) found in ({})".format(uqresname, resdict)
-            )
+            raise RuntimeError(f"Multiple resnames ({uqresname}) found in ({resdict})")
         return uqresname[0]
 
     @staticmethod

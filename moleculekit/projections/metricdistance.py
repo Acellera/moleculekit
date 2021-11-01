@@ -572,13 +572,13 @@ class _TestMetricDistance(unittest.TestCase):
         # Manual group atomselection with booleans
         ca_atoms = self.mol_skipped.atomselect("protein and name CA", indexes=True)
         ca_bools1 = self.mol_skipped.atomselect(
-            "index {}".format(" ".join(map(str, ca_atoms[0::3])))
+            f"index {' '.join(map(str, ca_atoms[0::3]))}"
         )
         ca_bools2 = self.mol_skipped.atomselect(
-            "index {}".format(" ".join(map(str, ca_atoms[1::3])))
+            f"index {' '.join(map(str, ca_atoms[1::3]))}"
         )
         ca_bools3 = self.mol_skipped.atomselect(
-            "index {}".format(" ".join(map(str, ca_atoms[2::3])))
+            f"index {' '.join(map(str, ca_atoms[2::3]))}"
         )
         metr = MetricSelfDistance([ca_bools1, ca_bools2, ca_bools3])
         newdata = metr.project(self.mol_skipped)

@@ -181,9 +181,7 @@ class SmallMol(object):
                     _mol = sms[0]
                 # if the file failed to be loaded and 'force_reading' = True, file convert to sdf and than loaded
                 if _mol is None and force_reading:
-                    logger.warning(
-                        "Reading {} with force_reading procedure".format(mol)
-                    )
+                    logger.warning(f"Reading {mol} with force_reading procedure")
                     sdf = openbabelConvert(mol, name_suffix, "sdf")
                     _mol = Chem.SDMolSupplier(sdf, removeHs=False)[0]
                     os.remove(sdf)
@@ -232,7 +230,7 @@ class SmallMol(object):
     @property
     def _name(self):
         return np.array(
-            ["{}{}".format(a.GetSymbol(), a.GetIdx()) for a in self._mol.GetAtoms()],
+            [f"{a.GetSymbol()}{a.GetIdx()}" for a in self._mol.GetAtoms()],
             dtype=SmallMol._dtypes["name"],
         )
 
@@ -488,13 +486,13 @@ class SmallMol(object):
                <rdkit.Chem.rdchem.Atom object at 0x7faf616dd170>], dtype=object)
         """
         if sel == "all":
-            sel = "idx {}".format(convertToString(self._idx.tolist()))
+            sel = f"idx {convertToString(self._idx.tolist())}"
         # get the field key and the value to grep
         key = sel.split()[0]
         selector = sel.split()[1:]
 
         if key not in self._atom_fields:
-            raise KeyError("The property passed {} does not exist".format(key))
+            raise KeyError(f"The property passed {key} does not exist")
         if len(selector) == 0:
             raise ValueError("No selection was provided")
 
@@ -625,8 +623,8 @@ class SmallMol(object):
         if returnDetails:
             idxs = idxs.astype(str)
             idxs_str = " ".join(idxs)
-            names = self.get("name", "idx {}".format(idxs_str))
-            chirals = self.get("chiral", "idx {}".format(idxs_str))
+            names = self.get("name", f"idx {idxs_str}")
+            chirals = self.get("chiral", f"idx {idxs_str}")
 
             return True, [(a, c) for a, c in zip(names, chirals)]
 
@@ -714,7 +712,7 @@ class SmallMol(object):
 
         pyO3A = GetO3A(self._mol, refmol)
         rmsd = pyO3A.Align()
-        logger.info("Alignment with a RMSD of {}".format(rmsd))
+        logger.info(f"Alignment with a RMSD of {rmsd}")
 
     def dropFrames(self, frames="all"):
         if isinstance(frames, int):
@@ -728,9 +726,7 @@ class SmallMol(object):
         else:
             if np.any(frames >= self.numFrames):
                 raise RuntimeError(
-                    "Cannot remove more frames than existing which is {}".format(
-                        self.numFrames
-                    )
+                    f"Cannot remove more frames than existing which is {self.numFrames}"
                 )
             ids = [cc.GetId() for cc in self._mol.GetConformers()]
             for f in frames:
@@ -750,7 +746,7 @@ class SmallMol(object):
                 os.makedirs(os.path.dirname(fname), exist_ok=True)
                 for i in frames:
                     fname_first = os.path.splitext(fname)[0]
-                    currfname = os.path.join("{}_{}{}".format(fname_first, i, ext))
+                    currfname = os.path.join(f"{fname_first}_{i}{ext}")
                     writer = chemwrite(currfname)
                     writer.write(self._mol, confId=i)
         else:
@@ -953,9 +949,7 @@ class SmallMol(object):
 
         if optimizemode not in ["std", "mmff"]:
             raise ValueError(
-                'Optimization mode {} not understood. Can be "std" or "ff"'.format(
-                    optimizemode
-                )
+                f'Optimization mode {optimizemode} not understood. Can be "std" or "ff"'
             )
 
         elements = self._element
@@ -1023,21 +1017,19 @@ class SmallMol(object):
     def __str__(self):
         def formatstr(name, field):
             if isinstance(field, np.ndarray) or isinstance(field, list):
-                rep = "{} shape: {}".format(name, np.shape(field))
+                rep = f"{name} shape: {np.shape(field)}"
             elif field == "reps":
-                rep = "{}: {}".format(name, len(self.reps.replist))
+                rep = f"{name}: {len(self.reps.replist)}"
             else:
-                rep = "{}: {}".format(name, field)
+                rep = f"{name}: {field}"
             return rep
 
-        rep = "SmallMol with {} atoms and {} conformers".format(
-            self.numAtoms, self.numFrames
-        )
+        rep = f"SmallMol with {self.numAtoms} atoms and {self.numFrames} conformers"
         for p in sorted(self._atom_fields):
             if p.startswith("_"):
                 continue
             rep += "\n"
-            rep += "Atom field - {}".format(p)
+            rep += f"Atom field - {p}"
         for j in sorted(self.__dict__.keys() - list(SmallMol._atom_fields)):
             if j[0] == "_":
                 continue

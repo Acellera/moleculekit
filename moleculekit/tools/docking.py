@@ -4,11 +4,11 @@
 # No redistribution in whole or part
 #
 import numpy as np
-from tempfile import NamedTemporaryFile
 from os import path
 import os
 import shutil
-from subprocess import call, check_output
+import unittest
+from subprocess import call
 from moleculekit.util import tempname, natsorted
 from moleculekit.molecule import Molecule
 from glob import glob
@@ -105,14 +105,14 @@ def dock(
     try:
         if vinaexe is None:
             suffix = "" if platform.system() != "Windows" else ".exe"
-            vinaexe = "{}-vina{}".format(platform.system(), suffix)
+            vinaexe = f"{platform.system()}-vina{suffix}"
 
         vinaexe = shutil.which(vinaexe, mode=os.X_OK)
         if not vinaexe:
             raise RuntimeError(
                 "Could not find vina, or no execute permissions are given"
             )
-    except:
+    except Exception:
         raise RuntimeError("Could not find vina, or no execute permissions are given")
 
     try:
@@ -121,7 +121,7 @@ def dock(
             raise RuntimeError(
                 "Could not find babel, or no execute permissions are given"
             )
-    except:
+    except Exception:
         raise RuntimeError("Could not find babel, or no execute permissions are given")
 
     call(
@@ -196,15 +196,15 @@ def dock(
         ]
     )
 
-    outfiles = natsorted(glob("{}*.pdb".format(output_prefix)))
+    outfiles = natsorted(glob(f"{output_prefix}*.pdb"))
 
     scoring = []
     poses = []
     for i, ligf in enumerate(outfiles):
         scoring.append(_parseScoring(ligf))
-        l = Molecule(ligf)
-        l.viewname = "Pose {}".format(i)
-        poses.append(l)
+        ll = Molecule(ligf)
+        ll.viewname = f"Pose {i}"
+        poses.append(ll)
 
     os.remove(protein_pdb)
     os.remove(ligand_mol2)
@@ -226,11 +226,8 @@ def _parseScoring(outf):
                 rmsdub = float(pieces[5])
                 break
     if kcal is None or rmsdlb is None or rmsdub is None:
-        raise RuntimeError("Could not parse vina output correctly {}".format(outf))
+        raise RuntimeError(f"Could not parse vina output correctly {outf}")
     return kcal, rmsdlb, rmsdub
-
-
-import unittest
 
 
 class _TestDocking(unittest.TestCase):

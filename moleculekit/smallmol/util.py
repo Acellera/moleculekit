@@ -277,7 +277,7 @@ def _depictMol(
         drawer = rdMolDraw2D.MolDraw2DSVG(*resolution)
     else:
         raise RuntimeError(
-            "Unsupported depiction extention {}. Use either svg or png.".format(ext)
+            f"Unsupported depiction extention {ext}. Use either svg or png."
         )
     # get the drawer options
     opts = drawer.drawOptions()

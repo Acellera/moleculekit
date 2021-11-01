@@ -146,14 +146,14 @@ def maximalSubstructureAlignment(
 
     if visualize:
         mol1.view(
-            sel="index {}".format(" ".join(map(str, matchnodes1))),
+            sel=f"index {' '.join(map(str, matchnodes1))}",
             style="CPK",
             hold=True,
         )
         mol1.view(sel="all", style="Lines")
 
         mol2.view(
-            sel="index {}".format(" ".join(map(str, matchnodes2))),
+            sel=f"index {' '.join(map(str, matchnodes2))}",
             style="CPK",
             hold=True,
         )

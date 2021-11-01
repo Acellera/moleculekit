@@ -143,9 +143,7 @@ class MetricCoordinate(Projection):
                 types += ["coordinate"]
                 indexes += [i]
                 description += [
-                    "{} coordinate of {} {} {}".format(
-                        xyz, mol.resname[i], mol.resid[i], mol.name[i]
-                    )
+                    f"{xyz} coordinate of {mol.resname[i]} {mol.resid[i]} {mol.name[i]}"
                 ]
         return DataFrame(
             {"type": types, "atomIndexes": indexes, "description": description}

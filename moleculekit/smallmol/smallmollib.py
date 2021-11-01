@@ -72,12 +72,10 @@ def sdfReader(file, removeHs, fixHs, sanitize, isgzip=False):
                 name = mol.GetProp("_Name")
             countfailed += 1
             logger.warning(
-                "Failed to load molecule{}. Skipping to next molecule.".format(
-                    " with name {}".format(name)
-                )
+                f"Failed to load molecule with name {name}. Skipping to next molecule."
             )
     if countfailed:
-        logger.info("Failed to load {}/{} molecules".format(countfailed, len(supplier)))
+        logger.info(f"Failed to load {countfailed}/{len(supplier)} molecules")
     return mols
 
 
@@ -140,9 +138,7 @@ class SmallMolLib(object):
         elif ext == ".smi":
             return smiReader(libfile, removeHs, fixHs, isgzip)
         else:
-            raise RuntimeError(
-                "Invalid file extension {}. Could not read it.".format(ext)
-            )
+            raise RuntimeError(f"Invalid file extension {ext}. Could not read it.")
 
     @property
     def numMols(self):
@@ -175,7 +171,7 @@ class SmallMolLib(object):
         if ids is None:
             return self._mols
         if not isinstance(ids, list):
-            raise TypeError("The argument ids {} should be list".format(type(ids)))
+            raise TypeError(f"The argument ids {type(ids)} should be list")
 
         return np.array(self._mols)[ids]
 
@@ -196,9 +192,7 @@ class SmallMolLib(object):
         writer = SDWriter(sdf_name)
         if fields is not None:
             if not isinstance(fields, list):
-                raise TypeError(
-                    "The fields argument {} should be a list".format(type(fields))
-                )
+                raise TypeError(f"The fields argument {type(fields)} should be a list")
             writer.SetProps(fields)
 
         for m in self._mols:
@@ -231,7 +225,7 @@ class SmallMolLib(object):
         for n, sm in enumerate(self.getMols()):
             smi = sm.toSMILES(explicitHs=explicitHs)
             name = n if not names else sm.ligname
-            f.write(smi + " {} \n".format(name))
+            f.write(smi + f" {name} \n")
 
         f.close()
 
@@ -269,7 +263,7 @@ class SmallMolLib(object):
 
         if not isinstance(ids, list):
             raise TypeError(
-                "The argument ids {} is not valid. Should be list".format(type(ids))
+                f"The argument ids {type(ids)} is not valid. Should be list"
             )
         _oldNumMols = self.numMols
         self._mols = np.delete(self._mols, ids)
@@ -304,9 +298,7 @@ class SmallMolLib(object):
         if fields is not None:
             if not isinstance(fields, list):
                 raise TypeError(
-                    "The argument fields passed {} should be a list ".format(
-                        type(fields)
-                    )
+                    f"The argument fields passed {type(fields)} should be a list "
                 )
         else:
             fields = ["ligname", "_mol"] if molAsImage else ["ligname"]

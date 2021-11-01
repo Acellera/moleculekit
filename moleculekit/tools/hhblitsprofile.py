@@ -49,7 +49,7 @@ def getSequenceProfile(sequence, hhblits, hhblitsdb, ncpu=6, niter=4):
     regex = re.compile("^\w\s\d+")
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(tmpdir + "/input.fasta", "w") as fp:
-            fp.write(">\n{}\n".format(sequence))
+            fp.write(f">\n{sequence}\n")
 
         try:
             subprocess.check_output(
