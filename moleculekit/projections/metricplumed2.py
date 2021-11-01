@@ -238,7 +238,7 @@ class PlumedCV(PlumedStatement):
                 self.args[k] = ",".join(v)
             else:
                 raise TypeError(
-                    "Unexpected type {} passed to argument {}".format(str(type(v)), k)
+                    f"Unexpected type {str(type(v))} passed to argument {k}"
                 )
 
     def __str__(self):
@@ -313,7 +313,7 @@ class PlumedMolinfo(PlumedStatement):
         # TODO Need to find a better pickle-compatible way which is deleted at end
         pdbfp = tempfile.NamedTemporaryFile(suffix=".pdb", delete=False)
         self.localmol.write(pdbfp.name)
-        return "MOLINFO STRUCTURE={}".format(pdbfp.name)
+        return f"MOLINFO STRUCTURE={pdbfp.name}"
 
 
 class PlumedVerbatim(PlumedStatement):
@@ -351,7 +351,7 @@ class PlumedGenericGroup(PlumedStatement):
             cvcounter = cvcounter + 1
         self.mol = mol
         self.sel = sel
-        self.code = "%s: %s ATOMS=%s" % (self.label, type, ",".join(map(str, al)))
+        self.code = f"{self.label}: {type} ATOMS={','.join(map(str, al))}"
 
     def __str__(self):
         return self.code
@@ -546,7 +546,7 @@ class MetricPlumed2(Projection):
         metainp_fp = open(metainp, "w+")
         metainp_fp.write("UNITS  LENGTH=A  ENERGY=kcal/mol  TIME=ps\n")
         metainp_fp.write(self._plumed_inp)
-        metainp_fp.write("\nPRINT ARG=* FILE=%s\n# FLUSH STRIDE=1\n" % colvar)
+        metainp_fp.write(f"\nPRINT ARG=* FILE={colvar}\n# FLUSH STRIDE=1\n")
         metainp_fp.close()
 
         cmd = [

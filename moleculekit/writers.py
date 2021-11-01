@@ -79,11 +79,11 @@ def _deduce_PDB_atom_name(name, resname, element=None):
         and (element.strip().capitalize() in _position_12_elements)
         and (name[0:2].upper() == element[0:2].upper())
     ):
-        return "{:<4}".format(name)
+        return f"{name:<4}"
     if len(name) >= 4:
         return name[:4]
     elif len(name) == 1:
-        return " {}  ".format(name)
+        return f" {name}  "
     elif (
         resname == name
         or name[:2] in _ions_metals
@@ -92,8 +92,8 @@ def _deduce_PDB_atom_name(name, resname, element=None):
         or (resname in _special_cl and name[:2] == "CL")
         or _Pair(resname, name) in _include_pairs
     ) and _Pair(resname, name) not in _exclude_pairs:
-        return "{:<4}".format(name)
-    return " {:<3}".format(name)
+        return f"{name:<4}"
+    return f" {name:<3}"
 
 
 def _getPDBElement(name, element, lowersecond=True):
@@ -239,11 +239,11 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode="pdb"):
                     mol.chain[i],
                     mol.resid[i],
                     mol.insertion[i],
-                    "{:8.3f}".format(coords[i, 0, f])[:8],
-                    "{:8.3f}".format(coords[i, 1, f])[:8],
-                    "{:8.3f}".format(coords[i, 2, f])[:8],
-                    "{:6.2f}".format(mol.occupancy[i])[:6],
-                    "{:6.2f}".format(mol.beta[i])[:6],
+                    f"{coords[i, 0, f]:8.3f}"[:8],
+                    f"{coords[i, 1, f]:8.3f}"[:8],
+                    f"{coords[i, 2, f]:8.3f}"[:8],
+                    f"{mol.occupancy[i]:6.2f}"[:6],
+                    f"{mol.beta[i]:6.2f}"[:6],
                     prelast,
                     last,
                 )
@@ -263,7 +263,7 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode="pdb"):
                 for ni in range(0, len(neighbours), 4):
                     subneighs = neighbours[ni : min(ni + 4, len(neighbours))]
                     neighstring = "".join("%5d" % sn for sn in subneighs)
-                    fh.write("CONECT{:5d}{}\n".format(atom, neighstring))
+                    fh.write(f"CONECT{atom:5d}{neighstring}\n")
 
         fh.write("ENDMDL\n")
     fh.write("END\n")
@@ -585,7 +585,7 @@ def MOL2write(mol, filename, explicitbonds=None):
             if isinstance(mol.resid[i], numbers.Integral):
                 f.write(f"{mol.resid[i]} {resnames[i]} ")
                 if isinstance(mol.charge[i], numbers.Real):
-                    f.write("{:12.4f}".format(mol.charge[i]))
+                    f.write(f"{mol.charge[i]:12.4f}")
             f.write("\n")
 
         # # Disabled because RDKit has issues with this section

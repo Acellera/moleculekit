@@ -182,7 +182,7 @@ class MetricSecondaryStructure(Projection):
         map : :class:`DataFrame <pandas.core.frame.DataFrame>` object
             A DataFrame containing the descriptions of each dimension
         """
-        idx = mol.atomselect("{} and name CA".format(self.sel), indexes=True)
+        idx = mol.atomselect(f"{self.sel} and name CA", indexes=True)
         from pandas import DataFrame
 
         types = []

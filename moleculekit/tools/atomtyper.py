@@ -133,7 +133,7 @@ def prepareProteinForAtomtyping(
         mol.bonds = mol._guessBonds()
 
     protsel = mol.atomselect("protein")
-    metalsel = mol.atomselect("element {}".format(" ".join(metal_atypes)))
+    metalsel = mol.atomselect(f"element {' '.join(metal_atypes)}")
     watersel = mol.atomselect("water")
     notallowed = ~(protsel | metalsel | watersel)
 
@@ -211,7 +211,7 @@ def atomtypingValidityChecks(mol):
         "But make sure you understand what you are doing."
     )
     protsel = mol.atomselect("protein")
-    metals = mol.atomselect("element {}".format(" ".join(metal_atypes)))
+    metals = mol.atomselect(f"element {' '.join(metal_atypes)}")
     notallowed = ~(protsel | metals)
 
     if not np.any(protsel):

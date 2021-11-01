@@ -222,7 +222,7 @@ class MolFactory(object):
                     natoms.append(len(topo.__dict__[field]))
             natoms = np.unique(natoms)
             if len(natoms) == 0:
-                raise RuntimeError("No atoms were read from file {}.".format(filename))
+                raise RuntimeError(f"No atoms were read from file {filename}.")
             if len(natoms) != 1:
                 raise TopologyInconsistencyError(
                     "Different number of atoms read from file {} for different fields: {}.".format(
@@ -350,14 +350,10 @@ class MolFactory(object):
         if len(traj.coords):
             assert (
                 traj.coords.ndim == 3
-            ), "{} reader must return 3D coordinates array for file {}".format(
-                ext, filename
-            )
+            ), f"{ext} reader must return 3D coordinates array for file {filename}"
             assert (
                 traj.coords.shape[1] == 3
-            ), "{} reader must return 3 values in 2nd dimension for file {}".format(
-                ext, filename
-            )
+            ), f"{ext} reader must return 3 values in 2nd dimension for file {filename}"
 
         for field in ["coords", "box", "boxangles"]:
             # All necessary dtype conversions. Only perform if necessary since it otherwise reallocates memory!
@@ -422,7 +418,7 @@ class MolFactory(object):
         filepath = os.path.abspath(filepath)
         filedir = os.path.dirname(filepath)
         basename = os.path.basename(filepath)
-        numframefile = os.path.join(filedir, ".{}.numframes".format(basename))
+        numframefile = os.path.join(filedir, f".{basename}.numframes")
         if not os.path.exists(numframefile) or (
             os.path.exists(numframefile)
             and (os.path.getmtime(numframefile) < os.path.getmtime(filepath))
@@ -430,7 +426,7 @@ class MolFactory(object):
             try:
                 with open(numframefile, "w") as f:
                     f.write(str(numFrames))
-            except:
+            except Exception:
                 pass
 
 
@@ -565,7 +561,7 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
                 if element == "Du":
                     # Corina, SYBYL and Tripos dummy atoms. Don't catch Du.C which is a dummy carbon and should be recognized as carbon
                     # We are using the PDB convention of left aligning the name in 4 spaces to signify ion/metal
-                    topo.name[-1] = "{:<4}".format(topo.name[-1])
+                    topo.name[-1] = f"{topo.name[-1]:<4}"
                     topo.element.append("")
                 elif element in periodictable:
                     topo.element.append(element)
@@ -742,7 +738,7 @@ def _getPDB(pdbid):
     tempfile = False
     localpdb = os.path.join(home(dataDir="pdb"), pdbid.lower() + ".pdb")
     if os.path.isfile(localpdb):
-        logger.info("Using local copy for {:s}: {:s}".format(pdbid, localpdb))
+        logger.info(f"Using local copy for {pdbid}: {localpdb}")
         filepath = localpdb
     else:
         # or the PDB website

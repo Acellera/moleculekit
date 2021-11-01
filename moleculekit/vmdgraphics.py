@@ -5,6 +5,7 @@
 #
 import moleculekit.vmdviewer
 import io
+import unittest
 from moleculekit.vmdviewer import getCurrentViewer
 
 
@@ -42,7 +43,7 @@ class VMDGraphicObject(object):
     def _remember(self, s):
         # We can't get data back from VMD, so let it remember what's to be deleted
         n = self.n
-        self.script.write("lappend htmd_graphics({:d}) [{:s}]\n".format(n, s))
+        self.script.write(f"lappend htmd_graphics({n:d}) [{s:s}]\n")
 
     @staticmethod
     def tq(v):
@@ -99,14 +100,14 @@ class VMDConvexHull(VMDGraphicObject):
             c2s = VMDGraphicObject.tq(cc[v2, :])
             c3s = VMDGraphicObject.tq(cc[v3, :])
             if solid:
-                self._remember("draw triangle {:s} {:s} {:s}".format(c1s, c2s, c3s))
+                self._remember(f"draw triangle {c1s} {c2s} {c3s}")
             else:
-                self._remember("draw line {:s} {:s} {:s}".format(c1s, c2s, style))
-                self._remember("draw line {:s} {:s} {:s}".format(c1s, c3s, style))
-                self._remember("draw line {:s} {:s} {:s}".format(c2s, c3s, style))
+                self._remember(f"draw line {c1s} {c2s} {style}")
+                self._remember(f"draw line {c1s} {c3s} {style}")
+                self._remember(f"draw line {c2s} {c3s} {style}")
                 self.script.write("\n")
 
-        self.script.write("set htmd_graphics_mol({:d}) [molinfo top]".format(self.n))
+        self.script.write(f"set htmd_graphics_mol({self.n}) [molinfo top]")
         cmd = self.script.getvalue()
         vmd = getCurrentViewer()
         vmd.send(cmd)
@@ -131,74 +132,50 @@ class VMDBox(VMDGraphicObject):
         ma = [xmax, ymax, zmax]
 
         self._remember("draw materials off")
-        self._remember("draw color {}".format(color))
+        self._remember(f"draw color {color}")
 
         self._remember(
-            'draw line "{} {} {}" "{} {} {}"\n'.format(
-                mi[0], mi[1], mi[2], ma[0], mi[1], mi[2]
-            )
+            f'draw line "{mi[0]} {mi[1]} {mi[2]}" "{ma[0]} {mi[1]} {mi[2]}"\n'
         )
         self._remember(
-            'draw line "{} {} {}" "{} {} {}"\n'.format(
-                mi[0], mi[1], mi[2], mi[0], ma[1], mi[2]
-            )
+            f'draw line "{mi[0]} {mi[1]} {mi[2]}" "{mi[0]} {ma[1]} {mi[2]}"\n'
         )
         self._remember(
-            'draw line "{} {} {}" "{} {} {}"\n'.format(
-                mi[0], mi[1], mi[2], mi[0], mi[1], ma[2]
-            )
+            f'draw line "{mi[0]} {mi[1]} {mi[2]}" "{mi[0]} {mi[1]} {ma[2]}"\n'
         )
 
         self._remember(
-            'draw line "{} {} {}" "{} {} {}"\n'.format(
-                ma[0], mi[1], mi[2], ma[0], ma[1], mi[2]
-            )
+            f'draw line "{ma[0]} {mi[1]} {mi[2]}" "{ma[0]} {ma[1]} {mi[2]}"\n'
         )
         self._remember(
-            'draw line "{} {} {}" "{} {} {}"\n'.format(
-                ma[0], mi[1], mi[2], ma[0], mi[1], ma[2]
-            )
+            f'draw line "{ma[0]} {mi[1]} {mi[2]}" "{ma[0]} {mi[1]} {ma[2]}"\n'
         )
 
         self._remember(
-            'draw line "{} {} {}" "{} {} {}"\n'.format(
-                mi[0], ma[1], mi[2], ma[0], ma[1], mi[2]
-            )
+            f'draw line "{mi[0]} {ma[1]} {mi[2]}" "{ma[0]} {ma[1]} {mi[2]}"\n'
         )
         self._remember(
-            'draw line "{} {} {}" "{} {} {}"\n'.format(
-                mi[0], ma[1], mi[2], mi[0], ma[1], ma[2]
-            )
+            f'draw line "{mi[0]} {ma[1]} {mi[2]}" "{mi[0]} {ma[1]} {ma[2]}"\n'
         )
 
         self._remember(
-            'draw line "{} {} {}" "{} {} {}"\n'.format(
-                mi[0], mi[1], ma[2], ma[0], mi[1], ma[2]
-            )
+            f'draw line "{mi[0]} {mi[1]} {ma[2]}" "{ma[0]} {mi[1]} {ma[2]}"\n'
         )
         self._remember(
-            'draw line "{} {} {}" "{} {} {}"\n'.format(
-                mi[0], mi[1], ma[2], mi[0], ma[1], ma[2]
-            )
+            f'draw line "{mi[0]} {mi[1]} {ma[2]}" "{mi[0]} {ma[1]} {ma[2]}"\n'
         )
 
         self._remember(
-            'draw line "{} {} {}" "{} {} {}"\n'.format(
-                ma[0], ma[1], ma[2], ma[0], ma[1], mi[2]
-            )
+            f'draw line "{ma[0]} {ma[1]} {ma[2]}" "{ma[0]} {ma[1]} {mi[2]}"\n'
         )
         self._remember(
-            'draw line "{} {} {}" "{} {} {}"\n'.format(
-                ma[0], ma[1], ma[2], mi[0], ma[1], ma[2]
-            )
+            f'draw line "{ma[0]} {ma[1]} {ma[2]}" "{mi[0]} {ma[1]} {ma[2]}"\n'
         )
         self._remember(
-            'draw line "{} {} {}" "{} {} {}"\n'.format(
-                ma[0], ma[1], ma[2], ma[0], mi[1], ma[2]
-            )
+            f'draw line "{ma[0]} {ma[1]} {ma[2]}" "{ma[0]} {mi[1]} {ma[2]}"\n'
         )
         self.script.write("\n")
-        self.script.write("set htmd_graphics_mol({:d}) [molinfo top]".format(self.n))
+        self.script.write(f"set htmd_graphics_mol({self.n}) [molinfo top]")
         cmd = self.script.getvalue()
         vmd = getCurrentViewer()
         vmd.send(cmd)
@@ -221,13 +198,11 @@ class VMDSphere(VMDGraphicObject):
         """
         super().__init__(xyz)
         # self._remember('draw materials off')
-        self._remember("draw color {}".format(color))
+        self._remember(f"draw color {color}")
 
-        self._remember(
-            'draw sphere "{} {} {}" radius {}\n'.format(xyz[0], xyz[1], xyz[2], radius)
-        )
+        self._remember(f'draw sphere "{xyz[0]} {xyz[1]} {xyz[2]}" radius {radius}\n')
         self.script.write("\n")
-        self.script.write("set htmd_graphics_mol({:d}) [molinfo top]".format(self.n))
+        self.script.write(f"set htmd_graphics_mol({self.n}) [molinfo top]")
         cmd = self.script.getvalue()
         vmd = getCurrentViewer()
         vmd.send(cmd)
@@ -252,14 +227,14 @@ class VMDCylinder(VMDGraphicObject):
         """
         super().__init__([start, end])
         # self._remember('draw materials off')
-        self._remember("draw color {}".format(color))
+        self._remember(f"draw color {color}")
         self._remember(
             "draw cylinder {{ {} }} {{ {} }} radius {}\n".format(
                 " ".join(map(str, start)), " ".join(map(str, end)), radius
             )
         )
         self.script.write("\n")
-        self.script.write("set htmd_graphics_mol({:d}) [molinfo top]".format(self.n))
+        self.script.write(f"set htmd_graphics_mol({self.n}) [molinfo top]")
         cmd = self.script.getvalue()
         vmd = getCurrentViewer()
         vmd.send(cmd)
@@ -282,13 +257,11 @@ class VMDText(VMDGraphicObject):
         """
         super().__init__(xyz)
         self._remember("draw materials off")
-        self._remember("draw color {}".format(color))
+        self._remember(f"draw color {color}")
 
-        self._remember(
-            'draw text "{} {} {}" "{}"\n'.format(xyz[0], xyz[1], xyz[2], text)
-        )
+        self._remember(f'draw text "{xyz[0]} {xyz[1]} {xyz[2]}" "{text}"\n')
         self.script.write("\n")
-        self.script.write("set htmd_graphics_mol({:d}) [molinfo top]".format(self.n))
+        self.script.write(f"set htmd_graphics_mol({self.n}) [molinfo top]")
         cmd = self.script.getvalue()
         vmd = getCurrentViewer()
         vmd.send(cmd)
@@ -319,7 +292,6 @@ class VMDIsosurface(VMDGraphicObject):
         """
         super().__init__(arr)
         from moleculekit.util import tempname, writeVoxels
-        import numpy as np
         import os
 
         filename = tempname(suffix=".cube")
@@ -335,21 +307,19 @@ class VMDIsosurface(VMDGraphicObject):
             )
         )
         vmd.send(
-            "mol modstyle top top Isosurface {} 0 2 {} 2 1".format(
-                isovalue, drawmapping[draw]
-            )
+            f"mol modstyle top top Isosurface {isovalue} 0 2 {drawmapping[draw]} 2 1"
         )
-        vmd.send("mol modcolor top top ColorID {}".format(color))
-        vmd.send("set htmd_graphics_mol({:d}) [molinfo top]".format(self.n))
+        vmd.send(f"mol modcolor top top ColorID {color}")
+        vmd.send(f"set htmd_graphics_mol({self.n}) [molinfo top]")
         if name is not None:
-            vmd.send("mol rename top {{{}}}".format(name))
+            vmd.send(f"mol rename top {{{name}}}")
 
         if os.path.exists(filename):
             os.unlink(filename)
 
     def delete(self):
         vmd = getCurrentViewer()
-        vmd.send("mol delete htmd_graphics_mol({:d})".format(self.n))
+        vmd.send(f"mol delete htmd_graphics_mol({self.n})")
 
 
 class VMDLabels(VMDGraphicObject):
@@ -397,11 +367,9 @@ foreach n [list {idx}] {{
     def delete(self):
         vmd = getCurrentViewer()
         for i in self.labelidx[::-1]:
-            vmd.send("label delete Atoms {}".format(i))
+            vmd.send(f"label delete Atoms {i}")
             VMDLabels.count -= 1
 
-
-import unittest
 
 # Practically only testing execution of the classes
 class _TestVMDGraphics(unittest.TestCase):

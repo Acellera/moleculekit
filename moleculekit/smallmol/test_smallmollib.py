@@ -27,8 +27,7 @@ class _TestSmallMol(unittest.TestCase):
         self.assertEqual(
             n_mols,
             SDF_N_MOLS,
-            "Molecules not correctly loaded. "
-            "Expected: {}; Now: {}".format(SDF_N_MOLS, n_mols),
+            f"Molecules not correctly loaded. Expected: {SDF_N_MOLS}; Now: {n_mols}",
         )
 
         sdffile = os.path.join(self.dataDir, "fda_drugs_light.sdf.gz")
@@ -37,8 +36,7 @@ class _TestSmallMol(unittest.TestCase):
         self.assertEqual(
             n_mols,
             SDF_N_MOLS,
-            "Molecules not correctly loaded. "
-            "Expected: {}; Now: {}".format(SDF_N_MOLS, n_mols),
+            f"Molecules not correctly loaded. Expected: {SDF_N_MOLS}; Now: {n_mols}",
         )
 
     def test_writeSdf(self):
