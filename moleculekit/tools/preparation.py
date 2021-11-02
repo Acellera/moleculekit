@@ -7,8 +7,9 @@ import logging
 import unittest
 import tempfile
 import numpy as np
+import pandas as pd
 import os
-from moleculekit.molecule import Molecule
+from moleculekit.molecule import Molecule, mol_equal
 from moleculekit.molecule import UniqueResidueID
 
 
@@ -99,27 +100,38 @@ def _check_chain_and_segid(mol, _loggerLevel):
     return mol
 
 
-def _detect_nonpeptidic_bonds(mol):
+def _detect_nonpeptidic_bonds(mol, forcefield):
     coordination_ions = ("Ca", "Zn")
 
     prot_idx = mol.atomselect("protein", indexes=True)
+
+    uqprot_resn = np.unique(mol.resname[prot_idx])
+    not_in_ff = []
+    for resn in uqprot_resn:
+        if not forcefield.has_residue(resn):
+            not_in_ff.append(resn)
+    if len(not_in_ff):
+        raise RuntimeError(
+            f"Could not find protein residues: {', '.join(not_in_ff)} in the PARSE forcefield. Either remove it or provide a custom forcefield."
+        )
+
     # Bonds where only 1 atom belongs to protein
     bond_mask = np.isin(mol.bonds, prot_idx)
     inter_bonds = np.sum(bond_mask, axis=1) == 1
 
     bonds = mol.bonds[inter_bonds, :]
-    prot_idx = bonds[bond_mask[inter_bonds]]
-    other_idx = bonds[~bond_mask[inter_bonds]]
+    b_prot_idx = bonds[bond_mask[inter_bonds]]
+    b_other_idx = bonds[~bond_mask[inter_bonds]]
 
-    n_ions = np.isin(mol.element[other_idx], coordination_ions).sum()
+    n_ions = np.isin(mol.element[b_other_idx], coordination_ions).sum()
 
-    if not len(prot_idx):
+    if not len(b_prot_idx):
         return []
 
     logger.info(
-        f"Found {len(prot_idx)} covalent bonds from protein to non-protein molecules. {n_ions} were ion-coordinations."
+        f"Found {len(b_prot_idx)} covalent bonds from protein to non-protein molecules. {n_ions} were ion-coordinations."
     )
-    return np.vstack([prot_idx, other_idx]).T
+    return np.vstack([b_prot_idx, b_other_idx]).T
 
 
 def _delete_no_titrate(pka_list, no_titr):
@@ -130,16 +142,27 @@ def _delete_no_titrate(pka_list, no_titr):
             pkas.append(res)
         else:
             logger.info(
-                f"Skipped titration of user-defined residue {res['res_name']}:{key[1]}:{key[0]}{key[2]}"
+                f"Skipped titration of residue {res['res_name']}:{key[1]}:{key[0]}{key[2]}"
             )
     return pkas
 
 
 def _apply_patches_force_prot(biomolecule, force_protonation):
-    for residue in biomolecule.residues:
-        key = (residue.res_seq, residue.chain_id, residue.ins_code)
+    for res in biomolecule.residues:
+        key = (res.res_seq, res.chain_id, res.ins_code)
         if key in force_protonation:
-            biomolecule.apply_patch(force_protonation[key], residue)
+            logger.info(
+                f"Forcing protonation of residue {res.name}:{key[1]}:{key[0]}{key[2]} to {force_protonation[key]}"
+            )
+            biomolecule.apply_patch(force_protonation[key], res)
+
+
+def _get_forcefield(ff="parse", userff=None, usernames=None):
+    from pdb2pqr.io import get_definitions
+    from pdb2pqr import forcefield
+
+    definition = get_definitions()
+    return forcefield.Forcefield(ff, definition, userff, usernames)
 
 
 def _pdb2pqr(
@@ -311,7 +334,7 @@ def _atomsel_to_hold(mol_in, sel):
 
 
 def _get_hold_residues(
-    mol_in, no_opt, no_prot, no_titr, force_protonation, hold_nonpeptidic_bonds
+    mol_in, no_opt, no_prot, no_titr, force_protonation, nonpeptidic_bonds
 ):
     # Converts atom selections used for no optimization residues and no protonation residues
     # to tuples of (resid, chain, insertion) which are used by pdb2pqr as unique residue identifiers
@@ -340,26 +363,44 @@ def _get_hold_residues(
     # Add residues which have forced protonations to the residues which should not be titrated
     _no_titr += list(_force_prot.keys())
 
-    if hold_nonpeptidic_bonds:
-        nonpept = _detect_nonpeptidic_bonds(mol_in)
-        if len(nonpept) != 0:
-            for nn in nonpept:
-                r1 = UniqueResidueID.fromMolecule(mol_in, idx=nn[0])
-                r1 = f"{r1.resname}:{r1.chain}:{r1.resid}{r1.insertion}"
-                r2 = UniqueResidueID.fromMolecule(mol_in, idx=nn[1])
-                r2 = f"{r2.resname}:{r2.chain}:{r2.resid}{r2.insertion}"
-                logger.info(
-                    f"Freezing protein residue {r1} bonded to non-protein molecule {r2}"
-                )
-                val = [
-                    (mol_in.resid[nn[0]], mol_in.chain[nn[0]], mol_in.insertion[nn[0]]),
-                    (mol_in.resid[nn[1]], mol_in.chain[nn[1]], mol_in.insertion[nn[1]]),
-                ]
-                _no_opt += val
+    if len(nonpeptidic_bonds) != 0:
+        for nn in nonpeptidic_bonds:
+            r1 = UniqueResidueID.fromMolecule(mol_in, idx=nn[0])
+            r1 = f"{r1.resname}:{r1.chain}:{r1.resid}{r1.insertion}"
+            r2 = UniqueResidueID.fromMolecule(mol_in, idx=nn[1])
+            r2 = f"{r2.resname}:{r2.chain}:{r2.resid}{r2.insertion}"
+            logger.info(
+                f"Freezing protein residue {r1} bonded to non-protein molecule {r2}"
+            )
+            val = [
+                (mol_in.resid[nn[0]], mol_in.chain[nn[0]], mol_in.insertion[nn[0]]),
+                (mol_in.resid[nn[1]], mol_in.chain[nn[1]], mol_in.insertion[nn[1]]),
+            ]
+            _no_opt += val
+            _no_titr += val
+            if val[0] not in _force_prot:
+                # Only disable protonation if there is no force-protonation
                 _no_prot += val
-                _no_titr += val
 
     return _no_opt, _no_prot, _no_titr, _force_prot
+
+
+def _check_frozen_histidines(mol_in, _no_prot):
+    frozen_his = []
+    for key in _no_prot:
+        sel = (
+            (mol_in.resid == key[0])
+            & (mol_in.chain == key[1])
+            & (mol_in.insertion == key[2])
+        )
+        if mol_in.resname[sel][0] == "HIS":
+            frozen_his.append(key)
+
+    if len(frozen_his):
+        res = ", ".join([f"HIS:{key[1]}:{key[0]}{key[2]}" for key in frozen_his])
+        raise RuntimeError(
+            f"Histidines {res} are not auto-titrated. You need to manually define protonation states for them using the force_protonation argument."
+        )
 
 
 def proteinPrepare(
@@ -516,13 +557,24 @@ def proteinPrepare(
         logging.getLogger("propka").setLevel(_loggerLevel)
     logger.debug("Starting.")
 
+    mol_in = mol_in.copy()
+
     _warn_if_contains_DUM(mol_in)
 
     mol_in = _check_chain_and_segid(mol_in, _loggerLevel)
 
+    forcefield = _get_forcefield()
+    nonpept = None
+    if hold_nonpeptidic_bonds:
+        nonpept = _detect_nonpeptidic_bonds(mol_in, forcefield)
+
     _no_opt, _no_prot, _no_titr, _force_prot = _get_hold_residues(
-        mol_in, no_opt, no_prot, no_titr, force_protonation, hold_nonpeptidic_bonds
+        mol_in, no_opt, no_prot, no_titr, force_protonation, nonpept
     )
+    _check_frozen_histidines(mol_in, _no_prot)
+
+    # for sel, resn in force_protonation:
+    #     mol_in.set("resname", resn, sel=sel)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpin = os.path.join(tmpdir, "input.pdb")
@@ -594,6 +646,8 @@ def _biomolecule_to_molecule(biomolecule):
             val = getattr(atom, pp1)
             if pp1 == "charge":
                 val = float(val) if val != "" else 0
+            if pp1 == "element":
+                val = str(val).capitalize()
             mol.__dict__[pp2][i] = val
         mol.coords[i, :, 0] = [atom.x, atom.y, atom.z]
         bonds += [[i, x.serial - 1] for x in atom.bonds]
@@ -604,6 +658,18 @@ def _biomolecule_to_molecule(biomolecule):
     # mol.bonds = np.vstack(bb.tolist() + bonds)
 
     return mol
+
+
+_table_dtypes = {
+    "resname": str,
+    "protonation": str,
+    "resid": int,
+    "insertion": str,
+    "chain": str,
+    "segid": str,
+    "pKa": float,
+    "buried": float,
+}
 
 
 def _create_table(mol_in, mol_out, pka_df):
@@ -637,6 +703,7 @@ def _create_table(mol_in, mol_out, pka_df):
         segid = mol_out.segid[new_idx]
         curr_data = [old_resn, resname, resid, insertion, chain, segid]
         if pka_df is not None:
+            found = False
             for propkadata in pka_df:
                 if (
                     propkadata["res_num"] == resid
@@ -644,7 +711,10 @@ def _create_table(mol_in, mol_out, pka_df):
                     and propkadata["chain_id"] == chain
                 ):
                     curr_data += [propkadata["pKa"], propkadata["buried"]]
+                    found = True
                     break
+            if not found:
+                curr_data += [np.nan, np.nan]
         data.append(curr_data)
 
     cols = [
@@ -655,9 +725,14 @@ def _create_table(mol_in, mol_out, pka_df):
         "chain",
         "segid",
     ]
+    dtypes = _table_dtypes
     if pka_df is not None:
         cols += ["pKa", "buried"]
+    else:
+        del dtypes["pKa"]
+        del dtypes["buried"]
     df = pd.DataFrame(data=data, columns=cols)
+    df = df.astype(dtypes)
     return df
 
 
@@ -902,12 +977,20 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
 
 
 class _TestPreparation(unittest.TestCase):
+    @classmethod
+    def setUpClass(self):
+        from moleculekit.home import home
+
+        self.home = home(dataDir="test-proteinprepare")
+
+    def _compare_dataframes(self, df1file, df2):
+        df1 = pd.read_csv(df1file, dtype=_table_dtypes)
+        refdf = df1.fillna("")
+        df = df2.fillna("")
+        pd.testing.assert_frame_equal(df, refdf)
+
     def test_proteinPrepare(self):
-        _, df = proteinPrepare(
-            Molecule("3PTB"),
-            return_details=True,
-            no_opt=["protein and resid 42"],
-        )
+        _, df = proteinPrepare(Molecule("3PTB"), return_details=True)
         assert df.protonation[df.resid == 40].iloc[0] == "HIE"
         assert df.protonation[df.resid == 57].iloc[0] == "HIP"
         assert df.protonation[df.resid == 91].iloc[0] == "HID"
@@ -973,11 +1056,56 @@ class _TestPreparation(unittest.TestCase):
         assert df.protonation[df.resid == 57].iloc[0] == "HIP"
         assert df.protonation[df.resid == 91].iloc[0] == "HIE"
 
-    def test_freezing(self):
-        mol = Molecule("2B5I")
+    def test_auto_freezing(self):
+        test_home = os.path.join(self.home, "test-auto-freezing")
+        mol = Molecule(os.path.join(test_home, "2B5I.pdb"))
+        refmol = Molecule(os.path.join(test_home, "2B5I_prepared.pdb"))
+
         pmol, df = proteinPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
 
-        pass
+        assert mol_equal(
+            refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
+        )
+        self._compare_dataframes(os.path.join(test_home, "2B5I_prepared.csv"), df)
+
+    def test_auto_freezing_and_force(self):
+        test_home = os.path.join(self.home, "test-auto-freezing")
+        mol = Molecule(os.path.join(test_home, "5DPX_A.pdb"))
+        refmol = Molecule(os.path.join(test_home, "5DPX_A_prepared.pdb"))
+
+        pmol, df = proteinPrepare(
+            mol,
+            return_details=True,
+            hold_nonpeptidic_bonds=True,
+            force_protonation=[
+                ("protein and resid 105 and chain A", "HIE"),
+                ("protein and resid 107 and chain A", "HIE"),
+                ("protein and resid 110 and chain A", "HIE"),
+                ("protein and resid 181 and chain A", "HIE"),
+                ("protein and resid 246 and chain A", "HIE"),
+            ],
+        )
+
+        assert mol_equal(
+            refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
+        )
+        self._compare_dataframes(os.path.join(test_home, "5DPX_A_prepared.csv"), df)
+
+    # def test_nonstandard_residues(self):
+    #     test_home = os.path.join(self.home, "test-nonstandard-residues")
+    #     mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
+    #     refmol = Molecule(os.path.join(test_home, "1A4W_prepared.pdb"))
+
+    #     pmol, df = proteinPrepare(
+    #         mol,
+    #         return_details=True,
+    #         hold_nonpeptidic_bonds=True,
+    #     )
+
+    #     assert mol_equal(
+    #         refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
+    #     )
+    #     self._compare_dataframes(os.path.join(test_home, "1A4W_prepared.csv"), df)
 
 
 if __name__ == "__main__":
