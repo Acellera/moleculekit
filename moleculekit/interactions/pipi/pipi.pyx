@@ -126,6 +126,10 @@ def calculate(
                 r1_end_idx = rings1_start_indexes[r1+1]
                 r2_start_idx = rings2_start_indexes[r2]
                 r2_end_idx = rings2_start_indexes[r2+1]
+
+                if r1_start_idx == r2_start_idx and r1_end_idx == r2_end_idx:
+                    # Skip self-interactions of identical rings
+                    continue
                 
                 # Exit early if any of the two ring's atoms are too far
                 for i in range(3):
