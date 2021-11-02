@@ -104,6 +104,7 @@ def _detect_nonpeptidic_bonds(mol, forcefield):
     coordination_ions = ("Ca", "Zn")
 
     prot_idx = mol.atomselect("protein", indexes=True)
+    ion_idx = np.where(np.isin(mol.element, coordination_ions))[0]
 
     uqprot_resn = np.unique(mol.resname[prot_idx])
     not_in_ff = []
@@ -117,19 +118,19 @@ def _detect_nonpeptidic_bonds(mol, forcefield):
 
     # Bonds where only 1 atom belongs to protein
     bond_mask = np.isin(mol.bonds, prot_idx)
+    # Exclude ions
+    bond_mask[np.any(np.isin(mol.bonds, ion_idx), axis=1), :] = False
     inter_bonds = np.sum(bond_mask, axis=1) == 1
 
     bonds = mol.bonds[inter_bonds, :]
     b_prot_idx = bonds[bond_mask[inter_bonds]]
     b_other_idx = bonds[~bond_mask[inter_bonds]]
 
-    n_ions = np.isin(mol.element[b_other_idx], coordination_ions).sum()
-
     if not len(b_prot_idx):
         return []
 
     logger.info(
-        f"Found {len(b_prot_idx)} covalent bonds from protein to non-protein molecules. {n_ions} were ion-coordinations."
+        f"Found {len(b_prot_idx)} covalent bonds from protein to non-protein molecules."
     )
     return np.vstack([b_prot_idx, b_other_idx]).T
 
@@ -983,17 +984,29 @@ class _TestPreparation(unittest.TestCase):
 
         self.home = home(dataDir="test-proteinprepare")
 
-    def _compare_dataframes(self, df1file, df2):
-        df1 = pd.read_csv(df1file, dtype=_table_dtypes)
-        refdf = df1.fillna("")
-        df = df2.fillna("")
-        pd.testing.assert_frame_equal(df, refdf)
+    def _compare_results(self, refpdb, refdf, pmol, df):
+        refmol = Molecule(refpdb)
+        assert mol_equal(
+            refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
+        )
+
+        refdf = pd.read_csv(refdf, dtype=_table_dtypes)
+        refdf = refdf.fillna("")
+        df = df.fillna("")
+        pd.testing.assert_frame_equal(refdf, df)
 
     def test_proteinPrepare(self):
-        _, df = proteinPrepare(Molecule("3PTB"), return_details=True)
-        assert df.protonation[df.resid == 40].iloc[0] == "HIE"
-        assert df.protonation[df.resid == 57].iloc[0] == "HIP"
-        assert df.protonation[df.resid == 91].iloc[0] == "HID"
+        pdbids = ["3PTB", "1A25", "1U5U"]
+        for pdb in pdbids:
+            test_home = os.path.join(self.home, pdb)
+            mol = Molecule(os.path.join(test_home, f"{pdb}.pdb"))
+            pmol, df = proteinPrepare(mol, return_details=True)
+            self._compare_results(
+                os.path.join(test_home, f"{pdb}_prepared.pdb"),
+                os.path.join(test_home, f"{pdb}_prepared.csv"),
+                pmol,
+                df,
+            )
 
     # def test_proteinPrepareLong(self):
     #     from moleculekit.home import home
@@ -1059,19 +1072,18 @@ class _TestPreparation(unittest.TestCase):
     def test_auto_freezing(self):
         test_home = os.path.join(self.home, "test-auto-freezing")
         mol = Molecule(os.path.join(test_home, "2B5I.pdb"))
-        refmol = Molecule(os.path.join(test_home, "2B5I_prepared.pdb"))
 
         pmol, df = proteinPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
-
-        assert mol_equal(
-            refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
+        self._compare_results(
+            os.path.join(test_home, "2B5I_prepared.pdb"),
+            os.path.join(test_home, "2B5I_prepared.csv"),
+            pmol,
+            df,
         )
-        self._compare_dataframes(os.path.join(test_home, "2B5I_prepared.csv"), df)
 
     def test_auto_freezing_and_force(self):
         test_home = os.path.join(self.home, "test-auto-freezing")
         mol = Molecule(os.path.join(test_home, "5DPX_A.pdb"))
-        refmol = Molecule(os.path.join(test_home, "5DPX_A_prepared.pdb"))
 
         pmol, df = proteinPrepare(
             mol,
@@ -1085,16 +1097,16 @@ class _TestPreparation(unittest.TestCase):
                 ("protein and resid 246 and chain A", "HIE"),
             ],
         )
-
-        assert mol_equal(
-            refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
+        self._compare_results(
+            os.path.join(test_home, "5DPX_A_prepared.pdb"),
+            os.path.join(test_home, "5DPX_A_prepared.csv"),
+            pmol,
+            df,
         )
-        self._compare_dataframes(os.path.join(test_home, "5DPX_A_prepared.csv"), df)
 
     # def test_nonstandard_residues(self):
     #     test_home = os.path.join(self.home, "test-nonstandard-residues")
     #     mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
-    #     refmol = Molecule(os.path.join(test_home, "1A4W_prepared.pdb"))
 
     #     pmol, df = proteinPrepare(
     #         mol,
@@ -1102,10 +1114,12 @@ class _TestPreparation(unittest.TestCase):
     #         hold_nonpeptidic_bonds=True,
     #     )
 
-    #     assert mol_equal(
-    #         refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
+    #     self._compare_results(
+    #         os.path.join(test_home, "1A4W_prepared.pdb"),
+    #         os.path.join(test_home, "1A4W_prepared.csv"),
+    #         pmol,
+    #         df,
     #     )
-    #     self._compare_dataframes(os.path.join(test_home, "1A4W_prepared.csv"), df)
 
 
 if __name__ == "__main__":
