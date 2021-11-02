@@ -262,6 +262,38 @@ class VMD:
                 os.system(f"{convert} {outname}{ext} -trim {outname}{ext}")
             os.remove(outname + tmpext)
 
+    def movie_reps(self):
+        """Adds some default settings and representations for creating movies with Tachyon in VMD"""
+        render_conf = r"""display depthcue   on
+display shadows on
+display ambientocclusion on
+display aoambient 0.920000
+display aodirect 0.400000
+display dof on
+color Display {Background} white
+
+proc clear_reps { } {
+    set nreps [molinfo top get numreps]
+    for {set i 0} { $i < $nreps } { incr i } {
+        mol delrep 0 top
+    }
+}
+clear_reps
+
+mol representation VDW 1.000000 12.000000
+mol color ColorID 8
+mol selection {protein and noh}
+mol material Opaque
+mol addrep top
+
+mol representation VDW 1.000000 12.000000
+mol color Name
+mol selection {not protein and not resname ACE NME and not ion and not water}
+mol material HardPlastic
+mol addrep top
+"""
+        self.send(render_conf)
+
     def close(self):
         self.send("exit")
 
