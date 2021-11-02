@@ -29,14 +29,14 @@ def _selToHoldList(mol, sel):
     return ret
 
 
-def _fixupWaterNames(mol):
+def _fixup_water_names(mol):
     """Rename WAT / OW HW HW atoms as O H1 H2"""
     mol.set("name", "O", sel="resname WAT and name OW")
     mol.set("name", "H1", sel="resname WAT and name HW and serial % 2 == 0")
     mol.set("name", "H2", sel="resname WAT and name HW and serial % 2 == 1")
 
 
-def _warnIfContainsDUM(mol):
+def _warn_if_contains_DUM(mol):
     """Warn if any DUM atom is there"""
     if any(mol.atomselect("resname DUM")):
         logger.warning(
@@ -44,7 +44,7 @@ def _warnIfContainsDUM(mol):
         )
 
 
-def _checkChainAndSegid(mol, _loggerLevel):
+def _check_chain_and_segid(mol, _loggerLevel):
     from moleculekit.util import sequenceID
     import string
 
@@ -295,6 +295,8 @@ def _atomsel_to_hold(mol_in, sel):
 
 
 def _get_hold_residues(mol_in, no_opt, no_prot, hold_nonpeptidic_bonds):
+    # Converts atom selections used for no optimization residues and no protonation residues
+    # to tuples of (resid, chain, insertion) which are used by pdb2pqr as unique residue identifiers
     _no_opt = None
     if no_opt is not None:
         _no_opt = []
@@ -330,6 +332,16 @@ def _get_hold_residues(mol_in, no_opt, no_prot, hold_nonpeptidic_bonds):
                 _no_prot += val
 
     return _no_opt, _no_prot
+
+
+def _reset_no_prot_resnames(mol_in, mol_out, _no_prot):
+    # Resets the residue names which were not protonated to their original resnames
+    for nn in _no_prot:
+        sel = f"resid {nn[0]} and chain {nn[1]}"
+        if nn[2] != "":
+            sel += f" and insertion {nn[2]}"
+        orig_resname = mol_in.get("resname", sel=sel)
+        mol_out.set("resname", orig_resname, sel=sel)
 
 
 def proteinPrepare(
@@ -485,9 +497,9 @@ def proteinPrepare(
         logging.getLogger("propka").setLevel(_loggerLevel)
     logger.debug("Starting.")
 
-    _warnIfContainsDUM(mol_in)
+    _warn_if_contains_DUM(mol_in)
 
-    mol_in = _checkChainAndSegid(mol_in, _loggerLevel)
+    mol_in = _check_chain_and_segid(mol_in, _loggerLevel)
 
     _no_opt, _no_prot = _get_hold_residues(
         mol_in, no_opt, no_prot, hold_nonpeptidic_bonds
@@ -506,13 +518,7 @@ def proteinPrepare(
             no_prot=_no_prot,
         )
         mol_out = _biomolecule_to_molecule(biomolecule)
-        for nn in no_prot:
-            raise NotImplementedError(
-                "Rename non-protonated residues to their original name"
-            )
-            # TODO: Rename residues to their original name
-            # mol_out.resname
-            pass
+        _reset_no_prot_resnames(mol_in, mol_out, _no_prot)
 
     # Diagnostics
     missedres = set([m.residue.name for m in missedres])
@@ -521,7 +527,7 @@ def proteinPrepare(
     )
 
     mol_out.box = mol_in.box
-    _fixupWaterNames(mol_out)
+    _fixup_water_names(mol_out)
 
     df = _create_table(mol_in, mol_out, pka_df)
 
