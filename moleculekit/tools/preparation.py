@@ -210,7 +210,7 @@ def _pdb2pqr(
     propka_args_list = []
     for key, value in propka_args.items():
         propka_args_list += [key, value]
-    propka_args_list += ["--log-level", "WARNING", "--pH", str(ph), "xxx"]
+    propka_args_list += ["--log-level", "WARNING", "--pH", str(ph), "STEFAN"]
     propka_args = propka_parser.parse_args(propka_args_list)
 
     if assign_only or clean:
@@ -387,6 +387,7 @@ def _get_hold_residues(
 
 
 def _check_frozen_histidines(mol_in, _no_prot):
+    # Histidines require protonation by pdb2pqr. We cannot freeze them
     frozen_his = []
     for key in _no_prot:
         sel = (
@@ -1008,42 +1009,25 @@ class _TestPreparation(unittest.TestCase):
                 df,
             )
 
-    # def test_proteinPrepareLong(self):
-    #     from moleculekit.home import home
-    #     from moleculekit.util import assertSameAsReferenceDir
-    #     import tempfile
-
-    #     pdbids = ["3PTB", "1A25", "1GZM", "1U5U"]
-    #     for pdb in pdbids:
-    #         mol = Molecule(pdb)
-    #         mol.filter("protein")
-    #         with tempfile.TemporaryDirectory() as tmpdir:
-    #             mol_op, prepData = proteinPrepare(
-    #                 mol, returnDetails=True, plotpka=os.path.join(tmpdir, "plot.png")
-    #             )
-
-    #             mol_op.write(os.path.join(tmpdir, f"{pdb}-prepared.pdb"))
-    #             prepData.to_csv(
-    #                 os.path.join(tmpdir, f"{pdb}-prepared.csv"), float_format="%.2f"
-    #             )
-    #             compareDir = home(dataDir=os.path.join("test-proteinprepare", pdb))
-    #             assertSameAsReferenceDir(compareDir, tmpdir)
-
-    # def test_proteinprepare_ligand(self):
-    #     from moleculekit.home import home
-
-    #     datadir = home(dataDir=os.path.join("test-proteinprepare", "3PTB"))
-    #     mol = Molecule("3ptb")
-    #     mol.remove("resname HOH CA")
-    #     pmol = proteinPrepare(
-    #         mol,
-    #         ligmol2=os.path.join(datadir, "3PTB_ligand_A:1_BEN:1.mol2"),
-    #         _loggerLevel="INFO",
-    #     )
-    #     from IPython.core.debugger import set_trace
-
-    #     set_trace()
-    #     pmol2 = proteinPrepare(mol, _loggerLevel="INFO")
+    def test_proteinprepare_ligand(self):
+        test_home = os.path.join(self.home, "test-prepare-with-ligand")
+        mol = Molecule(os.path.join(test_home, "5EK0_A.pdb"))
+        pmol, df = proteinPrepare(mol, return_details=True)
+        self._compare_results(
+            os.path.join(test_home, "5EK0_A_prepared.pdb"),
+            os.path.join(test_home, "5EK0_A_prepared.csv"),
+            pmol,
+            df,
+        )
+        # Now remove the ligands and check again what the pka is
+        mol.filter('not resname PX4 "5P2"')
+        pmol, df = proteinPrepare(mol, return_details=True)
+        self._compare_results(
+            os.path.join(test_home, "5EK0_A_prepared_nolig.pdb"),
+            os.path.join(test_home, "5EK0_A_prepared_nolig.csv"),
+            pmol,
+            df,
+        )
 
     def test_reprotonate(self):
         pmol, df = proteinPrepare(Molecule("3PTB"), return_details=True)
