@@ -408,7 +408,6 @@ def _check_frozen_histidines(mol_in, _no_prot):
 def proteinPrepare(
     mol_in,
     titration=True,
-    ligmol2=None,
     pH=7.0,
     force_protonation=None,
     no_opt=None,
@@ -486,7 +485,7 @@ def proteinPrepare(
         pH to decide titration
     verbose : bool
         verbosity
-    returnDetails : bool
+    return_details : bool
         whether to return just the prepared Molecule (False, default) or a molecule *and* a ResidueInfo
         object including computed properties
     hydrophobic_thickness : float
@@ -586,7 +585,6 @@ def proteinPrepare(
             tmpin,
             ph=pH,
             titrate=titration,
-            ligand=ligmol2,
             no_opt=_no_opt,
             no_prot=_no_prot,
             no_titr=_no_titr,
