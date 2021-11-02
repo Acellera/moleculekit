@@ -45,7 +45,7 @@ def _warn_if_contains_DUM(mol):
         )
 
 
-def _check_chain_and_segid(mol, _loggerLevel):
+def _check_chain_and_segid(mol, verbose):
     from moleculekit.util import sequenceID
     import string
 
@@ -76,7 +76,7 @@ def _check_chain_and_segid(mol, _loggerLevel):
                 "Protein preparation will use the chain information."
             )
 
-    if _loggerLevel is None or _loggerLevel == "INFO":
+    if verbose:
         chainids = np.unique(mol.chain)
         if np.any([len(cc) > 1 for cc in chainids]):
             raise RuntimeError(
@@ -417,7 +417,7 @@ def proteinPrepare(
     return_details=False,
     hydrophobic_thickness=None,
     plot_pka=None,
-    _loggerLevel="ERROR",
+    _logger_level="ERROR",
 ):
     """A system preparation wizard for HTMD.
 
@@ -549,19 +549,19 @@ def proteinPrepare(
     if not verbose:
         logger.setLevel(logging.WARNING)
 
-    if _loggerLevel is not None:
+    if _logger_level is not None:
         # logger.setLevel(_loggerLevel)
-        logging.getLogger(f"PDB2PQR{VERSION}").setLevel(_loggerLevel)
+        logging.getLogger(f"PDB2PQR{VERSION}").setLevel(_logger_level)
         logging.getLogger(f"PDB2PQR{VERSION}").propagate = False
-        logging.getLogger("pdb2pqr").setLevel(_loggerLevel)
-        logging.getLogger("propka").setLevel(_loggerLevel)
+        logging.getLogger("pdb2pqr").setLevel(_logger_level)
+        logging.getLogger("propka").setLevel(_logger_level)
     logger.debug("Starting.")
 
     mol_in = mol_in.copy()
 
     _warn_if_contains_DUM(mol_in)
 
-    mol_in = _check_chain_and_segid(mol_in, _loggerLevel)
+    mol_in = _check_chain_and_segid(mol_in, verbose)
 
     forcefield = _get_forcefield()
     nonpept = None

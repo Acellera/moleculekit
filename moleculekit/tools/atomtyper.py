@@ -163,7 +163,10 @@ def prepareProteinForAtomtyping(
                 protmol, fields=("segid", "chain"), basename="K", _logger=verbose
             )  # We need segments to prepare the protein
         protmol = proteinPrepare(
-            protmol, pH=pH, verbose=verbose, _loggerLevel="INFO" if verbose else "ERROR"
+            protmol,
+            pH=pH,
+            verbose=verbose,
+            _logger_level="INFO" if verbose else "ERROR",
         )
 
     if guessBonds:
