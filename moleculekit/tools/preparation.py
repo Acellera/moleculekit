@@ -99,39 +99,47 @@ def _check_chain_and_segid(mol, _loggerLevel):
     return mol
 
 
-def _detect_ion_coordination(mol, bond_prot, bond_other):
-    coordination_ions = ("Ca", "Zn")
-    ions = np.isin(mol.element[bond_other], coordination_ions)
-    ionidx = bond_other[ions]
-    protidx = bond_prot[ions]
-    logger.info(f"Found {len(ionidx)} ion coordinations to protein residues")
-    for p, o in zip(protidx, ionidx):
-        logger.info(
-            f"{UniqueResidueID.fromMolecule(mol, idx=p)}, {UniqueResidueID.fromMolecule(mol, idx=o)}"
-        )
-    return protidx, ionidx, bond_prot[~ions], bond_other[~ions]
-
-
 def _detect_nonpeptidic_bonds(mol):
+    coordination_ions = ("Ca", "Zn")
+
     prot_idx = mol.atomselect("protein", indexes=True)
     # Bonds where only 1 atom belongs to protein
     bond_mask = np.isin(mol.bonds, prot_idx)
     inter_bonds = np.sum(bond_mask, axis=1) == 1
+
     bonds = mol.bonds[inter_bonds, :]
-    bond_prot = bonds[bond_mask[inter_bonds]]
-    bond_other = bonds[~bond_mask[inter_bonds]]
+    prot_idx = bonds[bond_mask[inter_bonds]]
+    other_idx = bonds[~bond_mask[inter_bonds]]
 
-    ionprot, ionidx, bond_prot, bond_other = _detect_ion_coordination(
-        mol, bond_prot, bond_other
-    )
+    n_ions = np.isin(mol.element[other_idx], coordination_ions).sum()
 
-    if not len(bond_prot):
+    if not len(prot_idx):
         return []
 
     logger.info(
-        f"Found {len(bond_prot)} covalent bonds from non-protein molecules to protein residues"
+        f"Found {len(prot_idx)} covalent bonds from protein to non-protein molecules. {n_ions} were ion-coordinations."
     )
-    return np.vstack([bond_prot, bond_other]).T
+    return np.vstack([prot_idx, other_idx]).T
+
+
+def _delete_no_titrate(pka_list, no_titr):
+    pkas = []
+    for res in pka_list:
+        key = (res["res_num"], res["chain_id"].strip(), res["ins_code"].strip())
+        if key not in no_titr:
+            pkas.append(res)
+        else:
+            logger.info(
+                f"Skipped titration of user-defined residue {res['res_name']}:{key[1]}:{key[0]}{key[2]}"
+            )
+    return pkas
+
+
+def _apply_patches_force_prot(biomolecule, force_protonation):
+    for residue in biomolecule.residues:
+        key = (residue.res_seq, residue.chain_id, residue.ins_code)
+        if key in force_protonation:
+            biomolecule.apply_patch(force_protonation[key], residue)
 
 
 def _pdb2pqr(
@@ -152,6 +160,8 @@ def _pdb2pqr(
     neutralc=False,
     no_prot=None,
     no_opt=None,
+    no_titr=None,
+    force_protonation=None,
     propka_args=None,
 ):
     try:
@@ -197,7 +207,7 @@ def _pdb2pqr(
     forcefield_ = forcefield.Forcefield(ff, definition, userff, usernames)
     hydrogen_handler = hydrogens.create_handler()
     debumper = Debump(biomolecule)
-    pka_df = None
+    pkas = None
     if assign_only:
         # TODO - I don't understand why HIS needs to be set to HIP for
         # assign-only
@@ -215,22 +225,28 @@ def _pdb2pqr(
                 raise ValueError(err)
         if titrate:
             biomolecule.remove_hydrogens()
-            pka_df, pka_str = run_propka(propka_args, biomolecule)
+            pka_list, _ = run_propka(propka_args, biomolecule)
             # logger.info(f"PROPKA information:\n{pka_str}")
+
+            # STEFAN mod: Delete pka values for residues we should not titrate
+            pkas = _delete_no_titrate(pka_list, no_titr)
+            # STEFAN mod: Force specific protonation states to residues
+            _apply_patches_force_prot(biomolecule, force_protonation)
+
             biomolecule.apply_pka_values(
                 forcefield_.name,
                 ph,
-                {row["group_label"]: row["pKa"] for row in pka_df},
+                {row["group_label"]: row["pKa"] for row in pkas},
             )
 
-        biomolecule.add_hydrogens(no_prot)
+        biomolecule.add_hydrogens(no_prot)  # STEFAN mod: Don't protonate residues
         if debump:
             debumper.debump_biomolecule()
 
         hydrogen_routines = hydrogens.HydrogenRoutines(debumper, hydrogen_handler)
         if opt:
             hydrogen_routines.set_optimizeable_hydrogens()
-            biomolecule.hold_residues(no_opt)
+            biomolecule.hold_residues(no_opt)  # STEFAN mod: Don't optimize residues
             hydrogen_routines.initialize_full_optimization()
         else:
             hydrogen_routines.initialize_wat_optimization()
@@ -278,7 +294,7 @@ def _pdb2pqr(
             name_scheme = forcefield_
         biomolecule.apply_name_scheme(name_scheme)
 
-    return missing_atoms, pka_df, biomolecule
+    return missing_atoms, pkas, biomolecule
 
 
 def _atomsel_to_hold(mol_in, sel):
@@ -294,35 +310,46 @@ def _atomsel_to_hold(mol_in, sel):
     return residues[0]
 
 
-def _get_hold_residues(mol_in, no_opt, no_prot, hold_nonpeptidic_bonds):
+def _get_hold_residues(
+    mol_in, no_opt, no_prot, no_titr, force_protonation, hold_nonpeptidic_bonds
+):
     # Converts atom selections used for no optimization residues and no protonation residues
     # to tuples of (resid, chain, insertion) which are used by pdb2pqr as unique residue identifiers
-    _no_opt = None
+    _no_opt = []
     if no_opt is not None:
-        _no_opt = []
         for sel in no_opt:
-            _no_opt.append(_atomsel_to_hold(sel))
+            _no_opt.append(_atomsel_to_hold(mol_in, sel))
 
-    _no_prot = None
+    _no_prot = []
     if no_prot is not None:
-        _no_prot = []
         for sel in no_prot:
-            _no_prot.append(_atomsel_to_hold(sel))
+            _no_prot.append(_atomsel_to_hold(mol_in, sel))
+
+    _no_titr = []
+    if no_titr is not None:
+        for sel in no_titr:
+            _no_titr.append(_atomsel_to_hold(mol_in, sel))
+
+    _force_prot = {}
+    if force_protonation is not None:
+        for sel, resn in force_protonation:
+            _force_prot[_atomsel_to_hold(mol_in, sel)] = resn
+
+    # Add residues which should not be protonated to the residues which should not be titrated
+    _no_titr += _no_prot
+    # Add residues which have forced protonations to the residues which should not be titrated
+    _no_titr += list(_force_prot.keys())
 
     if hold_nonpeptidic_bonds:
         nonpept = _detect_nonpeptidic_bonds(mol_in)
         if len(nonpept) != 0:
-            if _no_opt is None:
-                _no_opt = []
-            if _no_prot is None:
-                _no_prot = []
             for nn in nonpept:
                 r1 = UniqueResidueID.fromMolecule(mol_in, idx=nn[0])
                 r1 = f"{r1.resname}:{r1.chain}:{r1.resid}{r1.insertion}"
                 r2 = UniqueResidueID.fromMolecule(mol_in, idx=nn[1])
                 r2 = f"{r2.resname}:{r2.chain}:{r2.resid}{r2.insertion}"
                 logger.info(
-                    f"Freezing protein residue {r1} linked to non-protein molecule {r2}"
+                    f"Freezing protein residue {r1} bonded to non-protein molecule {r2}"
                 )
                 val = [
                     (mol_in.resid[nn[0]], mol_in.chain[nn[0]], mol_in.insertion[nn[0]]),
@@ -330,18 +357,9 @@ def _get_hold_residues(mol_in, no_opt, no_prot, hold_nonpeptidic_bonds):
                 ]
                 _no_opt += val
                 _no_prot += val
+                _no_titr += val
 
-    return _no_opt, _no_prot
-
-
-def _reset_no_prot_resnames(mol_in, mol_out, _no_prot):
-    # Resets the residue names which were not protonated to their original resnames
-    for nn in _no_prot:
-        sel = f"resid {nn[0]} and chain {nn[1]}"
-        if nn[2] != "":
-            sel += f" and insertion {nn[2]}"
-        orig_resname = mol_in.get("resname", sel=sel)
-        mol_out.set("resname", orig_resname, sel=sel)
+    return _no_opt, _no_prot, _no_titr, _force_prot
 
 
 def proteinPrepare(
@@ -352,11 +370,12 @@ def proteinPrepare(
     force_protonation=None,
     no_opt=None,
     no_prot=None,
+    no_titr=None,
     hold_nonpeptidic_bonds=True,
     verbose=True,
-    returnDetails=False,
-    hydrophobicThickness=None,
-    plotpka=None,
+    return_details=False,
+    hydrophobic_thickness=None,
+    plot_pka=None,
     _loggerLevel="ERROR",
 ):
     """A system preparation wizard for HTMD.
@@ -396,7 +415,7 @@ def proteinPrepare(
     A detailed table about the residues modified is returned (as a second return value) when
     returnDetails is True (see PreparationData object).
 
-    If hydrophobicThickness is set to a positive value 2*h, a warning is produced for titratable residues
+    If hydrophobic_thickness is set to a positive value 2*h, a warning is produced for titratable residues
     having -h<z<h and are buried in the protein by less than 75%. Note that the heuristic for the
     detection of membrane-exposed residues is very crude; the "buried fraction" computation
     (from propKa) is approximate; also, in the presence of cavities,
@@ -427,7 +446,7 @@ def proteinPrepare(
     returnDetails : bool
         whether to return just the prepared Molecule (False, default) or a molecule *and* a ResidueInfo
         object including computed properties
-    hydrophobicThickness : float
+    hydrophobic_thickness : float
         the thickness of the membrane in which the protein is embedded, or None if globular protein.
         Used to provide a warning about membrane-exposed residues.
 
@@ -501,8 +520,8 @@ def proteinPrepare(
 
     mol_in = _check_chain_and_segid(mol_in, _loggerLevel)
 
-    _no_opt, _no_prot = _get_hold_residues(
-        mol_in, no_opt, no_prot, hold_nonpeptidic_bonds
+    _no_opt, _no_prot, _no_titr, _force_prot = _get_hold_residues(
+        mol_in, no_opt, no_prot, no_titr, force_protonation, hold_nonpeptidic_bonds
     )
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -516,9 +535,10 @@ def proteinPrepare(
             ligand=ligmol2,
             no_opt=_no_opt,
             no_prot=_no_prot,
+            no_titr=_no_titr,
+            force_protonation=_force_prot,
         )
         mol_out = _biomolecule_to_molecule(biomolecule)
-        _reset_no_prot_resnames(mol_in, mol_out, _no_prot)
 
     # Diagnostics
     missedres = set([m.residue.name for m in missedres])
@@ -534,41 +554,18 @@ def proteinPrepare(
     _list_modifications(df)
 
     if titration:
-        if plotpka is not None:
-            _get_pka_plot(df, plotpka)
+        if plot_pka is not None:
+            _get_pka_plot(df, plot_pka)
         _warn_pk_close_to_ph(df, pH)
-        if hydrophobicThickness:
+        if hydrophobic_thickness:
             # TODO: I think this only works if the protein is assumed aligned to the membrane and the membrane is centered at Z=0
-            _warn_buried_residues(df, mol_out, hydrophobicThickness)
+            _warn_buried_residues(df, mol_out, hydrophobic_thickness)
 
     # resData.warnIfTerminiSuspect()
 
     logger.setLevel(old_level)
 
-    if force_protonation is not None:
-        raise NotImplementedError("Find more correct way of forcing protonations!")
-        # Re-run pdb2pqr without titration and forcing specific residues to user-defined protomers
-        for sel, resn in force_protonation:
-            mol_out.remove(sel + " and hydrogen")
-            mol_out.set("resname", resn, sel=sel)
-
-        return proteinPrepare(
-            mol_out,
-            titration=False,
-            ligmol2=ligmol2,
-            pH=pH,
-            force_protonation=None,
-            no_opt=no_opt,
-            no_prot=no_prot,
-            hold_nonpeptidic_bonds=hold_nonpeptidic_bonds,
-            verbose=verbose,
-            returnDetails=returnDetails,
-            hydrophobicThickness=hydrophobicThickness,
-            plotpka=plotpka,
-            _loggerLevel=_loggerLevel,
-        )
-
-    if returnDetails:
+    if return_details:
         return mol_out, df
     return mol_out
 
@@ -689,8 +686,8 @@ def _warn_pk_close_to_ph(df, pH, tol=1.0):
             )
 
 
-def _warn_buried_residues(df, mol_out, hydrophobicThickness, maxBuried=0.75):
-    ht = hydrophobicThickness / 2.0
+def _warn_buried_residues(df, mol_out, hydrophobic_thickness, maxBuried=0.75):
+    ht = hydrophobic_thickness / 2.0
     count = 0
     for _, row in df[df.buried > maxBuried].iterrows():
         sele = (
@@ -907,7 +904,9 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
 class _TestPreparation(unittest.TestCase):
     def test_proteinPrepare(self):
         _, df = proteinPrepare(
-            Molecule("3PTB"), returnDetails=True, hold_residues=["protein and resid 42"]
+            Molecule("3PTB"),
+            return_details=True,
+            no_opt=["protein and resid 42"],
         )
         assert df.protonation[df.resid == 40].iloc[0] == "HIE"
         assert df.protonation[df.resid == 57].iloc[0] == "HIP"
@@ -951,13 +950,13 @@ class _TestPreparation(unittest.TestCase):
     #     pmol2 = proteinPrepare(mol, _loggerLevel="INFO")
 
     def test_reprotonate(self):
-        pmol, df = proteinPrepare(Molecule("3PTB"), returnDetails=True)
+        pmol, df = proteinPrepare(Molecule("3PTB"), return_details=True)
         assert df.protonation[df.resid == 40].iloc[0] == "HIE"
         assert df.protonation[df.resid == 57].iloc[0] == "HIP"
         assert df.protonation[df.resid == 91].iloc[0] == "HID"
 
         pmol.mutateResidue("protein and resid 40", "HID")
-        _, df2 = proteinPrepare(pmol, titration=False, returnDetails=True)
+        _, df2 = proteinPrepare(pmol, titration=False, return_details=True)
         assert df2.protonation[df2.resid == 40].iloc[0] == "HID"
         assert df2.protonation[df2.resid == 57].iloc[0] == "HIP"
         assert df2.protonation[df2.resid == 91].iloc[0] == "HID"
@@ -968,7 +967,7 @@ class _TestPreparation(unittest.TestCase):
                 ("protein and resid 40", "HID"),
                 ("protein and resid 91", "HIE"),
             ),
-            returnDetails=True,
+            return_details=True,
         )
         assert df.protonation[df.resid == 40].iloc[0] == "HID"
         assert df.protonation[df.resid == 57].iloc[0] == "HIP"
@@ -976,7 +975,7 @@ class _TestPreparation(unittest.TestCase):
 
     def test_freezing(self):
         mol = Molecule("2B5I")
-        pmol, df = proteinPrepare(mol, returnDetails=True, hold_nonpeptidic_bonds=True)
+        pmol, df = proteinPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
 
         pass
 
