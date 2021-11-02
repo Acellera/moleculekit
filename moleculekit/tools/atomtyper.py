@@ -465,6 +465,7 @@ class _TestAtomTyper(unittest.TestCase):
         from os import path
 
         mol = Molecule(path.join(home(dataDir="test-voxeldescriptors"), "1ATL.pdb"))
+        mol.remove('resname "0QI"')
         ref = Molecule(
             path.join(home(dataDir="test-voxeldescriptors"), "1ATL_prepared.pdb")
         )
