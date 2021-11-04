@@ -999,10 +999,9 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
     plt.close(fig)
 
 
-from packaging import version
 import pdb2pqr
 
-PDB2PQR_NEW_VERSION = version.parse(pdb2pqr.__version__) > version.parse("3.2.0")
+PDB2PQR_NEW_VERSION = pdb2pqr.__version__ != "3.2.0"
 
 
 class _TestPreparation(unittest.TestCase):
