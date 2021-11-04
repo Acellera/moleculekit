@@ -1006,8 +1006,12 @@ class Molecule(object):
         >>> mol.center()
         >>> mol.center([10, 10, 10], 'name CA')
         """
-        sel = self.atomselect(sel)
-        com = np.mean(self.coords[sel, :, self.frame], 0)
+        selbool = self.atomselect(sel)
+        if not any(selbool):
+            raise RuntimeError(
+                f'Atom selection "{sel}" selected 0 atoms. Cannot center Molecule.'
+            )
+        com = np.mean(self.coords[selbool, :, self.frame], 0)
         self.moveBy(-com)
         self.moveBy(loc)
 

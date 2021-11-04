@@ -11,6 +11,7 @@ import pandas as pd
 import os
 from moleculekit.molecule import Molecule, mol_equal
 from moleculekit.molecule import UniqueResidueID
+from moleculekit.tools.preparation_customres import _get_custom_ff
 
 
 logger = logging.getLogger(__name__)
@@ -100,21 +101,60 @@ def _check_chain_and_segid(mol, verbose):
     return mol
 
 
-def _detect_nonpeptidic_bonds(mol, forcefield):
-    coordination_ions = ("Ca", "Zn")
+def _generate_nonstandard_residues_ff(mol, definition, forcefield):
+    import tempfile
+    from moleculekit.tools.preparation_customres import (
+        _generate_custom_residue,
+        _mol_to_dat_def,
+        _mol_to_xml_def,
+    )
 
-    prot_idx = mol.atomselect("protein", indexes=True)
-    ion_idx = np.where(np.isin(mol.element, coordination_ions))[0]
-
-    uqprot_resn = np.unique(mol.resname[prot_idx])
+    uqprot_resn = np.unique(mol.get("resname", sel="protein"))
     not_in_ff = []
     for resn in uqprot_resn:
         if not forcefield.has_residue(resn):
             not_in_ff.append(resn)
-    if len(not_in_ff):
+
+    if len(not_in_ff) == 0:
+        return definition, forcefield
+
+    try:
+        import aceprep
+    except ImportError:
         raise RuntimeError(
-            f"Could not find protein residues: {', '.join(not_in_ff)} in the PARSE forcefield. Either remove it or provide a custom forcefield."
+            "To protonate non-standard aminoacids you need the aceprep library. Please contact Acellera info@acellera.com for more information."
         )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for res in not_in_ff:
+            try:
+                logger.warning(f"Attempting to template non-standard residue {res}...")
+                molc = mol.copy()
+                # Hacky way of getting the first molecule, if there are copies
+                molresn = molc.resname == res
+                firstname = mol.name[molresn][0]
+                lastname = mol.name[molresn][-1]
+                start = np.where(molresn & (mol.name == firstname))[0][0]
+                end = np.where(molresn & (mol.name == lastname))[0][0]
+                # Remove all other stuff
+                molc.filter(f"index {start} to {end}", _logger=False)
+                cres = _generate_custom_residue(molc, res)
+                _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
+                _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
+                logger.warning(f"Succesfully templated non-standard residue {res}.")
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to protonate non-standard residue {res}. Please remove it from the protein or mutate it to continue preparation. Detailed error message: {e}"
+                )
+        definition, forcefield = _get_custom_ff(user_ff=tmpdir)
+    return definition, forcefield
+
+
+def _detect_nonpeptidic_bonds(mol):
+    coordination_ions = ("Ca", "Zn")
+
+    prot_idx = mol.atomselect("protein", indexes=True)
+    ion_idx = np.where(np.isin(mol.element, coordination_ions))[0]
 
     # Bonds where only 1 atom belongs to protein
     bond_mask = np.isin(mol.bonds, prot_idx)
@@ -158,17 +198,11 @@ def _apply_patches_force_prot(biomolecule, force_protonation):
             biomolecule.apply_patch(force_protonation[key], res)
 
 
-def _get_forcefield(ff="parse", userff=None, usernames=None):
-    from pdb2pqr.io import get_definitions
-    from pdb2pqr import forcefield
-
-    definition = get_definitions()
-    return forcefield.Forcefield(ff, definition, userff, usernames)
-
-
 def _pdb2pqr(
     pdb_file,
-    ph=7.0,
+    definition,
+    forcefield_,
+    ph=7.4,
     assign_only=False,
     clean=False,
     debump=True,
@@ -177,8 +211,6 @@ def _pdb2pqr(
     ligand=None,
     ff="parse",
     ffout="amber",
-    userff=None,
-    usernames=None,
     titrate=True,
     neutraln=False,
     neutralc=False,
@@ -217,7 +249,6 @@ def _pdb2pqr(
         debump = False
         opt = False
 
-    definition = get_definitions()
     pdblist, _ = get_molecule(pdb_file)
     if drop_water:
         pdblist = drop_water_func(pdblist)
@@ -228,7 +259,6 @@ def _pdb2pqr(
     if clean:
         return None, None, biomolecule
 
-    forcefield_ = forcefield.Forcefield(ff, definition, userff, usernames)
     hydrogen_handler = hydrogens.create_handler()
     debumper = Debump(biomolecule)
     pkas = None
@@ -263,7 +293,15 @@ def _pdb2pqr(
                 {row["group_label"]: row["pKa"] for row in pkas},
             )
 
-        biomolecule.add_hydrogens(no_prot)  # STEFAN mod: Don't protonate residues
+        # TODO: Remove this try/except once pdb2pqr makes new release
+        try:
+            biomolecule.add_hydrogens(no_prot)  # STEFAN mod: Don't protonate residues
+        except Exception:
+            logger.error(
+                "Disabling residue protonation requires pdb2pqr version >3.2.0. All residues will be protonated"
+            )
+            biomolecule.add_hydrogens()
+
         if debump:
             debumper.debump_biomolecule()
 
@@ -300,16 +338,6 @@ def _pdb2pqr(
                     logger.warning(err)
                     missing_atoms.append(pdb_atom)
         matched_atoms += lig_atoms
-
-    total_charge = 0
-    for residue in biomolecule.residues:
-        reskey = (residue.res_seq, residue.chain_id, residue.ins_code)
-        if reskey in no_prot:  # Exclude non-protonated residues
-            continue
-        total_charge += residue.charge
-    if not isclose(total_charge, int(total_charge), abs_tol=1e-3):
-        err = f"Biomolecule charge is non-integer: {total_charge}"
-        raise ValueError(err)
 
     if ffout is not None:
         if ffout != ff:
@@ -408,7 +436,7 @@ def _check_frozen_histidines(mol_in, _no_prot):
 def proteinPrepare(
     mol_in,
     titration=True,
-    pH=7.0,
+    pH=7.4,
     force_protonation=None,
     no_opt=None,
     no_prot=None,
@@ -564,18 +592,18 @@ def proteinPrepare(
 
     mol_in = _check_chain_and_segid(mol_in, verbose)
 
-    forcefield = _get_forcefield()
+    definition, forcefield = _get_custom_ff()
+    definition, forcefield = _generate_nonstandard_residues_ff(
+        mol_in, definition, forcefield
+    )
     nonpept = None
     if hold_nonpeptidic_bonds:
-        nonpept = _detect_nonpeptidic_bonds(mol_in, forcefield)
+        nonpept = _detect_nonpeptidic_bonds(mol_in)
 
     _no_opt, _no_prot, _no_titr, _force_prot = _get_hold_residues(
         mol_in, no_opt, no_prot, no_titr, force_protonation, nonpept
     )
     _check_frozen_histidines(mol_in, _no_prot)
-
-    # for sel, resn in force_protonation:
-    #     mol_in.set("resname", resn, sel=sel)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpin = os.path.join(tmpdir, "input.pdb")
@@ -589,6 +617,8 @@ def proteinPrepare(
             no_prot=_no_prot,
             no_titr=_no_titr,
             force_protonation=_force_prot,
+            definition=definition,
+            forcefield_=forcefield,
         )
         mol_out = _biomolecule_to_molecule(biomolecule)
 
@@ -983,16 +1013,47 @@ class _TestPreparation(unittest.TestCase):
 
         self.home = home(dataDir="test-proteinprepare")
 
-    def _compare_results(self, refpdb, refdf, pmol, df):
+    def _compare_results(self, refpdb, refdf_f, pmol, df: pd.DataFrame):
+        refdf = pd.read_csv(
+            refdf_f, dtype=_table_dtypes, keep_default_na=False, na_values=[""]
+        )
+        refdf = refdf.fillna("")
+        df = df.fillna("")
+        try:
+            pd.testing.assert_frame_equal(refdf, df)
+        except AssertionError:
+            if len(df) != len(refdf):
+                raise AssertionError(
+                    "Different number of residues were found in the DataFrames!"
+                )
+            for key in [
+                "resname",
+                "protonation",
+                "resid",
+                "insertion",
+                "chain",
+                "segid",
+                "pKa",
+                "buried",
+            ]:
+                refv = refdf[key].values
+                newv = df[key].values
+                diff = refv != newv
+                if key in ("pKa", "buried"):
+                    nans = refv == ""
+                    refv = refv[~nans].astype(np.float32)
+                    newv = newv[~nans].astype(np.float32)
+                    diff = np.abs(refv - newv) > 1e-4
+                if any(diff):
+                    print(f"Found difference in field: {key}")
+                    print(f"Reference values: {refv[diff]}")
+                    print(f"New values:       {newv[diff]}")
+            raise
+
         refmol = Molecule(refpdb)
         assert mol_equal(
             refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
         )
-
-        refdf = pd.read_csv(refdf, dtype=_table_dtypes)
-        refdf = refdf.fillna("")
-        df = df.fillna("")
-        pd.testing.assert_frame_equal(refdf, df)
 
     def test_proteinPrepare(self):
         pdbids = ["3PTB", "1A25", "1U5U"]
@@ -1086,15 +1147,24 @@ class _TestPreparation(unittest.TestCase):
             df,
         )
 
-    # def test_nonstandard_residues(self):
+    def test_nonstandard_residues(self):
+        test_home = os.path.join(self.home, "test-nonstandard-residues")
+        mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
+
+        pmol, df = proteinPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
+
+        self._compare_results(
+            os.path.join(test_home, "1A4W_prepared.pdb"),
+            os.path.join(test_home, "1A4W_prepared.csv"),
+            pmol,
+            df,
+        )
+
+    # def test_unknown_nonstandard_residues(self):
     #     test_home = os.path.join(self.home, "test-nonstandard-residues")
     #     mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
 
-    #     pmol, df = proteinPrepare(
-    #         mol,
-    #         return_details=True,
-    #         hold_nonpeptidic_bonds=True,
-    #     )
+    #     pmol, df = proteinPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
 
     #     self._compare_results(
     #         os.path.join(test_home, "1A4W_prepared.pdb"),

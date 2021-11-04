@@ -64,7 +64,7 @@ def compareGraphs(G, H, fields=("element",), tolerance=0.5, returnmatching=False
     Gprod = createProductGraph(G, H, tolerance, fields)
 
     # Calculate the maximal cliques and return the length of the largest one
-    maxcliques = np.array(list(nx.find_cliques(Gprod)))
+    maxcliques = list(nx.find_cliques(Gprod))
     cllen = np.array([len(x) for x in maxcliques])
     score = cllen.max() / max(len(G.nodes()), len(H.nodes()))
 
