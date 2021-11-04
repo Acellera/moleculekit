@@ -237,7 +237,7 @@ def _generate_mol2(outsdfh):
     #     call([teleap, *teleapimportflags, "-f", leapin])
 
 
-def _get_custom_ff(user_ff=None):
+def _get_custom_ff(user_ff=None, molkit_ff=True):
     import pdb2pqr
     import pdb2pqr.aa
     import tempfile
@@ -248,11 +248,15 @@ def _get_custom_ff(user_ff=None):
     original = os.path.join(os.path.dirname(pdb2pqr.__file__), "dat")
     molkitcustom = home(shareDir=os.path.join("pdb2pqr", "residues"))
 
-    custom_xml = glob(os.path.join(molkitcustom, "*.xml"))
+    custom_xml = []
+    if molkit_ff:
+        custom_xml += glob(os.path.join(molkitcustom, "*.xml"))
     if user_ff is not None:
         custom_xml += glob(os.path.join(user_ff, "*.xml"))
 
-    custom_dat = glob(os.path.join(molkitcustom, "*.dat"))
+    custom_dat = []
+    if molkit_ff:
+        custom_dat += glob(os.path.join(molkitcustom, "*.dat"))
     if user_ff is not None:
         custom_dat += glob(os.path.join(user_ff, "*.dat"))
 

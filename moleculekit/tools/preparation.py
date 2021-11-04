@@ -101,7 +101,7 @@ def _check_chain_and_segid(mol, verbose):
     return mol
 
 
-def _generate_nonstandard_residues_ff(mol, definition, forcefield):
+def _generate_nonstandard_residues_ff(mol, definition, forcefield, _molkit_ff=True):
     import tempfile
     from moleculekit.tools.preparation_customres import (
         _generate_custom_residue,
@@ -146,7 +146,7 @@ def _generate_nonstandard_residues_ff(mol, definition, forcefield):
                 raise RuntimeError(
                     f"Failed to protonate non-standard residue {res}. Please remove it from the protein or mutate it to continue preparation. Detailed error message: {e}"
                 )
-        definition, forcefield = _get_custom_ff(user_ff=tmpdir)
+        definition, forcefield = _get_custom_ff(user_ff=tmpdir, molkit_ff=_molkit_ff)
     return definition, forcefield
 
 
@@ -209,8 +209,6 @@ def _pdb2pqr(
     opt=True,
     drop_water=False,
     ligand=None,
-    ff="parse",
-    ffout="amber",
     titrate=True,
     neutraln=False,
     neutralc=False,
@@ -339,12 +337,8 @@ def _pdb2pqr(
                     missing_atoms.append(pdb_atom)
         matched_atoms += lig_atoms
 
-    if ffout is not None:
-        if ffout != ff:
-            name_scheme = forcefield.Forcefield(ffout, definition, None)
-        else:
-            name_scheme = forcefield_
-        biomolecule.apply_name_scheme(name_scheme)
+    name_scheme = forcefield.Forcefield("amber", definition, None)
+    biomolecule.apply_name_scheme(name_scheme)
 
     return missing_atoms, pkas, biomolecule
 
@@ -447,6 +441,7 @@ def proteinPrepare(
     hydrophobic_thickness=None,
     plot_pka=None,
     _logger_level="ERROR",
+    _molkit_ff=True,
 ):
     """A system preparation wizard for HTMD.
 
@@ -592,9 +587,9 @@ def proteinPrepare(
 
     mol_in = _check_chain_and_segid(mol_in, verbose)
 
-    definition, forcefield = _get_custom_ff()
+    definition, forcefield = _get_custom_ff(molkit_ff=_molkit_ff)
     definition, forcefield = _generate_nonstandard_residues_ff(
-        mol_in, definition, forcefield
+        mol_in, definition, forcefield, _molkit_ff
     )
     nonpept = None
     if hold_nonpeptidic_bonds:
@@ -642,8 +637,6 @@ def proteinPrepare(
         if hydrophobic_thickness:
             # TODO: I think this only works if the protein is assumed aligned to the membrane and the membrane is centered at Z=0
             _warn_buried_residues(df, mol_out, hydrophobic_thickness)
-
-    # resData.warnIfTerminiSuspect()
 
     logger.setLevel(old_level)
 
@@ -1160,18 +1153,20 @@ class _TestPreparation(unittest.TestCase):
             df,
         )
 
-    # def test_unknown_nonstandard_residues(self):
-    #     test_home = os.path.join(self.home, "test-nonstandard-residues")
-    #     mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
+    def test_unknown_nonstandard_residues(self):
+        test_home = os.path.join(self.home, "test-nonstandard-residues")
+        mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
 
-    #     pmol, df = proteinPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
+        pmol, df = proteinPrepare(
+            mol, return_details=True, hold_nonpeptidic_bonds=True, _molkit_ff=False
+        )
 
-    #     self._compare_results(
-    #         os.path.join(test_home, "1A4W_prepared.pdb"),
-    #         os.path.join(test_home, "1A4W_prepared.csv"),
-    #         pmol,
-    #         df,
-    #     )
+        self._compare_results(
+            os.path.join(test_home, "1A4W_prepared.pdb"),
+            os.path.join(test_home, "1A4W_prepared.csv"),
+            pmol,
+            df,
+        )
 
 
 if __name__ == "__main__":
