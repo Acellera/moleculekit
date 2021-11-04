@@ -999,6 +999,12 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
     plt.close(fig)
 
 
+from packaging import version
+import pdb2pqr
+
+PDB2PQR_NEW_VERSION = version.parse(pdb2pqr.__version__) > version.parse("3.2.0")
+
+
 class _TestPreparation(unittest.TestCase):
     @classmethod
     def setUpClass(self):
@@ -1105,6 +1111,7 @@ class _TestPreparation(unittest.TestCase):
         assert df.protonation[df.resid == 57].iloc[0] == "HIP"
         assert df.protonation[df.resid == 91].iloc[0] == "HIE"
 
+    @unittest.skipUnless(PDB2PQR_NEW_VERSION, "waiting for pdb2pqr >3.2.0 release")
     def test_auto_freezing(self):
         test_home = os.path.join(self.home, "test-auto-freezing")
         mol = Molecule(os.path.join(test_home, "2B5I.pdb"))
@@ -1117,6 +1124,7 @@ class _TestPreparation(unittest.TestCase):
             df,
         )
 
+    @unittest.skipUnless(PDB2PQR_NEW_VERSION, "waiting for pdb2pqr >3.2.0 release")
     def test_auto_freezing_and_force(self):
         test_home = os.path.join(self.home, "test-auto-freezing")
         mol = Molecule(os.path.join(test_home, "5DPX_A.pdb"))

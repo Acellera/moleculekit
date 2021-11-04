@@ -475,7 +475,7 @@ class _TestVoxel(unittest.TestCase):
         mol = Molecule(os.path.join(self.testf, "3PTB.pdb"))
         mol.filter("protein")
         mol = autoSegment(mol, field="both")
-        mol = proteinPrepare(mol)
+        mol = proteinPrepare(mol, pH=7.0)
         mol.bonds = mol._guessBonds()
         self.mol = mol
 

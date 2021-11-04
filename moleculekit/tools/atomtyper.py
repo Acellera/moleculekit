@@ -98,7 +98,7 @@ def getPDBQTAtomType(atype, aidx, mol, aromaticNitrogen=False):
 
 
 def prepareProteinForAtomtyping(
-    mol, guessBonds=True, protonate=True, pH=7, segment=True, verbose=True
+    mol, guessBonds=True, protonate=True, pH=7.4, segment=True, verbose=True
 ):
     """Prepares a Molecule object for atom typing.
 
@@ -464,12 +464,10 @@ class _TestAtomTyper(unittest.TestCase):
         from moleculekit.molecule import Molecule, mol_equal
         from os import path
 
-        mol = Molecule(path.join(home(dataDir="test-voxeldescriptors"), "1ATL.pdb"))
+        mol = Molecule(path.join(home(dataDir="test-atomtyper"), "1ATL.pdb"))
         mol.remove('resname "0QI"')
-        ref = Molecule(
-            path.join(home(dataDir="test-voxeldescriptors"), "1ATL_prepared.pdb")
-        )
-        mol2 = prepareProteinForAtomtyping(mol, verbose=False)
+        ref = Molecule(path.join(home(dataDir="test-atomtyper"), "1ATL_prepared.pdb"))
+        mol2 = prepareProteinForAtomtyping(mol, pH=7.0, verbose=False)
 
         assert mol_equal(mol2, ref, exceptFields=("coords",))
 
