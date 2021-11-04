@@ -1002,6 +1002,12 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
 import pdb2pqr
 
 PDB2PQR_NEW_VERSION = pdb2pqr.__version__ != "3.2.0"
+try:
+    import aceprep
+except ImportError:
+    ACEPREP_EXISTS = False
+else:
+    ACEPREP_EXISTS = True
 
 
 class _TestPreparation(unittest.TestCase):
@@ -1053,6 +1059,7 @@ class _TestPreparation(unittest.TestCase):
             refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
         )
 
+    @unittest.skipUnless(PDB2PQR_NEW_VERSION, "waiting for pdb2pqr >3.2.0 release")
     def test_proteinPrepare(self):
         pdbids = ["3PTB", "1A25", "1U5U"]
         for pdb in pdbids:
@@ -1147,6 +1154,7 @@ class _TestPreparation(unittest.TestCase):
             df,
         )
 
+    @unittest.skipUnless(PDB2PQR_NEW_VERSION, "waiting for pdb2pqr >3.2.0 release")
     def test_nonstandard_residues(self):
         test_home = os.path.join(self.home, "test-nonstandard-residues")
         mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
@@ -1160,6 +1168,8 @@ class _TestPreparation(unittest.TestCase):
             df,
         )
 
+    @unittest.skipUnless(PDB2PQR_NEW_VERSION, "waiting for pdb2pqr >3.2.0 release")
+    @unittest.skipUnless(ACEPREP_EXISTS, "Can only run with aceprep installed")
     def test_unknown_nonstandard_residues(self):
         test_home = os.path.join(self.home, "test-nonstandard-residues")
         mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
