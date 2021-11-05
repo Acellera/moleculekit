@@ -427,6 +427,28 @@ def _check_frozen_histidines(mol_in, _no_prot):
         )
 
 
+def _prepare_nucleics(mol):
+    # Renames residues to the names expected by PARSE. Fixes issues with 5' G atoms.
+    nucl_mask = mol.atomselect("nucleic")
+    uq_resn = mol.resname[nucl_mask]
+
+    # Clean 5' G problematic atoms
+    for ch in np.unique(mol.get("chain", "nucleic")):
+        resid = mol.resid[(mol.chain == ch) & mol.atomselect("nucleic")][0]
+        mol.remove(
+            f"chain {ch} and resid {resid} and (resname G) and (name P OP1 OP2)",
+            _logger=False,
+        )
+
+    if "T" in uq_resn:
+        nucl_type = "D"  # If thymine, it's a DNA
+    else:
+        nucl_type = "R"  # Otherwise it's an RNA
+
+    for res in uq_resn:
+        mol.resname[mol.resname == res] = f"{nucl_type}{res}"
+
+
 def proteinPrepare(
     mol_in,
     titration=True,
@@ -586,6 +608,8 @@ def proteinPrepare(
     _warn_if_contains_DUM(mol_in)
 
     mol_in = _check_chain_and_segid(mol_in, verbose)
+
+    _prepare_nucleics(mol_in)
 
     definition, forcefield = _get_custom_ff(molkit_ff=_molkit_ff)
     definition, forcefield = _generate_nonstandard_residues_ff(
