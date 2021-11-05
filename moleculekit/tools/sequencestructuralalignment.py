@@ -9,6 +9,40 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _get_sequence(mol, segs, protein_mask, nucleic_mask):
+    from moleculekit.util import ensurelist
+
+    if segs is None:
+        if any(protein_mask) and any(nucleic_mask):
+            raise RuntimeError(
+                "mol contains both protein and nucleic residues. You need to specify which segments to align."
+            )
+        molseg = "protein" if any(protein_mask) else "nucleic"
+        seqmol = mol.sequence(noseg=True)[molseg]
+        segment_type = molseg
+    else:
+        seqs = mol.sequence()
+        seqmol = ""
+        has_prot = False
+        has_nucl = False
+        for seg in ensurelist(segs):
+            seg_is_prot = any(protein_mask & (mol.segid == seg))
+            seg_is_nucl = any(nucleic_mask & (mol.segid == seg))
+            if seg_is_prot and seg_is_nucl:
+                raise RuntimeError(
+                    f"Segment {seg} of mol contains both protein and nucleic atoms. Please reassign segments."
+                )
+            has_prot = has_prot | seg_is_prot
+            has_nucl = has_nucl | seg_is_nucl
+            seqmol += seqs[seg]
+        if has_prot and has_nucl:
+            raise RuntimeError(
+                "The segments you provided contain both protein and nucleic atoms. Please choose different segments"
+            )
+        segment_type = "protein" if has_prot else "nucleic"
+    return seqmol, segment_type
+
+
 def sequenceStructureAlignment(
     mol, ref, molseg=None, refseg=None, maxalignments=10, nalignfragment=1
 ):
@@ -55,42 +89,42 @@ def sequenceStructureAlignment(
             "Alternative atom locations detected in `ref`. Please remove these before calling this function."
         )
 
-    seqmol = mol.sequence()
-    seqref = ref.sequence()
+    mol_protein = mol.atomselect("protein")
+    mol_nucleic = mol.atomselect("nucleic")
+    ref_protein = ref.atomselect("protein")
+    ref_nucleic = ref.atomselect("nucleic")
 
-    if molseg is None:
-        msg = "No segment was specified by the user for `mol`"
-        if len(seqmol) > 1:
-            msg += f" and multiple segments ({list(seqmol.keys())}) were detected. "
-        else:
-            msg += ". "
-        msg += "Alignment will be done on all protein segments."
-        logger.info(msg)
-        seqmol = mol.sequence(noseg=True)
-        molseg = list(seqmol.keys())[0]
-    if refseg is None:
-        msg = "No segment was specified by the user for `ref`"
-        if len(seqref) > 1:
-            msg += f" and multiple segments ({list(seqref.keys())}) were detected. "
-        else:
-            msg += ". "
-        msg += "Alignment will be done on all protein segments."
-        logger.info(msg)
-        seqref = ref.sequence(noseg=True)
-        refseg = list(seqref.keys())[0]
+    seqmol, segment_type_mol = _get_sequence(mol, molseg, mol_protein, mol_nucleic)
+    seqref, segment_type_ref = _get_sequence(ref, refseg, ref_protein, ref_nucleic)
+    if segment_type_mol != segment_type_ref:
+        raise RuntimeError(
+            f"The segments of mol are of type {segment_type_mol} while for ref they are of type {segment_type_ref}. Please choose different segments to align."
+        )
+    segment_type = segment_type_mol
 
-    def getSegIdx(m, mseg):
+    for seg in seqref:
+        seg_is_prot = any(ref_protein & (ref.segid == seg))
+        seg_is_nucl = any(ref_nucleic & (ref.segid == seg))
+        if seg_is_prot and seg_is_nucl:
+            raise RuntimeError(
+                f"Segment {seg} of ref contains both protein and nucleic atoms. Please reassign segments."
+            )
+
+    def getSegIdx(m, seg, segment_type):
         # Calculate the atoms which belong to the selected segments
-        if isinstance(mseg, str) and mseg == "protein":
+        if seg is None and segment_type == "protein":
             msegidx = m.atomselect("protein and name CA")
+        elif seg is None and segment_type == "nucleic":
+            msegidx = m.atomselect("nucleic and backbone and name P")
         else:
             msegidx = np.zeros(m.numAtoms, dtype=bool)
-            for seg in ensurelist(mseg):
-                msegidx |= (m.segid == seg) & (m.name == "CA")
+            atom = "CA" if segment_type == "protein" else "P"
+            for seg in ensurelist(seg):
+                msegidx |= (m.segid == seg) & (m.name == atom)
         return np.where(msegidx)[0]
 
-    molsegidx = getSegIdx(mol, molseg)
-    refsegidx = getSegIdx(ref, refseg)
+    molsegidx = getSegIdx(mol, molseg, segment_type)
+    refsegidx = getSegIdx(ref, refseg, segment_type)
 
     # Create fake residue numbers for the selected segment
     from moleculekit.util import sequenceID
@@ -102,10 +136,10 @@ def sequenceStructureAlignment(
         (ref.resid[refsegidx], ref.insertion[refsegidx], ref.chain[refsegidx])
     )
 
-    # TODO: Use BLOSUM62?
-    alignments = pairwise2.align.globaldx(
-        seqref[refseg], seqmol[molseg], matlist.blosum62
-    )
+    if segment_type == "protein":
+        alignments = pairwise2.align.globaldx(seqref, seqmol, matlist.blosum62)
+    elif segment_type == "nucleic":
+        alignments = pairwise2.align.globalxx(seqref, seqmol)
     numaln = len(alignments)
 
     if numaln > maxalignments:
