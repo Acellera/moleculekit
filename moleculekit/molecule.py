@@ -60,6 +60,10 @@ _residueNameTable = {
     "U": "U",
     "A": "A",
     "T": "T",
+    "DG": "G",
+    "DC": "C",
+    "DA": "A",
+    "DT": "T",
 }
 
 _modResidueNameTable = {"MLZ": "K", "MLY": "K", "MSE": "M"}
