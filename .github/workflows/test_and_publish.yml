@@ -50,6 +50,7 @@ jobs:
     - name: Test
       run: |
         coverage run -m unittest discover --start-directory ./moleculekit --pattern "*.py"
+        codecov
 
   deploypypi:
     if: startsWith(github.event.ref, 'refs/tags/')
