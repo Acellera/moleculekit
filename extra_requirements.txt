@@ -9,3 +9,4 @@ pdb2pqr
 propka
 openbabel>=3.1.1
 vina
+biopython
