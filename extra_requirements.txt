@@ -9,3 +9,4 @@ htmd-pdb2pqr
 propka==3.1.8
 openbabel>=3.1.1
 vina
+biopython
