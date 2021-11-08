@@ -468,14 +468,14 @@ class _TestVoxel(unittest.TestCase):
     def setUpClass(self):
         from moleculekit.home import home
         from moleculekit.molecule import Molecule
-        from moleculekit.tools.preparation import proteinPrepare
+        from moleculekit.tools.preparation import systemPrepare
         from moleculekit.tools.autosegment import autoSegment
 
         self.testf = os.path.join(home(), "test-data", "test-voxeldescriptors")
         mol = Molecule(os.path.join(self.testf, "3PTB.pdb"))
         mol.filter("protein")
         mol = autoSegment(mol, field="both")
-        mol = proteinPrepare(mol, pH=7.0)
+        mol = systemPrepare(mol, pH=7.0)
         mol.bonds = mol._guessBonds()
         self.mol = mol
 

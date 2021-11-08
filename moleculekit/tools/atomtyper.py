@@ -156,13 +156,13 @@ def prepareProteinForAtomtyping(
     watermol.filter(watersel, _logger=False)
 
     if protonate:
-        from moleculekit.tools.preparation import proteinPrepare
+        from moleculekit.tools.preparation import systemPrepare
 
         if np.all(protmol.segid == "") and np.all(protmol.chain == ""):
             protmol = autoSegment2(
                 protmol, fields=("segid", "chain"), basename="K", _logger=verbose
             )  # We need segments to prepare the protein
-        protmol = proteinPrepare(
+        protmol = systemPrepare(
             protmol,
             pH=pH,
             verbose=verbose,
@@ -263,7 +263,7 @@ def atomtypingValidityChecks(mol):
 
     if not np.any(mol.element == "H"):
         raise RuntimeError(
-            "No hydrogens found in the Molecule. Make sure to use proteinPrepare before passing it to voxelization. Also you might need to recalculate the bonds after this."
+            "No hydrogens found in the Molecule. Make sure to use systemPrepare before passing it to voxelization. Also you might need to recalculate the bonds after this."
         )
 
 

@@ -9,9 +9,7 @@ import tempfile
 import numpy as np
 import pandas as pd
 import os
-from moleculekit.molecule import Molecule, mol_equal
-from moleculekit.molecule import UniqueResidueID
-from moleculekit.tools.preparation_customres import _get_custom_ff
+from moleculekit.molecule import Molecule, mol_equal, UniqueResidueID
 
 
 logger = logging.getLogger(__name__)
@@ -103,6 +101,8 @@ def _check_chain_and_segid(mol, verbose):
 
 def _generate_nonstandard_residues_ff(mol, definition, forcefield, _molkit_ff=True):
     import tempfile
+    from moleculekit.tools.preparation_customres import _get_custom_ff
+
     from moleculekit.tools.preparation_customres import (
         _generate_custom_residue,
         _mol_to_dat_def,
@@ -224,13 +224,12 @@ def _pdb2pqr(
         raise ImportError(
             "pdb2pqr not installed. To use the molecule preparation features please do `conda install pdb2pqr -c conda-forge`"
         )
-    from pdb2pqr.io import get_definitions, get_molecule
+    from pdb2pqr.io import get_molecule
     from pdb2pqr import forcefield, hydrogens
     from pdb2pqr.debump import Debump
     from pdb2pqr.main import is_repairable, run_propka, setup_molecule
     from pdb2pqr.main import drop_water as drop_water_func
     from propka.lib import build_parser
-    from math import isclose
 
     propka_parser = build_parser()
     propka_parser.add_argument("--keep-chain", action="store_true", default=False)
@@ -440,16 +439,45 @@ def _prepare_nucleics(mol):
             _logger=False,
         )
 
-    if "T" in uq_resn:
-        nucl_type = "D"  # If thymine, it's a DNA
-    else:
-        nucl_type = "R"  # Otherwise it's an RNA
-
+    mapping = {
+        "T": "DT",
+        "U": "RU",
+        "G": "RG",
+        "C": "RC",
+        "A": "RA",
+        "DG": "DG",
+        "DC": "DC",
+        "DA": "DA",
+        "DT": "DT",
+    }
     for res in uq_resn:
-        mol.resname[mol.resname == res] = f"{nucl_type}{res}"
+        mol.resname[mol.resname == res] = mapping[res]
 
 
 def proteinPrepare(
+    mol_in,
+    pH=7.0,
+    verbose=0,
+    returnDetails=False,
+    hydrophobicThickness=None,
+    holdSelection=None,
+    _loggerLevel=None,
+):
+    logger.warning(
+        "proteinPrepare has been deprecated in favor of the systemPrepare function and will soon be removed. "
+        "Please look at the documentation of systemPrepare for more information."
+    )
+    systemPrepare(
+        mol_in,
+        pH=pH,
+        verbose=verbose,
+        return_details=returnDetails,
+        hydrophobic_thickness=hydrophobicThickness,
+        _logger_level=_loggerLevel,
+    )
+
+
+def systemPrepare(
     mol_in,
     titration=True,
     pH=7.4,
@@ -465,12 +493,15 @@ def proteinPrepare(
     _logger_level="ERROR",
     _molkit_ff=True,
 ):
-    """A system preparation wizard for HTMD.
+    """Prepare molecular systems through protonation and h-bond optimization.
+
+    The preparation routine protonates and optimizes protein and nucleic residues.
+    It will also take into account any non-protein, non-nucleic molecules for the pKa calculation
+    but will not attempt to protonate or optimize those.
 
     Returns a Molecule object, where residues have been renamed to follow
     internal conventions on protonation (below). Coordinates are changed to
-    optimize the H-bonding network. This should be roughly equivalent to mdweb and Maestro's
-    preparation wizard.
+    optimize the H-bonding network.
 
     The following residue names are used in the returned molecule:
 
@@ -500,7 +531,7 @@ def proteinPrepare(
     ========= ======= =========
 
     A detailed table about the residues modified is returned (as a second return value) when
-    returnDetails is True (see PreparationData object).
+    return_details is True .
 
     If hydrophobic_thickness is set to a positive value 2*h, a warning is produced for titratable residues
     having -h<z<h and are buried in the protein by less than 75%. Note that the heuristic for the
@@ -511,13 +542,12 @@ def proteinPrepare(
 
     Notes
     -----
-    In case of problems, exclude water and other dummy atoms.
 
     Features:
-     - assign protonation states via propKa
-     - flip residues to optimize H-bonding network
-     - debump collisions
-     - fill-in missing atoms, e.g. hydrogen atoms
+     - assigns protonation states via propKa
+     - flips residues to optimize H-bonding network
+     - debumps collisions
+     - fills in missing atoms, e.g. hydrogen atoms
 
 
     Parameters
@@ -536,22 +566,39 @@ def proteinPrepare(
     hydrophobic_thickness : float
         the thickness of the membrane in which the protein is embedded, or None if globular protein.
         Used to provide a warning about membrane-exposed residues.
+    force_protonation : list of tuples
+        Allows the user to force specific protonations on residues. This can be done by providing a list of tuples,
+        one for each residue we want to force. i.e. [("protein and resid 40", "HID")] will force the protonation of
+        the first atomselection to the second resname. Atomselections should be valid VMD atomselections.
+    no_opt : list of str
+        Allows the user to disable optimization for specific residues. For example if the user determines that a
+        residue flip or change of coordinates performed by this method causes issues in the structure, they can
+        disable optimization on that residue by passing an atomselection for the residue to hold. i.e. ["protein and resid 23"].
+    no_prot : list of str
+        Same as no_opt but disables the addition of hydrogens to specific residues.
+    no_titr : list of str
+        Same as no_opt but disables the titration of specific residues.
+    hold_nonpeptidic_bonds : bool
+        When set to True, systemPrepare will automatically not optimize, protonate or titrate protein residues
+        which are covalently bound to non-protein molecules. When set to False, systemPrepare will optimize them
+        ignoring the covalent bond, meaning it may break the bonds or add hydrogen atoms between the bonds.
+    plot_pka : str
+        Provide a file path with .png extension to draw the titration diagram for the system residues.
 
     Returns
     -------
-    mol_out : Molecule
+    mol_out : moleculekit.molecule.Molecule
         the molecule titrated and optimized. The molecule object contains an additional attribute,
-    resData : PreparationData
-        a table of residues with the corresponding protonation states, pKas, and other information
+    details : pandas.DataFrame
+        A table of residues with the corresponding protonation states, pKas, and other information
 
 
     Examples
     --------
     >>> tryp = Molecule('3PTB')
-
-    >>> tryp_op, df = proteinPrepare(tryp, returnDetails=True)
-    >>> tryp_op.write('proteinpreparation-test-main-ph-7.pdb')
-    >>> df.to_excel("/tmp/tryp-report.xlsx")
+    >>> tryp_op, df = systemPrepare(tryp, return_details=True)
+    >>> tryp_op.write('/tmp/3PTB_prepared.pdb')
+    >>> df.to_excel("/tmp/tryp-report.csv")
     >>> df                                                        # doctest: +NORMALIZE_WHITESPACE
     resname protonation  resid insertion chain segid       pKa    buried
     0       ILE         ILE     16               A     0  7.413075  0.839286
@@ -568,28 +615,23 @@ def proteinPrepare(
 
     [287 rows x 8 columns]
 
-    >>> tryp_op = proteinPrepare(tryp, pH=1.0)
-    >>> tryp_op.write('proteinpreparation-test-main-ph-1.pdb')
+    >>> tryp_op = systemPrepare(tryp, pH=1.0)
+    >>> tryp_op.write('/tmp/3PTB_pH1.pdb')
 
-    >>> tryp_op = proteinPrepare(tryp, pH=14.0)
-    >>> tryp_op.write('proteinpreparation-test-main-ph-14.pdb')
+    The following will force the preparation to freeze residues 36 and 49 in place
+    >>> tryp_op = systemPrepare(tryp, no_opt=["protein and resid 36", "chain A and resid 49"])
 
-    >>> tryp_op.mutateResidue("protein and resid 40", "HID")
-    >>> tryp_reprot, df = proteinPrepare(tryp_op, titration=False, returnDetails=True)
+    The following will disable protonation on residue 32 of the protein
+    >>> tryp_op = systemPrepare(tryp, no_prot=["protein and resid 32",])
 
-    Notes
-    -----
-    Unsupported/To Do/To Check:
-     - ligands
-     - termini
-     - nucleic acids
-     - coupled titrating residues
-     - Disulfide bridge detection (implemented but unused)
+    The following will disable titration and protonation on residue 32
+    >>> tryp_op = systemPrepare(tryp, no_titr=["protein and resid 32",], no_prot=["protein and resid 32",])
 
-    Reprotonation: To re-protonate a structure first mutate the residue to the desired state and
-    then pass it through proteinPrepare again with titration=False.
+    The following will force residue 40 protonation to HIE and 57 to HIP
+    >>> tryp_op = systemPrepare(tryp, force_protonation=[("protein and resid 40", "HIE"), ("protein and resid 57", "HIP")])
     """
     from pdb2pqr.config import VERSION
+    from moleculekit.tools.preparation_customres import _get_custom_ff
 
     old_level = logger.getEffectiveLevel()
     if not verbose:
@@ -1023,9 +1065,14 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
     plt.close(fig)
 
 
-import pdb2pqr
+# The below is used for testing only
+try:
+    import pdb2pqr
+except ImportError:
+    PDB2PQR_NEW_VERSION = None
+else:
+    PDB2PQR_NEW_VERSION = pdb2pqr.__version__ != "3.2.0"
 
-PDB2PQR_NEW_VERSION = pdb2pqr.__version__ != "3.2.0"
 try:
     import aceprep
 except ImportError:
@@ -1084,12 +1131,12 @@ class _TestPreparation(unittest.TestCase):
         )
 
     @unittest.skipUnless(PDB2PQR_NEW_VERSION, "waiting for pdb2pqr >3.2.0 release")
-    def test_proteinPrepare(self):
+    def test_systemPrepare(self):
         pdbids = ["3PTB", "1A25", "1U5U"]
         for pdb in pdbids:
             test_home = os.path.join(self.home, pdb)
             mol = Molecule(os.path.join(test_home, f"{pdb}.pdb"))
-            pmol, df = proteinPrepare(mol, return_details=True)
+            pmol, df = systemPrepare(mol, return_details=True)
             self._compare_results(
                 os.path.join(test_home, f"{pdb}_prepared.pdb"),
                 os.path.join(test_home, f"{pdb}_prepared.csv"),
@@ -1100,7 +1147,7 @@ class _TestPreparation(unittest.TestCase):
     def test_proteinprepare_ligand(self):
         test_home = os.path.join(self.home, "test-prepare-with-ligand")
         mol = Molecule(os.path.join(test_home, "5EK0_A.pdb"))
-        pmol, df = proteinPrepare(mol, return_details=True)
+        pmol, df = systemPrepare(mol, return_details=True)
         self._compare_results(
             os.path.join(test_home, "5EK0_A_prepared.pdb"),
             os.path.join(test_home, "5EK0_A_prepared.csv"),
@@ -1109,7 +1156,7 @@ class _TestPreparation(unittest.TestCase):
         )
         # Now remove the ligands and check again what the pka is
         mol.filter('not resname PX4 "5P2"')
-        pmol, df = proteinPrepare(mol, return_details=True)
+        pmol, df = systemPrepare(mol, return_details=True)
         self._compare_results(
             os.path.join(test_home, "5EK0_A_prepared_nolig.pdb"),
             os.path.join(test_home, "5EK0_A_prepared_nolig.csv"),
@@ -1118,18 +1165,18 @@ class _TestPreparation(unittest.TestCase):
         )
 
     def test_reprotonate(self):
-        pmol, df = proteinPrepare(Molecule("3PTB"), return_details=True)
+        pmol, df = systemPrepare(Molecule("3PTB"), return_details=True)
         assert df.protonation[df.resid == 40].iloc[0] == "HIE"
         assert df.protonation[df.resid == 57].iloc[0] == "HIP"
         assert df.protonation[df.resid == 91].iloc[0] == "HID"
 
         pmol.mutateResidue("protein and resid 40", "HID")
-        _, df2 = proteinPrepare(pmol, titration=False, return_details=True)
+        _, df2 = systemPrepare(pmol, titration=False, return_details=True)
         assert df2.protonation[df2.resid == 40].iloc[0] == "HID"
         assert df2.protonation[df2.resid == 57].iloc[0] == "HIP"
         assert df2.protonation[df2.resid == 91].iloc[0] == "HID"
 
-        pmol, df = proteinPrepare(
+        pmol, df = systemPrepare(
             Molecule("3PTB"),
             force_protonation=(
                 ("protein and resid 40", "HID"),
@@ -1146,7 +1193,7 @@ class _TestPreparation(unittest.TestCase):
         test_home = os.path.join(self.home, "test-auto-freezing")
         mol = Molecule(os.path.join(test_home, "2B5I.pdb"))
 
-        pmol, df = proteinPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
+        pmol, df = systemPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
         self._compare_results(
             os.path.join(test_home, "2B5I_prepared.pdb"),
             os.path.join(test_home, "2B5I_prepared.csv"),
@@ -1159,7 +1206,7 @@ class _TestPreparation(unittest.TestCase):
         test_home = os.path.join(self.home, "test-auto-freezing")
         mol = Molecule(os.path.join(test_home, "5DPX_A.pdb"))
 
-        pmol, df = proteinPrepare(
+        pmol, df = systemPrepare(
             mol,
             return_details=True,
             hold_nonpeptidic_bonds=True,
@@ -1183,7 +1230,7 @@ class _TestPreparation(unittest.TestCase):
         test_home = os.path.join(self.home, "test-nonstandard-residues")
         mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
 
-        pmol, df = proteinPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
+        pmol, df = systemPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
 
         self._compare_results(
             os.path.join(test_home, "1A4W_prepared.pdb"),
@@ -1198,13 +1245,39 @@ class _TestPreparation(unittest.TestCase):
         test_home = os.path.join(self.home, "test-nonstandard-residues")
         mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
 
-        pmol, df = proteinPrepare(
+        pmol, df = systemPrepare(
             mol, return_details=True, hold_nonpeptidic_bonds=True, _molkit_ff=False
         )
 
         self._compare_results(
             os.path.join(test_home, "1A4W_prepared.pdb"),
             os.path.join(test_home, "1A4W_prepared.csv"),
+            pmol,
+            df,
+        )
+
+    def test_rna_protein_complex(self):
+        test_home = os.path.join(self.home, "test-rna-protein-compex")
+        mol = Molecule(os.path.join(test_home, "3WBM.pdb"))
+
+        pmol, df = systemPrepare(mol, return_details=True)
+
+        self._compare_results(
+            os.path.join(test_home, "3WBM_prepared.pdb"),
+            os.path.join(test_home, "3WBM_prepared.csv"),
+            pmol,
+            df,
+        )
+
+    def test_dna(self):
+        test_home = os.path.join(self.home, "test-dna")
+        mol = Molecule(os.path.join(test_home, "1BNA.pdb"))
+
+        pmol, df = systemPrepare(mol, return_details=True)
+
+        self._compare_results(
+            os.path.join(test_home, "1BNA_prepared.pdb"),
+            os.path.join(test_home, "1BNA_prepared.csv"),
             pmol,
             df,
         )
