@@ -56,14 +56,30 @@ _residueNameTable = {
     "TYR": "Y",
     "TRP": "W",
     "G": "G",
+    "G5": "G",
+    "G3": "G",
     "C": "C",
+    "C5": "C",
+    "C3": "C",
     "U": "U",
+    "U5": "U",
+    "U3": "U",
     "A": "A",
+    "A5": "A",
+    "A3": "A",
     "T": "T",
     "DG": "G",
+    "DG5": "G",
+    "DG3": "G",
     "DC": "C",
+    "DC5": "C",
+    "DC3": "C",
     "DA": "A",
+    "DA5": "A",
+    "DA3": "A",
     "DT": "T",
+    "DT5": "T",
+    "DT3": "T",
 }
 
 _modResidueNameTable = {"MLZ": "K", "MLY": "K", "MSE": "M"}
@@ -620,6 +636,8 @@ class Molecule(object):
         ref,
         molseg=None,
         refseg=None,
+        molsel="all",
+        refsel="all",
         nalignfragment=1,
         returnAlignments=False,
         maxalignments=1,
@@ -630,10 +648,10 @@ class Molecule(object):
         ----------
         ref : :class:`Molecule <moleculekit.molecule.Molecule>` object
             The reference Molecule to which we want to align
-        molseg : str
-            The segment of this Molecule we want to align
-        refseg : str
-            The segment of `ref` we want to align to
+        molsel : str
+            The atom selection of this Molecule we want to align
+        refsel : str
+            The atom selection of `ref` we want to align to
         nalignfragments : int
             The number of fragments used for the alignment.
         returnAlignments : bool
@@ -651,13 +669,20 @@ class Molecule(object):
             sequenceStructureAlignment,
         )
 
-        aligns = sequenceStructureAlignment(
-            self, ref, molseg, refseg, maxalignments, nalignfragment
+        aligns, _ = sequenceStructureAlignment(
+            mol=self,
+            ref=ref,
+            molseg=molseg,
+            refseg=refseg,
+            molsel=molsel,
+            refsel=refsel,
+            maxalignments=maxalignments,
+            nalignfragment=nalignfragment,
         )
         if returnAlignments:
             return aligns
         else:
-            self = aligns[0]
+            self.coords = aligns[0].coords.copy()
 
     def append(self, mol, collisions=False, coldist=1.3):
         """Append a molecule at the end of the current molecule
@@ -1533,7 +1558,7 @@ class Molecule(object):
         self._emptyTraj(numAtoms)
         return self
 
-    def sequence(self, oneletter=True, noseg=False):
+    def sequence(self, oneletter=True, noseg=False, return_idx=False, sel="all"):
         """Return the aminoacid sequence of the Molecule.
 
         Parameters
@@ -1542,6 +1567,10 @@ class Molecule(object):
             Whether to return one-letter or three-letter AA codes. There should be only one atom per residue.
         noseg : bool
             Ignore segments and return the whole sequence as single string.
+        return_idx : bool
+            If True, the function also returns the indexes of the atoms of each residue in the sequence
+        sel : str
+            Atomselection for which to return the sequence
 
         Returns
         -------
@@ -1567,22 +1596,25 @@ class Molecule(object):
 
         prot = self.atomselect("protein")
         nucl = self.atomselect("nucleic")
+        selb = self.atomselect(sel)
 
         increm = sequenceID((self.resid, self.insertion, self.chain))
-        segs = np.unique(self.segid[prot | nucl])
+        segs = np.unique(self.segid[(prot | nucl) & selb])
         segSequences = {}
+        seqAtoms = {}
         if noseg:
             segs = ["protein", "nucleic"]
 
         # Iterate over segments
         for seg in segs:
             segSequences[seg] = []
+            seqAtoms[seg] = []
             if seg == "protein":
-                segatoms = prot
+                segatoms = prot & selb
             elif seg == "nucleic":
-                segatoms = nucl
+                segatoms = nucl & selb
             else:
-                segatoms = (prot | nucl) & (self.segid == seg)
+                segatoms = (prot | nucl) & (self.segid == seg) & selb
 
             resnames = self.resname[segatoms]
             incremseg = increm[segatoms]
@@ -1611,11 +1643,14 @@ class Molecule(object):
                 else:
                     rescode = resname
                 segSequences[seg].append(rescode)
+                seqAtoms[seg].append(np.where(incremseg == i)[0])
 
         # Join single letters into strings
         if oneletter:
             segSequences = {k: "".join(segSequences[k]) for k in segSequences}
 
+        if return_idx:
+            return segSequences, seqAtoms
         return segSequences
 
     def dropFrames(self, drop=None, keep=None):
