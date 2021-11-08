@@ -1257,7 +1257,7 @@ class _TestPreparation(unittest.TestCase):
         )
 
     def test_rna_protein_complex(self):
-        test_home = os.path.join(self.home, "test-rna-protein-compex")
+        test_home = os.path.join(self.home, "test-rna-protein-complex")
         mol = Molecule(os.path.join(test_home, "3WBM.pdb"))
 
         pmol, df = systemPrepare(mol, return_details=True)
