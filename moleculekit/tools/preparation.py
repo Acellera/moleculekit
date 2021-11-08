@@ -102,7 +102,6 @@ def _check_chain_and_segid(mol, verbose):
 def _generate_nonstandard_residues_ff(mol, definition, forcefield, _molkit_ff=True):
     import tempfile
     from moleculekit.tools.preparation_customres import _get_custom_ff
-
     from moleculekit.tools.preparation_customres import (
         _generate_custom_residue,
         _mol_to_dat_def,
@@ -685,9 +684,10 @@ def systemPrepare(
 
     # Diagnostics
     missedres = set([m.residue.name for m in missedres])
-    logger.warning(
-        f"The following residues have not been optimized: {', '.join(missedres)}"
-    )
+    if len(missedres):
+        logger.warning(
+            f"The following residues have not been optimized: {', '.join(missedres)}"
+        )
 
     mol_out.box = mol_in.box
     _fixup_water_names(mol_out)
