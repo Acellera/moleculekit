@@ -15,22 +15,20 @@ import numbers
 logger = logging.getLogger(__name__)
 
 # fmt: off
-first_col_elements = [
+first_col_elements = {
     'Se', 'Sr', 'Gd', 'Mn', 'Pt', 'Cs', 'Mg', 'Be', 'Sb', 'Bi', 'Th', 'Yb',
     'Zn', 'Kr', 'Rb', 'Ar', 'Pa', 'Fe', 'Ag', 'In', 'Eu', 'Hg', 'Pr', 'Al',
     'Ru', 'Sm', 'Ba', 'Lu', 'Re', 'Xe', 'Dy', 'Ti', 'As', 'Pu', 'Ir', 'Br',
     'Li', 'Pd', 'Ce', 'Cr', 'Ho', 'La', 'Sn', 'Te', 'Cl', 'Hf', 'Ga', 'Co',
     'Os', 'Tl', 'Au', 'Sc', 'Tb', 'Zr', 'Cu', 'Rh', 'Er', 'Mo', 'Si', 'Ca',
     'Ta', 'Cm', 'Am', 'Na', 'Pb', 'Ni', 'Ne', 'Cd'
-]
+}
 
-metals_ions = [
-    'FE', 'AS', 'ZN', 'MG', 'MN', 'CO', 'BR',
-    'CU', 'TA', 'MO', 'AL', 'BE', 'SE', 'PT',
-    'EU', 'NI', 'IR', 'RH', 'AU', 'GD', 'RU',
-    'XE', 'RB', 'LU', 'GA', 'BA', 'CS', 'Y',
-    'PB', 'SM', 'SR', 'YB'
-]
+metals_ions = {
+    'FE', 'AS', 'ZN', 'MG', 'MN', 'CO', 'BR', 'CU', 'TA', 'MO', 'AL', 'BE',
+    'SE', 'PT', 'EU', 'NI', 'IR', 'RH', 'AU', 'GD', 'RU', 'XE', 'RB', 'LU',
+    'GA', 'BA', 'CS', 'PB', 'SM', 'SR', 'YB', 'Y'
+}
 
 _rename_elements = {('SOD', 'SO'): 'Na'}
 # fmt: on

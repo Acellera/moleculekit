@@ -1934,6 +1934,9 @@ class Molecule(object):
             self._viewPymol(mol2, xtc)
             os.remove(xtc)
             os.remove(mol2)
+        elif viewer.lower() == "molstar":
+            from moleculekit.molstarelectron.viewer import view
+            view(self)
         else:
             raise ValueError("Unknown viewer.")
 
