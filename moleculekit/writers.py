@@ -9,91 +9,47 @@ import os
 from moleculekit.support import xtc_lib
 from moleculekit.util import ensurelist
 import networkx as nx
-import collections
 import logging
 import numbers
 
 logger = logging.getLogger(__name__)
 
 # fmt: off
+first_col_elements = [
+    'Se', 'Sr', 'Gd', 'Mn', 'Pt', 'Cs', 'Mg', 'Be', 'Sb', 'Bi', 'Th', 'Yb',
+    'Zn', 'Kr', 'Rb', 'Ar', 'Pa', 'Fe', 'Ag', 'In', 'Eu', 'Hg', 'Pr', 'Al',
+    'Ru', 'Sm', 'Ba', 'Lu', 'Re', 'Xe', 'Dy', 'Ti', 'As', 'Pu', 'Ir', 'Br',
+    'Li', 'Pd', 'Ce', 'Cr', 'Ho', 'La', 'Sn', 'Te', 'Cl', 'Hf', 'Ga', 'Co',
+    'Os', 'Tl', 'Au', 'Sc', 'Tb', 'Zr', 'Cu', 'Rh', 'Er', 'Mo', 'Si', 'Ca',
+    'Ta', 'Cm', 'Am', 'Na', 'Pb', 'Ni', 'Ne', 'Cd'
+]
 
-_Pair = collections.namedtuple('Atom', 'resname name')
-# The following is taken from MDAnalysis to align atom names based on the strict PDB formatting.
-# Some programs like AutoDock require this strict formatting to guess atom types.
-
-# These attributes are used to deduce how to format the atom name.
-_ions_metals = ('FE', 'AS', 'ZN', 'MG', 'MN', 'CO', 'BR',
-                'CU', 'TA', 'MO', 'AL', 'BE', 'SE', 'PT',
-                'EU', 'NI', 'IR', 'RH', 'AU', 'GD', 'RU', 
-                'XE', 'RB', 'LU', 'GA', 'BA', 'CS', 'Y',
-                'PB', 'SM', 'SR', 'YB')
-
-# Mercurial can be confused for hydrogen gamma. Yet, mercurial is
-# rather rare in the PDB. Here are all the residues that contain
-# mercurial.
-_special_hg = ('CMH', 'EMC', 'MBO', 'MMC', 'HGB', 'BE7', 'PMB')
-# Chloride can be confused for a carbon. Here are the residues that
-# contain chloride.
-_special_cl = ('0QE', 'CPT', 'DCE', 'EAA', 'IMN', 'OCZ', 'OMY', 'OMZ',
-               'UN9', '1N1', '2T8', '393', '3MY', 'BMU', 'CLM', 'CP6',
-               'DB8', 'DIF', 'EFZ', 'LUR', 'RDC', 'UCL', 'XMM', 'HLT',
-               'IRE', 'LCP', 'PCI', 'VGH')
-# In these pairs, the atom name is aligned on the first column
-# (column 13).
-_include_pairs = (_Pair('OEC', 'CA1'),
-                  _Pair('PLL', 'PD'),
-                  _Pair('OEX', 'CA1'))
-# In these pairs, the atom name is aligned on the second column
-# (column 14), but other rules would align them on the first column.
-_exclude_pairs = (_Pair('C14', 'C14'), _Pair('C15', 'C15'),
-                  _Pair('F9F', 'F9F'), _Pair('OAN', 'OAN'),
-                  _Pair('BLM', 'NI'), _Pair('BZG', 'CO'),
-                  _Pair('BZG', 'NI'), _Pair('VNL', 'CO1'),
-                  _Pair('VNL', 'CO2'), _Pair('PF5', 'FE1'),
-                  _Pair('PF5', 'FE2'), _Pair('UNL', 'UNL'))
+metals_ions = [
+    'FE', 'AS', 'ZN', 'MG', 'MN', 'CO', 'BR',
+    'CU', 'TA', 'MO', 'AL', 'BE', 'SE', 'PT',
+    'EU', 'NI', 'IR', 'RH', 'AU', 'GD', 'RU',
+    'XE', 'RB', 'LU', 'GA', 'BA', 'CS', 'Y',
+    'PB', 'SM', 'SR', 'YB'
+]
 
 _rename_elements = {('SOD', 'SO'): 'Na'}
-
-# After scanning most of the PDB database these are the most common elements which start on position 12
-_position_12_elements = ['Se', 'Sr', 'Gd', 'Mn', 'Pt', 'Cs', 'Mg', 'Be', 'Sb', 'Bi', 'Th', 'Yb', 
-                         'Zn', 'Kr', 'Rb', 'Ar', 'Pa', 'Fe', 'Ag', 'In', 'Eu', 'Hg', 
-                         'Pr', 'Al', 'Ru', 'Sm', 'Ba', 'Lu', 'Re', 'Xe', 'Dy', 'Ti', 'As', 'Pu', 'Ir', 
-                         'Br', 'Li', 'Pd', 'Ce', 'Cr', 'Ho', 'La', 'Sn', 'Te', 'Cl', 'Hf', 'Ga', 
-                         'Co', 'Os', 'Tl', 'Au', 'Sc', 'Tb', 'Zr', 'Cu', 'Rh', 'Er', 'Mo', 'Si', 
-                         'Ca', 'Ta', 'Cm', 'Am', 'Na', 'Pb', 'Ni', 'Ne', 'Cd']
-
 # fmt: on
 
 
-def _deduce_PDB_atom_name(name, resname, element=None):
-    """Deduce how the atom name should be aligned.
-    Atom name format can be deduced from the atom type, yet atom type is
-    not always available. This function uses the atom name and residue name
-    to deduce how the atom name should be formatted. The rules in use got
-    inferred from an analysis of the PDB. See gist at
-    <https://gist.github.com/jbarnoud/37a524330f29b5b7b096> for more
-    details.
-    """
-    if (
-        element is not None
-        and (element.strip().capitalize() in _position_12_elements)
-        and (name[0:2].upper() == element[0:2].upper())
-    ):
-        return f"{name:<4}"
-    if len(name) >= 4:
-        return name[:4]
-    elif len(name) == 1:
-        return f" {name}  "
-    elif (
-        resname == name
-        or name[:2] in _ions_metals
-        or name == "UNK"
-        or (resname in _special_hg and name[:2] == "HG")
-        or (resname in _special_cl and name[:2] == "CL")
-        or _Pair(resname, name) in _include_pairs
-    ) and _Pair(resname, name) not in _exclude_pairs:
-        return f"{name:<4}"
-    return f" {name:<3}"
+def _format_pdb_name(name, resname, element=None):
+    name = name[:4]
+    first_col = f"{name:<4}"
+    second_col = f" {name:<3}"
+
+    element_matched = False
+    if element is not None:
+        in_elements = element.strip().capitalize() in first_col_elements
+        same_name_elem = name[0:2].upper() == element[0:2].upper()
+        element_matched = in_elements and same_name_elem
+
+    if name == resname or len(name) == 4 or element_matched or name[:2] in metals_ions:
+        return first_col
+    return second_col
 
 
 def _getPDBElement(name, element, lowersecond=True):
@@ -216,7 +172,7 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode="pdb"):
     for f in range(numFrames):
         fh.write("MODEL    %5d\n" % (frames[f] + 1))
         for i in range(0, len(mol.record)):
-            name = _deduce_PDB_atom_name(mol.name[i], mol.resname[i], mol.element[i])
+            name = _format_pdb_name(mol.name[i], mol.resname[i], mol.element[i])
 
             if mode == "pdb":
                 linefmt = "{!s:6.6}{!s:>5.5} {}{!s:>1.1}{!s:4.4}{!s:>1.1}{!s:>4.4}{!s:>1.1}   {}{}{}{}{}      {!s:4.4}{!s:>2.2}  \n"

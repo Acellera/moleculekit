@@ -5,13 +5,7 @@
 #
 import ctypes as ct
 import numpy as np
-from moleculekit.support import (
-    pack_double_buffer,
-    pack_int_buffer,
-    pack_string_buffer,
-    pack_ulong_buffer,
-    xtc_lib,
-)
+from moleculekit.support import pack_double_buffer, pack_int_buffer, xtc_lib
 from moleculekit.util import sequenceID
 from moleculekit.periodictable import elements_from_masses
 import os
@@ -265,22 +259,17 @@ class MolFactory(object):
             if el in misnamed_element_map:  # Check if element has a common misnaming
                 if el not in issued_warnings:
                     logger.warning(
-                        "Element {} doesn't exist in the periodic table. "
-                        "Assuming it was meant to be element {} and renaming it.".format(
-                            el, misnamed_element_map[el]
-                        )
+                        f"Element {el} doesn't exist in the periodic table. "
+                        f"Assuming it was meant to be element {misnamed_element_map[el]} and renaming it."
                     )
                     issued_warnings.append(el)
                 el = misnamed_element_map[el]
 
-            if (
-                el not in periodictable
-            ):  # If it's still not in the periodic table of elements throw error
+            # If it's still not in the periodic table of elements throw error
+            if el not in periodictable:
                 raise RuntimeError(
-                    "Element {} was read in file {} but was not found in the periodictable. "
-                    "To disable this check, pass `validateElements=False` to the Molecule constructor or read method.".format(
-                        el, filename
-                    )
+                    f"Element {el} was read in file {filename} but was not found in the periodictable. "
+                    "To disable this check, pass `validateElements=False` to the Molecule constructor or read method."
                 )
 
             mol.element[i] = el  # Set standardized element
@@ -612,6 +601,7 @@ def MAEread(fname, frame=None, topoloc=None):
     topo : Topology
     coords : list of lists
     """
+    from moleculekit.periodictable import periodictable_by_number
     section = None
     section_desc = False
     section_data = False
@@ -673,6 +663,9 @@ def MAEread(fname, frame=None, topoloc=None):
                         topo.serial.append(row[section_dict["i_pdb_PDB_serial"]])
                     if "s_m_pdb_atom_name" in section_dict:
                         topo.name.append(row[section_dict["s_m_pdb_atom_name"]].strip())
+                    if "i_m_atomic_number" in section_dict:
+                        num = int(row[section_dict["i_m_atomic_number"]])
+                        topo.element.append(periodictable_by_number[num].symbol)
                     if "s_m_pdb_residue_name" in section_dict:
                         topo.resname.append(
                             row[section_dict["s_m_pdb_residue_name"]].strip()
@@ -797,9 +790,9 @@ def pdbGuessElementByName(elements, names, onlymissing=True):
         elem = elem.strip()
         if elem is not None and len(elem) != 0 and elem not in periodictable:
             logger.warning(
-                'Element guessing failed for atom with name {} as the guessed element "{}" was not found in '
+                f'Element guessing failed for atom with name {name} as the guessed element "{elem}" was not found in '
                 "the periodic table. Check for incorrect column alignment in the PDB file or report "
-                "to moleculekit issue tracker.".format(name, elem)
+                "to moleculekit issue tracker."
             )
             elem = None
         newelements[names == name] = elem
@@ -809,10 +802,8 @@ def pdbGuessElementByName(elements, names, onlymissing=True):
         namestr = '"' + '" "'.join(names) + '"'
         altelemname = periodictable[altelem].name
         logger.warning(
-            "Atoms with names {} were guessed as element {} but could also be {} ({}). If this is a case, "
-            "you can correct them with mol.set('element', '{}', sel='name {}')".format(
-                namestr, elem, altelem, altelemname, altelem, namestr
-            )
+            f"Atoms with names {namestr} were guessed as element {elem} but could also be {altelem} ({altelemname})."
+            f" If this is a case, you can correct them with mol.set('element', '{altelem}', sel='name {namestr}')"
         )
     return noelem, newelements[noelem]
 
@@ -1804,6 +1795,21 @@ def MDTRAJTOPOread(filename, frame=None, topoloc=None):
     topo.bonds = bonds
     return MolFactory.construct(topo, Trajectory(coords=coords), filename, frame)
 
+def _guess_element_from_name(name):
+    from moleculekit.periodictable import periodictable
+
+    name = name.strip()
+    if len(name) == 1:
+        return name
+    name = name[:2]
+    if name[0] in periodictable:
+        if name in periodictable:
+            logger.warning(f"Atom name {name} could match either element {name[0]} or {name.capitalize()}. Choosing the first.")
+        return name[0]
+    elif name in periodictable:
+        return name
+    else:
+        return name[0]
 
 def GROTOPread(filename, frame=None, topoloc=None):
     # Reader for GROMACS .top file format:
@@ -1823,6 +1829,8 @@ def GROTOPread(filename, frame=None, topoloc=None):
                 topo.resname.append(pieces[3])
                 topo.name.append(pieces[4])
                 topo.charge.append(pieces[6])
+                atomtype = re.sub("[0-9]", "", pieces[1])
+                topo.element.append(_guess_element_from_name(atomtype))
             if not line.startswith("[") and section == "bonds":
                 pieces = line.split()
                 topo.bonds.append([int(pieces[0]), int(pieces[1])])
@@ -2542,7 +2550,7 @@ class _TestReaders(unittest.TestCase):
 
         mol = Molecule(os.path.join(self.testfolder(), 'dummy_atoms.mol2'))
         refelem = np.array(['Cd', 'Co', 'Ca', 'Xe', 'Rb', 'Lu', 'Ga', 'Ba', 'Cs', 'Ho', 'Pb', 'Sr', 'Yb', 'Y'], dtype=object)
-        assert np.array_equal(mol.element, refelem)
+        assert np.array_equal(mol.element, refelem), f"Failed guessing {refelem}, got {mol.element}"
 
     def test_pdb_charges(self):
         mol = Molecule(os.path.join(self.testfolder(), 'errors.pdb'))
