@@ -1707,40 +1707,14 @@ class Molecule(object):
                 self.fileloc = [self.fileloc[i] for i in keep]
         self.frame = 0  # Reset to 0 since the frames changed indexes
 
-    # def _guessBabelElements(self):
-    #     babel_elements = ['Cr', 'Pt', 'Mn', 'Np', 'Be', 'Co', 'Rn', 'C', 'Ag', 'Xe', 'D', 'Th', 'Sb', 'Al', 'Ir', 'In', 'Te', 'Tl', 'K', 'Tb', 'Br', 'Eu', 'Ne', 'Rb', 'Ar', 'Sm', 'Xx', 'Fe', 'Lr', 'S', 'H', 'He', 'At', 'Li', 'Cs', 'Rh', 'Nb', 'Pr', 'Fm', 'Cu', 'Ru', 'Ga', 'Er', 'Hg', 'Nd', 'Ba', 'Ta', 'Pu', 'O', 'Pb', 'Yb', 'Bk', 'Pd', 'F', 'Gd', 'Y', 'Ac', 'Au', 'Hf', 'Ra', 'V', 'I', 'Ge', 'Re', 'Fr', 'Cm', 'Kr', 'Sr', 'Sn', 'Pm', 'Ca', 'No', 'Si', 'Es', 'U', 'Am', 'Sc', 'Md', 'As', 'Na', 'N', 'Dy', 'Os', 'Po', 'Se', 'Lu', 'Mo', 'Zn', 'Cd', 'Mg', 'Tm', 'Cl', 'P', 'B', 'W', 'Tc', 'Cf', 'Bi', 'Ni', 'Ti', 'Pa', 'La', 'Ce', 'Zr', 'Ho']
-    #     guess_babel_elements = ['D', 'M', 'V', 'A', 'X', 'R', 'F', 'Z', 'T', 'E', 'G', 'L']
-    #     from moleculekit.writers import _deduce_PDB_atom_name, _getPDBElement
-    #     elements = []
-    #     for i, elem in enumerate(self.element):
-    #         if len(elem) != 0 and isinstance(elem, str) and elem in babel_elements:
-    #             elements.append(elem)
-    #         else:
-    #             # Get the 4 character PDB atom name
-    #             name = _deduce_PDB_atom_name(self.name[i], self.resname[i], self.element[i])
-    #             # Deduce from the 4 character atom name the element
-    #             elem = _getPDBElement(name, elem)
-    #             if elem in babel_elements:
-    #                 elements.append(elem)
-    #             else:
-    #                 # Really risky business here
-    #                 celem = name[0].upper()
-    #                 if len(name) > 1:
-    #                     celem += name[1].lower()
-    #                 if celem in babel_elements:
-    #                     elements.append(celem)
-    #                 else:
-    #                     elements.append('Xx')
-    #     return elements
-
     def _guessMissingElements(self):
-        from moleculekit.writers import _deduce_PDB_atom_name, _getPDBElement
+        from moleculekit.writers import _getPDBElement, _format_pdb_name
 
         elements = self.element.copy()
         emptyidx = np.where(elements == "")[0]
         for i in emptyidx:
             # Get the 4 character PDB atom name
-            name = _deduce_PDB_atom_name(self.name[i], self.resname[i])
+            name = _format_pdb_name(self.name[i], self.resname[i])
             # Deduce from the 4 character atom name the element
             elem = _getPDBElement(name, "", lowersecond=False)
             elements[i] = elem
@@ -1964,6 +1938,9 @@ class Molecule(object):
             self._viewPymol(mol2, xtc)
             os.remove(xtc)
             os.remove(mol2)
+        elif viewer.lower() == "molstar":
+            from moleculekit.molstarelectron.viewer import view
+            view(self)
         else:
             raise ValueError("Unknown viewer.")
 
