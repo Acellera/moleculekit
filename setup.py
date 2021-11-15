@@ -64,7 +64,7 @@ if __name__ == "__main__":
                 "lib/*/*",
                 "vmd_wrapper",
                 "logging.ini",
-                "share/*/*/*/*",
+                "share/*/*/*",
             ],
         },
         zip_safe=False,
