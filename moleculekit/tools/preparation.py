@@ -1119,8 +1119,10 @@ class _TestPreparation(unittest.TestCase):
             raise
 
         refmol = Molecule(refpdb)
+        refmol.filter("not water")
+        pmol.filter("not water")
         assert mol_equal(
-            refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-2}
+            refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
         )
 
     def test_systemPrepare(self):
