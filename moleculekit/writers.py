@@ -167,42 +167,46 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode="pdb"):
             % (box[0], box[1], box[2], 90, 90, 90)
         )
 
+    if mode == "pdb":
+        linefmt = "{!s:6.6}{!s:>5.5} {}{!s:>1.1}{!s:4.4}{!s:>1.1}{!s:>4.4}{!s:>1.1}   {}{}{}{}{}      {!s:4.4}{!s:>2.2}{!s:>2.2}\n"
+    elif mode == "pdbqt":
+        linefmt = "{!s:6.6}{!s:>5.5} {}{!s:>1.1}{!s:4.4}{!s:>1.1}{!s:>4.4}{!s:>1.1}   {}{}{}{}{}    {:>6.3f} {!s:<2.2}  \n"
+    else:
+        raise AssertionError("Invalid mode for PDB writer")
+
     for f in range(numFrames):
         fh.write("MODEL    %5d\n" % (frames[f] + 1))
         for i in range(0, len(mol.record)):
             name = _format_pdb_name(mol.name[i], mol.resname[i], mol.element[i])
 
-            if mode == "pdb":
-                linefmt = "{!s:6.6}{!s:>5.5} {}{!s:>1.1}{!s:4.4}{!s:>1.1}{!s:>4.4}{!s:>1.1}   {}{}{}{}{}      {!s:4.4}{!s:>2.2}  \n"
-                prelast = mol.segid[i]
-                last = mol.element[i].upper()
-            elif mode == "pdbqt":
-                linefmt = "{!s:6.6}{!s:>5.5} {}{!s:>1.1}{!s:4.4}{!s:>1.1}{!s:>4.4}{!s:>1.1}   {}{}{}{}{}    {:>6.3f} {!s:<2.2}  \n"
-                prelast = mol.charge[i]
-                last = mol.atomtype[i]
-            else:
-                raise AssertionError("Invalid mode for PDB writer")
+            data = [
+                mol.record[i],
+                serial[i],
+                name,
+                mol.altloc[i],
+                mol.resname[i],
+                mol.chain[i],
+                mol.resid[i],
+                mol.insertion[i],
+                f"{coords[i, 0, f]:8.3f}"[:8],
+                f"{coords[i, 1, f]:8.3f}"[:8],
+                f"{coords[i, 2, f]:8.3f}"[:8],
+                f"{mol.occupancy[i]:6.2f}"[:6],
+                f"{mol.beta[i]:6.2f}"[:6],
+            ]
 
-            fh.write(
-                linefmt.format(
-                    mol.record[i],
-                    serial[i],
-                    name,
-                    mol.altloc[i],
-                    mol.resname[i],
-                    mol.chain[i],
-                    mol.resid[i],
-                    mol.insertion[i],
-                    f"{coords[i, 0, f]:8.3f}"[:8],
-                    f"{coords[i, 1, f]:8.3f}"[:8],
-                    f"{coords[i, 2, f]:8.3f}"[:8],
-                    f"{mol.occupancy[i]:6.2f}"[:6],
-                    f"{mol.beta[i]:6.2f}"[:6],
-                    prelast,
-                    last,
-                )
-            )
-            # TODO : convert charges to ints if we ever write them
+            if mode == "pdb":
+                formalcharge = ""
+                if mol.formalcharge[i] > 0:
+                    formalcharge = f"{int(mol.formalcharge[i])}+"
+                elif mol.formalcharge[i] < 0:
+                    formalcharge = f"{abs(int(mol.formalcharge[i]))}-"
+                data += [mol.segid[i], mol.element[i].upper(), formalcharge]
+            elif mode == "pdbqt":
+                data += [mol.charge[i], mol.atomtype[i]]
+
+            fh.write(linefmt.format(*data))
+
             if i < len(mol.record) - 1 and mol.segid[i] != mol.segid[i + 1]:
                 fh.write("TER\n")
 
@@ -573,6 +577,11 @@ def MOL2write(mol, filename, explicitbonds=None):
 
 def SDFwrite(mol, filename):
     import datetime
+
+    if any(mol.bondtype == "un"):
+        raise RuntimeError(
+            "Cannot write 'un' bond types to SDF. Please specify the molecule bond orders."
+        )
 
     mol2bonds = {"1": 1, "2": 2, "3": 3, "ar": 4, "4": 4}
     with open(filename, "w", encoding="ascii") as fh:

@@ -873,7 +873,7 @@ def PDBread(
             "beta",
             "segid",
             "element",
-            "charge",
+            "formalcharge",
         )
     elif mode == "pdbqt":
         # http://autodock.scripps.edu/faqs-help/faq/what-is-the-format-of-a-pdbqt-file
@@ -925,6 +925,7 @@ def PDBread(
         "element": str,
         "atomtype": str,
         "charge": np.float32,
+        "formalcharge": np.int32,
     }
     coordcolspecs = [(30, 38), (38, 46), (46, 54)]
     coordnames = ("x", "y", "z")
@@ -1107,10 +1108,10 @@ def PDBread(
             parsedtopo[field] = parsedtopo[field].str.strip()
 
     # Fixing PDB format charges which can come after the number
-    if parsedtopo.charge.dtype == "object":
-        parsedtopo.charge = parsedtopo.charge.str.strip()
-        charges = np.zeros(len(parsedtopo.charge), dtype=np.float32)
-        for i, c in enumerate(parsedtopo.charge):
+    if "formalcharge" in parsedtopo and parsedtopo.formalcharge.dtype == "object":
+        parsedtopo.formalcharge = parsedtopo.formalcharge.str.strip()
+        charges = np.zeros(len(parsedtopo.formalcharge), dtype=np.float32)
+        for i, c in enumerate(parsedtopo.formalcharge):
             if not isinstance(c, str):
                 continue
             if len(c) > 1:
@@ -1120,7 +1121,7 @@ def PDBread(
                     charges[i] = float(c[0])
             elif len(c):
                 charges[i] = float(c)
-        parsedtopo.charge = charges
+        parsedtopo.formalcharge = charges
 
     # Fixing hexadecimal index and resids
     # Support for reading hexadecimal
@@ -1202,9 +1203,7 @@ def PDBread(
             )  # Some PDBs have bonds to non-existing serials... go figure
             if len(wrongidx):
                 logger.info(
-                    "Discarding {} bonds to non-existing indexes in the PDB file.".format(
-                        len(wrongidx)
-                    )
+                    f"Discarding {len(wrongidx)} bonds to non-existing indexes in the PDB file."
                 )
             mappedbonds = np.delete(mappedbonds, wrongidx, axis=0)
             topo.bonds = np.array(mappedbonds, dtype=np.uint32)
@@ -2554,8 +2553,8 @@ class _TestReaders(unittest.TestCase):
 
     def test_pdb_charges(self):
         mol = Molecule(os.path.join(self.testfolder(), 'errors.pdb'))
-        refcharge = np.array([-1.,  1., -1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 0.,  0.,  0.,  0.], dtype=np.float32)
-        assert np.array_equal(mol.charge, refcharge)
+        refcharge = np.array([-1,  1, -1,  0,  0,  0,  0,  0,  0,  0,  0, 0,  0,  0,  0], dtype=np.int32)
+        assert np.array_equal(mol.formalcharge, refcharge)
 
     def test_prepi(self):
         mol = Molecule(os.path.join(self.testfolder(), 'benzamidine.prepi'))
