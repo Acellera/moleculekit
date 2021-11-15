@@ -1079,7 +1079,7 @@ class _TestPreparation(unittest.TestCase):
     def setUpClass(self):
         from moleculekit.home import home
 
-        self.home = home(dataDir="test-proteinprepare")
+        self.home = home(dataDir="test-systemprepare")
 
     def _compare_results(self, refpdb, refdf_f, pmol, df: pd.DataFrame):
         refdf = pd.read_csv(
@@ -1138,7 +1138,7 @@ class _TestPreparation(unittest.TestCase):
                 df,
             )
 
-    def test_proteinprepare_ligand(self):
+    def test_systemprepare_ligand(self):
         test_home = os.path.join(self.home, "test-prepare-with-ligand")
         mol = Molecule(os.path.join(test_home, "5EK0_A.pdb"))
         pmol, df = systemPrepare(mol, return_details=True)
