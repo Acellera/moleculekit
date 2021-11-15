@@ -150,10 +150,14 @@ def _generate_nonstandard_residues_ff(mol, definition, forcefield, _molkit_ff=Tr
 
 
 def _detect_nonpeptidic_bonds(mol):
-    coordination_ions = ("Ca", "Zn", "Mn", "Cu", "Fe", "Ni", "Mo", "Re")
+    coordination_ions = ("Ca", "Zn", "Mn", "Cu", "Fe", "Ni", "Mo", "Re", "Na")
 
     prot_idx = mol.atomselect("protein", indexes=True)
     ion_idx = np.where(np.isin(mol.element, coordination_ions))[0]
+    same_resname = np.isin(
+        mol.resname[ion_idx], [cc.upper() for cc in coordination_ions]
+    )
+    ion_idx = ion_idx[same_resname]
 
     # Bonds where only 1 atom belongs to protein
     bond_mask = np.isin(mol.bonds, prot_idx)
@@ -1119,6 +1123,7 @@ class _TestPreparation(unittest.TestCase):
             raise
 
         refmol = Molecule(refpdb)
+
         refmol.filter("not water")
         pmol.filter("not water")
         assert mol_equal(
@@ -1128,15 +1133,16 @@ class _TestPreparation(unittest.TestCase):
     def test_systemPrepare(self):
         pdbids = ["3PTB", "1A25", "1U5U"]
         for pdb in pdbids:
-            test_home = os.path.join(self.home, pdb)
-            mol = Molecule(os.path.join(test_home, f"{pdb}.pdb"))
-            pmol, df = systemPrepare(mol, return_details=True)
-            self._compare_results(
-                os.path.join(test_home, f"{pdb}_prepared.pdb"),
-                os.path.join(test_home, f"{pdb}_prepared.csv"),
-                pmol,
-                df,
-            )
+            with self.subTest(pdbid=pdb):
+                test_home = os.path.join(self.home, pdb)
+                mol = Molecule(os.path.join(test_home, f"{pdb}.pdb"))
+                pmol, df = systemPrepare(mol, return_details=True)
+                self._compare_results(
+                    os.path.join(test_home, f"{pdb}_prepared.pdb"),
+                    os.path.join(test_home, f"{pdb}_prepared.csv"),
+                    pmol,
+                    df,
+                )
 
     def test_systemprepare_ligand(self):
         test_home = os.path.join(self.home, "test-prepare-with-ligand")
