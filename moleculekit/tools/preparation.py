@@ -150,7 +150,7 @@ def _generate_nonstandard_residues_ff(mol, definition, forcefield, _molkit_ff=Tr
 
 
 def _detect_nonpeptidic_bonds(mol):
-    coordination_ions = ("Ca", "Zn")
+    coordination_ions = ("Ca", "Zn", "Mn")
 
     prot_idx = mol.atomselect("protein", indexes=True)
     ion_idx = np.where(np.isin(mol.element, coordination_ions))[0]
