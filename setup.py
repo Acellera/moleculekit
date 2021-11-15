@@ -60,7 +60,12 @@ if __name__ == "__main__":
             ],
         ),
         package_data={
-            "moleculekit": ["lib/*/*", "vmd_wrapper", "logging.ini"],
+            "moleculekit": [
+                "lib/*/*",
+                "vmd_wrapper",
+                "logging.ini",
+                "share/*/*/*/*",
+            ],
         },
         zip_safe=False,
         test_suite="setup.my_test_suite",

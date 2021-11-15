@@ -143,7 +143,7 @@ class _TestMoleculeChecks(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         from moleculekit.molecule import Molecule
-        from moleculekit.tools.preparation import proteinPrepare
+        from moleculekit.tools.preparation import systemPrepare
 
         self.mol = Molecule("3ptb")
 
@@ -151,7 +151,7 @@ class _TestMoleculeChecks(unittest.TestCase):
         self.prot.filter("protein")
 
         self.prot_protonated = self.prot.copy()
-        self.prot_protonated = proteinPrepare(self.prot_protonated)
+        self.prot_protonated = systemPrepare(self.prot_protonated)
 
         self.lig = self.mol.copy()
         self.lig.filter("resname BEN")
