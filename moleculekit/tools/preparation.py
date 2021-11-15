@@ -1120,7 +1120,7 @@ class _TestPreparation(unittest.TestCase):
 
         refmol = Molecule(refpdb)
         assert mol_equal(
-            refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
+            refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-2}
         )
 
     def test_systemPrepare(self):
