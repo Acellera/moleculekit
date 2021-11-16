@@ -1938,9 +1938,6 @@ class Molecule(object):
             self._viewPymol(mol2, xtc)
             os.remove(xtc)
             os.remove(mol2)
-        elif viewer.lower() == "molstar":
-            from moleculekit.molstarelectron.viewer import view
-            view(self)
         else:
             raise ValueError("Unknown viewer.")
 
@@ -2000,6 +1997,26 @@ class Molecule(object):
         self._tempreps._repsNGL(w)
         self._tempreps.remove()
         return w
+
+    def toGraph(self):
+        """Converts the Molecule to a networkx graph.
+
+        Each node corresponds to an atom and edges correspond to bonds
+        """
+        import networkx as nx
+
+        nodes = [
+            (i, {key: self.__dict__[key][i] for key in self._atom_fields})
+            for i in range(self.numAtoms)
+        ]
+        edges = [
+            [self.bonds[i, 0], self.bonds[i, 1], {"type": self.bondtype[i]}]
+            for i in range(self.bonds.shape[0])
+        ]
+        graph = nx.Graph()
+        graph.add_nodes_from(nodes)
+        graph.add_edges_from(edges)
+        return graph
 
 
 class UniqueAtomID:
