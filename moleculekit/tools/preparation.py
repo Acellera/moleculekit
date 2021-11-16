@@ -221,12 +221,6 @@ def _pdb2pqr(
     force_protonation=None,
     propka_args=None,
 ):
-    try:
-        from pdb2pqr.main import main_driver
-    except ImportError:
-        raise ImportError(
-            "pdb2pqr not installed. To use the molecule preparation features please do `conda install pdb2pqr -c conda-forge`"
-        )
     from pdb2pqr.io import get_molecule
     from pdb2pqr import forcefield, hydrogens
     from pdb2pqr.debump import Debump
@@ -633,7 +627,12 @@ def systemPrepare(
     The following will force residue 40 protonation to HIE and 57 to HIP
     >>> tryp_op = systemPrepare(tryp, force_protonation=[("protein and resid 40", "HIE"), ("protein and resid 57", "HIP")])
     """
-    from pdb2pqr.config import VERSION
+    try:
+        from pdb2pqr.config import VERSION
+    except ImportError:
+        raise ImportError(
+            "pdb2pqr not installed. To use the system preparation features please do `conda install pdb2pqr -c conda-forge`"
+        )
     from moleculekit.tools.preparation_customres import _get_custom_ff
 
     old_level = logger.getEffectiveLevel()
