@@ -464,7 +464,7 @@ def proteinPrepare(
         "proteinPrepare has been deprecated in favor of the systemPrepare function and will soon be removed. "
         "Please look at the documentation of systemPrepare for more information."
     )
-    systemPrepare(
+    return systemPrepare(
         mol_in,
         pH=pH,
         verbose=verbose,
