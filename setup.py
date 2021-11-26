@@ -4,12 +4,24 @@ from distutils.extension import Extension
 from Cython.Build import cythonize
 import numpy
 import os
+import subprocess
 
 
 def my_test_suite():
     test_loader = unittest.TestLoader()
     test_suite = test_loader.discover(start_dir="moleculekit", pattern="*.py")
     return test_suite
+
+
+try:
+    version = (
+        subprocess.check_output(["git", "describe", "--abbrev=0", "--tags"])
+        .strip()
+        .decode("utf-8")
+    )
+except Exception as e:
+    print("Could not get version tag. Defaulting to version 0")
+    version = "0"
 
 
 with open("requirements.txt") as f:
@@ -41,7 +53,7 @@ if __name__ == "__main__":
 
     setuptools.setup(
         name="moleculekit",
-        version="MOLECULEKIT_VERSION_PLACEHOLDER",
+        version=version,
         author="Acellera",
         author_email="info@acellera.com",
         description="A molecule reading/writing and manipulation package.",

@@ -15,11 +15,14 @@ from unittest import TestCase
 
 logger = logging.getLogger(__name__)
 
-libdir = home(libDir=True)
-if platform.system() == "Windows":
-    tmalignlib = ct.cdll.LoadLibrary(os.path.join(libdir, "tmalign.dll"))
-else:
-    tmalignlib = ct.cdll.LoadLibrary(os.path.join(libdir, "tmalign.so"))
+try:
+    libdir = home(libDir=True)
+    if platform.system() == "Windows":
+        tmalignlib = ct.cdll.LoadLibrary(os.path.join(libdir, "tmalign.dll"))
+    else:
+        tmalignlib = ct.cdll.LoadLibrary(os.path.join(libdir, "tmalign.so"))
+except Exception:
+    tmalignlib = None
 
 
 def tempname(suffix="", create=False):
@@ -127,6 +130,11 @@ def molTMscore(mol, ref, selCAmol, selCAref):
     """
     from moleculekit.util import sequenceID
     from moleculekit.molecule import _residueNameTable
+
+    if tmalignlib is None:
+        raise RuntimeError(
+            "Failed to load tmalign libs. Check that moleculekit is installed correctly."
+        )
 
     def calculateVariables(currmol):
         res = sequenceID(
