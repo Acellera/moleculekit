@@ -728,7 +728,7 @@ def _biomolecule_to_molecule(biomolecule):
         ("temp_factor", "beta"),
         ("seg_id", "segid"),
         ("element", "element"),
-        ("charge", "charge"),
+        ("charge", "formalcharge"),
     ]
     mol = Molecule().empty(len(biomolecule.atoms))
     mol.coords = np.zeros((mol.numAtoms, 3, 1), dtype=Molecule._dtypes["coords"])
@@ -737,7 +737,12 @@ def _biomolecule_to_molecule(biomolecule):
         for pp1, pp2 in propmap:
             val = getattr(atom, pp1)
             if pp1 == "charge":
-                val = float(val) if val != "" else 0
+                if "+" in val:
+                    val = int(val.replace("+", ""))
+                elif "-" in val:
+                    val = -1 * int(val.replace("-", ""))
+                else:
+                    val = 0
             if pp1 == "element":
                 val = str(val).capitalize()
             mol.__dict__[pp2][i] = val
