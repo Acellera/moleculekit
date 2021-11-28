@@ -297,7 +297,10 @@ def _pdb2pqr(
             biomolecule.apply_pka_values(
                 forcefield_.name,
                 ph,
-                {row["group_label"]: row["pKa"] for row in pkas},
+                {
+                    f"{row['res_name']} {row['res_num']} {row['chain_id']}": row["pKa"]
+                    for row in pkas
+                },
             )
 
         # TODO: Remove this try/except once pdb2pqr makes new release
@@ -1141,7 +1144,6 @@ class _TestPreparation(unittest.TestCase):
             raise
 
         refmol = Molecule(refpdb)
-
         refmol.filter("not water")
         pmol.filter("not water")
         assert mol_equal(
