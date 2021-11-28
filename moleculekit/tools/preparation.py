@@ -1245,7 +1245,6 @@ class _TestPreparation(unittest.TestCase):
         mol = Molecule(os.path.join(test_home, "5VBL.pdb"))
 
         # TODO: Fix issues in pdb2pqr with numerical resnames
-        # TODO: ALC residue is not protonated correctly when it doesn't exist in the share folder
         mol.remove('resname "200"')
 
         pmol, df = systemPrepare(
