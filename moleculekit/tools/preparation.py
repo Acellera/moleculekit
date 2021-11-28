@@ -15,20 +15,6 @@ from moleculekit.molecule import Molecule, mol_equal, UniqueResidueID
 logger = logging.getLogger(__name__)
 
 
-def _selToHoldList(mol, sel):
-    ret = None
-    if sel:
-        sel = mol.atomselect(sel)
-        ret = [
-            list(x)
-            for x in set(
-                tuple(x)
-                for x in zip(mol.resid[sel], mol.chain[sel], mol.insertion[sel])
-            )
-        ]
-    return ret
-
-
 def _fixup_water_names(mol):
     """Rename WAT / OW HW HW atoms as O H1 H2"""
     mol.set("name", "O", sel="resname WAT and name OW")
@@ -99,6 +85,14 @@ def _check_chain_and_segid(mol, verbose):
     return mol
 
 
+def _gen_resname():
+    import string
+
+    for lett in string.ascii_uppercase:
+        for num in range(100):
+            yield f"{lett}{num:02d}"
+
+
 def _generate_nonstandard_residues_ff(mol, definition, forcefield, _molkit_ff=True):
     import tempfile
     from moleculekit.tools.preparation_customres import _get_custom_ff
@@ -107,6 +101,8 @@ def _generate_nonstandard_residues_ff(mol, definition, forcefield, _molkit_ff=Tr
         _mol_to_dat_def,
         _mol_to_xml_def,
     )
+
+    _resname_gen = _gen_resname()
 
     uqprot_resn = np.unique(mol.get("resname", sel="protein"))
     not_in_ff = []
@@ -138,6 +134,23 @@ def _generate_nonstandard_residues_ff(mol, definition, forcefield, _molkit_ff=Tr
                 # Remove all other stuff
                 molc.filter(f"index {start} to {end}", _logger=False)
                 cres = _generate_custom_residue(molc, res)
+
+                # Rename custom residue if it's integer!
+                try:
+                    int(res)
+                except Exception:
+                    pass
+                else:
+                    new_rn = next(_resname_gen)
+                    while new_rn in list(resn):
+                        new_rn = next(_resname_gen)
+                    logger.warning(
+                        f"Integer residue name {res} was renamed to {new_rn} to avoid preparation issues."
+                    )
+                    mol.resname[mol.resname == res] = new_rn
+                    cres.resname[:] = new_rn
+                    res = new_rn
+
                 _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
                 _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
                 logger.warning(f"Succesfully templated non-standard residue {res}.")
@@ -1244,12 +1257,10 @@ class _TestPreparation(unittest.TestCase):
         test_home = os.path.join(self.home, "test-nonstandard-residues")
         mol = Molecule(os.path.join(test_home, "5VBL.pdb"))
 
-        # TODO: Fix issues in pdb2pqr with numerical resnames
-        mol.remove('resname "200"')
-
         pmol, df = systemPrepare(
             mol, return_details=True, hold_nonpeptidic_bonds=True, _molkit_ff=False
         )
+
         self._compare_results(
             os.path.join(test_home, "5VBL_prepared.pdb"),
             os.path.join(test_home, "5VBL_prepared.csv"),
