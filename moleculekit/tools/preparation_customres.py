@@ -67,8 +67,13 @@ def _get_residue_mol(mol: Molecule, nsres: str):
 
 def _generate_custom_residue(inmol: Molecule, resname: str):
     from moleculekit.tools.graphalignment import makeMolGraph, compareGraphs
-
     import networkx as nx
+
+    def get_idx(mol, name):
+        res = np.where(mol.name == name)
+        if len(res) == 0 or len(res[0]) == 0:
+            return None
+        return res[0][0]
 
     mol = _get_residue_mol(inmol, resname)
     # Adding an X_ to all atom names to separate them from the matched names
@@ -84,42 +89,35 @@ def _generate_custom_residue(inmol: Molecule, resname: str):
     for pp in matching:  # Rename atoms in reference molecule
         mol.name[pp[0]] = inmol.name[pp[1]]
 
-    # Cleaning up the reference molecule
-    gg = nx.from_edgelist(mol.bonds)
+    # Align and replace the backbone with the standard backbone of pdb2pqr
+    mol.align("name N CA C", refmol=backbone)
 
-    # Rename CA hydrogen to HA
-    ca_idx = np.where(mol.name == "CA")[0][0]
-    hidx = [i for i in gg.neighbors(ca_idx) if mol.element[i] == "H"]
-    mol.name[hidx] = "HA"
+    # Remove everything connected to CA
+    gg = mol.toGraph()
+    gg.remove_edge(get_idx(mol, "CA"), get_idx(mol, "CB"))
+    cd_idx = get_idx(mol, "CD")
+    n_idx = get_idx(mol, "N")
+    has_n_cd_bond = False
+    if cd_idx is not None and gg.has_edge(n_idx, cd_idx):
+        gg.remove_edge(n_idx, cd_idx)  # Prolines
+        has_n_cd_bond = True
+    to_remove = np.array(list(nx.node_connected_component(gg, get_idx(mol, "CA"))))
+    mol.remove(to_remove, _logger=False)
 
-    # Remove hydrogen attached to C
-    c_idx = np.where(mol.name == "C")[0][0]
-    hidx = [i for i in gg.neighbors(c_idx) if mol.element[i] == "H"]
-    mol.remove(f"index {hidx[0]}", _logger=False)
+    # Insert the standard backbone
+    mol.insert(backbone, index=0)
 
-    # Find all hydrogens attached to the backbone nitrogen
-    n_idx = np.where(mol.name == "N")[0][0]
-    hidx = [i for i in gg.neighbors(n_idx) if mol.element[i] == "H"]
-    # Rename hydrogen bound to backbone N
-    mol.name[hidx[-1]] = "H"
-    # Rotate the last one to the correct rotamer
-    mol.setDihedral(
-        [np.where(mol.name == x)[0][0] for x in ["H", "N", "CA", "C"]], np.deg2rad(180)
-    )
-    # Keep only one H attached to backbone N atom
-    mol.remove(f"index {' '.join(map(str, hidx[:2]))}", _logger=False)
+    # Add back CA CB bond
+    mol.bonds = np.vstack(([get_idx(mol, "CA"), get_idx(mol, "CB")], mol.bonds))
+    mol.bondtype = np.hstack(("1", mol.bondtype))
+    if has_n_cd_bond:
+        mol.bonds = np.vstack(([get_idx(mol, "N"), get_idx(mol, "CD")], mol.bonds))
+        mol.bondtype = np.hstack(("1", mol.bondtype))
 
     # Rename all added hydrogens
     hydr = mol.name == "X_H"
     mol.name[hydr] = [f"H{i}" for i in range(1, sum(hydr) + 1)]
 
-    # Align and replace the backbone with the standard backbone of pdb2pqr
-    mol.align("name N CA C", refmol=backbone)
-    mol.remove("name N CA C O H HA", _logger=False)
-    mol.insert(backbone, index=0)
-    # Add back CA CB bond
-    mol.bonds = np.vstack(([1, np.where(mol.name == "CB")[0][0]], mol.bonds))
-    mol.bondtype = np.hstack(("1", mol.bondtype))
     # Rename residues
     mol.resname[:] = resname
     # AMBER format is: N H CA HA [sidechain] C O

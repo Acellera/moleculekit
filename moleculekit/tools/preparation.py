@@ -659,6 +659,7 @@ def systemPrepare(
     definition, forcefield = _generate_nonstandard_residues_ff(
         mol_in, definition, forcefield, _molkit_ff
     )
+
     nonpept = None
     if hold_nonpeptidic_bonds:
         nonpept = _detect_nonpeptidic_bonds(mol_in)
@@ -1236,6 +1237,21 @@ class _TestPreparation(unittest.TestCase):
         self._compare_results(
             os.path.join(test_home, "1A4W_prepared.pdb"),
             os.path.join(test_home, "1A4W_prepared.csv"),
+            pmol,
+            df,
+        )
+
+        test_home = os.path.join(self.home, "test-nonstandard-residues")
+        mol = Molecule(os.path.join(test_home, "5VBL.pdb"))
+
+        # TODO: Fix issues in pdb2pqr with numerical resnames
+        # TODO: ALC residue is not protonated correctly when it doesn't exist in the share folder
+        mol.remove('resname "200"')
+
+        pmol, df = systemPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
+        self._compare_results(
+            os.path.join(test_home, "5VBL_prepared.pdb"),
+            os.path.join(test_home, "5VBL_prepared.csv"),
             pmol,
             df,
         )
