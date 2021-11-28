@@ -1248,7 +1248,9 @@ class _TestPreparation(unittest.TestCase):
         # TODO: ALC residue is not protonated correctly when it doesn't exist in the share folder
         mol.remove('resname "200"')
 
-        pmol, df = systemPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
+        pmol, df = systemPrepare(
+            mol, return_details=True, hold_nonpeptidic_bonds=True, _molkit_ff=False
+        )
         self._compare_results(
             os.path.join(test_home, "5VBL_prepared.pdb"),
             os.path.join(test_home, "5VBL_prepared.csv"),

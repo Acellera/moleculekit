@@ -236,6 +236,7 @@ def _generate_mol2(outsdfh):
 
 
 def _get_custom_ff(user_ff=None, molkit_ff=True):
+    import xml.etree.ElementTree as ET
     import pdb2pqr
     import pdb2pqr.aa
     import tempfile
@@ -265,26 +266,34 @@ def _get_custom_ff(user_ff=None, molkit_ff=True):
     with tempfile.TemporaryDirectory() as tmpdir:
         shutil.copytree(original, os.path.join(tmpdir, "originals"))
 
-        with open(os.path.join(tmpdir, "originals", "AA.xml"), "r") as fin:
-            lines = fin.readlines()
-
         # Merge moleculekit custom residues into AA.xml
-        for cxml in custom_xml:
-            with open(cxml, "r") as fc:
-                custom_lines = fc.readlines()[2:-1]  # Skip header and parent tag
-            lines = lines[:-1] + custom_lines + [lines[-1]]
+        residues = {}
+        with open(os.path.join(tmpdir, "originals", "AA.xml")) as fh:
+            tree = ET.parse(fh)
+            root = tree.getroot()
+            for res in root.iter("residue"):
+                residues[res.find("name").text] = res
 
-        # Write out the new AA.xml
+        for cxml in custom_xml:
+            with open(cxml, "r") as fh:
+                tree = ET.parse(fh)
+                root = tree.getroot()
+                for res in root.iter("residue"):
+                    residues[res.find("name").text] = res
+
+        root = ET.Element("aminoacids")
+        for name in sorted(residues):
+            root.append(residues[name])
+
         out_aa = os.path.join(tmpdir, "AA.xml")
         with open(out_aa, "w") as fout:
-            for line in lines:
-                fout.write(line)
+            fout.write(ET.tostring(root, encoding="unicode"))
 
+        # Merge moleculekit custom residues into PARSE.DAT
         with open(os.path.join(tmpdir, "originals", "PARSE.DAT"), "r") as fin:
             lines = fin.readlines()
             lines[-1] = lines[-1].strip() + "\n"
 
-        # Merge moleculekit custom residues into PARSE.DAT
         for cdat in custom_dat:
             with open(cdat, "r") as fc:
                 custom_lines = fc.readlines()
