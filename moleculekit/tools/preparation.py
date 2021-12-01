@@ -300,6 +300,7 @@ def _pdb2pqr(
                 {
                     f"{row['res_name']} {row['res_num']} {row['chain_id']}": row["pKa"]
                     for row in pkas
+                    if row["res_name"] == row["group_type"]
                 },
             )
 
