@@ -1903,7 +1903,11 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
         "B_iso_or_equiv": ("beta", float),
         "pdbx_formal_charge": ("charge", float),
     }
-
+    chem_comp_mapping = {
+        "comp_id": ("resname", str),
+        "atom_id": ("name", str),
+        "type_symbol": ("element", str),
+    }
     cryst1_mapping = {
         "length_a": ("a", float),
         "length_b": ("b", float),
@@ -1913,6 +1917,11 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
         "angle_gamma": ("gamma", float),
         "space_group_name_H-M": ("sGroup", str),
         "Z_PDB": ("z", int),
+    }
+    bondtype_mapping = {
+        "SING": "1",
+        "DOUB": "2",
+        "TRIP": "3",
     }
 
     topo = Topology()
@@ -1954,10 +1963,20 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
     coords = []
     currmodel = -1
     firstmodel = None
-    atom_site = dataObj.getObj("atom_site")
+    if "atom_site" in dataObj.getObjNameList():
+        atom_site = dataObj.getObj("atom_site")
+        mapping = atom_site_mapping
+    elif "chem_comp_atom" in dataObj.getObjNameList():
+        atom_site = dataObj.getObj("chem_comp_atom")
+        mapping = chem_comp_mapping
+
     for i in range(atom_site.getRowCount()):
         row = atom_site.getRow(i)
-        modelid = row[atom_site.getAttributeIndex("pdbx_PDB_model_num")]
+
+        if "pdbx_PDB_model_num" in atom_site.getAttributeList():
+            modelid = row[atom_site.getAttributeIndex("pdbx_PDB_model_num")]
+        else:
+            modelid = -1
         # On a new model, restart coords and append the old ones
         if currmodel != -1 and currmodel != modelid:
             currmodel = modelid
@@ -1969,7 +1988,7 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
             firstmodel = modelid
 
         if currmodel == firstmodel:
-            for source_field, target in atom_site_mapping.items():
+            for source_field, target in mapping.items():
                 target_field, dtype = target
                 val = row[atom_site.getAttributeIndex(source_field)]
                 val = dtype(fixDefault(val, dtype))
@@ -1979,13 +1998,34 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
                     val = ""
                 topo.__dict__[target_field].append(val)
 
-        coords.append(
-            [
-                row[atom_site.getAttributeIndex("Cartn_x")],
-                row[atom_site.getAttributeIndex("Cartn_y")],
-                row[atom_site.getAttributeIndex("Cartn_z")],
-            ]
-        )
+        if "Cartn_x" in atom_site.getAttributeList():
+            coords.append(
+                [
+                    row[atom_site.getAttributeIndex("Cartn_x")],
+                    row[atom_site.getAttributeIndex("Cartn_y")],
+                    row[atom_site.getAttributeIndex("Cartn_z")],
+                ]
+            )
+        elif "model_Cartn_x" in atom_site.getAttributeList():
+            coords.append(
+                [
+                    row[atom_site.getAttributeIndex("model_Cartn_x")],
+                    row[atom_site.getAttributeIndex("model_Cartn_y")],
+                    row[atom_site.getAttributeIndex("model_Cartn_z")],
+                ]
+            )
+
+    if "chem_comp_bond" in dataObj.getObjNameList():
+        bond_site = dataObj.getObj("chem_comp_bond")
+        for i in range(bond_site.getRowCount()):
+            row = bond_site.getRow(i)
+            name1 = row[bond_site.getAttributeIndex("atom_id_1")]
+            name2 = row[bond_site.getAttributeIndex("atom_id_2")]
+            bondtype = row[bond_site.getAttributeIndex("value_order")]
+            idx1 = topo.name.index(name1)
+            idx2 = topo.name.index(name2)
+            topo.bonds.append([idx1, idx2])
+            topo.bondtype.append(bondtype_mapping[bondtype])
 
     if len(coords) != 0:
         allcoords.append(np.array(coords, dtype=np.float32))
@@ -2467,6 +2507,15 @@ class _TestReaders(unittest.TestCase):
         mol = Molecule(os.path.join(self.testfolder(), '1j8k.cif'))
         assert mol.numAtoms == 1402
         assert mol.numFrames == 20
+
+    def test_mmcif_ligand(self):
+        mol = Molecule(os.path.join(self.testfolder(), 'URF.cif'))
+        assert mol.numAtoms == 12, mol.numAtoms
+        assert mol.numFrames == 1
+
+        mol = Molecule(os.path.join(self.testfolder(), 'BEN.cif'))
+        assert mol.numAtoms == 17, mol.numAtoms
+        assert mol.numFrames == 1
 
     def test_multiple_file_fileloc(self):
         from moleculekit.home import home

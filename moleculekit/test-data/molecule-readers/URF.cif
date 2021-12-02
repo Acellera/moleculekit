@@ -1,0 +1,112 @@
+data_URF
+# 
+_chem_comp.id                                    URF 
+_chem_comp.name                                  5-FLUOROURACIL 
+_chem_comp.type                                  NON-POLYMER 
+_chem_comp.pdbx_type                             HETAIN 
+_chem_comp.formula                               "C4 H3 F N2 O2" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         ? 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2011-06-04 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        130.077 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     URF 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        ? 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        1UPF 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+URF N1  N1  N 0 1 N N N -11.079 93.180 91.185 1.244  0.001  1.126  N1  URF 1  
+URF C2  C2  C 0 1 N N N -11.885 92.455 90.307 -0.023 -0.000 1.576  C2  URF 2  
+URF N3  N3  N 0 1 N N N -12.971 93.154 89.821 -1.062 -0.002 0.720  N3  URF 3  
+URF C4  C4  C 0 1 N N N -13.340 94.440 90.119 -0.846 0.002  -0.610 C4  URF 4  
+URF C5  C5  C 0 1 N N N -12.451 95.142 91.014 0.483  -0.001 -1.099 C5  URF 5  
+URF C6  C6  C 0 1 N N N -11.404 94.494 91.544 1.507  0.000  -0.218 C6  URF 6  
+URF O2  O2  O 0 1 N N N -11.634 91.310 89.946 -0.234 -0.000 2.774  O2  URF 7  
+URF O4  O4  O 0 1 N N N -14.324 94.909 89.549 -1.786 0.001  -1.385 O4  URF 8  
+URF F5  F5  F 0 1 N N N -12.772 96.329 91.457 0.724  -0.001 -2.428 F5  URF 9  
+URF HN1 HN1 H 0 1 N N N -10.127 93.178 90.816 1.978  0.002  1.760  HN1 URF 10 
+URF HN3 HN3 H 0 1 N N N -13.573 92.660 89.162 -1.970 -0.003 1.062  HN3 URF 11 
+URF H6  H6  H 0 1 N N N -10.802 95.048 92.284 2.528  0.001  -0.571 H6  URF 12 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+URF N1 C2  SING N N 1  
+URF N1 C6  SING N N 2  
+URF N1 HN1 SING N N 3  
+URF C2 N3  SING N N 4  
+URF C2 O2  DOUB N N 5  
+URF N3 C4  SING N N 6  
+URF N3 HN3 SING N N 7  
+URF C4 C5  SING N N 8  
+URF C4 O4  DOUB N N 9  
+URF C5 C6  DOUB N N 10 
+URF C5 F5  SING N N 11 
+URF C6 H6  SING N N 12 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+URF SMILES           ACDLabs              10.04 "FC1=CNC(=O)NC1=O"                                         
+URF SMILES_CANONICAL CACTVS               3.341 "FC1=CNC(=O)NC1=O"                                         
+URF SMILES           CACTVS               3.341 "FC1=CNC(=O)NC1=O"                                         
+URF SMILES_CANONICAL "OpenEye OEToolkits" 1.5.0 "C1=C(C(=O)NC(=O)N1)F"                                     
+URF SMILES           "OpenEye OEToolkits" 1.5.0 "C1=C(C(=O)NC(=O)N1)F"                                     
+URF InChI            InChI                1.03  "InChI=1S/C4H3FN2O2/c5-2-1-6-4(9)7-3(2)8/h1H,(H2,6,7,8,9)" 
+URF InChIKey         InChI                1.03  GHASVSINZRGABV-UHFFFAOYSA-N                                
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+URF "SYSTEMATIC NAME" ACDLabs              10.04 "5-fluoropyrimidine-2,4(1H,3H)-dione" 
+URF "SYSTEMATIC NAME" "OpenEye OEToolkits" 1.5.0 5-fluoro-1H-pyrimidine-2,4-dione      
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+URF "Create component"  1999-07-08 RCSB 
+URF "Modify descriptor" 2011-06-04 RCSB 
+# 
+
