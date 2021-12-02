@@ -716,6 +716,90 @@ def MDTRAJwrite(mol, filename):
         raise ValueError(f'MDtraj reader failed for file {filename} with error "{e}"')
 
 
+def CIFwrite(mol, filename):
+    from moleculekit.pdbx.reader.PdbxContainers import DataContainer, DataCategory
+    from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
+
+    single_mol = len(np.unique(mol.resname)) == 1
+
+    atom_site_mapping = {
+        "group_PDB": "record",
+        "id": "serial",
+        "type_symbol": "element",
+        "label_alt_id": "altloc",
+        "label_entity_id": "segid",
+        "pdbx_PDB_ins_code": "insertion",
+        "Cartn_x": "coords",
+        "Cartn_y": "coords",
+        "Cartn_z": "coords",
+        "occupancy": "occupancy",
+        "B_iso_or_equiv": "beta",
+        "pdbx_formal_charge": "formalcharge",
+        "auth_seq_id": "resid",
+        "auth_comp_id": "resname",
+        "auth_asym_id": "chain",
+        "auth_atom_id": "name",
+        "pdbx_PDB_model_num": "frame",
+    }
+    chem_comp_mapping = {
+        "comp_id": "resname",
+        "atom_id": "name",
+        "alt_atom_id": "name",
+        "type_symbol": "element",
+        "charge": "formalcharge",
+        "model_Cartn_x": "coords",
+        "model_Cartn_y": "coords",
+        "model_Cartn_z": "coords",
+    }
+    bondtype_map = {"1": "SING", "2": "DOUB", "3": "TRIP"}
+    xyz_map = {"x": 0, "y": 1, "z": 2}
+
+    mapping = atom_site_mapping
+    atom_block = "atom_site"
+    if single_mol:
+        mapping = chem_comp_mapping
+        atom_block = "chem_comp_atom"
+
+    myDataList = []
+    with open(filename, "w") as ofh:
+        curContainer = DataContainer("moleculekit")
+        aCat = DataCategory(atom_block)
+        for at in mapping:
+            aCat.appendAttribute(at)
+
+        for i in range(mol.numAtoms):
+            data = []
+            for at in mapping:
+                if mapping[at] == "coords":
+                    xyz = xyz_map[at[-1]]
+                    data.append("{:.3f}".format(mol.coords[i, xyz, mol.frame]))
+                elif mapping[at] == "frame":
+                    data.append(1)
+                else:
+                    data.append(mol.__dict__[mapping[at]][i])
+            aCat.append(data)
+        curContainer.append(aCat)
+
+        if single_mol:
+            bCat = DataCategory("chem_comp_bond")
+            for at in ["comp_id", "atom_id_1", "atom_id_2", "value_order"]:
+                bCat.appendAttribute(at)
+            for i in range(mol.bonds.shape[0]):
+                bCat.append(
+                    [
+                        mol.resname[0],
+                        mol.name[mol.bonds[i][0]],
+                        mol.name[mol.bonds[i][1]],
+                        bondtype_map[mol.bondtype[i]],
+                    ]
+                )
+            curContainer.append(bCat)
+
+        myDataList.append(curContainer)
+        pdbxW = PdbxWriter(ofh)
+        pdbxW.write(myDataList)
+
+
 _WRITERS = {
     "psf": PSFwrite,
     "pdb": PDBwrite,
@@ -727,6 +811,7 @@ _WRITERS = {
     "coor": BINCOORwrite,
     "xtc": XTCwrite,
     "xsc": XSCwrite,
+    "cif": CIFwrite,
 }
 
 
@@ -804,11 +889,13 @@ class _TestWriters(unittest.TestCase):
                 except UnicodeDecodeError:
                     print(f"Could not compare file {reffile} due to not being unicode")
                     continue
+
+                print("Testing file", reffile, tmpfile)
                 with open(reffile, "r") as f:
                     reflines = f.readlines()
                     if ext == "sdf":
                         reflines = reflines[2:]
-                print("Testing file", reffile, tmpfile)
+
                 self.assertEqual(
                     filelines, reflines, msg=f"Failed comparison of {reffile} {tmpfile}"
                 )

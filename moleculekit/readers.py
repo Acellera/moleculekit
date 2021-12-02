@@ -1901,12 +1901,13 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
         "type_symbol": ("element", str),
         "occupancy": ("occupancy", float),
         "B_iso_or_equiv": ("beta", float),
-        "pdbx_formal_charge": ("charge", float),
+        "pdbx_formal_charge": ("formalcharge", int),
     }
     chem_comp_mapping = {
         "comp_id": ("resname", str),
         "atom_id": ("name", str),
         "type_symbol": ("element", str),
+        "charge": ("formalcharge", int),
     }
     cryst1_mapping = {
         "length_a": ("a", float),
