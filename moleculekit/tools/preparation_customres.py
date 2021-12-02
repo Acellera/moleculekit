@@ -25,6 +25,7 @@ backbone.coords = (
 )
 backbone.bonds = np.array([[0, 1], [0, 4], [1, 5], [1, 2], [2, 3]])
 backbone.bondtype = np.array(["1", "1", "1", "1", "2"], dtype=object)
+backbone.formalcharge[:] = [-1, 0, 0, 0, 0, 0]
 
 
 def _get_residue_mol(mol: Molecule, nsres: str):

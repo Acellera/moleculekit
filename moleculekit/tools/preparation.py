@@ -93,7 +93,9 @@ def _gen_resname():
             yield f"{lett}{num:02d}"
 
 
-def _generate_nonstandard_residues_ff(mol, definition, forcefield, _molkit_ff=True):
+def _generate_nonstandard_residues_ff(
+    mol, definition, forcefield, _molkit_ff=True, outdir=None
+):
     import tempfile
     from moleculekit.tools.preparation_customres import _get_custom_ff
     from moleculekit.tools.preparation_customres import (
@@ -153,6 +155,8 @@ def _generate_nonstandard_residues_ff(mol, definition, forcefield, _molkit_ff=Tr
 
                 _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
                 _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
+                if outdir is not None:
+                    cres.write(os.path.join(outdir, f"{res}.cif"))
                 logger.warning(f"Succesfully templated non-standard residue {res}.")
             except Exception as e:
                 raise RuntimeError(
@@ -506,6 +510,7 @@ def systemPrepare(
     plot_pka=None,
     _logger_level="ERROR",
     _molkit_ff=True,
+    outdir=None,
 ):
     """Prepare molecular systems through protonation and h-bond optimization.
 
@@ -598,6 +603,8 @@ def systemPrepare(
         ignoring the covalent bond, meaning it may break the bonds or add hydrogen atoms between the bonds.
     plot_pka : str
         Provide a file path with .png extension to draw the titration diagram for the system residues.
+    outdir : str
+        A path where to save custom residue cif files used for building
 
     Returns
     -------
@@ -674,7 +681,7 @@ def systemPrepare(
 
     definition, forcefield = _get_custom_ff(molkit_ff=_molkit_ff)
     definition, forcefield = _generate_nonstandard_residues_ff(
-        mol_in, definition, forcefield, _molkit_ff
+        mol_in, definition, forcefield, _molkit_ff, outdir
     )
 
     nonpept = None
