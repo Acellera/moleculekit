@@ -21,9 +21,6 @@ mymod.get_calculator = get_calculator
 
 ace = Molecule(os.path.join(home(shareDir="builder"), "ACE.cif"))
 nme = Molecule(os.path.join(home(shareDir="builder"), "NME.cif"))
-backbone_prm = parmed.amber.AmberParameterSet(
-    os.path.join(home(shareDir="builder"), "backbone.frcmod")
-)
 
 
 def _cap_residue(mol):
@@ -59,6 +56,8 @@ def _cap_residue(mol):
 
 
 def _parameterize_custom_residue(mol, outdir):
+    os.makedirs(outdir, exist_ok=True)
+
     mol = mol.copy()
     # Remove backbone formal charge from templated molecule
     mol.formalcharge[mol.name == "N"] = 0
@@ -92,17 +91,129 @@ def _parameterize_custom_residue(mol, outdir):
         )
         shutil.copy(
             os.path.join(tmpdir, "parameters", "GAFF2", "mol-orig.mol2"),
-            os.path.join(outdir, "mol.mol2"),
+            os.path.join(outdir, f"{resn}.mol2"),
         )
         shutil.copy(
             os.path.join(tmpdir, "parameters", "GAFF2", "mol.frcmod"),
-            os.path.join(outdir, "mol.frcmod"),
+            os.path.join(outdir, f"{resn}.frcmod"),
         )
 
+        _post_process_parameterize(cmol, outdir, resn)
 
-def _post_process_parameterize(cmol, outdir):
+
+def _clean_prm(prm, mol):
+    from moleculekit.util import guessAnglesAndDihedrals
+
+    all_at = np.unique(mol.atomtype)
+    angles, dihedrals = guessAnglesAndDihedrals(mol.bonds)
+    bond_at = mol.atomtype[mol.bonds].tolist()
+    angle_at = mol.atomtype[angles].tolist()
+    dihed_at = mol.atomtype[dihedrals].tolist()
+
+    to_delete = []
+    for at in prm.atom_types:
+        if at not in all_at.tolist():
+            to_delete.append(at)
+    for at in to_delete:
+        del prm.atom_types[at]
+
+    to_delete = []
+    for bt in prm.bond_types:
+        if not np.any(np.isin(bt, all_at)):
+            to_delete.append(bt)
+        elif list(bt) not in bond_at and list(bt)[::-1] not in bond_at:
+            to_delete.append(bt)
+    for bt in to_delete:
+        del prm.bond_types[bt]
+
+    to_delete = []
+    for bt in prm.angle_types:
+        if not np.any(np.isin(bt, all_at)):
+            to_delete.append(bt)
+        elif list(bt) not in angle_at and list(bt)[::-1] not in angle_at:
+            to_delete.append(bt)
+    for bt in to_delete:
+        del prm.angle_types[bt]
+
+    to_delete = []
+    for bt in prm.dihedral_types:
+        if not np.any(np.isin(bt, all_at)):
+            to_delete.append(bt)
+        elif list(bt) not in dihed_at and list(bt)[::-1] not in dihed_at:
+            to_delete.append(bt)
+    for bt in to_delete:
+        del prm.dihedral_types[bt]
+
+    to_delete = []
+    for bt in prm.improper_types:
+        if not np.any(np.isin(bt, all_at)):
+            to_delete.append(bt)
+    for bt in to_delete:
+        del prm.improper_types[bt]
+
+
+def _duplicate_parameters(prm, original):
+    # Duplicate parameters for renamed atoms which don't exist in the backbone
+    new_bt = {}
+    for bt in prm.bond_types:
+        bt = np.array(bt)
+        # If one of the two atom types was replaced duplicate the param
+        replaced = np.isin(bt, list(original.keys()))
+        if replaced.sum() != 1:
+            continue
+        bt_new = bt.copy()
+        bt_new[replaced] = [original[val] for val in bt[replaced]]
+        new_bt[tuple(bt_new)] = prm.bond_types[tuple(bt)]
+
+    for bt in new_bt:
+        prm.bond_types[bt] = new_bt[bt]
+
+    new_bt = {}
+    for bt in prm.angle_types:
+        bt = np.array(bt)
+        # If one of the two atom types was replaced duplicate the param
+        replaced = np.isin(bt, list(original.keys()))
+        if replaced.sum() == 0 or replaced.sum() == 3:
+            continue
+        bt_new = bt.copy()
+        bt_new[replaced] = [original[val] for val in bt[replaced]]
+        new_bt[tuple(bt_new)] = prm.angle_types[tuple(bt)]
+
+    for bt in new_bt:
+        prm.angle_types[bt] = new_bt[bt]
+
+    new_bt = {}
+    for bt in prm.dihedral_types:
+        bt = np.array(bt)
+        # If one of the two atom types was replaced duplicate the param
+        replaced = np.isin(bt, list(original.keys()))
+        if replaced.sum() == 0 or replaced.sum() == 4:
+            continue
+        bt_new = bt.copy()
+        bt_new[replaced] = [original[val] for val in bt[replaced]]
+        new_bt[tuple(bt_new)] = prm.dihedral_types[tuple(bt)]
+
+    for bt in new_bt:
+        prm.dihedral_types[bt] = new_bt[bt]
+
+    new_bt = {}
+    for bt in prm.improper_types:
+        bt = np.array(bt)
+        # If one of the two atom types was replaced duplicate the param
+        replaced = np.isin(bt, list(original.keys()))
+        if replaced.sum() == 0 or replaced.sum() == 4:
+            continue
+        bt_new = bt.copy()
+        bt_new[replaced] = [original[val] for val in bt[replaced]]
+        new_bt[tuple(bt_new)] = prm.improper_types[tuple(bt)]
+
+    for bt in new_bt:
+        prm.improper_types[bt] = new_bt[bt]
+
+
+def _post_process_parameterize(cmol, outdir, resn):
     # TODO: Move this to parameterize (?)
-    mol = Molecule(os.path.join(outdir, "mol.mol2"))
+    mol = Molecule(os.path.join(outdir, f"{resn}.mol2"))
     fields = ("element",)
     g1 = makeMolGraph(cmol, "all", fields)
     g2 = makeMolGraph(mol, "all", fields)
@@ -121,15 +232,18 @@ def _post_process_parameterize(cmol, outdir):
     backbone_at = {"N": "N", "H": "H", "CA": "CT", "HA": "H1", "C": "C", "O": "O"}
     original = {}
     for key, val in backbone_at.items():
-        original[key] = mol.atomtype[mol.name == key][0]
+        original[mol.atomtype[mol.name == key][0]] = backbone_at[key]
         mol.atomtype[mol.name == key] = val
 
     mol.filter(mask, _logger=False)
-    mol.write(os.path.join(outdir, "mol_mod.mol2"))
+    mol.write(os.path.join(outdir, f"{resn}_mod.mol2"))
 
-    prm = parmed.amber.AmberParameterSet(os.path.join(outdir, "mol.frcmod"))
-    # Remove unused parameters
-
-    # Add backbone parameters
+    prm = parmed.amber.AmberParameterSet(os.path.join(outdir, f"{resn}.frcmod"))
 
     # Duplicate parameters for renamed atoms which don't exist in the backbone
+    _duplicate_parameters(prm, original)
+
+    # Remove unused parameters
+    _clean_prm(prm, mol)
+
+    prm.write(os.path.join(outdir, f"{resn}_mod.frcmod"))
