@@ -263,5 +263,7 @@ def _post_process_parameterize(cmol, outdir, resn):
             os.path.join(outdir, f"{resn}_mod.ac"),
             "-dr",
             "n",
+            "-j",
+            "0",
         ]
     )
