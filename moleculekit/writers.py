@@ -757,6 +757,10 @@ def CIFwrite(mol, filename):
     mapping = atom_site_mapping
     atom_block = "atom_site"
     if single_mol:
+        if len(np.unique(mol.name)) != mol.numAtoms:
+            raise RuntimeError(
+                "Atom names need to be unique to write small molecule CIF file"
+            )
         mapping = chem_comp_mapping
         atom_block = "chem_comp_atom"
 
