@@ -212,6 +212,8 @@ def _duplicate_parameters(prm, original):
 
 
 def _post_process_parameterize(cmol, outdir, resn):
+    from subprocess import call
+
     # TODO: Move this to parameterize (?)
     mol = Molecule(os.path.join(outdir, f"{resn}.mol2"))
     fields = ("element",)
@@ -247,3 +249,19 @@ def _post_process_parameterize(cmol, outdir, resn):
     _clean_prm(prm, mol)
 
     prm.write(os.path.join(outdir, f"{resn}_mod.frcmod"))
+
+    call(
+        [
+            "antechamber",
+            "-fi",
+            "mol2",
+            "-fo",
+            "ac",
+            "-i",
+            os.path.join(outdir, f"{resn}_mod.mol2"),
+            "-o",
+            os.path.join(outdir, f"{resn}_mod.ac"),
+            "-dr",
+            "n",
+        ]
+    )
