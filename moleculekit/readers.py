@@ -1891,8 +1891,8 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
     atom_site_mapping = {
         "group_PDB": ("record", str),
         "id": ("serial", int),
-        "auth_atom_id": ("name", str),
         "label_alt_id": ("altloc", str),
+        "auth_atom_id": ("name", str),
         "auth_comp_id": ("resname", str),
         "auth_asym_id": ("chain", str),
         "auth_seq_id": ("resid", int),
@@ -1902,6 +1902,12 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
         "occupancy": ("occupancy", float),
         "B_iso_or_equiv": ("beta", float),
         "pdbx_formal_charge": ("formalcharge", int),
+    }
+    alternatives = {
+        "auth_atom_id": "label_atom_id",
+        "auth_comp_id": "label_comp_id",
+        "auth_asym_id": "label_asym_id",
+        "auth_seq_id": "label_seq_id",
     }
     chem_comp_mapping = {
         "comp_id": ("resname", str),
@@ -1946,16 +1952,19 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
     cryst = dataObj.getObj("cell")
     if cryst is not None and cryst.getRowCount() == 1:
         row = cryst.getRow(0)
+        attrs = cryst.getAttributeList()
 
         crystalinfo = {}
         for source_field, target in cryst1_mapping.items():
+            if source_field not in attrs:
+                continue
             target_field, dtype = target
             val = dtype(fixDefault(row[cryst.getAttributeIndex(source_field)], dtype))
             crystalinfo[target_field] = val
 
-        if isinstance(crystalinfo["sGroup"], str) or not np.isnan(
+        if "sGroup" in crystalinfo and (isinstance(crystalinfo["sGroup"], str) or not np.isnan(
             crystalinfo["sGroup"]
-        ):
+        )):
             crystalinfo["sGroup"] = crystalinfo["sGroup"].split()
         topo.crystalinfo = crystalinfo
 
@@ -1970,6 +1979,8 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
     elif "chem_comp_atom" in dataObj.getObjNameList():
         atom_site = dataObj.getObj("chem_comp_atom")
         mapping = chem_comp_mapping
+
+    attrs = atom_site.getAttributeList()
 
     for i in range(atom_site.getRowCount()):
         row = atom_site.getRow(i)
@@ -1990,6 +2001,11 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
 
         if currmodel == firstmodel:
             for source_field, target in mapping.items():
+                if source_field not in attrs:
+                    if source_field not in alternatives:
+                        continue
+                    else:
+                        source_field = alternatives[source_field]
                 target_field, dtype = target
                 val = row[atom_site.getAttributeIndex(source_field)]
                 val = dtype(fixDefault(val, dtype))
@@ -1999,7 +2015,7 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
                     val = ""
                 topo.__dict__[target_field].append(val)
 
-        if "Cartn_x" in atom_site.getAttributeList():
+        if "Cartn_x" in attrs:
             coords.append(
                 [
                     row[atom_site.getAttributeIndex("Cartn_x")],
@@ -2007,7 +2023,7 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
                     row[atom_site.getAttributeIndex("Cartn_z")],
                 ]
             )
-        elif "model_Cartn_x" in atom_site.getAttributeList():
+        elif "model_Cartn_x" in attrs:
             coords.append(
                 [
                     row[atom_site.getAttributeIndex("model_Cartn_x")],
