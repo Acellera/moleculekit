@@ -156,6 +156,7 @@ def _generate_nonstandard_residues_ff(
                 _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
                 _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
                 if outdir is not None:
+                    os.makedirs(outdir, exist_ok=True)
                     cres.write(os.path.join(outdir, f"{res}.cif"))
                 logger.warning(f"Succesfully templated non-standard residue {res}.")
             except Exception as e:
