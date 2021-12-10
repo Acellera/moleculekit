@@ -721,6 +721,8 @@ def CIFwrite(mol, filename):
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
 
     single_mol = len(np.unique(mol.resname)) == 1
+    if not len(mol.resname[0]):
+        raise RuntimeError("Please specify a resname for your molecule.")
 
     atom_site_mapping = {
         "group_PDB": "record",
@@ -750,9 +752,22 @@ def CIFwrite(mol, filename):
         "model_Cartn_x": "coords",
         "model_Cartn_y": "coords",
         "model_Cartn_z": "coords",
+        "pdbx_model_Cartn_x_ideal": "coords",
+        "pdbx_model_Cartn_y_ideal": "coords",
+        "pdbx_model_Cartn_z_ideal": "coords",
     }
     bondtype_map = {"1": "SING", "2": "DOUB", "3": "TRIP"}
-    xyz_map = {"x": 0, "y": 1, "z": 2}
+    xyz_map = {
+        "Cartn_x": 0,
+        "Cartn_y": 1,
+        "Cartn_z": 2,
+        "model_Cartn_x": 0,
+        "model_Cartn_y": 1,
+        "model_Cartn_z": 2,
+        "pdbx_model_Cartn_x_ideal": 0,
+        "pdbx_model_Cartn_y_ideal": 1,
+        "pdbx_model_Cartn_z_ideal": 2,
+    }
 
     mapping = atom_site_mapping
     atom_block = "atom_site"
@@ -766,7 +781,15 @@ def CIFwrite(mol, filename):
 
     myDataList = []
     with open(filename, "w") as ofh:
-        curContainer = DataContainer("moleculekit")
+        curContainer = DataContainer(mol.resname[0])
+        if atom_block == "chem_comp_atom":
+            aCat = DataCategory("chem_comp")
+            aCat.appendAttribute("id")
+            aCat.appendAttribute("type")
+            aCat.appendAttribute("pdbx_formal_charge")
+            aCat.append([mol.resname[0], "NON-POLYMER", int(mol.formalcharge.sum())])
+            curContainer.append(aCat)
+
         aCat = DataCategory(atom_block)
         for at in mapping:
             aCat.appendAttribute(at)
@@ -775,8 +798,7 @@ def CIFwrite(mol, filename):
             data = []
             for at in mapping:
                 if mapping[at] == "coords":
-                    xyz = xyz_map[at[-1]]
-                    data.append("{:.3f}".format(mol.coords[i, xyz, mol.frame]))
+                    data.append("{:.3f}".format(mol.coords[i, xyz_map[at], mol.frame]))
                 elif mapping[at] == "frame":
                     data.append(1)
                 else:
