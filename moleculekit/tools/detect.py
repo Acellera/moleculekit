@@ -3,11 +3,6 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
-# (c) 2015-2021 Acellera Ltd http://www.acellera.com
-# All Rights Reserved
-# Distributed under HTMD Software License Agreement
-# No redistribution in whole or part
-#
 import logging
 from collections import OrderedDict
 import itertools
