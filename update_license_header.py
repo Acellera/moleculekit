@@ -45,7 +45,7 @@ for root, dirs, files in os.walk("moleculekit"):
                 if old_header in text:
                     text = text.replace(old_header, new_header)
                 else:
-                    text = new_header + "\n" + text
+                    text = new_header + text
                 print("XXXXXXXXXXXXXXXX")
                 print("\n".join(text.split("\n")[:10]))
                 with open(fname, "w") as fout:
