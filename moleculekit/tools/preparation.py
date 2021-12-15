@@ -1252,6 +1252,7 @@ class _TestPreparation(unittest.TestCase):
             df,
         )
 
+    @unittest.skipUnless(ACEPREP_EXISTS, "Can only run with aceprep installed")
     def test_nonstandard_residues(self):
         test_home = os.path.join(self.home, "test-nonstandard-residues")
         mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
