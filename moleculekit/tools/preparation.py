@@ -827,7 +827,7 @@ def _create_table(mol_in, mol_out, pka_df):
         )
         if not np.any(new_mask):
             raise RuntimeError(
-                f"Unable to find residue {' '.join(tup)} after preparation"
+                f"Unable to find residue {' '.join(map(str, tup))} after preparation"
             )
         new_idx = np.where(new_mask)[0][0]
         resname = mol_out.resname[new_idx]
