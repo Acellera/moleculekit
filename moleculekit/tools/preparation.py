@@ -94,7 +94,7 @@ def _gen_resname():
 
 
 def _generate_nonstandard_residues_ff(
-    mol, definition, forcefield, _molkit_ff=True, outdir=None
+    mol, definition, forcefield, _molkit_ff=True, outdir=None, ignore_ns_errors=False
 ):
     import tempfile
     from moleculekit.tools.preparation_customres import _get_custom_ff
@@ -116,10 +116,12 @@ def _generate_nonstandard_residues_ff(
         return definition, forcefield
 
     try:
-        import aceprep
+        from aceprep.prepare import RDKprepare
     except ImportError:
+        if ignore_ns_errors:
+            return definition, forcefield
         raise RuntimeError(
-            "To protonate non-standard aminoacids you need the aceprep library. Please contact Acellera info@acellera.com for more information."
+            "To protonate non-standard aminoacids you need the aceprep library. Please contact Acellera info@acellera.com for more information or set ignore_ns_errors=True to ignore non-standard residues in the protonation (this will leave the residues unprotonated)."
         )
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -509,6 +511,7 @@ def systemPrepare(
     return_details=False,
     hydrophobic_thickness=None,
     plot_pka=None,
+    ignore_ns_errors=False,
     _logger_level="ERROR",
     _molkit_ff=True,
     outdir=None,
@@ -604,6 +607,9 @@ def systemPrepare(
         ignoring the covalent bond, meaning it may break the bonds or add hydrogen atoms between the bonds.
     plot_pka : str
         Provide a file path with .png extension to draw the titration diagram for the system residues.
+    ignore_ns_errors : bool
+        If False systemPrepare will issue an error when it fails to protonate non-standard residues in the protein.
+        If True it will ignore errors on non-standard residues leaving them unprotonated.
     outdir : str
         A path where to save custom residue cif files used for building
 
@@ -682,7 +688,12 @@ def systemPrepare(
 
     definition, forcefield = _get_custom_ff(molkit_ff=_molkit_ff)
     definition, forcefield = _generate_nonstandard_residues_ff(
-        mol_in, definition, forcefield, _molkit_ff, outdir
+        mol_in,
+        definition,
+        forcefield,
+        _molkit_ff,
+        outdir,
+        ignore_ns_errors=ignore_ns_errors,
     )
 
     nonpept = None
@@ -1101,7 +1112,7 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
 
 # The below is used for testing only
 try:
-    import aceprep
+    from aceprep.prepare import RDKprepare
 except ImportError:
     ACEPREP_EXISTS = False
 else:
@@ -1294,6 +1305,25 @@ class _TestPreparation(unittest.TestCase):
         self._compare_results(
             os.path.join(test_home, "1A4W_prepared.pdb"),
             os.path.join(test_home, "1A4W_prepared.csv"),
+            pmol,
+            df,
+        )
+
+    @unittest.skipIf(ACEPREP_EXISTS, "Can only run WITHOUT aceprep installed")
+    def test_nonstandard_residue_hard_ignore_ns(self):
+        test_home = os.path.join(self.home, "test-nonstandard-residues")
+        mol = Molecule(os.path.join(test_home, "5VBL.pdb"))
+
+        pmol, df = systemPrepare(
+            mol,
+            return_details=True,
+            hold_nonpeptidic_bonds=True,
+            _molkit_ff=False,
+            ignore_ns_errors=True,
+        )
+        self._compare_results(
+            os.path.join(test_home, "5VBL_prepared_ignore_ns.pdb"),
+            os.path.join(test_home, "5VBL_prepared_ignore_ns.csv"),
             pmol,
             df,
         )
