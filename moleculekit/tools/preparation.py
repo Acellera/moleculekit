@@ -293,7 +293,12 @@ def _pdb2pqr(
         if titrate:
             biomolecule.remove_hydrogens()
             pka_list, _ = run_propka(propka_args, biomolecule)
-            # logger.info(f"PROPKA information:\n{pka_str}")
+            # Remove terminal pkas
+            pka_list = [
+                row
+                for row in pka_list
+                if row["group_label"].startswith(row["res_name"])
+            ]
 
             # STEFAN mod: Delete pka values for residues we should not titrate
             pkas = _delete_no_titrate(pka_list, no_titr)
@@ -303,7 +308,6 @@ def _pdb2pqr(
                 {
                     f"{row['res_name']} {row['res_num']} {row['chain_id']}": row["pKa"]
                     for row in pkas
-                    if row["group_label"].startswith(row["res_name"])
                 },
             )
 
@@ -1130,6 +1134,8 @@ class _TestPreparation(unittest.TestCase):
         self.home = home(dataDir="test-systemprepare")
 
     def _compare_results(self, refpdb, refdf_f, pmol, df: pd.DataFrame):
+        from moleculekit.util import tempname
+
         refdf = pd.read_csv(
             refdf_f, dtype=_table_dtypes, keep_default_na=False, na_values=[""]
         )
@@ -1142,29 +1148,35 @@ class _TestPreparation(unittest.TestCase):
                 raise AssertionError(
                     "Different number of residues were found in the DataFrames!"
                 )
-            for key in [
-                "resname",
-                "protonation",
-                "resid",
-                "insertion",
-                "chain",
-                "segid",
-                "pKa",
-                "buried",
-            ]:
-                refv = refdf[key].values
-                newv = df[key].values
-                diff = refv != newv
-                if key in ("pKa", "buried"):
-                    nans = refv == ""
-                    refv = refv[~nans].astype(np.float32)
-                    newv = newv[~nans].astype(np.float32)
-                    diff = np.abs(refv - newv) > 1e-4
-                if any(diff):
-                    print(f"Found difference in field: {key}")
-                    print(f"Reference values: {refv[diff]}")
-                    print(f"New values:       {newv[diff]}")
-            raise
+            try:
+                for key in [
+                    "resname",
+                    "protonation",
+                    "resid",
+                    "insertion",
+                    "chain",
+                    "segid",
+                    "pKa",
+                    "buried",
+                ]:
+                    refv = refdf[key].values
+                    newv = df[key].values
+                    diff = refv != newv
+                    if key in ("pKa", "buried"):
+                        nans = refv == ""
+                        refv = refv[~nans].astype(np.float32)
+                        newv = newv[~nans].astype(np.float32)
+                        diff = np.abs(refv - newv) > 1e-4
+                    if any(diff):
+                        print(f"Found difference in field: {key}")
+                        print(f"Reference values: {refv[diff]}")
+                        print(f"New values:       {newv[diff]}")
+            except Exception:
+                pass
+
+            df_out = tempname(suffix=".csv")
+            df.to_csv(df_out, index=False)
+            raise AssertionError(f"Failed comparison of {refdf_f} to {df_out}")
 
         refmol = Molecule(refpdb)
         refmol.filter("not water", _logger=False)

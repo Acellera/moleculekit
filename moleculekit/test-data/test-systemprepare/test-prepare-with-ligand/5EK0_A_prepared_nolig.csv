@@ -1,5 +1,5 @@
 resname,protonation,resid,insertion,chain,segid,pKa,buried
-PRO,PRO,-4,,A,0,7.931686116664526,0.0
+PRO,PRO,-4,,A,0,,
 ARG,ARG,-3,,A,0,12.443439087123306,0.0
 GLY,GLY,-2,,A,0,,
 SER,SER,-1,,A,0,,
