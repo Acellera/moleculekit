@@ -238,7 +238,6 @@ def _pdb2pqr(
     no_prot=None,
     no_opt=None,
     no_titr=None,
-    force_protonation=None,
     propka_args=None,
 ):
     from pdb2pqr.io import get_molecule
@@ -275,7 +274,7 @@ def _pdb2pqr(
 
     hydrogen_handler = hydrogens.create_handler()
     debumper = Debump(biomolecule)
-    pkas = None
+    pka_list = None
     if assign_only:
         # TODO - I don't understand why HIS needs to be set to HIP for
         # assign-only
@@ -298,9 +297,6 @@ def _pdb2pqr(
 
             # STEFAN mod: Delete pka values for residues we should not titrate
             pkas = _delete_no_titrate(pka_list, no_titr)
-            # STEFAN mod: Force specific protonation states to residues
-            _apply_patches_force_prot(biomolecule, force_protonation)
-
             biomolecule.apply_pka_values(
                 forcefield_.name,
                 ph,
@@ -360,7 +356,7 @@ def _pdb2pqr(
     name_scheme = forcefield.Forcefield("amber", definition, None)
     biomolecule.apply_name_scheme(name_scheme)
 
-    return missing_atoms, pkas, biomolecule
+    return missing_atoms, pka_list, biomolecule
 
 
 def _atomsel_to_hold(mol_in, sel):
@@ -425,7 +421,7 @@ def _get_hold_residues(
                 # Only disable protonation if there is no force-protonation
                 _no_prot += val
 
-    return _no_opt, _no_prot, _no_titr, _force_prot
+    return _no_opt, _no_prot, _no_titr
 
 
 def _check_frozen_histidines(mol_in, _no_prot):
@@ -685,6 +681,7 @@ def systemPrepare(
     mol_in = _check_chain_and_segid(mol_in, verbose)
 
     _prepare_nucleics(mol_in)
+    mol_orig = mol_in.copy()
 
     definition, forcefield = _get_custom_ff(molkit_ff=_molkit_ff)
     definition, forcefield = _generate_nonstandard_residues_ff(
@@ -700,7 +697,14 @@ def systemPrepare(
     if hold_nonpeptidic_bonds:
         nonpept = _detect_nonpeptidic_bonds(mol_in)
 
-    _no_opt, _no_prot, _no_titr, _force_prot = _get_hold_residues(
+    if force_protonation is not None:
+        for sel, resn in force_protonation:
+            # Remove side-chain hydrogens
+            mol_in.remove(f"({sel}) and not backbone and element H", _logger=False)
+            # Rename to desired protonation state
+            mol_in.set("resname", resn, sel=sel)
+
+    _no_opt, _no_prot, _no_titr = _get_hold_residues(
         mol_in, no_opt, no_prot, no_titr, force_protonation, nonpept
     )
     _check_frozen_histidines(mol_in, _no_prot)
@@ -716,7 +720,6 @@ def systemPrepare(
             no_opt=_no_opt,
             no_prot=_no_prot,
             no_titr=_no_titr,
-            force_protonation=_force_prot,
             definition=definition,
             forcefield_=forcefield,
         )
@@ -732,7 +735,7 @@ def systemPrepare(
     mol_out.box = mol_in.box
     _fixup_water_names(mol_out)
 
-    df = _create_table(mol_in, mol_out, pka_df)
+    df = _create_table(mol_orig, mol_out, pka_df)
 
     _list_modifications(df)
 
@@ -1164,8 +1167,8 @@ class _TestPreparation(unittest.TestCase):
             raise
 
         refmol = Molecule(refpdb)
-        refmol.filter("not water")
-        pmol.filter("not water")
+        refmol.filter("not water", _logger=False)
+        pmol.filter("not water", _logger=False)
         assert mol_equal(
             refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
         )
