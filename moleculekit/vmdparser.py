@@ -70,9 +70,6 @@ def vmdselection(
     nframes = coordinates.shape[2]
     # Sanity check the inputs
 
-    # 	print(natoms)
-    # 	print (len(atomname))
-
     if bonds is not None and bonds.shape[1] != 2:
         raise RuntimeError("'bonds' not nbonds x 2 in length")
     if len(atomname) != natoms:
@@ -136,12 +133,7 @@ def vmdselection(
     if bonds is not None:  # TODO: Replace the loops for bonds with ravel
         nbonds = bonds.shape[0]
         if nbonds > 0:
-            ll = nbonds * 2
-            c_bonds = (ct.c_int * ll)()
-
-    for z in range(0, nbonds):
-        for y in [0, 1]:
-            c_bonds[z * 2 + y] = bonds[z, y]
+            c_bonds = pack_int_buffer(bonds.reshape(-1).copy())
 
     c_nbonds = ct.c_int(nbonds)
 
@@ -258,12 +250,8 @@ def guessbonds(
     )
 
     if retval:
-        raise ValueError("Guessed bonding is bad")
-    nbonds = c_nbonds[0]
-    bonds = np.empty((nbonds, 2), dtype=np.uint32)
-    for y in range(0, nbonds):
-        for x in range(0, 2):
-            bonds[y, x] = int(c_bonds[y * 2 + x])
+        raise RuntimeError("Failed at guessing bonding")
 
-    retval = bonds
-    return retval.reshape(nbonds, 2)
+    nbonds = c_nbonds[0]
+    bonds = np.array(c_bonds[: nbonds * 2]).reshape(nbonds, 2).astype(np.uint32).copy()
+    return bonds
