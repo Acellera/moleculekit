@@ -40,7 +40,7 @@ def string_to_tempfile(content, ext):
 
 def pack_string_buffer(data):
     ptr = (ct.c_char_p * len(data))()
-    ptr[:] = data.astype(dtype=numpy.string_).tolist()
+    ptr[:] = [x.encode() for x in data]
     return ptr
 
 
