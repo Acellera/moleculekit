@@ -218,6 +218,8 @@ class MetricDistance(Projection):
         map : :class:`DataFrame <pandas.core.frame.DataFrame>` object
             A DataFrame containing the descriptions of each dimension
         """
+        from pandas import DataFrame
+
         getMolProp = lambda prop: self._getMolProp(mol, prop)
         sel1 = getMolProp("sel1")
         sel2 = getMolProp("sel2")
@@ -238,42 +240,31 @@ class MetricDistance(Projection):
         numatoms1 = len(protatoms)
         numatoms2 = len(ligatoms)
 
-        from pandas import DataFrame
+        prot_labels = [
+            f"{mol.resname[i]} {mol.resid[i]} {mol.name[i]}" for i in protatoms
+        ]
 
         types = []
         indexes = []
         description = []
         if np.array_equal(sel1, sel2):
             for i in range(numatoms1):
+                atm1 = protatoms[i]
                 for j in range(i + 1, numatoms1):
-                    atm1 = protatoms[i]
                     atm2 = protatoms[j]
-                    desc = "{} between {} {} {} and {} {} {}".format(
-                        self.metric[:-1],
-                        mol.resname[atm1],
-                        mol.resid[atm1],
-                        mol.name[atm1],
-                        mol.resname[atm2],
-                        mol.resid[atm2],
-                        mol.name[atm2],
-                    )
+                    desc = f"{self.metric[:-1]} between {prot_labels[i]} and {prot_labels[j]}"
                     types += [self.metric[:-1]]
                     indexes += [[atm1, atm2]]
                     description += [desc]
         else:
+            lig_labels = [
+                f"{mol.resname[i]} {mol.resid[i]} {mol.name[i]}" for i in ligatoms
+            ]
             for i in range(numatoms1):
+                atm1 = protatoms[i]
                 for j in range(numatoms2):
-                    atm1 = protatoms[i]
                     atm2 = ligatoms[j]
-                    desc = "{} between {} {} {} and {} {} {}".format(
-                        self.metric[:-1],
-                        mol.resname[atm1],
-                        mol.resid[atm1],
-                        mol.name[atm1],
-                        mol.resname[atm2],
-                        mol.resid[atm2],
-                        mol.name[atm2],
-                    )
+                    desc = f"{self.metric[:-1]} between {prot_labels[i]} and {lig_labels[j]}"
                     types += [self.metric[:-1]]
                     indexes += [[atm1, atm2]]
                     description += [desc]
