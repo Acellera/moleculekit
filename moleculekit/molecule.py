@@ -1998,21 +1998,33 @@ class Molecule(object):
         self._tempreps.remove()
         return w
 
-    def toGraph(self):
+    def toGraph(self, fields=None, distances=False):
         """Converts the Molecule to a networkx graph.
 
         Each node corresponds to an atom and edges correspond to bonds
         """
         import networkx as nx
+        from scipy.spatial.distance import pdist, squareform
+
+        if fields is None:
+            fields = self._atom_fields
+        else:
+            fields = ensurelist(fields)
 
         nodes = [
-            (i, {key: self.__dict__[key][i] for key in self._atom_fields})
+            (i, {key: self.__dict__[key][i] for key in fields})
             for i in range(self.numAtoms)
         ]
-        edges = [
-            [self.bonds[i, 0], self.bonds[i, 1], {"type": self.bondtype[i]}]
-            for i in range(self.bonds.shape[0])
-        ]
+        if distances:
+            dd = squareform(pdist(self.coords[:, :, self.frame]))
+
+        edges = []
+        for i, (bi, bj) in enumerate(self.bonds):
+            props = {"type": self.bondtype[i]}
+            if distances:
+                props["distance"] = dd[bi, bj]
+            edges.append([bi, bj, props])
+
         graph = nx.Graph()
         graph.add_nodes_from(nodes)
         graph.add_edges_from(edges)

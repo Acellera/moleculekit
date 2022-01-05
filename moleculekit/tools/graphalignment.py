@@ -14,6 +14,8 @@ import numpy as np
 from unittest import TestCase
 import os
 
+from moleculekit.util import ensurelist
+
 
 def createProductGraph(G, H, tolerance, fields):
     # Calculate product graph by creating a node for each feature-matching pair of points
@@ -49,6 +51,7 @@ def compareGraphs(G, H, fields=("element",), tolerance=0.5, returnmatching=False
     # Comparison algorithm based on:
     # "Chemoisosterism in the Proteome", X. Jalencas, J. Mestres, JCIM 2013
     # http://pubs.acs.org/doi/full/10.1021/ci3002974
+    fields = ensurelist(fields)
     if G == H:
         if returnmatching:
             return 1, len(G), [(x, x) for x in G.nodes()]
