@@ -746,9 +746,10 @@ def CIFwrite(mol, filename):
     chem_comp_mapping = {
         "comp_id": "resname",
         "atom_id": "name",
-        "alt_atom_id": "name",
+        "alt_atom_id": "atomtype",
         "type_symbol": "element",
         "charge": "formalcharge",
+        "partial_charge": "charge",
         "model_Cartn_x": "coords",
         "model_Cartn_y": "coords",
         "model_Cartn_z": "coords",
@@ -756,7 +757,7 @@ def CIFwrite(mol, filename):
         "pdbx_model_Cartn_y_ideal": "coords",
         "pdbx_model_Cartn_z_ideal": "coords",
     }
-    bondtype_map = {"1": "SING", "2": "DOUB", "3": "TRIP"}
+    bondtype_map = {"1": "SING", "2": "DOUB", "3": "TRIP", "4": "QUAD", "ar": "AROM"}
     xyz_map = {
         "Cartn_x": 0,
         "Cartn_y": 1,
@@ -798,7 +799,7 @@ def CIFwrite(mol, filename):
             data = []
             for at in mapping:
                 if mapping[at] == "coords":
-                    data.append("{:.3f}".format(mol.coords[i, xyz_map[at], mol.frame]))
+                    data.append(f"{mol.coords[i, xyz_map[at], mol.frame]:.3f}")
                 elif mapping[at] == "frame":
                     data.append(1)
                 else:

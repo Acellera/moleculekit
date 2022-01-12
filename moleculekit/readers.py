@@ -1912,8 +1912,10 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
     chem_comp_mapping = {
         "comp_id": ("resname", str),
         "atom_id": ("name", str),
+        "alt_atom_id": ("atomtype", str),
         "type_symbol": ("element", str),
         "charge": ("formalcharge", int),
+        "partial_charge": ("charge", float),
     }
     cryst1_mapping = {
         "length_a": ("a", float),
@@ -2010,7 +2012,7 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
                 val = row[atom_site.getAttributeIndex(source_field)]
                 val = dtype(fixDefault(val, dtype))
                 if (
-                    source_field == "label_alt_id" and val == "."
+                    source_field in ("label_alt_id", "alt_atom_id") and val == "."
                 ):  # Atoms without altloc seem to be stored with a dot
                     val = ""
                 topo.__dict__[target_field].append(val)
@@ -2178,8 +2180,12 @@ def PREPIread(filename, frame=None, topoloc=None):
                 atomtypes.append(pieces[2])
                 charges.append(float(pieces[10]))
             if impropersection:
-                impropernames = line.split()
-                impropers.append([names.index(impn.upper()) for impn in impropernames])
+                impropernames = [impn.upper() for impn in line.split()]
+                not_found = np.setdiff1d(impropernames, names)
+                if len(not_found):
+                    logger.warning(f"Could not find atoms: {', '.join(not_found)}. Skipping reading of improper '{line.strip()}'")
+                    continue
+                impropers.append([names.index(impn) for impn in impropernames])
 
     impropers = np.array(impropers).astype(np.uint32)
     if impropers.ndim == 1:
