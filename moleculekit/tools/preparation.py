@@ -1136,6 +1136,11 @@ class _TestPreparation(unittest.TestCase):
     def _compare_results(self, refpdb, refdf_f, pmol, df: pd.DataFrame):
         from moleculekit.util import tempname
 
+        # # Use this to update tests
+        # pmol.filter("not water", _logger=False)
+        # pmol.write(refpdb)
+        # df.to_csv(refdf_f, index=False)
+
         refdf = pd.read_csv(
             refdf_f, dtype=_table_dtypes, keep_default_na=False, na_values=[""]
         )
