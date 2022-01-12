@@ -1931,6 +1931,8 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
         "SING": "1",
         "DOUB": "2",
         "TRIP": "3",
+        "QUAD": "4",
+        "AROM": "ar",
     }
 
     topo = Topology()
