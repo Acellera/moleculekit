@@ -257,9 +257,6 @@ def _get_custom_ff(user_ff=None, molkit_ff=True):
     try:
         molkitcustom = home(shareDir=os.path.join("pdb2pqr", "residues"))
     except Exception as e:
-        logger.warning(
-            f"Could not find shared directory with custom residues with error {e}"
-        )
         molkitcustom = None
 
     custom_xml = []
