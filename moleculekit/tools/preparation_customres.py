@@ -7,6 +7,9 @@ from moleculekit.molecule import Molecule
 from pdb2pqr.aa import Amino
 import numpy as np
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # PDB2PQR is quite finicky about the backbone coordinates so I copy them from ALA
@@ -251,16 +254,22 @@ def _get_custom_ff(user_ff=None, molkit_ff=True):
     from glob import glob
 
     original = os.path.join(os.path.dirname(pdb2pqr.__file__), "dat")
-    molkitcustom = home(shareDir=os.path.join("pdb2pqr", "residues"))
+    try:
+        molkitcustom = home(shareDir=os.path.join("pdb2pqr", "residues"))
+    except Exception as e:
+        logger.warning(
+            f"Could not find shared directory with custom residues with error {e}"
+        )
+        molkitcustom = None
 
     custom_xml = []
-    if molkit_ff:
+    if molkit_ff and molkitcustom is not None:
         custom_xml += glob(os.path.join(molkitcustom, "*.xml"))
     if user_ff is not None:
         custom_xml += glob(os.path.join(user_ff, "*.xml"))
 
     custom_dat = []
-    if molkit_ff:
+    if molkit_ff and molkitcustom is not None:
         custom_dat += glob(os.path.join(molkitcustom, "*.dat"))
     if user_ff is not None:
         custom_dat += glob(os.path.join(user_ff, "*.dat"))
