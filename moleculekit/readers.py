@@ -490,7 +490,7 @@ def GJFread(filename, frame=None, topoloc=None):
     return MolFactory.construct(topo, traj, filename, frame)
 
 
-def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
+def MOL2read(filename, frame=None, topoloc=None, singlemol=True, validateElements=True):
     from moleculekit.periodictable import periodictable
 
     topologies = []  # Allow reading of multi-mol MOL2 files
@@ -583,9 +583,9 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True):
             logger.warning(
                 f"Mol2 file {filename} contained multiple molecules. Only the first was read."
             )
-        return MolFactory.construct(topologies[0], trajectories[0], filename, frame)
+        return MolFactory.construct(topologies[0], trajectories[0], filename, frame, validateElements=validateElements)
     else:
-        return MolFactory.construct(topologies, trajectories, filename, frame)
+        return MolFactory.construct(topologies, trajectories, filename, frame, validateElements=validateElements)
 
 
 def MAEread(fname, frame=None, topoloc=None):
@@ -2140,9 +2140,7 @@ def RTFread(filename, frame=None, topoloc=None):
     for type_ in topo.atomtype:
         if re.match(_ATOM_TYPE_REG_EX, type_):
             raise ValueError(
-                'Atom type {} is incompatible. It cannot finish with "x" + number!'.format(
-                    type_
-                )
+                f'Atom type {type_} is incompatible. It cannot finish with "x" + number!'
             )
 
     return MolFactory.construct(topo, None, filename, frame)
@@ -2196,9 +2194,7 @@ def PREPIread(filename, frame=None, topoloc=None):
     for type_ in atomtypes:
         if re.match(_ATOM_TYPE_REG_EX, type_):
             raise ValueError(
-                'Atom type {} is incompatible. It cannot finish with "x" + number!'.format(
-                    type_
-                )
+                f'Atom type {type_} is incompatible. It cannot finish with "x" + number!'
             )
 
     topo = Topology()
