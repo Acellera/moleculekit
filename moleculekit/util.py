@@ -526,7 +526,7 @@ def opm(pdb, keep=False, keepaltloc="A"):
     True
 
     """
-    import urllib
+    import urllib.request
     import re
     from moleculekit.support import string_to_tempfile
     from moleculekit.molecule import Molecule
