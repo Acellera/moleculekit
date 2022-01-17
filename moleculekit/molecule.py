@@ -43,6 +43,7 @@ _residueNameTable = {
     "ASN": "N",
     "GLN": "Q",
     "CYS": "C",
+    "CYM": "C",
     "CYX": "C",
     "SEC": "U",
     "GLY": "G",
