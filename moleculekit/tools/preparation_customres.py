@@ -135,6 +135,67 @@ def _generate_custom_residue(inmol: Molecule, resname: str):
     return mol
 
 
+def _convert_amber_prepi_to_pdb2pqr_residue(prepi, outdir, name=None):
+    """
+    Used as follows:
+
+    prepis = glob("./htmd/share/builder/amberfiles/ff-ncaa/*.prepi") + glob("./htmd/share/builder/amberfiles/ff-ptm/*.prepi")
+    for pp in prepis:
+        try:
+            _convert_amber_prepi_to_pdb2pqr_residue(pp, "/tmp/pdb2pqr_res/")
+        except Exception as e:
+            print(f"ERROR {e}")
+    """
+    import tempfile
+
+    os.makedirs(outdir, exist_ok=True)
+
+    if name is None:
+        name = os.path.splitext(os.path.basename(prepi))[0]
+
+    try:
+        int(name)
+    except:
+        pass
+    else:
+        print(f"PDB2PQR cannot handle all-numerical residues like {name}")
+        return
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        outf = os.path.join(tmpdir, f"{name}.mol2")
+        outsdf = os.path.join(tmpdir, f"{name}.sdf")
+        os.popen(f"antechamber -fi prepi -fo mol2 -i {prepi} -o {outf} -pf y").read()
+        os.popen(f"antechamber -fi prepi -fo sdf -i {prepi} -o {outsdf} -pf y").read()
+        try:
+            mol = Molecule(outf, validateElements=False)  # Read everything
+            sdf = Molecule(outsdf)  # Read elements
+        except Exception as e:
+            print(f"ERROR: {e}")
+
+        diff = mol.element != sdf.element
+        if any(diff):
+            print(
+                f"Different elements read: {mol.element[diff]} and {sdf.element[diff]}"
+            )
+        mol.element[:] = sdf.element[:]
+
+        # Align and replace the backbone with the standard backbone of pdb2pqr
+        if not all([xx in mol.name for xx in ("N", "CA", "C", "O")]):
+            print(f"Could not find backbone atoms in {name}. Skipping conversion...")
+            return
+
+        mol.align("name N CA C", refmol=backbone)
+        for i in range(backbone.numAtoms):
+            idx = np.where(mol.name == backbone.name[i])[0]
+            if not len(idx):
+                continue
+            idx = idx[0]
+            mol.coords[idx, :, 0] = backbone.coords[i, :, 0]
+
+        _mol_to_xml_def(mol, os.path.join(outdir, f"{name}.xml"))
+        _mol_to_dat_def(mol, os.path.join(outdir, f"{name}.dat"))
+
+
 class CustomResidue(Amino):
     """Custom residue class. Hack for pdb2pqr which requires one class per residue in pdb2pqr.aa module"""
 
@@ -177,71 +238,8 @@ def _mol_to_dat_def(mol: Molecule, outfile: str):
         for i in range(mol.numAtoms):
             radius = 0
             f.write(
-                f"{mol.resname[i]}\t{mol.name[i]}\t{mol.charge[i]:.3f}\t{radius:.1f}\n"
+                f"{mol.resname[i]}\t{mol.name[i]}\t{mol.charge[i]:6.3f}\t{radius:.1f}\n"
             )
-
-
-def _generate_mol2(outsdfh):
-    from subprocess import call
-
-    tmpmol = Molecule(outsdfh)
-    nc = int(tmpmol.charge.sum())
-
-    nshmol2 = outsdfh.replace(".sdf", ".mol2")
-    call(
-        [
-            "antechamber",
-            "-i",
-            outsdfh,
-            "-fi",
-            "sdf",
-            "-o",
-            nshmol2,
-            "-fo",
-            "mol2",
-            "-c",  # charge guessing method
-            "gas",
-            "-at",  # atom types
-            "gaff2",
-            "-s",  # verbosity
-            "0",
-            "-nc",  # net charge
-            str(nc),
-            "-j",  # atom type and bond type prediction index. 1: atom type (only)
-            "1",
-            "-pf",  # remove intermediate files
-            "y",
-        ]
-    )
-    frcmodfile = nshmol2.replace(".mol2", ".frcmod")
-    call(
-        [
-            "parmchk2",
-            "-i",
-            nshmol2,
-            "-o",
-            frcmodfile,
-            "-f",
-            "mol2",
-        ]
-    )
-    # with tempfile.TemporaryDirectory() as tmpdir:
-    #     leapin = os.path.join(tmpdir, "tleap.in")
-    #     leaptempl = os.path.join(
-    #         home(), "newprep/build_templates/non-standard-aa/tleap.in"
-    #     )
-    #     outlib = os.path.join(outdir, f"{ns}.lib")
-    #     with open(leaptempl) as fin, open(leapin, "w") as fout:
-    #         template = Template(fin.read())
-    #         fout.write(
-    #             template.render(
-    #                 mol2file=nshmol2,
-    #                 frcmodfile=frcmodfile,
-    #                 molname=ns,
-    #                 outlib=outlib,
-    #             )
-    #         )
-    #     call([teleap, *teleapimportflags, "-f", leapin])
 
 
 def _get_custom_ff(user_ff=None, molkit_ff=True):
