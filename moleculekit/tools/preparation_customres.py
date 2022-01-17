@@ -153,14 +153,6 @@ def _convert_amber_prepi_to_pdb2pqr_residue(prepi, outdir, name=None):
     if name is None:
         name = os.path.splitext(os.path.basename(prepi))[0]
 
-    try:
-        int(name)
-    except:
-        pass
-    else:
-        print(f"PDB2PQR cannot handle all-numerical residues like {name}")
-        return
-
     with tempfile.TemporaryDirectory() as tmpdir:
         outf = os.path.join(tmpdir, f"{name}.mol2")
         outsdf = os.path.join(tmpdir, f"{name}.sdf")

@@ -139,22 +139,6 @@ def _generate_nonstandard_residues_ff(
                 molc.filter(f"index {start} to {end}", _logger=False)
                 cres = _generate_custom_residue(molc, res)
 
-                # Rename custom residue if it's integer!
-                try:
-                    int(res)
-                except Exception:
-                    pass
-                else:
-                    new_rn = next(_resname_gen)
-                    while new_rn in list(resn):
-                        new_rn = next(_resname_gen)
-                    logger.warning(
-                        f"Integer residue name {res} was renamed to {new_rn} to avoid preparation issues."
-                    )
-                    mol.resname[mol.resname == res] = new_rn
-                    cres.resname[:] = new_rn
-                    res = new_rn
-
                 _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
                 _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
                 if outdir is not None:
