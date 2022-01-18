@@ -915,6 +915,9 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
     import matplotlib.patheffects as PathEffects
 
     if not np.any(df.pKa.notnull()):
+        logger.warning(
+            "No pka plot was generated due to no pKa values calculated by propka."
+        )
         return
 
     # Shading
