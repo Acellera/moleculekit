@@ -914,6 +914,9 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
     from matplotlib.colors import LinearSegmentedColormap
     import matplotlib.patheffects as PathEffects
 
+    if not np.any(df.pKa.notnull()):
+        return
+
     # Shading
     Xe = np.array([[1, 0], [1, 0]])
 
