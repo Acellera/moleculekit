@@ -75,22 +75,14 @@ def _check_chain_and_segid(mol, verbose):
             lastatom = chainatoms[-1]
             print(f"Chain {c}:")
             print(
-                f"    First residue: {mol.resname[firstatom]}:{mol.resid[firstatom]}:{mol.insertion[firstatom]}"
+                f"    First residue: {_fmt_res(mol.resname[firstatom], mol.resid[firstatom], mol.insertion[firstatom])}"
             )
             print(
-                f"    Final residue: {mol.resname[lastatom]}:{mol.resid[lastatom]}:{mol.insertion[lastatom]}"
+                f"    Final residue: {_fmt_res(mol.resname[lastatom], mol.resid[lastatom], mol.insertion[lastatom])}"
             )
         print("---- End of chain report ----\n")
 
     return mol
-
-
-def _gen_resname():
-    import string
-
-    for lett in string.ascii_uppercase:
-        for num in range(100):
-            yield f"{lett}{num:02d}"
 
 
 def _generate_nonstandard_residues_ff(
@@ -103,8 +95,6 @@ def _generate_nonstandard_residues_ff(
         _mol_to_dat_def,
         _mol_to_xml_def,
     )
-
-    _resname_gen = _gen_resname()
 
     uqprot_resn = np.unique(mol.get("resname", sel="protein"))
     not_in_ff = []
@@ -861,6 +851,10 @@ def _create_table(mol_in, mol_out, pka_df):
     return df
 
 
+def _fmt_res(resname, resid, insertion, chain=""):
+    return f"{resname:<4s} {resid:>4d}{insertion.strip():<s}{chain:>2s}"
+
+
 def _list_modifications(df):
     for _, row in df[df.resname != df.protonation].iterrows():
         if row.resname in ["HOH", "WAT"]:
@@ -871,7 +865,9 @@ def _list_modifications(df):
         ch = row.chain
         rid = row.resid
         ins = row.insertion.strip()
-        logger.info(f"Modified residue {old_resn}:{ch}:{rid}{ins} to {new_resn}")
+        logger.info(
+            f"Modified residue {_fmt_res(old_resn, rid, ins, ch)} to {new_resn}"
+        )
 
 
 def _warn_pk_close_to_ph(df, pH, tol=1.0):
@@ -882,7 +878,7 @@ def _warn_pk_close_to_ph(df, pH, tol=1.0):
         )
         for _, dr in dubious.iterrows():
             logger.warning(
-                f"Dubious protonation state:    {dr.resname:4s} {dr.resid:>4d}{dr.insertion.strip()} {dr.chain:1s} (pKa={dr.pKa:5.2f})"
+                f"Dubious protonation state:    {_fmt_res(dr.resname, dr.resid, dr.insertion, dr.chain)} (pKa={dr.pKa:5.2f})"
             )
 
 
