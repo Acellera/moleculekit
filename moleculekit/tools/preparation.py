@@ -111,20 +111,23 @@ def _generate_nonstandard_residues_ff(
         if ignore_ns_errors:
             return definition, forcefield
         raise RuntimeError(
-            "To protonate non-standard aminoacids you need the aceprep library. Please contact Acellera info@acellera.com for more information or set ignore_ns_errors=True to ignore non-standard residues in the protonation (this will leave the residues unprotonated)."
+            "To protonate non-canonical aminoacids you need the aceprep library. Please contact Acellera info@acellera.com for more information or set ignore_ns_errors=True to ignore non-canonical residues in the protonation (this will leave the residues unprotonated)."
         )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         for res in not_in_ff:
             try:
-                logger.warning(f"Attempting to template non-standard residue {res}...")
+                logger.info(f"Attempting to template non-canonical residue {res}...")
+                # This removes the non-canonical hydrogens from the original mol object
+                mol.remove((mol.resname == res) & (mol.element == "H"), _logger=False)
                 molc = mol.copy()
+
                 # Hacky way of getting the first molecule, if there are copies
                 molresn = molc.resname == res
-                firstname = mol.name[molresn][0]
-                lastname = mol.name[molresn][-1]
-                start = np.where(molresn & (mol.name == firstname))[0][0]
-                end = np.where(molresn & (mol.name == lastname))[0][0]
+                firstname = molc.name[molresn][0]
+                lastname = molc.name[molresn][-1]
+                start = np.where(molresn & (molc.name == firstname))[0][0]
+                end = np.where(molresn & (molc.name == lastname))[0][0]
                 # Remove all other stuff
                 molc.filter(f"index {start} to {end}", _logger=False)
                 cres = _generate_custom_residue(molc, res)
@@ -134,10 +137,13 @@ def _generate_nonstandard_residues_ff(
                 if outdir is not None:
                     os.makedirs(outdir, exist_ok=True)
                     cres.write(os.path.join(outdir, f"{res}.cif"))
-                logger.warning(f"Succesfully templated non-standard residue {res}.")
+                logger.info(f"Succesfully templated non-canonical residue {res}.")
             except Exception as e:
+                import traceback
+
+                traceback.print_exc()
                 raise RuntimeError(
-                    f"Failed to protonate non-standard residue {res}. Please remove it from the protein or mutate it to continue preparation. Detailed error message: {e}"
+                    f"Failed to protonate non-canonical residue {res}. Please remove it from the protein or mutate it to continue preparation. Detailed error message: {e}"
                 )
         definition, forcefield = _get_custom_ff(user_ff=tmpdir, molkit_ff=_molkit_ff)
     return definition, forcefield
@@ -582,8 +588,8 @@ def systemPrepare(
     plot_pka : str
         Provide a file path with .png extension to draw the titration diagram for the system residues.
     ignore_ns_errors : bool
-        If False systemPrepare will issue an error when it fails to protonate non-standard residues in the protein.
-        If True it will ignore errors on non-standard residues leaving them unprotonated.
+        If False systemPrepare will issue an error when it fails to protonate non-canonical residues in the protein.
+        If True it will ignore errors on non-canonical residues leaving them unprotonated.
     outdir : str
         A path where to save custom residue cif files used for building
 
@@ -806,6 +812,7 @@ def _create_table(mol_in, mol_out, pka_df):
             & (mol_out.chain == tup[3])
             & (mol_out.segid == tup[4])
         )
+
         if not np.any(new_mask):
             raise RuntimeError(
                 f"Unable to find residue {' '.join(map(str, tup))} after preparation"
@@ -1272,48 +1279,24 @@ class _TestPreparation(unittest.TestCase):
     @unittest.skipUnless(ACEPREP_EXISTS, "Can only run with aceprep installed")
     def test_nonstandard_residues(self):
         test_home = os.path.join(self.home, "test-nonstandard-residues")
-        mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
+        files = {
+            "1A4W.pdb": "1A4W_prepared",
+            "5VBL.pdb": "5VBL_prepared",
+            "SAH_duplicate_names.pdb": "SAH_prepared",
+        }
+        for inf, outf in files.items():
+            mol = Molecule(os.path.join(test_home, inf))
 
-        pmol, df = systemPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
+            pmol, df = systemPrepare(
+                mol, return_details=True, hold_nonpeptidic_bonds=True
+            )
 
-        self._compare_results(
-            os.path.join(test_home, "1A4W_prepared.pdb"),
-            os.path.join(test_home, "1A4W_prepared.csv"),
-            pmol,
-            df,
-        )
-
-    @unittest.skipUnless(ACEPREP_EXISTS, "Can only run with aceprep installed")
-    def test_nonstandard_residue_hard(self):
-        test_home = os.path.join(self.home, "test-nonstandard-residues")
-        mol = Molecule(os.path.join(test_home, "5VBL.pdb"))
-
-        pmol, df = systemPrepare(
-            mol, return_details=True, hold_nonpeptidic_bonds=True, _molkit_ff=False
-        )
-
-        self._compare_results(
-            os.path.join(test_home, "5VBL_prepared.pdb"),
-            os.path.join(test_home, "5VBL_prepared.csv"),
-            pmol,
-            df,
-        )
-
-    @unittest.skipUnless(ACEPREP_EXISTS, "Can only run with aceprep installed")
-    def test_unknown_nonstandard_residues(self):
-        test_home = os.path.join(self.home, "test-nonstandard-residues")
-        mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
-
-        pmol, df = systemPrepare(
-            mol, return_details=True, hold_nonpeptidic_bonds=True, _molkit_ff=False
-        )
-
-        self._compare_results(
-            os.path.join(test_home, "1A4W_prepared.pdb"),
-            os.path.join(test_home, "1A4W_prepared.csv"),
-            pmol,
-            df,
-        )
+            self._compare_results(
+                os.path.join(test_home, f"{outf}.pdb"),
+                os.path.join(test_home, f"{outf}.csv"),
+                pmol,
+                df,
+            )
 
     @unittest.skipIf(ACEPREP_EXISTS, "Can only run WITHOUT aceprep installed")
     def test_nonstandard_residue_hard_ignore_ns(self):
