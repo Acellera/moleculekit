@@ -1097,7 +1097,8 @@ def PDBread(
     # Before stripping guess elements from atomname as the spaces are significant
     if "element" in parsedtopo:
         idx, newelem = pdbGuessElementByName(parsedtopo.element, parsedtopo.name)
-        parsedtopo.at[idx, "element"] = newelem
+        if len(idx):
+            parsedtopo.iloc[idx, parsedtopo.columns.get_loc("element")] = newelem
 
     for field in topodtypes:
         if (
