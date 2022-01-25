@@ -725,7 +725,10 @@ def systemPrepare(
 
     if titration:
         if plot_pka is not None:
-            _get_pka_plot(df, plot_pka)
+            try:
+                _get_pka_plot(df, plot_pka)
+            except Exception as e:
+                logger.error(f"Failed at generating pKa plot with error {e}")
         _warn_pk_close_to_ph(df, pH)
         if hydrophobic_thickness:
             # TODO: I think this only works if the protein is assumed aligned to the membrane and the membrane is centered at Z=0
