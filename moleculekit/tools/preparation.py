@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import os
 from moleculekit.molecule import Molecule, mol_equal, UniqueResidueID
+from moleculekit.util import sequenceID
 
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,6 @@ def _warn_if_contains_DUM(mol):
 
 
 def _check_chain_and_segid(mol, verbose):
-    from moleculekit.util import sequenceID
     import string
 
     emptychains = mol.chain == ""
@@ -455,6 +455,25 @@ def _prepare_nucleics(mol):
         mol.resname[mol.resname == res] = mapping[res]
 
 
+def _fix_protonation_resnames(mol):
+    # This function patches the names of residues to their correct protonation state if they have specific hydrogens
+    uqres = sequenceID((mol.resid, mol.insertion, mol.chain))
+    for uq in uqres:
+        resatm = uqres == uq
+        resname = mol.resname[resatm][0]
+        names = mol.name[resatm]
+        if (resname == "GLU") and ("HE2" in names):
+            mol.resname[resatm] = "GLH"
+        elif (resname == "ASP") and ("HD2" in names):
+            mol.resname[resatm] = "ASH"
+        elif (resname == "HIS") and all(np.isin(("HD1", "HD2", "HE1", "HE2"), names)):
+            mol.resname[resatm] = "HIP"
+        elif (resname == "HIS") and all(np.isin(("HD1", "HD2", "HE1"), names)):
+            mol.resname[resatm] = "HID"
+        elif (resname == "HIS") and all(np.isin(("HD2", "HE1", "HE2"), names)):
+            mol.resname[resatm] = "HIE"
+
+
 def proteinPrepare(
     mol_in,
     pH=7.0,
@@ -663,9 +682,10 @@ def systemPrepare(
     _warn_if_contains_DUM(mol_in)
 
     mol_in = _check_chain_and_segid(mol_in, verbose)
+    mol_orig = mol_in.copy()
 
     _prepare_nucleics(mol_in)
-    mol_orig = mol_in.copy()
+    _fix_protonation_resnames(mol_in)
 
     definition, forcefield = _get_custom_ff(molkit_ff=_molkit_ff)
     definition, forcefield = _generate_nonstandard_residues_ff(
@@ -1187,7 +1207,7 @@ class _TestPreparation(unittest.TestCase):
         )
 
     def test_systemPrepare(self):
-        pdbids = ["3PTB", "1A25", "1U5U"]
+        pdbids = ["3PTB", "1A25", "1U5U", "1UNC"]
         for pdb in pdbids:
             with self.subTest(pdbid=pdb):
                 test_home = os.path.join(self.home, pdb)
