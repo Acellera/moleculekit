@@ -152,7 +152,7 @@ def _generate_nonstandard_residues_ff(
 def _detect_nonpeptidic_bonds(mol):
     coordination_ions = ("Ca", "Zn", "Mn", "Cu", "Fe", "Ni", "Mo", "Re", "Na")
 
-    prot_idx = mol.atomselect("protein", indexes=True)
+    prot_idx = mol.atomselect("protein or resname ACE NME", indexes=True)
     ion_idx = np.where(np.isin(mol.element, coordination_ions))[0]
     same_resname = np.isin(
         mol.resname[ion_idx], [cc.upper() for cc in coordination_ions]
