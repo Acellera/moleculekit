@@ -1213,7 +1213,7 @@ class Molecule(object):
         if type is not None and type.lower() in _ALL_READERS:
             return type
         if not os.path.isfile(fname) and len(fname) == 4:
-            return "pdb"
+            return "mmtf"
         return os.path.splitext(fname)[1][1:]
 
     def _unzip(self, fname):
@@ -1804,6 +1804,11 @@ class Molecule(object):
         if natoms == 0:
             natoms = self._numAtomsTraj
         return natoms
+
+    @property
+    def numBonds(self):
+        """Number of bonds in the molecule"""
+        return self.bonds.shape[0]
 
     @property
     def x(self):

@@ -2264,6 +2264,48 @@ def SDFread(filename, frame=None, topoloc=None):
     return MolFactory.construct(topo, traj, filename, frame)
 
 
+def MMTFread(filename, frame=None, topoloc=None):
+    from mmtf import fetch
+
+    data = fetch(filename)
+    topo = Topology()
+
+    a_idx = 0
+    groups_per_chain = np.cumsum(data.groups_per_chain)
+    # Iterate over residues
+    for i, (g_idx, resid, ins) in enumerate(zip(data.group_type_list, data.group_id_list, data.ins_code_list)):  
+        group_first_a_idx = a_idx
+        g = data.group_list[g_idx]
+        # Iterate over atoms in residue
+        for name, elem, fchg in zip(g["atomNameList"], g["elementList"], g["formalChargeList"]):
+            chainidx = np.where(i < groups_per_chain)[0][0]
+            topo.record.append("ATOM" if "PEPTIDE LINKING" in g["chemCompType"] else "HETATM")
+            topo.resname.append(g["groupName"])
+            topo.name.append(name)
+            topo.element.append(elem)
+            topo.formalcharge.append(fchg)
+            topo.beta.append(data.b_factor_list[a_idx])
+            topo.occupancy.append(data.occupancy_list[a_idx])
+            topo.serial.append(data.atom_id_list[a_idx])
+            topo.altloc.append(data.alt_loc_list[a_idx].replace('\x00',''))
+            topo.insertion.append(ins.replace('\x00',''))
+            topo.chain.append(data.chain_name_list[chainidx])
+            topo.resid.append(resid)
+            a_idx += 1
+
+        for b in range(len(g["bondOrderList"])):
+            topo.bonds.append([g["bondAtomList"][b*2]+group_first_a_idx, g["bondAtomList"][b*2+1]+group_first_a_idx])
+            topo.bondtype.append(str(g["bondOrderList"][b]))
+
+    for b in range(len(data.bond_order_list)):
+        topo.bonds.append([data.bond_atom_list[b*2], data.bond_atom_list[b*2+1]])
+        topo.bondtype.append(str(data.bond_order_list[b]))
+
+    coords = np.array([data.x_coord_list, data.y_coord_list, data.z_coord_list]).T
+    traj = Trajectory(coords=coords)
+    return MolFactory.construct(topo, traj, filename, frame)
+
+
 # Register here all readers with their extensions
 _TOPOLOGY_READERS = {
     "prmtop": PRMTOPread,
@@ -2282,6 +2324,7 @@ _TOPOLOGY_READERS = {
     "rtf": RTFread,
     "prepi": PREPIread,
     "sdf": SDFread,
+    "mmtf": MMTFread,
 }
 
 _MDTRAJ_TOPOLOGY_EXTS = [
@@ -2672,6 +2715,15 @@ class _TestReaders(unittest.TestCase):
                                                     [14, 13],
                                                     [15, 13]]))
         assert np.array_equal(mol.impropers, np.array([[ 6,  0, 12, 13]]))
+
+    def test_mmtf(self):
+        mol = Molecule("3hyd")
+        assert mol.numAtoms == 125
+        assert mol.numBonds == 120
+
+        mol = Molecule("3ptb")
+        assert mol.numAtoms == 1701
+        assert mol.numBonds == 1675
 # fmt: on
 
 if __name__ == '__main__':
