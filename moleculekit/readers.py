@@ -2290,6 +2290,7 @@ def MMTFread(filename, frame=None, topoloc=None):
             topo.altloc.append(data.alt_loc_list[a_idx].replace('\x00',''))
             topo.insertion.append(ins.replace('\x00',''))
             topo.chain.append(data.chain_name_list[chainidx])
+            topo.segid.append(data.chain_name_list[chainidx])  # Set segid as chain since there is no segid in mmtf
             topo.resid.append(resid)
             a_idx += 1
 
