@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-chain_alphabet = list(string.digits + string.ascii_uppercase + string.ascii_lowercase)
+chain_alphabet = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
 segid_alphabet = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
 
 

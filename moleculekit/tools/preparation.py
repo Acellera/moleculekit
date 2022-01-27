@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import os
 from moleculekit.molecule import Molecule, mol_equal, UniqueResidueID
+from moleculekit.tools.autosegment import autoSegment2
 from moleculekit.util import sequenceID
 
 
@@ -1305,21 +1306,24 @@ class _TestPreparation(unittest.TestCase):
         files = {
             "1A4W.pdb": "1A4W_prepared",
             "5VBL.pdb": "5VBL_prepared",
-            "SAH_duplicate_names.pdb": "SAH_prepared",
+            "2QRV.pdb": "2QRV_prepared",
         }
         for inf, outf in files.items():
-            mol = Molecule(os.path.join(test_home, inf))
+            with self.subTest(file=inf):
+                mol = Molecule(os.path.join(test_home, inf))
+                if inf == "2QRV.pdb":
+                    mol = autoSegment2(mol, fields=("chain", "segid"))
 
-            pmol, df = systemPrepare(
-                mol, return_details=True, hold_nonpeptidic_bonds=True
-            )
+                pmol, df = systemPrepare(
+                    mol, return_details=True, hold_nonpeptidic_bonds=True
+                )
 
-            self._compare_results(
-                os.path.join(test_home, f"{outf}.pdb"),
-                os.path.join(test_home, f"{outf}.csv"),
-                pmol,
-                df,
-            )
+                self._compare_results(
+                    os.path.join(test_home, f"{outf}.pdb"),
+                    os.path.join(test_home, f"{outf}.csv"),
+                    pmol,
+                    df,
+                )
 
     @unittest.skipIf(ACEPREP_EXISTS, "Can only run WITHOUT aceprep installed")
     def test_nonstandard_residue_hard_ignore_ns(self):
