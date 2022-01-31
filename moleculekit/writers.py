@@ -6,8 +6,9 @@
 import numpy as np
 import ctypes as ct
 import os
+from moleculekit.molecule import mol_equal
 from moleculekit.support import xtc_lib
-from moleculekit.util import ensurelist
+from moleculekit.util import ensurelist, sequenceID
 import networkx as nx
 import logging
 import numbers
@@ -827,6 +828,156 @@ def CIFwrite(mol, filename):
         pdbxW.write(myDataList)
 
 
+def MMTFwrite(mol, filename):
+    from mmtf import write_mmtf, MMTFDecoder
+    from string import ascii_uppercase
+    from moleculekit.molecule import _residueNameTable
+
+    bondmap = {"1": 1, "2": 2, "3": 3, "4": 4, "un": 1, "ar": 1}
+
+    class MolToMMTF(MMTFDecoder):
+        def __init__(self, mol):
+            uqres = sequenceID((mol.resid, mol.insertion, mol.chain))
+            protein = mol.atomselect("protein")
+            nucleic = mol.atomselect("nucleic")
+            water = mol.atomselect("water")
+            sequences = mol.sequence()
+            insertions = []
+            self.group_id_list = []
+            chain_count = 0
+            chain_id_list = []
+            chain_name_list = []
+            previous_chain = mol.chain[0]
+            previous_rid = 0
+            groups_per_chain = []
+            group_list = {}
+            residue_type = []
+            sequence_index_list = []
+            sec_struct_list = []
+            entity_list = []
+            accounted_bonds = np.zeros(mol.bonds.shape[0], dtype=bool)
+            chain_res_count = 0
+            for rr in range(uqres.max() + 1):
+                mask = uqres == rr
+                mask_idx = np.where(mask)[0]
+                firstidx = mask_idx[0]
+                resname = mol.resname[firstidx]
+                insertions.append(
+                    mol.insertion[firstidx] if mol.insertion[firstidx] != "" else "\x00"
+                )
+                self.group_id_list.append(mol.resid[firstidx])
+                names = ",".join(mol.name[mask])
+                key = (resname, names)
+                residue_type.append(key)
+                sequence_index_list.append(chain_res_count)
+                sec_struct_list.append(-1)
+                chain_res_count += 1
+
+                if key not in group_list:
+                    mask_bonds = np.isin(mol.bonds, mask_idx).sum(axis=1) == 2
+                    bond_orders = [bondmap[x] for x in mol.bondtype[mask_bonds]]
+                    group_bonds = mol.bonds[mask_bonds] - mask_idx[0]  # relative idx
+                    accounted_bonds[mask_bonds] = True
+
+                    group_list[key] = {
+                        "groupName": resname,
+                        "atomNameList": mol.name[mask].tolist(),
+                        "elementList": mol.element[mask].tolist(),
+                        "bondOrderList": bond_orders,
+                        "bondAtomList": group_bonds.flatten().tolist(),
+                        "formalChargeList": mol.formalcharge[mask].tolist(),
+                        "singleLetterCode": _residueNameTable.get(resname, "?"),
+                        "chemCompType": "NON-POLYMER"
+                        if mol.record[firstidx] == "HETATM"
+                        else "PEPTIDE LINKING",
+                    }
+
+                # If a chain changes, count residues in chain
+                curr_chain = mol.chain[firstidx]
+                if curr_chain != previous_chain:
+                    chain_name_list.append(previous_chain)
+                    chain_id_list.append(ascii_uppercase[chain_count])
+                    groups_per_chain.append(rr - previous_rid)
+                    if all(mask & protein) or all(mask & nucleic):
+                        entity_list.append(
+                            {
+                                "description": "polymer",
+                                "type": "polymer",
+                                "chainIndexList": [chain_count],
+                                "sequence": sequences[curr_chain],
+                            }
+                        )
+                    elif all(mask & water):
+                        entity_list.append(
+                            {
+                                "description": "water",
+                                "type": "water",
+                                "chainIndexList": [chain_count],
+                                "sequence": "",
+                            }
+                        )
+                    else:
+                        entity_list.append(
+                            {
+                                "description": "non-polymer",
+                                "type": "non-polymer",
+                                "chainIndexList": [chain_count],
+                                "sequence": "",
+                            }
+                        )
+                    previous_chain = curr_chain
+                    previous_rid = rr
+                    chain_count += 1
+                    chain_res_count = 0
+
+            chain_name_list.append(curr_chain)
+            chain_id_list.append(ascii_uppercase[chain_count])
+            groups_per_chain.append(rr + 1 - previous_rid)
+
+            groups = sorted(list(group_list.keys()))
+            self.num_atoms = mol.numAtoms
+            self.num_bonds = mol.numBonds
+            self.num_groups = len(np.unique(mol.resname))
+            self.num_chains = len(np.unique(mol.chain))
+            self.num_models = 1
+            self.structure_id = mol.viewname
+            # initialise the arrays
+            self.x_coord_list = mol.coords[:, 0, mol.frame].tolist()
+            self.y_coord_list = mol.coords[:, 1, mol.frame].tolist()
+            self.z_coord_list = mol.coords[:, 2, mol.frame].tolist()
+            self.group_type_list = [groups.index(rt) for rt in residue_type]
+            self.entity_list = entity_list
+            self.b_factor_list = mol.beta.tolist()
+            self.occupancy_list = mol.occupancy.tolist()
+            self.atom_id_list = np.arange(1, mol.numAtoms + 1).tolist()
+            self.alt_loc_list = [x if x != "" else "\x00" for x in mol.altloc]
+            self.ins_code_list = insertions
+            self.sequence_index_list = sequence_index_list
+            self.group_list = [group_list[key] for key in groups]
+            self.chain_name_list = chain_name_list
+            self.chain_id_list = chain_id_list
+            self.bond_atom_list = mol.bonds[~accounted_bonds].flatten().tolist()
+            self.bond_order_list = [bondmap[x] for x in mol.bondtype[~accounted_bonds]]
+            self.sec_struct_list = sec_struct_list
+            self.chains_per_model = [len(groups_per_chain)]
+            self.groups_per_chain = groups_per_chain
+            self.current_group = None
+            self.bio_assembly = []
+            self.r_free = None
+            self.r_work = None
+            self.resolution = 0
+            self.title = ""
+            self.deposition_date = None
+            self.release_date = None
+            self.experimental_methods = None
+            self.unit_cell = None
+            self.space_group = None
+
+    enc = MolToMMTF(mol)
+    write_mmtf(filename, enc, MolToMMTF.pass_data_on)
+    return enc
+
+
 _WRITERS = {
     "psf": PSFwrite,
     "pdb": PDBwrite,
@@ -839,6 +990,7 @@ _WRITERS = {
     "xtc": XTCwrite,
     "xsc": XSCwrite,
     "cif": CIFwrite,
+    "mmtf": MMTFwrite,
 }
 
 
@@ -875,7 +1027,6 @@ class _TestWriters(unittest.TestCase):
     def test_writers(self):
         from moleculekit.util import tempname
         from moleculekit.home import home
-        import filecmp
 
         # Skip file-comparing binary filetypes
         # TODO: Remove SDF. Currently skipping it due to date in second line
@@ -930,8 +1081,6 @@ class _TestWriters(unittest.TestCase):
     def test_sdf_writer(self):
         from moleculekit.molecule import Molecule
         from moleculekit.util import tempname
-        from moleculekit.home import home
-        import filecmp
 
         reffile = os.path.join(self.testfolder, "mol_bromium_out.sdf")
         mol = Molecule(os.path.join(self.testfolder, "mol_bromium.sdf"))
@@ -946,6 +1095,20 @@ class _TestWriters(unittest.TestCase):
         self.assertEqual(
             filelines, reflines, msg=f"Failed comparison of {reffile} {tmpfile}"
         )
+
+    def test_mmtf_writer(self):
+        from moleculekit.molecule import Molecule
+        from moleculekit.util import tempname
+
+        pdbids = ["3ptb", "1unc", "7q5b", "5vbl"]
+        for pdbid in pdbids:
+            with self.subTest(pdbid=pdbid):
+                mol = Molecule(pdbid)
+                tmpfile = tempname(suffix=".mmtf")
+                mol.write(tmpfile)
+                mol2 = Molecule(tmpfile)
+                assert mol_equal(mol, mol2)
+                os.remove(tmpfile)
 
 
 if __name__ == "__main__":

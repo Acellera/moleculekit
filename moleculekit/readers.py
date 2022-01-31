@@ -2259,21 +2259,27 @@ def SDFread(filename, frame=None, topoloc=None):
                 pairs = line.strip().split()[3:]
                 for cc in range(0, len(pairs), 2):
                     topo.formalcharge[int(pairs[cc])-1] = int(pairs[cc+1])
-            
+
     traj = Trajectory(coords=np.vstack(coords))
     return MolFactory.construct(topo, traj, filename, frame)
 
 
 def MMTFread(filename, frame=None, topoloc=None):
-    from mmtf import fetch
+    from mmtf import fetch, parse_gzip, parse
 
-    data = fetch(filename)
+    if len(filename) == 4 and not os.path.exists(filename):
+        data = fetch(filename)
+    elif filename.endswith(".gz"):
+        data = parse_gzip(filename)
+    else:
+        data = parse(filename)
+
     topo = Topology()
 
     a_idx = 0
     groups_per_chain = np.cumsum(data.groups_per_chain)
     # Iterate over residues
-    for i, (g_idx, resid, ins) in enumerate(zip(data.group_type_list, data.group_id_list, data.ins_code_list)):  
+    for i, (g_idx, resid, ins) in enumerate(zip(data.group_type_list, data.group_id_list, data.ins_code_list)):
         group_first_a_idx = a_idx
         g = data.group_list[g_idx]
         # Iterate over atoms in residue
@@ -2287,8 +2293,8 @@ def MMTFread(filename, frame=None, topoloc=None):
             topo.beta.append(data.b_factor_list[a_idx])
             topo.occupancy.append(data.occupancy_list[a_idx])
             topo.serial.append(data.atom_id_list[a_idx])
-            topo.altloc.append(data.alt_loc_list[a_idx].replace('\x00',''))
-            topo.insertion.append(ins.replace('\x00',''))
+            topo.altloc.append(data.alt_loc_list[a_idx].replace("\x00", ""))
+            topo.insertion.append(ins.replace("\x00", ""))
             topo.chain.append(data.chain_name_list[chainidx])
             topo.segid.append(data.chain_name_list[chainidx])  # Set segid as chain since there is no segid in mmtf
             topo.resid.append(resid)
@@ -2326,6 +2332,7 @@ _TOPOLOGY_READERS = {
     "prepi": PREPIread,
     "sdf": SDFread,
     "mmtf": MMTFread,
+    "mmtf.gz": MMTFread,
 }
 
 _MDTRAJ_TOPOLOGY_EXTS = [

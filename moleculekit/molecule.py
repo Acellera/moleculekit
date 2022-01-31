@@ -1217,7 +1217,8 @@ class Molecule(object):
         return os.path.splitext(fname)[1][1:]
 
     def _unzip(self, fname):
-        if fname.endswith(".gz"):
+        # mmtf has it's own gzip handler and won't decode to utf-8 anyway.
+        if fname.endswith(".gz") and not fname.endswith(".mmtf.gz"):
             import gzip
             from moleculekit.util import tempname
 
