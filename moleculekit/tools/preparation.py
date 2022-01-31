@@ -429,17 +429,20 @@ def _check_frozen_histidines(mol_in, _no_prot):
 
 
 def _prepare_nucleics(mol):
-    # Renames residues to the names expected by PARSE. Fixes issues with 5' G atoms.
+    # Renames residues to the names expected by PARSE. Fixes issues with 5' atoms.
     nucl_mask = mol.atomselect("nucleic")
     uq_resn = mol.resname[nucl_mask]
 
-    # Clean 5' G problematic atoms
+    # Clean 5' dangling P atom
     for ch in np.unique(mol.get("chain", "nucleic")):
+        # First residue of that chain
         resid = mol.resid[(mol.chain == ch) & mol.atomselect("nucleic")][0]
-        mol.remove(
-            f"chain {ch} and resid {resid} and (resname G) and (name P OP1 OP2)",
-            _logger=False,
+        remsel = (
+            (mol.chain == ch)
+            & (mol.resid == resid)
+            & np.isin(mol.name, ("P", "OP1", "OP2"))
         )
+        mol.remove(remsel, _logger=False)
 
     mapping = {
         "T": "DT",
