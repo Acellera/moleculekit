@@ -3,7 +3,7 @@ name: Test code and publish package
 on: [push]
 
 jobs:
-  deploypypi:
+  makedocs:
     #if: startsWith(github.event.ref, 'refs/tags/')
     needs: test
     runs-on: ${{ matrix.os }}
