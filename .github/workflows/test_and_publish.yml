@@ -34,11 +34,11 @@ jobs:
         cd doc; make rst
       
     - name: Archive rst artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: docs
-          path: |
-            doc/source/
+      uses: actions/upload-artifact@v2
+      with:
+        name: docs
+        path: |
+          doc/source/
 
   test:
     runs-on: ${{ matrix.os }}
