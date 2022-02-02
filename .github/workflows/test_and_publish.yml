@@ -27,7 +27,7 @@ jobs:
 
     - name: Install conda deps
       run: |
-        conda install -y -q --file extra_requirements.txt nbconvert sphinx python=${{ matrix.python-version }} -c acellera -c conda-forge
+        conda install -y -q --file extra_requirements.txt jupyter nbconvert sphinx python=${{ matrix.python-version }} -c acellera -c conda-forge
 
     - name: Generate rst docs
       run: |
