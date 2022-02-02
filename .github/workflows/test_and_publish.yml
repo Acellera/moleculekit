@@ -42,6 +42,7 @@ jobs:
         name: docs
         path: |
           doc/source/
+          !doc/source/scipy-theme/
 
   # test:
   #   runs-on: ${{ matrix.os }}
