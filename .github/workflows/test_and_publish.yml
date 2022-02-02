@@ -30,6 +30,7 @@ jobs:
         conda install -y -q --file extra_requirements.txt jupyter nbconvert sphinx python=${{ matrix.python-version }} -c acellera -c conda-forge
 
     - name: Generate rst docs
+      shell: bash -l {0}
       run: |
         cd doc; make rst
       
