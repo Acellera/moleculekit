@@ -2276,39 +2276,60 @@ def MMTFread(filename, frame=None, topoloc=None):
 
     topo = Topology()
 
+    gtypes = np.array(data.group_type_list).reshape(data.num_models, -1)
+    first_coords_only = False
+    if np.any(gtypes != gtypes[0]):
+        logger.warning("File contained multiple models with different topologies. Reading only first")
+        first_coords_only = True
+
+    # Read only first model topology
     a_idx = 0
-    groups_per_chain = np.cumsum(data.groups_per_chain)
-    # Iterate over residues
-    for i, (g_idx, resid, ins) in enumerate(zip(data.group_type_list, data.group_id_list, data.ins_code_list)):
-        group_first_a_idx = a_idx
-        g = data.group_list[g_idx]
-        # Iterate over atoms in residue
-        for name, elem, fchg in zip(g["atomNameList"], g["elementList"], g["formalChargeList"]):
-            chainidx = np.where(i < groups_per_chain)[0][0]
-            topo.record.append("ATOM" if "PEPTIDE LINKING" in g["chemCompType"] else "HETATM")
-            topo.resname.append(g["groupName"])
-            topo.name.append(name)
-            topo.element.append(elem)
-            topo.formalcharge.append(fchg)
-            topo.beta.append(data.b_factor_list[a_idx])
-            topo.occupancy.append(data.occupancy_list[a_idx])
-            topo.serial.append(data.atom_id_list[a_idx])
-            topo.altloc.append(data.alt_loc_list[a_idx].replace("\x00", ""))
-            topo.insertion.append(ins.replace("\x00", ""))
-            topo.chain.append(data.chain_name_list[chainidx])
-            topo.segid.append(data.chain_name_list[chainidx])  # Set segid as chain since there is no segid in mmtf
-            topo.resid.append(resid)
-            a_idx += 1
+    g_idx = 0
+    for chain_idx in range(data.chains_per_model[0]):
+        n_groups = data.groups_per_chain[chain_idx]
+        # Iterate over residues
+        for _ in range(n_groups):
+            group_first_a_idx = a_idx
+            gr = data.group_list[data.group_type_list[g_idx]]
+            resid = data.group_id_list[g_idx]
+            ins = data.ins_code_list[g_idx]
+        
+            # Iterate over atoms in residue
+            for name, elem, fchg in zip(gr["atomNameList"], gr["elementList"], gr["formalChargeList"]):
+                topo.record.append("ATOM" if "PEPTIDE LINKING" in gr["chemCompType"] else "HETATM")
+                topo.resname.append(gr["groupName"])
+                topo.name.append(name)
+                topo.element.append(elem)
+                topo.formalcharge.append(fchg)
+                topo.beta.append(data.b_factor_list[a_idx])
+                topo.occupancy.append(data.occupancy_list[a_idx])
+                topo.serial.append(data.atom_id_list[a_idx])
+                topo.altloc.append(data.alt_loc_list[a_idx].replace("\x00", ""))
+                topo.insertion.append(ins.replace("\x00", ""))
+                topo.chain.append(data.chain_name_list[chain_idx])
+                topo.segid.append(str(chain_idx))  # Set segid as chain since there is no segid in mmtf
+                topo.resid.append(resid)
+                a_idx += 1
 
-        for b in range(len(g["bondOrderList"])):
-            topo.bonds.append([g["bondAtomList"][b*2]+group_first_a_idx, g["bondAtomList"][b*2+1]+group_first_a_idx])
-            topo.bondtype.append(str(g["bondOrderList"][b]))
+            for b in range(len(gr["bondOrderList"])):
+                topo.bonds.append([gr["bondAtomList"][b*2]+group_first_a_idx, gr["bondAtomList"][b*2+1]+group_first_a_idx])
+                topo.bondtype.append(str(gr["bondOrderList"][b]))
 
+            g_idx += 1
+
+    n_atoms = len(topo.name)
     for b in range(len(data.bond_order_list)):
-        topo.bonds.append([data.bond_atom_list[b*2], data.bond_atom_list[b*2+1]])
+        bond_idx = [data.bond_atom_list[b*2], data.bond_atom_list[b*2+1]]
+        if np.any(bond_idx[0] >= n_atoms or bond_idx[1] >= n_atoms):
+            continue
+        topo.bonds.append(bond_idx)
         topo.bondtype.append(str(data.bond_order_list[b]))
-
-    coords = np.array([data.x_coord_list, data.y_coord_list, data.z_coord_list]).T
+    
+    if first_coords_only:
+        coords = np.array([data.x_coord_list[:n_atoms], data.y_coord_list[:n_atoms], data.z_coord_list[:n_atoms]])
+    else:
+        coords = np.array([data.x_coord_list.reshape(data.num_models, n_atoms), data.y_coord_list.reshape(data.num_models, n_atoms), data.z_coord_list.reshape(data.num_models, n_atoms)])
+        coords = np.transpose(coords, [2, 0, 1])
     traj = Trajectory(coords=coords)
     return MolFactory.construct(topo, traj, filename, frame)
 
@@ -2381,7 +2402,7 @@ for k in _COORDINATE_READERS:
     _ALL_READERS[k] += ensurelist(_COORDINATE_READERS[k])
 
 
-from moleculekit.molecule import Molecule
+from moleculekit.molecule import Molecule, mol_equal
 from glob import glob
 import unittest
 
@@ -2725,6 +2746,7 @@ class _TestReaders(unittest.TestCase):
         assert np.array_equal(mol.impropers, np.array([[ 6,  0, 12, 13]]))
 
     def test_mmtf(self):
+        from tqdm import tqdm
         mol = Molecule("3hyd")
         assert mol.numAtoms == 125
         assert mol.numBonds == 120
@@ -2732,6 +2754,31 @@ class _TestReaders(unittest.TestCase):
         mol = Molecule("3ptb")
         assert mol.numAtoms == 1701
         assert mol.numBonds == 1675
+
+        mol = Molecule("6a5j")
+        assert mol.numAtoms == 260
+        assert mol.numBonds == 257
+
+        # with open(os.path.join(self.testfolder(), 'pdbids.txt'), "r") as f:
+        #     pdbids = [ll.strip() for ll in f] 
+        # # Skip 1USE 2IWN 3ZHI which are wrong in pdb and correct in mmtf
+
+        pdbids = ["3ptb", "3hyd", "6a5j", "5vbl", "7q5b"]
+        # Compare with PDB reader
+        # nc-aa residues are not marked as hetatm in mmtf
+        pdb_exceptions = {"5vbl": ["record"], "7q5b": ["record"], "5v0o": ["record"]}
+        # segids don't exist in mmtf. formalcharge doesn't exist (correctly) in pdb
+        # serials are not consistent but are irrelevant anyway
+        exceptions = ["serial", "segid", "formalcharge"]
+        for pdbid in tqdm(pdbids, desc="PDB/MMTF comparison"):
+            with self.subTest(pdbid=pdbid):
+                mol1 = Molecule(pdbid, type="pdb")
+                mol2 = Molecule(pdbid, type="mmtf")
+                mol2.dropFrames(keep=0)
+                exc = exceptions
+                if pdbid in pdb_exceptions:
+                    exc += pdb_exceptions[pdbid]
+                assert mol_equal(mol1, mol2, exceptFields=exc)
 # fmt: on
 
 if __name__ == '__main__':

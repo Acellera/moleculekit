@@ -1211,7 +1211,7 @@ class _TestPreparation(unittest.TestCase):
         )
 
     def test_systemPrepare(self):
-        pdbids = ["3PTB", "1A25", "1U5U", "1UNC"]
+        pdbids = ["3PTB", "1A25", "1U5U", "1UNC", "6A5J"]
         for pdb in pdbids:
             with self.subTest(pdbid=pdb):
                 test_home = os.path.join(self.home, pdb)

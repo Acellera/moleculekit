@@ -848,6 +848,7 @@ def MMTFwrite(mol, filename):
             chain_id_list = []
             chain_name_list = []
             previous_chain = mol.chain[0]
+            previous_segid = mol.segid[0]
             previous_rid = 0
             groups_per_chain = []
             group_list = {}
@@ -893,8 +894,9 @@ def MMTFwrite(mol, filename):
                     }
 
                 # If a chain changes, count residues in chain
+                curr_segid = mol.segid[firstidx]
                 curr_chain = mol.chain[firstidx]
-                if curr_chain != previous_chain:
+                if curr_segid != previous_segid:
                     chain_name_list.append(previous_chain)
                     chain_id_list.append(ascii_uppercase[chain_count])
                     groups_per_chain.append(rr - previous_rid)
@@ -925,6 +927,7 @@ def MMTFwrite(mol, filename):
                                 "sequence": "",
                             }
                         )
+                    previous_segid = curr_segid
                     previous_chain = curr_chain
                     previous_rid = rr
                     chain_count += 1
@@ -949,7 +952,7 @@ def MMTFwrite(mol, filename):
             self.entity_list = entity_list
             self.b_factor_list = mol.beta.tolist()
             self.occupancy_list = mol.occupancy.tolist()
-            self.atom_id_list = np.arange(1, mol.numAtoms + 1).tolist()
+            self.atom_id_list = mol.serial.tolist()
             self.alt_loc_list = [x if x != "" else "\x00" for x in mol.altloc]
             self.ins_code_list = insertions
             self.sequence_index_list = sequence_index_list
@@ -1100,13 +1103,14 @@ class _TestWriters(unittest.TestCase):
         from moleculekit.molecule import Molecule
         from moleculekit.util import tempname
 
-        pdbids = ["3ptb", "1unc", "7q5b", "5vbl"]
+        pdbids = ["3ptb", "1unc", "7q5b", "5vbl", "6a5j", "3zhi"]
         for pdbid in pdbids:
             with self.subTest(pdbid=pdbid):
                 mol = Molecule(pdbid)
                 tmpfile = tempname(suffix=".mmtf")
                 mol.write(tmpfile)
                 mol2 = Molecule(tmpfile)
+                mol.dropFrames(keep=0)  # We only write one frame by conviction
                 assert mol_equal(mol, mol2)
                 os.remove(tmpfile)
 

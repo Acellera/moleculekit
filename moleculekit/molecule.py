@@ -2813,10 +2813,10 @@ class _TestMolecule(TestCase):
     def test_sequence(self):
         seq, seqatms = self.mol3PTB.sequence(return_idx=True)
         refseq = "IVGGYTCGANTVPYQVSLNSGYHFCGGSLINSQWVVSAAHCYKSGIQVRLGEDNINVVEGNEQFISASKSIVHPSYNSNTLNNDIMLIKLKSAASLNSRVASISLPTSCASAGTQCLISGWGNTKSSGTSYPDVLKCLKAPILSDSSCKSAYPGQITSNMFCAGYLEGGKDSCQGDSGGPVVCSGKLQGIVSWGSGCAQKNKPGVYTKVCNYVSWIKQTIASN"
-        assert seq["A"] == refseq
+        assert seq["0"] == refseq
 
         # Ensure that the returned indexes only belong to a single residue
-        for indexes in seqatms["A"]:
+        for indexes in seqatms["0"]:
             assert len(np.unique(self.mol3PTB.resname[indexes])) == 1
             assert len(np.unique(self.mol3PTB.resid[indexes])) == 1
 
