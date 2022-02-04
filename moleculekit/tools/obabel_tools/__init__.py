@@ -32,7 +32,8 @@ def getOpenBabelProperties(mol):
             exc.output,
         )
     else:
-        print(output)
+        if output!='\n':
+            print(output)
 
     os.remove(pdbfile)
 
