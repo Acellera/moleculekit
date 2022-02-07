@@ -413,10 +413,10 @@ class TautomerCanonicalizer:
 
         fig = plt.figure(figsize=(10, 10), dpi=100, tight_layout=True)
         for n, (t, l, a) in enumerate(zip(tautomers, legends, atoms)):
-            depcition = Draw.MolToImage(t, subImgSize=(300, 300), highlightAtoms=a)
+            depiction = Draw.MolToImage(t._mol, subImgSize=(300, 300), highlightAtoms=a)
             ax = fig.add_subplot(ceil(len(tautomers) / dep_for_row), dep_for_row, n + 1)
             ax.set_xlabel(l, fontsize=5)
-            ax.imshow(depcition, aspect="equal")
+            ax.imshow(depiction, aspect="equal")
         plt.show()
 
     def get_conjugate(self, tautomer):
