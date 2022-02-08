@@ -152,7 +152,9 @@ TAUTOMER_TRANSFORMS = (
     TautomerTransform("aliphatic imine r", "[NX3!H0]-[C]=[CX3]"),
     TautomerTransform("special imine f", "[N!H0]-[C]=[CX3R0]"),
     TautomerTransform("special imine r", "[CX4!H0]-[c]=[n]"),
-    TautomerTransform("1,3 aromatic heteroatom H shift f", "[#7!H0]-[#6R1]=[O,#7X2]"),
+    TautomerTransform(
+        "1,3 aromatic heteroatom H shift f", "[#7!H0;!a]-[#6R1;!a]=[O,#7X2,!a]"
+    ),
     TautomerTransform("1,3 aromatic heteroatom H shift r", "[O,#7;!H0]-[#6R1]=[#7X2]"),
     TautomerTransform(
         "1,3 heteroatom H shift", "[#7,S,O,Se,Te;!H0]-[#7X2,#6,#15]=[#7,#16,#8,Se,Te]"
@@ -220,7 +222,14 @@ TAUTOMER_SCORES = (
     TautomerScore("methyl", "[CX4H3]", 1),
     TautomerScore("guanidine terminal=N", "[#7][#6](=[NR0])[#7H0]", 1),
     TautomerScore("guanidine endocyclic=N", "[#7;R][#6;R]([N])=[#7;R]", 2),
+    # Rubbs14: I tried changing the score for the previous guanidine matching, it didn't appear to change anything.
+    # So then I added this line in which I heavily penalize the aliphatic nitrogen in a guainine moiety where the other
+    # elements are aromatic. This should fix the problem with the structures with a double bond between the aliphatic N
+    # and aromatic rings containing the n=c-n moiety. Should work as well for the amidines.
+    TautomerScore("terminal guanidine=N", "[#7;A;!R;!r]=[c;r]([n;r])[n;r]", -50),
     TautomerScore("aci-nitro", "[#6]=[N+]([O-])[OH]", -4),
+    # Rubbs14: added hydroxamic acid matching pattern
+    TautomerScore("hydroxamic acid", "[C](=O)-[NH]-[OH]", 5),
 )
 
 #: The default value for the maximum number of tautomers to enumerate, a limit to prevent combinatorial explosion.
