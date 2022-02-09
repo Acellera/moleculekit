@@ -119,7 +119,7 @@ def sequenceStructureAlignment(
     segment_type = segment_type_mol
 
     if segment_type == "protein":
-        alignments = pairwise2.align.globaldx(seqref, seqmol, matlist.blosum62)
+        alignments = pairwise2.align.globalds(seqref, seqmol, matlist.blosum62,-11.,-1.) 
     elif segment_type == "nucleic":
         alignments = pairwise2.align.globalxx(seqref, seqmol)
     numaln = len(alignments)
