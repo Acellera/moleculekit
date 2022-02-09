@@ -351,7 +351,7 @@ def PSFwrite(m, filename, explicitbonds=None):
         print(string_format, file=f)
 
     if explicitbonds is not None:
-        bonds = explicitbonds
+        bonds, _ = explicitbonds
     else:
         bonds = m.bonds
 
@@ -717,7 +717,7 @@ def MDTRAJwrite(mol, filename):
         raise ValueError(f'MDtraj reader failed for file {filename} with error "{e}"')
 
 
-def CIFwrite(mol, filename):
+def CIFwrite(mol, filename, explicitbonds=None):
     from moleculekit.pdbx.reader.PdbxContainers import DataContainer, DataCategory
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
 
@@ -809,6 +809,12 @@ def CIFwrite(mol, filename):
         curContainer.append(aCat)
 
         if single_mol:
+            bonds = mol.bonds
+            bondtype = mol.bondtype
+            if explicitbonds is not None:
+                bonds = explicitbonds[0]
+                bondtype = explicitbonds[1]
+
             bCat = DataCategory("chem_comp_bond")
             for at in ["comp_id", "atom_id_1", "atom_id_2", "value_order"]:
                 bCat.appendAttribute(at)
@@ -816,9 +822,9 @@ def CIFwrite(mol, filename):
                 bCat.append(
                     [
                         mol.resname[0],
-                        mol.name[mol.bonds[i][0]],
-                        mol.name[mol.bonds[i][1]],
-                        bondtype_map[mol.bondtype[i]],
+                        mol.name[bonds[i][0]],
+                        mol.name[bonds[i][1]],
+                        bondtype_map[bondtype[i]],
                     ]
                 )
             curContainer.append(bCat)

@@ -1919,8 +1919,9 @@ class Molecule(object):
             return
 
         bonds = None
-        if guessBonds:
+        if guessBonds and viewer.lower() != "pymol":
             bonds = self._getBonds()
+            bonds = (bonds, ["1"] * bonds.shape[0])
 
         # Call the specified backend
         retval = None
@@ -1938,29 +1939,23 @@ class Molecule(object):
         elif viewer.lower() == "ngl" or viewer.lower() == "webgl":
             retval = self._viewNGL(gui=gui)
         elif viewer.lower() == "pymol":
-            mol2 = tempname(suffix=".mol2")
-            self.write(mol2, explicitbonds=bonds)
-            xtc = tempname(suffix=".xtc")
-            self.write(xtc)
-            self._viewPymol(mol2, xtc)
-            os.remove(xtc)
-            os.remove(mol2)
+            self._viewPymol()
         else:
             raise ValueError("Unknown viewer.")
 
         if retval is not None:
             return retval
 
-    def _viewPymol(self, mol2, xtc):
-        from pymol import cmd
-        from moleculekit.pymolviewer import getCurrentViewer
+    def _viewPymol(self):
+        from moleculekit.pymolviewer import getCurrentViewer, pymolViewingMols
         import uuid
 
         getCurrentViewer()
         viewname = f"{self.viewname}_{uuid.uuid4().hex[:6].upper()}"
-        cmd.load(mol2, viewname)
-        cmd.load_traj(xtc, viewname, state=1)
-        cmd.dss()  # Guess SS
+        for val in pymolViewingMols.values():
+            if val == self:
+                return
+        pymolViewingMols[viewname] = self
 
     def _viewVMD(self, psf, pdb, xtc, vhandle, name, guessbonds):
         from moleculekit.vmdviewer import getCurrentViewer
@@ -2312,8 +2307,9 @@ def mol_equal(
         ):
             difffields += [field]
 
-    if len(difffields) > 0:
-        print(f"Differences detected in mol1 and mol2 in field(s) {difffields}.")
+    if len(difffields):
+        if _logger:
+            print(f"Differences detected in mol1 and mol2 in field(s) {difffields}.")
         return False
     return True
 
