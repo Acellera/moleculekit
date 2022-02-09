@@ -119,7 +119,10 @@ def sequenceStructureAlignment(
     segment_type = segment_type_mol
 
     if segment_type == "protein":
-        alignments = pairwise2.align.globalds(seqref, seqmol, matlist.blosum62,-11.,-1.) 
+        # -11 is gap creation penalty. -1 is gap extension penalty. Taken from https://www.arabidopsis.org/Blast/BLASToptions.jsp BLASTP options
+        alignments = pairwise2.align.globalds(
+            seqref, seqmol, matlist.blosum62, -11.0, -1.0
+        )
     elif segment_type == "nucleic":
         alignments = pairwise2.align.globalxx(seqref, seqmol)
     numaln = len(alignments)
