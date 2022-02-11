@@ -4,6 +4,7 @@
 # No redistribution in whole or part
 #
 from moleculekit.molecule import Molecule
+from moleculekit.home import home
 from pdb2pqr.aa import Amino
 import numpy as np
 import os
@@ -13,27 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 # PDB2PQR is quite finicky about the backbone coordinates so I copy them from ALA
-backbone = Molecule().empty(6)
-backbone.name[:] = ["N", "CA", "C", "O", "H", "HA"]
-backbone.element[:] = ["N", "C", "C", "O", "H", "H"]
-backbone.coords = (
-    np.array(
-        [
-            [1.2010, 0.8470, 0.0000],
-            [0.0000, 0.0000, 0.0000],
-            [-1.250, 0.8810, 0.0000],
-            [-2.185, 0.6600, -0.784],
-            [1.2010, 1.8470, 0.0000],
-            [0.0000, -0.557, -0.831],
-        ]
-    )
-    .reshape((-1, 3, 1))
-    .astype(np.float32)
-    .copy()
-)
-backbone.bonds = np.array([[0, 1], [0, 4], [1, 5], [1, 2], [2, 3]])
-backbone.bondtype = np.array(["1", "1", "1", "1", "2"], dtype=object)
-backbone.formalcharge[:] = [-1, 0, 0, 0, 0, 0]
+backbone = Molecule(os.path.join(home(shareDir="backbone.cif")))
 
 
 def _get_residue_mol(mol: Molecule, nsres: str):

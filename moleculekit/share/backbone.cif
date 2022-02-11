@@ -1,0 +1,38 @@
+data_BBB
+#
+#
+_chem_comp.id                  BBB
+_chem_comp.type                NON-POLYMER
+_chem_comp.pdbx_formal_charge  -1
+##
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+BBB  N   .  N  -1  0.0   1.201   0.847   0.000   1.201   0.847   0.000  
+BBB  CA  .  C   0  0.0   0.000   0.000   0.000   0.000   0.000   0.000  
+BBB  C   .  C   0  0.0  -1.250   0.881   0.000  -1.250   0.881   0.000  
+BBB  O   .  O   0  0.0  -2.185   0.660  -0.784  -2.185   0.660  -0.784  
+BBB  H   .  H   0  0.0   1.201   1.847   0.000   1.201   1.847   0.000  
+BBB  HA  .  H   0  0.0   0.000  -0.557  -0.831   0.000  -0.557  -0.831  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+BBB  N   CA  SING  
+BBB  N   H   SING  
+BBB  CA  HA  SING  
+BBB  CA  C   SING  
+BBB  C   O   DOUB  
+##
