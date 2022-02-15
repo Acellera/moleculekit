@@ -1114,7 +1114,7 @@ class Molecule(object):
                 not isinstance(ff, Sim)
                 and not isinstance(ff, Frame)
                 and len(ff) != 4
-                and not os.path.exists(ff)
+                and not os.path.isfile(ff)
             ):
                 raise FileNotFoundError(f"File {ff} was not found.")
 
