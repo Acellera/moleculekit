@@ -2267,7 +2267,7 @@ def SDFread(filename, frame=None, topoloc=None):
 def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
     from mmtf import fetch, parse_gzip, parse
 
-    if len(filename) == 4 and not os.path.exists(filename):
+    if len(filename) == 4 and not os.path.isfile(filename):
         data = fetch(filename)
     elif filename.endswith(".gz"):
         data = parse_gzip(filename)
