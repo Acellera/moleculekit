@@ -2264,7 +2264,7 @@ def SDFread(filename, frame=None, topoloc=None):
     return MolFactory.construct(topo, traj, filename, frame)
 
 
-def MMTFread(filename, frame=None, topoloc=None):
+def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
     from mmtf import fetch, parse_gzip, parse
 
     if len(filename) == 4 and not os.path.exists(filename):
@@ -2331,7 +2331,7 @@ def MMTFread(filename, frame=None, topoloc=None):
         coords = np.array([data.x_coord_list.reshape(data.num_models, n_atoms), data.y_coord_list.reshape(data.num_models, n_atoms), data.z_coord_list.reshape(data.num_models, n_atoms)])
         coords = np.transpose(coords, [2, 0, 1])
     traj = Trajectory(coords=coords)
-    return MolFactory.construct(topo, traj, filename, frame)
+    return MolFactory.construct(topo, traj, filename, frame, validateElements=validateElements)
 
 
 # Register here all readers with their extensions
