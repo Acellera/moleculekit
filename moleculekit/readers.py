@@ -2000,9 +2000,10 @@ def CIFread(filename, frame=None, topoloc=None):
         if currmodel != -1 and currmodel != modelid:
             currmodel = modelid
             allcoords.append(coords)
-            ideal_allcoords.append(ideal_coords)
             coords = []
-            ideal_coords = []
+            if len(ideal_coords):
+                ideal_allcoords.append(ideal_coords)
+                ideal_coords = []
 
         if currmodel == -1:
             currmodel = modelid
@@ -2066,10 +2067,11 @@ def CIFread(filename, frame=None, topoloc=None):
         ideal_allcoords.append(ideal_coords)
 
     allcoords = np.stack(allcoords, axis=2).astype(np.float32)
-    ideal_allcoords = np.stack(ideal_allcoords, axis=2).astype(np.float32)
+    if len(ideal_allcoords):
+        ideal_allcoords = np.stack(ideal_allcoords, axis=2).astype(np.float32)
 
     coords = allcoords
-    if np.any(np.all(allcoords == 0, axis=1)):
+    if np.any(np.all(allcoords == 0, axis=1)) and len(ideal_allcoords):
         if np.any(np.all(ideal_allcoords == 0, axis=1)):
             logger.warning("Found [0, 0, 0] coordinates in molecule! Proceed with caution.")
         coords = ideal_allcoords
@@ -2629,6 +2631,10 @@ class _TestReaders(unittest.TestCase):
 
         mol = Molecule(os.path.join(self.testfolder(), 'BEN.cif'))
         assert mol.numAtoms == 17, mol.numAtoms
+        assert mol.numFrames == 1
+
+        mol = Molecule(os.path.join(self.testfolder(), '33X.cif'))
+        assert mol.numAtoms == 16, mol.numAtoms
         assert mol.numFrames == 1
 
     def test_multiple_file_fileloc(self):
