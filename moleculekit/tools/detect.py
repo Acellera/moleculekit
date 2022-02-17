@@ -288,7 +288,7 @@ def _chooseTerminals(graph, centre, sideGraph):
     return chosen_terminals
 
 
-def detectParameterizableDihedrals(molecule):
+def detectParameterizableDihedrals(molecule, exclude_atoms=()):
     """
     Detect parameterizable dihedral angles
 
@@ -296,6 +296,8 @@ def detectParameterizableDihedrals(molecule):
     ---------
     molecule : :class:`Molecule <moleculekit.molecule.Molecule>`
         Molecule object
+    exclude_atoms : list
+        Ignore dihedrals which consist purely of atoms in this list
 
     Return
     ------
@@ -388,10 +390,12 @@ def detectParameterizableDihedrals(molecule):
         all_terminals = itertools.product(*all_terminals)
 
         # Generate new dihedral angles
-        new_dihedrals = [
-            (terminals[0], *core, terminals[1]) for terminals in all_terminals
-        ]
-        dihedrals.extend(new_dihedrals)
+        for terminals in all_terminals:
+            new_dihedral = (terminals[0], *core, terminals[1])
+            if all([idx in exclude_atoms for idx in new_dihedral]):
+                # Skip dihedrals consisting purely of atoms in exclude_atoms
+                continue
+            dihedrals.append(new_dihedral)
 
     # Get equivalent groups for each atom for each dihedral
     _, _, equivalent_group_by_atom = detectEquivalentAtoms(molecule)
