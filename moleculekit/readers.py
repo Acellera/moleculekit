@@ -2304,9 +2304,9 @@ def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
         logger.warning("File contained multiple models with different topologies. Reading only first")
         first_coords_only = True
 
-    # Read only first model topology
     a_idx = 0
     g_idx = 0
+    # Read only first model topology
     for chain_idx in range(data.chains_per_model[0]):
         n_groups = data.groups_per_chain[chain_idx]
         # Iterate over residues
@@ -2318,7 +2318,7 @@ def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
         
             # Iterate over atoms in residue
             for name, elem, fchg in zip(gr["atomNameList"], gr["elementList"], gr["formalChargeList"]):
-                topo.record.append("ATOM" if "PEPTIDE LINKING" in gr["chemCompType"] else "HETATM")
+                topo.record.append("ATOM" if gr["singleLetterCode"] != "?" else "HETATM")
                 topo.resname.append(gr["groupName"])
                 topo.name.append(name)
                 topo.element.append(elem)
