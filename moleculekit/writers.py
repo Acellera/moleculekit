@@ -898,9 +898,7 @@ def MMTFwrite(mol, filename):
                         "bondAtomList": group_bonds.flatten().tolist(),
                         "formalChargeList": mol.formalcharge[mask].tolist(),
                         "singleLetterCode": _residueNameTable.get(resname, "?"),
-                        "chemCompType": "NON-POLYMER"
-                        if mol.record[firstidx] == "HETATM"
-                        else "PEPTIDE LINKING",
+                        "chemCompType": "OTHER",
                     }
 
                 # If a chain changes, count residues in chain
@@ -1121,7 +1119,7 @@ class _TestWriters(unittest.TestCase):
                 mol.write(tmpfile)
                 mol2 = Molecule(tmpfile)
                 mol.dropFrames(keep=0)  # We only write one frame by conviction
-                assert mol_equal(mol, mol2)
+                assert mol_equal(mol, mol2, exceptFields=("record"))
                 os.remove(tmpfile)
 
 
