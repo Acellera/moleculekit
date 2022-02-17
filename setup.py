@@ -77,6 +77,7 @@ if __name__ == "__main__":
                 "vmd_wrapper",
                 "logging.ini",
                 "share/*/*/*",
+                "share/*/*",
                 "share/*",
             ],
         },
