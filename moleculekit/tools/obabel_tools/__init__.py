@@ -24,7 +24,7 @@ def getOpenBabelProperties(mol):
             [sys.executable, obabelcli, pdbfile, outfile],
             stderr=subprocess.STDOUT,
             universal_newlines=True,
-        )
+        ).strip()
     except subprocess.CalledProcessError as exc:
         print(
             "Failed to call getOpenBabelProperties with error",
@@ -32,7 +32,8 @@ def getOpenBabelProperties(mol):
             exc.output,
         )
     else:
-        print(output)
+        if len(output):
+            print(output)
 
     os.remove(pdbfile)
 
