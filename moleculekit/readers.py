@@ -1879,7 +1879,7 @@ def GROTOPread(filename, frame=None, topoloc=None):
     return MolFactory.construct(topo, None, filename, frame)
 
 
-def PDBXMMCIFread(filename, frame=None, topoloc=None):
+def CIFread(filename, frame=None, topoloc=None):
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader
 
     myDataList = []
@@ -1951,7 +1951,7 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
                 val = 0
             if dtype == str:
                 val = ""
-        return val
+        return dtype(val)
 
     # Parsing CRYST1 data
     cryst = dataObj.getObj("cell")
@@ -1975,7 +1975,9 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
 
     # Parsing ATOM and HETATM data
     allcoords = []
+    ideal_allcoords = []
     coords = []
+    ideal_coords = []
     currmodel = -1
     firstmodel = None
     if "atom_site" in dataObj.getObjNameList():
@@ -1997,8 +1999,10 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
         # On a new model, restart coords and append the old ones
         if currmodel != -1 and currmodel != modelid:
             currmodel = modelid
-            allcoords.append(np.array(coords, dtype=np.float32))
+            allcoords.append(coords)
+            ideal_allcoords.append(ideal_coords)
             coords = []
+            ideal_coords = []
 
         if currmodel == -1:
             currmodel = modelid
@@ -2015,7 +2019,7 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
                 val = row[atom_site.getAttributeIndex(source_field)]
                 val = dtype(fixDefault(val, dtype))
                 if (
-                    source_field in ("label_alt_id", "alt_atom_id") and val == "."
+                    source_field in ("label_alt_id", "alt_atom_id", "auth_asym_id", "label_asym_id", "pdbx_PDB_ins_code") and val == "."
                 ):  # Atoms without altloc seem to be stored with a dot
                     val = ""
                 topo.__dict__[target_field].append(val)
@@ -2031,9 +2035,16 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
         elif "model_Cartn_x" in attrs:
             coords.append(
                 [
-                    row[atom_site.getAttributeIndex("model_Cartn_x")],
-                    row[atom_site.getAttributeIndex("model_Cartn_y")],
-                    row[atom_site.getAttributeIndex("model_Cartn_z")],
+                    fixDefault(row[atom_site.getAttributeIndex("model_Cartn_x")], float),
+                    fixDefault(row[atom_site.getAttributeIndex("model_Cartn_y")], float),
+                    fixDefault(row[atom_site.getAttributeIndex("model_Cartn_z")], float),
+                ]
+            )
+            ideal_coords.append(
+                [
+                    fixDefault(row[atom_site.getAttributeIndex("pdbx_model_Cartn_x_ideal")], float),
+                    fixDefault(row[atom_site.getAttributeIndex("pdbx_model_Cartn_y_ideal")], float),
+                    fixDefault(row[atom_site.getAttributeIndex("pdbx_model_Cartn_z_ideal")], float),
                 ]
             )
 
@@ -2050,11 +2061,20 @@ def PDBXMMCIFread(filename, frame=None, topoloc=None):
             topo.bondtype.append(bondtype_mapping[bondtype])
 
     if len(coords) != 0:
-        allcoords.append(np.array(coords, dtype=np.float32))
+        allcoords.append(coords)
+    if len(ideal_coords) != 0:
+        ideal_allcoords.append(ideal_coords)
 
-    allcoords = np.stack(allcoords, axis=2)
+    allcoords = np.stack(allcoords, axis=2).astype(np.float32)
+    ideal_allcoords = np.stack(ideal_allcoords, axis=2).astype(np.float32)
 
-    return MolFactory.construct(topo, Trajectory(coords=allcoords), filename, frame)
+    coords = allcoords
+    if np.any(np.all(allcoords == 0, axis=1)):
+        if np.any(np.all(ideal_allcoords == 0, axis=1)):
+            logger.warning("Found [0, 0, 0] coordinates in molecule! Proceed with caution.")
+        coords = ideal_allcoords
+
+    return MolFactory.construct(topo, Trajectory(coords=coords), filename, frame)
 
 
 _ATOM_TYPE_REG_EX = re.compile(r"^\S+x\d+$")
@@ -2348,7 +2368,7 @@ _TOPOLOGY_READERS = {
     "pdbqt": PDBQTread,
     "top": [GROTOPread, PRMTOPread],
     "crd": CRDCARDread,
-    "cif": PDBXMMCIFread,
+    "cif": CIFread,
     "rtf": RTFread,
     "prepi": PREPIread,
     "sdf": SDFread,

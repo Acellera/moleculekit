@@ -717,11 +717,15 @@ def MDTRAJwrite(mol, filename):
         raise ValueError(f'MDtraj reader failed for file {filename} with error "{e}"')
 
 
-def CIFwrite(mol, filename, explicitbonds=None):
+def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
     from moleculekit.pdbx.reader.PdbxContainers import DataContainer, DataCategory
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
 
-    single_mol = len(np.unique(mol.resname)) == 1
+    if chemcomp is not None:
+        single_mol = chemcomp
+    else:
+        single_mol = len(np.unique(mol.resname)) == 1
+
     if not len(mol.resname[0]):
         raise RuntimeError("Please specify a resname for your molecule.")
 
