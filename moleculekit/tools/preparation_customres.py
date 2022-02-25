@@ -66,6 +66,7 @@ def _generate_custom_residue(inmol: Molecule, resname: str):
         return res[0][0]
 
     mol = _get_residue_mol(inmol, resname)
+
     # Adding an X_ to all atom names to separate them from the matched names
     for i, nn in enumerate(mol.name):
         mol.name[i] = f"X_{nn}"
@@ -79,39 +80,86 @@ def _generate_custom_residue(inmol: Molecule, resname: str):
     for pp in matching:  # Rename atoms in reference molecule
         mol.name[pp[0]] = inmol.name[pp[1]]
 
-    # Align and replace the backbone with the standard backbone of pdb2pqr
-    mol.align("name N CA C", refmol=backbone)
+    # # Align and replace the backbone with the standard backbone of pdb2pqr
+    # mol.align("name N CA C", refmol=backbone)
 
-    # Remove everything connected to CA
+    # # Remove everything connected to CA
+    # gg = mol.toGraph()
+    # gg.remove_edge(get_idx(mol, "CA"), get_idx(mol, "CB"))
+    # cd_idx = get_idx(mol, "CD")
+    # n_idx = get_idx(mol, "N")
+    # has_n_cd_bond = False
+    # if cd_idx is not None and gg.has_edge(n_idx, cd_idx):
+    #     gg.remove_edge(n_idx, cd_idx)  # Prolines
+    #     has_n_cd_bond = True
+    # to_remove = np.array(list(nx.node_connected_component(gg, get_idx(mol, "CA"))))
+    # mol.remove(to_remove, _logger=False)
+
+    # # Insert the standard backbone
+    # mol.insert(backbone, index=0)
+
+    # # Add back CA CB bond
+    # mol.bonds = np.vstack(([get_idx(mol, "CA"), get_idx(mol, "CB")], mol.bonds))
+    # mol.bondtype = np.hstack(("1", mol.bondtype))
+    # if has_n_cd_bond:
+    #     mol.bonds = np.vstack(([get_idx(mol, "N"), get_idx(mol, "CD")], mol.bonds))
+    #     mol.bondtype = np.hstack(("1", mol.bondtype))
+
+    # Fix hydrogen names for CA / N
     gg = mol.toGraph()
-    gg.remove_edge(get_idx(mol, "CA"), get_idx(mol, "CB"))
-    cd_idx = get_idx(mol, "CD")
+    ca_idx = get_idx(mol, "CA")
+    ca_hs = [nn for nn in gg.neighbors(ca_idx) if gg.nodes[nn]["element"] == "H"]
+    if len(ca_hs) > 1:
+        raise RuntimeError("Found more than 1 hydrogen on CA atom!")
+    if len(ca_hs) == 1:
+        mol.name[ca_hs[0]] = "HA"
+
+    gg = mol.toGraph()
     n_idx = get_idx(mol, "N")
-    has_n_cd_bond = False
-    if cd_idx is not None and gg.has_edge(n_idx, cd_idx):
-        gg.remove_edge(n_idx, cd_idx)  # Prolines
-        has_n_cd_bond = True
-    to_remove = np.array(list(nx.node_connected_component(gg, get_idx(mol, "CA"))))
-    mol.remove(to_remove, _logger=False)
+    n_neighbours = list(gg.neighbors(n_idx))
+    n_hs = [nn for nn in n_neighbours if gg.nodes[nn]["element"] == "H"]
+    # TODO: Clean up this logic
+    if len(n_hs) == 1:
+        mol.name[n_hs[0]] = "H"
+    elif len(n_hs) == 2:
+        mol.name[n_hs[0]] = "H"
+        mol.name[n_hs[1]] = "HN2"
+    elif len(n_hs) == 3:
+        mol.name[n_hs[0]] = "H"
+        mol.name[n_hs[1]] = "HN2"
+        mol.name[n_hs[2]] = "HN3"
 
-    # Insert the standard backbone
-    mol.insert(backbone, index=0)
+    n_heavy = len(n_neighbours) - len(n_hs)
+    if n_heavy == 1:
+        mol.remove("name HN3 HN2", _logger=False)
+    elif n_heavy == 2:
+        mol.remove("name HN3 HN2 H", _logger=False)
 
-    # Add back CA CB bond
-    mol.bonds = np.vstack(([get_idx(mol, "CA"), get_idx(mol, "CB")], mol.bonds))
-    mol.bondtype = np.hstack(("1", mol.bondtype))
-    if has_n_cd_bond:
-        mol.bonds = np.vstack(([get_idx(mol, "N"), get_idx(mol, "CD")], mol.bonds))
-        mol.bondtype = np.hstack(("1", mol.bondtype))
+    gg = mol.toGraph()
+    idx = get_idx(mol, "C")
+    neighbours = list(gg.neighbors(idx))
+    hs = [nn for nn in neighbours if gg.nodes[nn]["element"] == "H"]
+    mol.remove(f"index {' '.join(map(str, hs))}", _logger=False)
 
     # Rename all added hydrogens
     hydr = mol.name == "X_H"
-    mol.name[hydr] = [f"H{i}" for i in range(1, sum(hydr) + 1)]
+    mol.name[hydr] = [f"H{i}" for i in range(10, sum(hydr) + 10)]
 
     # Rename residues
     mol.resname[:] = resname
     # AMBER format is: N H CA HA [sidechain] C O
-    mol.reorderAtoms([0, 4, 1, 5] + list(range(6, mol.numAtoms)) + [2, 3])
+    bbatoms = [x for x in ["N", "H", "CA", "HA", "C", "O"] if x in mol.name]
+
+    ordered_idx = [get_idx(mol, nn) for nn in bbatoms]
+    other_idx = np.setdiff1d(range(mol.numAtoms), ordered_idx)
+    mol.reorderAtoms(ordered_idx[:4] + other_idx.tolist() + ordered_idx[4:])
+
+    mol.align("name N CA C", refmol=backbone)
+
+    # if resname == "DAL":
+    #     from IPython.core.debugger import set_trace
+
+    #     set_trace()
 
     return mol
 
