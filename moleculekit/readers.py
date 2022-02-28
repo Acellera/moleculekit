@@ -1879,7 +1879,7 @@ def GROTOPread(filename, frame=None, topoloc=None):
     return MolFactory.construct(topo, None, filename, frame)
 
 
-def CIFread(filename, frame=None, topoloc=None):
+def CIFread(filename, frame=None, topoloc=None, zerowarning=True):
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader
 
     myDataList = []
@@ -2072,7 +2072,7 @@ def CIFread(filename, frame=None, topoloc=None):
 
     coords = allcoords
     if np.any(np.all(allcoords == 0, axis=1)) and len(ideal_allcoords):
-        if np.any(np.all(ideal_allcoords == 0, axis=1)):
+        if np.any(np.all(ideal_allcoords == 0, axis=1)) and zerowarning:
             logger.warning("Found [0, 0, 0] coordinates in molecule! Proceed with caution.")
         coords = ideal_allcoords
 
