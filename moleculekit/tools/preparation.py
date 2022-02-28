@@ -1381,6 +1381,9 @@ class _TestPreparation(unittest.TestCase):
             df,
         )
 
+    @unittest.skipUnless(ACEPREP_EXISTS, "Can only run with aceprep installed")
+    def test_cyclic_peptides_noncanonical(self):
+        test_home = os.path.join(self.home, "test-cyclic-peptides")
         mol = Molecule(os.path.join(test_home, "4TOT_E.pdb"))
 
         pmol, df = systemPrepare(mol, return_details=True)
