@@ -1,0 +1,15 @@
+resname,protonation,resid,insertion,chain,segid,pKa,buried
+GLY,GLY,1,,A,0,,
+ARG,ARG,2,,A,0,12.442946647756733,0.0
+CYS,CYX,3,,A,0,99.99,0.0
+THR,THR,4,,A,0,,
+GLN,GLN,5,,A,0,,
+ALA,ALA,6,,A,0,,
+TRP,TRP,7,,A,0,,
+PRO,PRO,8,,A,0,,
+PRO,PRO,9,,A,0,,
+ILE,ILE,10,,A,0,,
+CYS,CYX,11,,A,0,99.99,0.0
+PHE,PHE,12,,A,0,,
+PRO,PRO,13,,A,0,,
+ASP,ASP,14,,A,0,3.5232669478580796,0.0

@@ -1368,6 +1368,30 @@ class _TestPreparation(unittest.TestCase):
             df,
         )
 
+    def test_cyclic_peptides(self):
+        test_home = os.path.join(self.home, "test-cyclic-peptides")
+        mol = Molecule(os.path.join(test_home, "5VAV.pdb"))
+
+        pmol, df = systemPrepare(mol, return_details=True)
+
+        self._compare_results(
+            os.path.join(test_home, "5VAV_prepared.pdb"),
+            os.path.join(test_home, "5VAV_prepared.csv"),
+            pmol,
+            df,
+        )
+
+        mol = Molecule(os.path.join(test_home, "4TOT_E.pdb"))
+
+        pmol, df = systemPrepare(mol, return_details=True)
+
+        self._compare_results(
+            os.path.join(test_home, "4TOT_E_prepared.pdb"),
+            os.path.join(test_home, "4TOT_E_prepared.csv"),
+            pmol,
+            df,
+        )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

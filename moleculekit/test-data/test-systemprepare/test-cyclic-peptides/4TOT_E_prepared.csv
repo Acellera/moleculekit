@@ -1,0 +1,12 @@
+resname,protonation,resid,insertion,chain,segid,pKa,buried
+DAL,DAL,1,,E,4,,
+MLE,MLE,2,,E,4,,
+MLE,MLE,3,,E,4,,
+MVA,MVA,4,,E,4,,
+BMT,BMT,5,,E,4,,
+ABA,ABA,6,,E,4,,
+33X,33X,7,,E,4,,
+34E,34E,8,,E,4,,
+VAL,VAL,9,,E,4,,
+MLE,MLE,10,,E,4,,
+ALA,ALA,11,,E,4,,
