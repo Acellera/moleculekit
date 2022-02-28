@@ -17,10 +17,11 @@ logger = logging.getLogger(__name__)
 backbone = Molecule(os.path.join(home(shareDir="backbone.cif")))
 
 
-def _get_residue_mol(mol: Molecule, nsres: str):
+def _template_residue_from_smiles(inmol: Molecule, nsres: str):
     from rdkit import Chem
     from aceprep.detector import getLigandFromDict
     from aceprep.prepare import RDKprepare
+    from moleculekit.tools.graphalignment import makeMolGraph, compareGraphs
     import tempfile
     import logging
 
@@ -29,11 +30,11 @@ def _get_residue_mol(mol: Molecule, nsres: str):
     acepreplog.setLevel("CRITICAL")
 
     try:
-        assert np.all(np.isin(["N", "CA", "C", "O"], mol.name))
+        assert np.all(np.isin(["N", "CA", "C", "O"], inmol.name))
 
         with tempfile.TemporaryDirectory() as outdir:
             resfile = os.path.join(outdir, f"residue_{nsres}.pdb")
-            mol.write(resfile)
+            inmol.write(resfile)
 
             outsdf = os.path.join(outdir, f"residue_{nsres}_templated.sdf")
             new_mol = getLigandFromDict(resfile, nsres)
@@ -52,24 +53,6 @@ def _get_residue_mol(mol: Molecule, nsres: str):
         raise
 
     acepreplog.setLevel(oldlevel)
-    return mol
-
-
-def _generate_custom_residue(inmol: Molecule, resname: str):
-    from moleculekit.tools.graphalignment import makeMolGraph, compareGraphs
-    import networkx as nx
-
-    def get_idx(mol, name):
-        res = np.where(mol.name == name)
-        if len(res) == 0 or len(res[0]) == 0:
-            return None
-        return res[0][0]
-
-    mol = _get_residue_mol(inmol, resname)
-
-    # Adding an X_ to all atom names to separate them from the matched names
-    for i, nn in enumerate(mol.name):
-        mol.name[i] = f"X_{nn}"
 
     fields = ("element",)
     g1 = makeMolGraph(mol, "all", fields)
@@ -80,30 +63,22 @@ def _generate_custom_residue(inmol: Molecule, resname: str):
     for pp in matching:  # Rename atoms in reference molecule
         mol.name[pp[0]] = inmol.name[pp[1]]
 
-    # # Align and replace the backbone with the standard backbone of pdb2pqr
-    # mol.align("name N CA C", refmol=backbone)
+    # Rename non-matched hydrogens to X_H to rename later
+    matched = [pp[0] for pp in matching]
+    for i in np.where(mol.element == "H")[0]:
+        if i in matched:
+            continue
+        mol.name[i] = "X_H"
 
-    # # Remove everything connected to CA
-    # gg = mol.toGraph()
-    # gg.remove_edge(get_idx(mol, "CA"), get_idx(mol, "CB"))
-    # cd_idx = get_idx(mol, "CD")
-    # n_idx = get_idx(mol, "N")
-    # has_n_cd_bond = False
-    # if cd_idx is not None and gg.has_edge(n_idx, cd_idx):
-    #     gg.remove_edge(n_idx, cd_idx)  # Prolines
-    #     has_n_cd_bond = True
-    # to_remove = np.array(list(nx.node_connected_component(gg, get_idx(mol, "CA"))))
-    # mol.remove(to_remove, _logger=False)
+    return mol
 
-    # # Insert the standard backbone
-    # mol.insert(backbone, index=0)
 
-    # # Add back CA CB bond
-    # mol.bonds = np.vstack(([get_idx(mol, "CA"), get_idx(mol, "CB")], mol.bonds))
-    # mol.bondtype = np.hstack(("1", mol.bondtype))
-    # if has_n_cd_bond:
-    #     mol.bonds = np.vstack(([get_idx(mol, "N"), get_idx(mol, "CD")], mol.bonds))
-    #     mol.bondtype = np.hstack(("1", mol.bondtype))
+def _process_custom_residue(mol: Molecule, resname: str):
+    def get_idx(mol, name):
+        res = np.where(mol.name == name)
+        if len(res) == 0 or len(res[0]) == 0:
+            return None
+        return res[0][0]
 
     # Fix hydrogen names for CA / N
     gg = mol.toGraph()
@@ -114,52 +89,46 @@ def _generate_custom_residue(inmol: Molecule, resname: str):
     if len(ca_hs) == 1:
         mol.name[ca_hs[0]] = "HA"
 
+    # Remove all N terminal hydrogens
     gg = mol.toGraph()
     n_idx = get_idx(mol, "N")
     n_neighbours = list(gg.neighbors(n_idx))
     n_hs = [nn for nn in n_neighbours if gg.nodes[nn]["element"] == "H"]
-    # TODO: Clean up this logic
-    if len(n_hs) == 1:
-        mol.name[n_hs[0]] = "H"
-    elif len(n_hs) == 2:
-        mol.name[n_hs[0]] = "H"
-        mol.name[n_hs[1]] = "HN2"
-    elif len(n_hs) == 3:
-        mol.name[n_hs[0]] = "H"
-        mol.name[n_hs[1]] = "HN2"
-        mol.name[n_hs[2]] = "HN3"
-
     n_heavy = len(n_neighbours) - len(n_hs)
-    if n_heavy == 1:
-        mol.remove("name HN3 HN2", _logger=False)
-    elif n_heavy == 2:
-        mol.remove("name HN3 HN2 H", _logger=False)
+    mol.remove(f"index {' '.join(map(str, n_hs))}", _logger=False)
 
+    # Remove all hydrogens attached to terminal C
     gg = mol.toGraph()
     idx = get_idx(mol, "C")
     neighbours = list(gg.neighbors(idx))
     hs = [nn for nn in neighbours if gg.nodes[nn]["element"] == "H"]
-    mol.remove(f"index {' '.join(map(str, hs))}", _logger=False)
+    if len(hs):
+        mol.remove(f"index {' '.join(map(str, hs))}", _logger=False)
 
-    # Rename all added hydrogens
+    # Rename all non-matched hydrogens
     hydr = mol.name == "X_H"
     mol.name[hydr] = [f"H{i}" for i in range(10, sum(hydr) + 10)]
 
-    # Rename residues
+    # Rename to correct resname
     mol.resname[:] = resname
-    # AMBER format is: N H CA HA [sidechain] C O
-    bbatoms = [x for x in ["N", "H", "CA", "HA", "C", "O"] if x in mol.name]
 
+    # Reorder atoms. AMBER order is: N H CA HA [sidechain] C O
+    bbatoms = [x for x in ["N", "H", "CA", "HA", "C", "O"] if x in mol.name]
     ordered_idx = [get_idx(mol, nn) for nn in bbatoms]
     other_idx = np.setdiff1d(range(mol.numAtoms), ordered_idx)
     mol.reorderAtoms(ordered_idx[:4] + other_idx.tolist() + ordered_idx[4:])
 
+    # Align to reference BB for pdb2pqr
     mol.align("name N CA C", refmol=backbone)
 
-    # if resname == "DAL":
-    #     from IPython.core.debugger import set_trace
-
-    #     set_trace()
+    if n_heavy == 1 and "N" in mol.name:
+        # Add the H atom if N is only bonded to CA.
+        # This is necessary to add it in the right position for pdb2pqr
+        nmol = backbone.copy()
+        nmol.filter("name H")
+        mol.insert(nmol, 1)
+        mol.bonds = np.vstack((mol.bonds, [0, 1]))
+        mol.bondtype = np.hstack((mol.bondtype, "1"))
 
     return mol
 

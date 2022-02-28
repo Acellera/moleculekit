@@ -92,7 +92,8 @@ def _generate_nonstandard_residues_ff(
     import tempfile
     from moleculekit.tools.preparation_customres import _get_custom_ff
     from moleculekit.tools.preparation_customres import (
-        _generate_custom_residue,
+        _process_custom_residue,
+        _template_residue_from_smiles,
         _mol_to_dat_def,
         _mol_to_xml_def,
     )
@@ -131,7 +132,9 @@ def _generate_nonstandard_residues_ff(
                 end = np.where(molresn & (molc.name == lastname))[0][0]
                 # Remove all other stuff
                 molc.filter(f"index {start} to {end}", _logger=False)
-                cres = _generate_custom_residue(molc, res)
+
+                tmol = _template_residue_from_smiles(molc, res)
+                cres = _process_custom_residue(tmol, res)
 
                 _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
                 _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
@@ -292,15 +295,7 @@ def _pdb2pqr(
                 },
             )
 
-        # TODO: Remove this try/except once pdb2pqr makes new release
-        try:
-            biomolecule.add_hydrogens(no_prot)  # STEFAN mod: Don't protonate residues
-        except Exception:
-            logger.error(
-                "Disabling residue protonation requires pdb2pqr version >=3.3.1. All residues will be protonated"
-            )
-            biomolecule.add_hydrogens()
-
+        biomolecule.add_hydrogens(no_prot)  # STEFAN mod: Don't protonate residues
         if debump:
             debumper.debump_biomolecule()
 
