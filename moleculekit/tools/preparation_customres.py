@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 # PDB2PQR is quite finicky about the backbone coordinates so I copy them from ALA
 backbone = Molecule(os.path.join(home(shareDir="backbone.cif")), zerowarning=False)
+alanine = Molecule(os.path.join(home(shareDir="ALA.cif")), zerowarning=False)
 
 
 def _template_residue_from_smiles(inmol: Molecule, nsres: str):
@@ -73,16 +74,25 @@ def _template_residue_from_smiles(inmol: Molecule, nsres: str):
     return mol
 
 
+def _get_idx(mol, name):
+    res = np.where(mol.name == name)
+    if len(res) == 0 or len(res[0]) == 0:
+        return None
+    return res[0][0]
+
+
 def _process_custom_residue(mol: Molecule, resname: str):
-    def get_idx(mol, name):
-        res = np.where(mol.name == name)
-        if len(res) == 0 or len(res[0]) == 0:
-            return None
-        return res[0][0]
+    import networkx as nx
+
+    gg = mol.toGraph()
+    sp = nx.shortest_path(gg, _get_idx(mol, "N"), _get_idx(mol, "C"))
+    if len(sp) != 3:
+        raise RuntimeError(
+            f"Cannot prepare residues with elongated backbones. This backbone consists of atoms {' '.join(mol.name[sp])}"
+        )
 
     # Fix hydrogen names for CA / N
-    gg = mol.toGraph()
-    ca_idx = get_idx(mol, "CA")
+    ca_idx = _get_idx(mol, "CA")
     ca_hs = [nn for nn in gg.neighbors(ca_idx) if gg.nodes[nn]["element"] == "H"]
     if len(ca_hs) > 1:
         raise RuntimeError("Found more than 1 hydrogen on CA atom!")
@@ -91,7 +101,7 @@ def _process_custom_residue(mol: Molecule, resname: str):
 
     # Remove all N terminal hydrogens
     gg = mol.toGraph()
-    n_idx = get_idx(mol, "N")
+    n_idx = _get_idx(mol, "N")
     n_neighbours = list(gg.neighbors(n_idx))
     n_hs = [nn for nn in n_neighbours if gg.nodes[nn]["element"] == "H"]
     n_heavy = len(n_neighbours) - len(n_hs)
@@ -100,7 +110,7 @@ def _process_custom_residue(mol: Molecule, resname: str):
 
     # Remove all hydrogens attached to terminal C
     gg = mol.toGraph()
-    idx = get_idx(mol, "C")
+    idx = _get_idx(mol, "C")
     neighbours = list(gg.neighbors(idx))
     hs = [nn for nn in neighbours if gg.nodes[nn]["element"] == "H"]
     if len(hs):
@@ -112,7 +122,7 @@ def _process_custom_residue(mol: Molecule, resname: str):
 
     # Reorder atoms. AMBER order is: N H CA HA [sidechain] C O
     bbatoms = [x for x in ["N", "H", "CA", "HA", "C", "O"] if x in mol.name]
-    ordered_idx = [get_idx(mol, nn) for nn in bbatoms]
+    ordered_idx = [_get_idx(mol, nn) for nn in bbatoms]
     other_idx = np.setdiff1d(range(mol.numAtoms), ordered_idx)
     mol.reorderAtoms(ordered_idx[:4] + other_idx.tolist() + ordered_idx[4:])
 
@@ -130,6 +140,61 @@ def _process_custom_residue(mol: Molecule, resname: str):
 
     # Rename to correct resname
     mol.resname[:] = resname
+
+    return mol
+
+
+def _prepare_for_parameterize(mol):
+    # Add OXT HXT HN2 atoms to convert it to RCSB-like structures and pass it to parameterize
+    import networkx as nx
+
+    mol = mol.copy()
+    resname = mol.resname[0]
+
+    gg = mol.toGraph()
+    bb = nx.shortest_path(gg, _get_idx(mol, "N"), _get_idx(mol, "C"))
+
+    n_idx = _get_idx(mol, "N")
+    mol.formalcharge[n_idx] = 0
+    n_neighbours = list(gg.neighbors(n_idx))
+    if len(n_neighbours) == 2:
+        # Add HN2 atom
+        non_bb_idx = [nn for nn in n_neighbours if nn not in bb]
+        align_idx = [n_idx, bb[1], non_bb_idx[0]]
+        nterm = alanine.copy()
+        nterm.align(
+            [_get_idx(nterm, n) for n in ("N", "CA", "H")], refmol=mol, refsel=align_idx
+        )
+        nterm.filter("name H2", _logger=False)
+        nterm.name[0] = "HN2"
+        mol.append(nterm)
+        mol.bonds = np.vstack((mol.bonds, [n_idx, mol.numAtoms - 1]))
+        mol.bondtype = np.hstack((mol.bondtype, "1"))
+
+    c_idx = _get_idx(mol, "C")
+    mol.formalcharge[c_idx] = 0
+    c_neighbours = list(gg.neighbors(c_idx))
+    if len(c_neighbours) == 2:
+        # Add OXT HXT atoms
+        non_bb_idx = [cc for cc in c_neighbours if cc not in bb]
+        align_idx = [bb[-2], c_idx, non_bb_idx[0]]
+        cterm = alanine.copy()
+        cterm.align(
+            [_get_idx(cterm, n) for n in ("CA", "C", "O")], refmol=mol, refsel=align_idx
+        )
+        cterm.filter("name OXT HXT", _logger=False)
+        mol.append(cterm)
+        mol.bonds = np.vstack((mol.bonds, [c_idx, mol.numAtoms - 2]))
+        mol.bondtype = np.hstack((mol.bondtype, "1"))
+
+    # Rename to correct resname
+    mol.resname[:] = resname
+
+    # Reorder atoms. AMBER order is: N H CA HA [sidechain] C O
+    bbatoms = [x for x in ["N", "H", "CA", "HA", "C", "O"] if x in mol.name]
+    ordered_idx = [_get_idx(mol, nn) for nn in bbatoms]
+    other_idx = np.setdiff1d(range(mol.numAtoms), ordered_idx)
+    mol.reorderAtoms(ordered_idx[:4] + other_idx.tolist() + ordered_idx[4:])
 
     return mol
 

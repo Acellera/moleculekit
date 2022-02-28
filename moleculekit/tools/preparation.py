@@ -96,6 +96,7 @@ def _generate_nonstandard_residues_ff(
         _template_residue_from_smiles,
         _mol_to_dat_def,
         _mol_to_xml_def,
+        _prepare_for_parameterize,
     )
 
     uqprot_resn = np.unique(mol.get("resname", sel="protein"))
@@ -140,7 +141,8 @@ def _generate_nonstandard_residues_ff(
                 _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
                 if outdir is not None:
                     os.makedirs(outdir, exist_ok=True)
-                    cres.write(os.path.join(outdir, f"{res}.cif"))
+                    pres = _prepare_for_parameterize(cres)
+                    pres.write(os.path.join(outdir, f"{res}.cif"))
                 logger.info(f"Succesfully templated non-canonical residue {res}.")
             except Exception as e:
                 import traceback
