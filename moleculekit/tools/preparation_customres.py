@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 # PDB2PQR is quite finicky about the backbone coordinates so I copy them from ALA
-backbone = Molecule(os.path.join(home(shareDir="backbone.cif")))
+backbone = Molecule(os.path.join(home(shareDir="backbone.cif")), zerowarning=False)
 
 
 def _template_residue_from_smiles(inmol: Molecule, nsres: str):
@@ -95,7 +95,8 @@ def _process_custom_residue(mol: Molecule, resname: str):
     n_neighbours = list(gg.neighbors(n_idx))
     n_hs = [nn for nn in n_neighbours if gg.nodes[nn]["element"] == "H"]
     n_heavy = len(n_neighbours) - len(n_hs)
-    mol.remove(f"index {' '.join(map(str, n_hs))}", _logger=False)
+    if len(n_hs):
+        mol.remove(f"index {' '.join(map(str, n_hs))}", _logger=False)
 
     # Remove all hydrogens attached to terminal C
     gg = mol.toGraph()
@@ -108,9 +109,6 @@ def _process_custom_residue(mol: Molecule, resname: str):
     # Rename all non-matched hydrogens
     hydr = mol.name == "X_H"
     mol.name[hydr] = [f"H{i}" for i in range(10, sum(hydr) + 10)]
-
-    # Rename to correct resname
-    mol.resname[:] = resname
 
     # Reorder atoms. AMBER order is: N H CA HA [sidechain] C O
     bbatoms = [x for x in ["N", "H", "CA", "HA", "C", "O"] if x in mol.name]
@@ -129,6 +127,9 @@ def _process_custom_residue(mol: Molecule, resname: str):
         mol.insert(nmol, 1)
         mol.bonds = np.vstack((mol.bonds, [0, 1]))
         mol.bondtype = np.hstack((mol.bondtype, "1"))
+
+    # Rename to correct resname
+    mol.resname[:] = resname
 
     return mol
 
@@ -160,7 +161,7 @@ def _convert_amber_prepi_to_pdb2pqr_residue(prepi, outdir, name=None):
             mol = Molecule(outf, validateElements=False)  # Read everything
             sdf = Molecule(outsdf)  # Read elements
         except Exception as e:
-            print(f"ERROR: {e}")
+            raise RuntimeError(f"ERROR: {e} {prepi}")
 
         diff = mol.element != sdf.element
         if any(diff):
@@ -169,21 +170,10 @@ def _convert_amber_prepi_to_pdb2pqr_residue(prepi, outdir, name=None):
             )
         mol.element[:] = sdf.element[:]
 
-        # Align and replace the backbone with the standard backbone of pdb2pqr
-        if not all([xx in mol.name for xx in ("N", "CA", "C", "O")]):
-            print(f"Could not find backbone atoms in {name}. Skipping conversion...")
-            return
+        pmol = _process_custom_residue(mol, name)
 
-        mol.align("name N CA C", refmol=backbone)
-        for i in range(backbone.numAtoms):
-            idx = np.where(mol.name == backbone.name[i])[0]
-            if not len(idx):
-                continue
-            idx = idx[0]
-            mol.coords[idx, :, 0] = backbone.coords[i, :, 0]
-
-        _mol_to_xml_def(mol, os.path.join(outdir, f"{name}.xml"))
-        _mol_to_dat_def(mol, os.path.join(outdir, f"{name}.dat"))
+        _mol_to_xml_def(pmol, os.path.join(outdir, f"{name}.xml"))
+        _mol_to_dat_def(pmol, os.path.join(outdir, f"{name}.dat"))
 
 
 class CustomResidue(Amino):

@@ -4,9 +4,9 @@
     <name>HOX</name>
     <atom>
       <name>N</name>
-      <x>1.201</x>
-      <y>0.847</y>
-      <z>0.000</z>
+      <x>1.225</x>
+      <y>0.824</y>
+      <z>-0.000</z>
       <bond>H</bond>
       <bond>CA</bond>
     </atom>
@@ -19,13 +19,28 @@
     </atom>
     <atom>
       <name>CA</name>
-      <x>0.000</x>
-      <y>0.000</y>
-      <z>0.000</z>
+      <x>0.008</x>
+      <y>0.039</y>
+      <z>-0.000</z>
       <bond>N</bond>
-      <bond>CB</bond>
       <bond>HA</bond>
       <bond>C</bond>
+      <bond>CB</bond>
+    </atom>
+    <atom>
+      <name>HA</name>
+      <x>-0.052</x>
+      <y>-0.493</y>
+      <z>-0.941</z>
+      <bond>CA</bond>
+    </atom>
+    <atom>
+      <name>C</name>
+      <x>-1.282</x>
+      <y>0.865</y>
+      <z>-0.000</z>
+      <bond>CA</bond>
+      <bond>O</bond>
     </atom>
     <atom>
       <name>CB</name>
@@ -157,25 +172,10 @@
       <bond>CB</bond>
     </atom>
     <atom>
-      <name>HA</name>
-      <x>0.000</x>
-      <y>-0.557</y>
-      <z>-0.831</z>
-      <bond>CA</bond>
-    </atom>
-    <atom>
-      <name>C</name>
-      <x>-1.250</x>
-      <y>0.881</y>
-      <z>0.000</z>
-      <bond>CA</bond>
-      <bond>O</bond>
-    </atom>
-    <atom>
       <name>O</name>
-      <x>-2.185</x>
-      <y>0.660</y>
-      <z>-0.784</z>
+      <x>-2.248</x>
+      <y>0.447</y>
+      <z>-0.576</z>
       <bond>C</bond>
     </atom>
   </residue>
