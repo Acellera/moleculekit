@@ -9,12 +9,13 @@ except ImportError:
     print(
         "Could not import networkx which is necessary for graph alignment. You can install it with `conda install networkx`."
     )
-
-import numpy as np
-from unittest import TestCase
-import os
-
 from moleculekit.util import ensurelist
+from unittest import TestCase
+import numpy as np
+import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def createProductGraph(G, H, tolerance, fields):
@@ -165,7 +166,9 @@ def maximalSubstructureAlignment(
     return mol2
 
 
-def mcsAtomMatching(mol1, mol2, atomCompare="elements", bondCompare="any"):
+def mcsAtomMatching(
+    mol1, mol2, atomCompare="elements", bondCompare="any", _logger=True
+):
     """Maximum common substructure atom matching.
 
     Given two molecules it will find their maximum common substructure using rdkit
@@ -224,13 +227,25 @@ def mcsAtomMatching(mol1, mol2, atomCompare="elements", bondCompare="any"):
     }
     bndcmp = bndcmp[bondCompare.lower()]
 
-    mol1 = SmallMol(mol1, fixHs=False, removeHs=False)._mol
-    mol2 = SmallMol(mol2, fixHs=False, removeHs=False)._mol
-    res = rdFMCS.FindMCS([mol1, mol2], bondCompare=bndcmp, atomCompare=atmcmp)
+    smol1 = SmallMol(mol1, fixHs=False, removeHs=False)._mol
+    smol2 = SmallMol(mol2, fixHs=False, removeHs=False)._mol
+    res = rdFMCS.FindMCS([smol1, smol2], bondCompare=bndcmp, atomCompare=atmcmp)
     patt = Chem.MolFromSmarts(res.smartsString)
-    refat = mol1.GetSubstructMatch(patt)
-    dbat = mol2.GetSubstructMatch(patt)
-    return list(refat), list(dbat)
+    at1 = list(smol1.GetSubstructMatch(patt))
+    at2 = list(smol2.GetSubstructMatch(patt))
+
+    if _logger:
+        n_heavy1 = np.sum(mol1.element != "H")
+        m_heavy1 = np.sum(mol1.element[at1] != "H")
+        n_heavy2 = np.sum(mol2.element != "H")
+        m_heavy2 = np.sum(mol2.element[at2] != "H")
+        n_atm1 = mol1.numAtoms
+        n_atm2 = mol2.numAtoms
+        msg = f"Matched {m_heavy1}/{n_heavy1} heavy atoms in mol1 to {m_heavy2}/{n_heavy2} heavy atoms in mol2."
+        if np.any(mol1.element == "H") and np.any(mol2.element == "H"):
+            msg += f" Matched {len(at1)-m_heavy1}/{n_atm1-n_heavy1} hydrogens in mol1 to {len(at2)-m_heavy2}/{n_atm2-n_heavy2} hydrogens in mol2."
+        logger.info(msg)
+    return at1, at2
 
 
 class _TestGraphAlignment(TestCase):
