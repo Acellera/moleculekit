@@ -1,0 +1,82 @@
+data_OIC
+#
+#
+_chem_comp.id                  OIC
+_chem_comp.type                NON-POLYMER
+_chem_comp.pdbx_formal_charge  0
+##
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+OIC  N    N  N  0  0.0   0.068  4.952  3.443   0.068  4.952  3.443  
+OIC  CA   C  C  0  0.0  -0.036  4.622  4.852  -0.036  4.622  4.852  
+OIC  C    C  C  0  0.0  -1.116  3.626  5.135  -1.116  3.626  5.135  
+OIC  O    O  O  0  0.0  -2.066  3.924  5.892  -2.066  3.924  5.892  
+OIC  OXT  O  O  0  0.0  -1.107  2.393  4.565  -1.107  2.393  4.565  
+OIC  CB   C  C  0  0.0  -0.192  6.037  5.474  -0.192  6.037  5.474  
+OIC  CG   C  C  0  0.0  -0.776  6.953  4.371  -0.776  6.953  4.371  
+OIC  CD   C  C  0  0.0  -0.792  6.056  3.098  -0.792  6.056  3.098  
+OIC  C4   C  C  0  0.0  -2.152  7.609  4.723  -2.152  7.609  4.723  
+OIC  C5   C  C  0  0.0  -2.849  8.060  3.407  -2.849  8.060  3.407  
+OIC  C6   C  C  0  0.0  -3.180  6.852  2.475  -3.180  6.852  2.475  
+OIC  C7   C  C  0  0.0  -2.229  5.637  2.686  -2.229  5.637  2.686  
+OIC  H    H  H  0  0.0   1.014  5.203  3.239   1.014  5.203  3.239  
+OIC  HA   H  H  0  0.0   0.819  4.084  5.287   0.819  4.084  5.287  
+OIC  HXT  H  H  0  0.0  -1.875  1.909  4.845  -1.875  1.909  4.845  
+OIC  HB2  H  H  0  0.0  -0.870  6.001  6.339  -0.870  6.001  6.339  
+OIC  HB3  H  H  0  0.0   0.785  6.417  5.809   0.785  6.417  5.809  
+OIC  HG   H  H  0  0.0  -0.160  7.853  4.227  -0.160  7.853  4.227  
+OIC  HD   H  H  0  0.0  -0.430  6.578  2.200  -0.430  6.578  2.200  
+OIC  H41  H  H  0  0.0  -2.787  6.878  5.246  -2.787  6.878  5.246  
+OIC  H42  H  H  0  0.0  -1.990  8.481  5.373  -1.990  8.481  5.373  
+OIC  H51  H  H  0  0.0  -3.788  8.572  3.665  -3.788  8.572  3.665  
+OIC  H52  H  H  0  0.0  -2.176  8.744  2.870  -2.176  8.744  2.870  
+OIC  H61  H  H  0  0.0  -4.209  6.525  2.687  -4.209  6.525  2.687  
+OIC  H62  H  H  0  0.0  -3.086  7.186  1.431  -3.086  7.186  1.431  
+OIC  H71  H  H  0  0.0  -2.168  5.077  1.741  -2.168  5.077  1.741  
+OIC  H72  H  H  0  0.0  -2.647  5.005  3.484  -2.647  5.005  3.484  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+OIC  N    CA   SING  
+OIC  N    CD   SING  
+OIC  N    H    SING  
+OIC  CA   C    SING  
+OIC  CA   CB   SING  
+OIC  CA   HA   SING  
+OIC  C    O    DOUB  
+OIC  C    OXT  SING  
+OIC  OXT  HXT  SING  
+OIC  CB   CG   SING  
+OIC  CB   HB2  SING  
+OIC  CB   HB3  SING  
+OIC  CG   CD   SING  
+OIC  CG   C4   SING  
+OIC  CG   HG   SING  
+OIC  CD   C7   SING  
+OIC  CD   HD   SING  
+OIC  C4   C5   SING  
+OIC  C4   H41  SING  
+OIC  C4   H42  SING  
+OIC  C5   C6   SING  
+OIC  C5   H51  SING  
+OIC  C5   H52  SING  
+OIC  C6   C7   SING  
+OIC  C6   H61  SING  
+OIC  C6   H62  SING  
+OIC  C7   H71  SING  
+OIC  C7   H72  SING  
+##

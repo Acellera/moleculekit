@@ -165,6 +165,74 @@ def maximalSubstructureAlignment(
     return mol2
 
 
+def mcsAtomMatching(mol1, mol2, atomCompare="elements", bondCompare="any"):
+    """Maximum common substructure atom matching.
+
+    Given two molecules it will find their maximum common substructure using rdkit
+    and return the atoms in both molecules which matched.
+
+    Parameters
+    ----------
+    mol1 : Molecule
+        The first molecule
+    mol2 : Molecule
+        The second molecule
+    atomCompare : str
+        Which features of the atoms to compare. Can be either: "any", "elements" or "isotopes"
+    bondCompare : str
+        Which features of the bonds to compare. Can be either: "any", "order" or "orderexact"
+
+    Returns
+    -------
+    atm1 : list
+        A list of atom indexes of the first molecule which matched to the second
+    atm2 : list
+        A list of atom indexes of the second molecule which matched to the first
+
+    Examples
+    --------
+    >>> mol1 = Molecule("OIC.cif")
+    >>> mol1.atomtype = mol1.element
+    >>> mol2 = Molecule("5vbl")
+    >>> mol2.filter("resname OIC")
+    >>> atm1, atm2 = mcsAtomMatching(mol1, mol2, bondCompare="any")
+    >>> print(mol1.name[atm1], mol2.name[atm2])
+    ['N' 'CA' 'C' 'O' 'CB' 'CG' 'CD' 'C7' 'C6' 'C5' 'C4'] ['N' 'CA' 'C' 'O' 'CB' 'CG' 'CD' 'C7' 'C6' 'C5' 'C4']
+    """
+    from moleculekit.smallmol.smallmol import SmallMol
+    from rdkit.Chem import rdFMCS
+    from rdkit import Chem
+
+    atmcmp = {
+        "any": rdFMCS.AtomCompare.CompareAny,
+        "elements": rdFMCS.AtomCompare.CompareElements,
+        "isotopes": rdFMCS.AtomCompare.CompareIsotopes,
+    }
+    atmcmp = atmcmp[atomCompare.lower()]
+    if atomCompare.lower() != "any":
+        if np.any(np.isin(mol1.bondtype, ("", "un"))) or np.any(
+            np.isin(mol2.bondtype, ("", "un"))
+        ):
+            raise RuntimeError(
+                f"Using mcsAtomMatching with atomCompare {atomCompare} requires bond orders in the molecules"
+            )
+
+    bndcmp = {
+        "any": rdFMCS.BondCompare.CompareAny,
+        "order": rdFMCS.BondCompare.CompareOrder,
+        "orderexact": rdFMCS.BondCompare.CompareOrderExact,
+    }
+    bndcmp = bndcmp[bondCompare.lower()]
+
+    mol1 = SmallMol(mol1, fixHs=False, removeHs=False)._mol
+    mol2 = SmallMol(mol2, fixHs=False, removeHs=False)._mol
+    res = rdFMCS.FindMCS([mol1, mol2], bondCompare=bndcmp, atomCompare=atmcmp)
+    patt = Chem.MolFromSmarts(res.smartsString)
+    refat = mol1.GetSubstructMatch(patt)
+    dbat = mol2.GetSubstructMatch(patt)
+    return list(refat), list(dbat)
+
+
 class _TestGraphAlignment(TestCase):
     def test_maximalSubstructureAlignment(self):
         from moleculekit.home import home
@@ -180,6 +248,29 @@ class _TestGraphAlignment(TestCase):
             np.allclose(lig_aligned.coords, lig_reference.coords, rtol=1e-4),
             "maximalSubstructureAlignment produced different coords",
         )
+
+    def test_mcs_atom_matching(self):
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule
+        import numpy as np
+
+        path = home(dataDir="test-molecule-graphalignment")
+
+        mol1 = Molecule(os.path.join(path, "OIC.cif"))
+        mol1.atomtype = mol1.element
+        idx = np.random.permutation(np.arange(mol1.numAtoms))
+        mol1.reorderAtoms(idx)
+
+        mol2 = Molecule("5VBL")
+        mol2.filter("resname OIC")
+        atm1, atm2 = mcsAtomMatching(mol1, mol2, bondCompare="order")
+        assert len(atm1) == 11
+        assert np.array_equal(mol1.name[atm1], mol2.name[atm2])
+
+        atm1, atm2 = mcsAtomMatching(mol1, mol2, bondCompare="any")
+        assert len(atm1) == 11
+        # Compare elements here since it can match O to OXT when ignoring bond type
+        assert np.array_equal(mol1.element[atm1], mol2.element[atm2])
 
 
 if __name__ == "__main__":

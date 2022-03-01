@@ -512,7 +512,7 @@ class Molecule(object):
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
         Returns
-        ------
+        -------
         vals : np.ndarray
             Array of values of `field` for all atoms in the selection.
 
