@@ -70,7 +70,11 @@ def _template_residue_from_smiles(inmol: Molecule, nsres: str, smiles=None):
 
             outsdfh = outsdf.replace(".sdf", "_h.sdf")
             RDKprepare(
-                outsdf, outsdfh, os.path.join(outdir, "aceprep.log"), gen3d=False
+                outsdf,
+                outsdfh,
+                os.path.join(outdir, "aceprep.log"),
+                gen3d=False,
+                canonicalize_tautomers=False,
             )
 
             mol = Molecule(outsdfh)
@@ -141,6 +145,14 @@ def _process_custom_residue(mol: Molecule, resname: str):
     if len(hs):
         mol.remove(f"index {' '.join(map(str, hs))}", _logger=False)
 
+    # Remove all hydrogens attached to C-terminal O
+    gg = mol.toGraph()
+    idx = _get_idx(mol, "O")
+    neighbours = list(gg.neighbors(idx))
+    hs = [nn for nn in neighbours if gg.nodes[nn]["element"] == "H"]
+    if len(hs):
+        mol.remove(f"index {' '.join(map(str, hs))}", _logger=False)
+
     # Rename all non-matched hydrogens
     hydr = mol.name == "X_H"
     mol.name[hydr] = [f"H{i}" for i in range(10, sum(hydr) + 10)]
@@ -165,7 +177,6 @@ def _process_custom_residue(mol: Molecule, resname: str):
 
     # Rename to correct resname
     mol.resname[:] = resname
-
     return mol
 
 

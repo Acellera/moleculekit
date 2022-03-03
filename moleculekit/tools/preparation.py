@@ -1167,7 +1167,7 @@ class _TestPreparation(unittest.TestCase):
 
         self.home = home(dataDir="test-systemprepare")
 
-    def _compare_results(self, refpdb, refdf_f, pmol, df: pd.DataFrame):
+    def _compare_results(self, refpdb, refdf_f, pmol: Molecule, df: pd.DataFrame):
         from moleculekit.util import tempname
 
         # # Use this to update tests
