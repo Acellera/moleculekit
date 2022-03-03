@@ -87,14 +87,22 @@ def _check_chain_and_segid(mol, verbose):
 
 
 def _generate_nonstandard_residues_ff(
-    mol, definition, forcefield, _molkit_ff=True, outdir=None, ignore_ns_errors=False
+    mol,
+    definition,
+    forcefield,
+    _molkit_ff=True,
+    outdir=None,
+    ignore_ns_errors=False,
+    residue_smiles=None,
 ):
     import tempfile
     from moleculekit.tools.preparation_customres import _get_custom_ff
     from moleculekit.tools.preparation_customres import (
-        _generate_custom_residue,
+        _process_custom_residue,
+        _template_residue_from_smiles,
         _mol_to_dat_def,
         _mol_to_xml_def,
+        _prepare_for_parameterize,
     )
 
     uqprot_resn = np.unique(mol.get("resname", sel="protein"))
@@ -131,13 +139,25 @@ def _generate_nonstandard_residues_ff(
                 end = np.where(molresn & (molc.name == lastname))[0][0]
                 # Remove all other stuff
                 molc.filter(f"index {start} to {end}", _logger=False)
-                cres = _generate_custom_residue(molc, res)
+
+                if len(np.unique(molc.name)) != molc.numAtoms:
+                    raise RuntimeError(
+                        f"Residue {res} contains duplicate atom names. Please rename the atoms to have unique names."
+                    )
+
+                smiles = None
+                if residue_smiles is not None and res in residue_smiles:
+                    smiles = residue_smiles[res]
+
+                tmol = _template_residue_from_smiles(molc, res, smiles=smiles)
+                cres = _process_custom_residue(tmol, res)
 
                 _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
                 _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
                 if outdir is not None:
                     os.makedirs(outdir, exist_ok=True)
-                    cres.write(os.path.join(outdir, f"{res}.cif"))
+                    pres = _prepare_for_parameterize(cres)
+                    pres.write(os.path.join(outdir, f"{res}.cif"))
                 logger.info(f"Succesfully templated non-canonical residue {res}.")
             except Exception as e:
                 import traceback
@@ -292,15 +312,7 @@ def _pdb2pqr(
                 },
             )
 
-        # TODO: Remove this try/except once pdb2pqr makes new release
-        try:
-            biomolecule.add_hydrogens(no_prot)  # STEFAN mod: Don't protonate residues
-        except Exception:
-            logger.error(
-                "Disabling residue protonation requires pdb2pqr version >=3.3.1. All residues will be protonated"
-            )
-            biomolecule.add_hydrogens()
-
+        biomolecule.add_hydrogens(no_prot)  # STEFAN mod: Don't protonate residues
         if debump:
             debumper.debump_biomolecule()
 
@@ -518,6 +530,7 @@ def systemPrepare(
     _logger_level="ERROR",
     _molkit_ff=True,
     outdir=None,
+    residue_smiles=None,
 ):
     """Prepare molecular systems through protonation and h-bond optimization.
 
@@ -699,6 +712,7 @@ def systemPrepare(
         _molkit_ff,
         outdir,
         ignore_ns_errors=ignore_ns_errors,
+        residue_smiles=residue_smiles,
     )
 
     nonpept = None
@@ -1153,7 +1167,7 @@ class _TestPreparation(unittest.TestCase):
 
         self.home = home(dataDir="test-systemprepare")
 
-    def _compare_results(self, refpdb, refdf_f, pmol, df: pd.DataFrame):
+    def _compare_results(self, refpdb, refdf_f, pmol: Molecule, df: pd.DataFrame):
         from moleculekit.util import tempname
 
         # # Use this to update tests
@@ -1311,12 +1325,34 @@ class _TestPreparation(unittest.TestCase):
             "5VBL.pdb": "5VBL_prepared",
             "2QRV.pdb": "2QRV_prepared",
         }
+        res_smiles = {
+            "200": "c1cc(ccc1C[C@@H](C(=O)O)N)Cl",
+            "HRG": "C(CCNC(=N)N)C[C@@H](C(=O)O)N",
+            "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C(=O)O",
+            "TYS": "c1cc(ccc1C[C@@H](C(=O)O)N)OS(=O)(=O)O",
+            "SAH": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CSCC[C@@H](C(=O)O)N)O)O)N",
+        }
         for inf, outf in files.items():
-            with self.subTest(file=inf):
-                mol = Molecule(os.path.join(test_home, inf))
-                if inf == "2QRV.pdb":
-                    mol = autoSegment2(mol, fields=("chain", "segid"))
+            mol = Molecule(os.path.join(test_home, inf))
+            if inf == "2QRV.pdb":
+                mol = autoSegment2(mol, fields=("chain", "segid"))
 
+            with self.subTest(file=inf + "_smiles"):
+                pmol, df = systemPrepare(
+                    mol,
+                    return_details=True,
+                    hold_nonpeptidic_bonds=True,
+                    residue_smiles=res_smiles,
+                )
+
+                self._compare_results(
+                    os.path.join(test_home, f"{outf}.pdb"),
+                    os.path.join(test_home, f"{outf}.csv"),
+                    pmol,
+                    df,
+                )
+
+            with self.subTest(file=inf + "_aceprep"):
                 pmol, df = systemPrepare(
                     mol, return_details=True, hold_nonpeptidic_bonds=True
                 )
@@ -1369,6 +1405,33 @@ class _TestPreparation(unittest.TestCase):
         self._compare_results(
             os.path.join(test_home, "1BNA_prepared.pdb"),
             os.path.join(test_home, "1BNA_prepared.csv"),
+            pmol,
+            df,
+        )
+
+    def test_cyclic_peptides(self):
+        test_home = os.path.join(self.home, "test-cyclic-peptides")
+        mol = Molecule(os.path.join(test_home, "5VAV.pdb"))
+
+        pmol, df = systemPrepare(mol, return_details=True)
+
+        self._compare_results(
+            os.path.join(test_home, "5VAV_prepared.pdb"),
+            os.path.join(test_home, "5VAV_prepared.csv"),
+            pmol,
+            df,
+        )
+
+    @unittest.skipUnless(ACEPREP_EXISTS, "Can only run with aceprep installed")
+    def test_cyclic_peptides_noncanonical(self):
+        test_home = os.path.join(self.home, "test-cyclic-peptides")
+        mol = Molecule(os.path.join(test_home, "4TOT_E.pdb"))
+
+        pmol, df = systemPrepare(mol, return_details=True)
+
+        self._compare_results(
+            os.path.join(test_home, "4TOT_E_prepared.pdb"),
+            os.path.join(test_home, "4TOT_E_prepared.csv"),
             pmol,
             df,
         )

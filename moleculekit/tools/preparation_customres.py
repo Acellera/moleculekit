@@ -14,13 +14,40 @@ logger = logging.getLogger(__name__)
 
 
 # PDB2PQR is quite finicky about the backbone coordinates so I copy them from ALA
-backbone = Molecule(os.path.join(home(shareDir="backbone.cif")))
+backbone = Molecule(os.path.join(home(shareDir="backbone.cif")), zerowarning=False)
+alanine = Molecule(os.path.join(home(shareDir="ALA.cif")), zerowarning=False)
 
 
-def _get_residue_mol(mol: Molecule, nsres: str):
+# def _template_residue_from_mol(molc: Molecule, template: Molecule, res: str):
+#     from moleculekit.tools.graphalignment import mcsAtomMatching
+
+#     if np.any(np.isin(template.bondtype, ("", "un"))):
+#         raise RuntimeError(f"Residue template {res} must contain correct bond orders.")
+#     if len(np.unique(molc.name)) != molc.numAtoms:
+#         raise RuntimeError(
+#             f"Residue {res} contains duplicate atom names. Please rename the atoms to have unique names."
+#         )
+
+#     template.atomtype = template.element  # Replace atomtypes for writing mol2
+#     atm1, atm2 = mcsAtomMatching(molc, template, bondCompare="any", _logger=False)
+#     heavy = molc.element != "H"
+#     if len(atm2) != len(heavy):
+#         raise RuntimeError(
+#             f"Residue template {res} matched only {len(atm2)} out of {len(heavy)} heavy atoms in the input molecule"
+#         )
+#     for a1, a2 in zip(atm1, atm2):  # Rename atoms in reference molecule
+#         template.name[a2] = molc.name[a1]
+
+#     # TODO: Not sure this is a good idea in general
+#     template.remove("name OXT HXT HN2", _logger=False)
+#     return template
+
+
+def _template_residue_from_smiles(inmol: Molecule, nsres: str, smiles=None):
     from rdkit import Chem
     from aceprep.detector import getLigandFromDict
     from aceprep.prepare import RDKprepare
+    from moleculekit.tools.graphalignment import makeMolGraph, compareGraphs
     import tempfile
     import logging
 
@@ -29,21 +56,25 @@ def _get_residue_mol(mol: Molecule, nsres: str):
     acepreplog.setLevel("CRITICAL")
 
     try:
-        assert np.all(np.isin(["N", "CA", "C", "O"], mol.name))
+        assert np.all(np.isin(["N", "CA", "C", "O"], inmol.name))
 
         with tempfile.TemporaryDirectory() as outdir:
             resfile = os.path.join(outdir, f"residue_{nsres}.pdb")
-            mol.write(resfile)
+            inmol.write(resfile)
 
             outsdf = os.path.join(outdir, f"residue_{nsres}_templated.sdf")
-            new_mol = getLigandFromDict(resfile, nsres)
+            new_mol = getLigandFromDict(resfile, nsres, smiles=smiles)
             w = Chem.SDWriter(outsdf)
             w.write(new_mol)
             w.close()
 
             outsdfh = outsdf.replace(".sdf", "_h.sdf")
             RDKprepare(
-                outsdf, outsdfh, os.path.join(outdir, "aceprep.log"), gen3d=False
+                outsdf,
+                outsdfh,
+                os.path.join(outdir, "aceprep.log"),
+                gen3d=False,
+                canonicalize_tautomers=False,
             )
 
             mol = Molecule(outsdfh)
@@ -52,23 +83,6 @@ def _get_residue_mol(mol: Molecule, nsres: str):
         raise
 
     acepreplog.setLevel(oldlevel)
-    return mol
-
-
-def _generate_custom_residue(inmol: Molecule, resname: str):
-    from moleculekit.tools.graphalignment import makeMolGraph, compareGraphs
-    import networkx as nx
-
-    def get_idx(mol, name):
-        res = np.where(mol.name == name)
-        if len(res) == 0 or len(res[0]) == 0:
-            return None
-        return res[0][0]
-
-    mol = _get_residue_mol(inmol, resname)
-    # Adding an X_ to all atom names to separate them from the matched names
-    for i, nn in enumerate(mol.name):
-        mol.name[i] = f"X_{nn}"
 
     fields = ("element",)
     g1 = makeMolGraph(mol, "all", fields)
@@ -79,39 +93,144 @@ def _generate_custom_residue(inmol: Molecule, resname: str):
     for pp in matching:  # Rename atoms in reference molecule
         mol.name[pp[0]] = inmol.name[pp[1]]
 
-    # Align and replace the backbone with the standard backbone of pdb2pqr
+    # Rename non-matched hydrogens to X_H to rename later
+    matched = [pp[0] for pp in matching]
+    for i in np.where(mol.element == "H")[0]:
+        if i in matched:
+            continue
+        mol.name[i] = "X_H"
+
+    return mol
+
+
+def _get_idx(mol, name):
+    res = np.where(mol.name == name)
+    if len(res) == 0 or len(res[0]) == 0:
+        return None
+    return res[0][0]
+
+
+def _process_custom_residue(mol: Molecule, resname: str):
+    import networkx as nx
+
+    gg = mol.toGraph()
+    sp = nx.shortest_path(gg, _get_idx(mol, "N"), _get_idx(mol, "C"))
+    if len(sp) != 3:
+        raise RuntimeError(
+            f"Cannot prepare residues with elongated backbones. This backbone consists of atoms {' '.join(mol.name[sp])}"
+        )
+
+    # Fix hydrogen names for CA / N
+    ca_idx = _get_idx(mol, "CA")
+    ca_hs = [nn for nn in gg.neighbors(ca_idx) if gg.nodes[nn]["element"] == "H"]
+    if len(ca_hs) > 1:
+        raise RuntimeError("Found more than 1 hydrogen on CA atom!")
+    if len(ca_hs) == 1:
+        mol.name[ca_hs[0]] = "HA"
+
+    # Remove all N terminal hydrogens
+    gg = mol.toGraph()
+    n_idx = _get_idx(mol, "N")
+    n_neighbours = list(gg.neighbors(n_idx))
+    n_hs = [nn for nn in n_neighbours if gg.nodes[nn]["element"] == "H"]
+    n_heavy = len(n_neighbours) - len(n_hs)
+    if len(n_hs):
+        mol.remove(f"index {' '.join(map(str, n_hs))}", _logger=False)
+
+    # Remove all hydrogens attached to terminal C
+    gg = mol.toGraph()
+    idx = _get_idx(mol, "C")
+    neighbours = list(gg.neighbors(idx))
+    hs = [nn for nn in neighbours if gg.nodes[nn]["element"] == "H"]
+    if len(hs):
+        mol.remove(f"index {' '.join(map(str, hs))}", _logger=False)
+
+    # Remove all hydrogens attached to C-terminal O
+    gg = mol.toGraph()
+    idx = _get_idx(mol, "O")
+    neighbours = list(gg.neighbors(idx))
+    hs = [nn for nn in neighbours if gg.nodes[nn]["element"] == "H"]
+    if len(hs):
+        mol.remove(f"index {' '.join(map(str, hs))}", _logger=False)
+
+    # Rename all non-matched hydrogens
+    hydr = mol.name == "X_H"
+    mol.name[hydr] = [f"H{i}" for i in range(10, sum(hydr) + 10)]
+
+    # Reorder atoms. AMBER order is: N H CA HA [sidechain] C O
+    bbatoms = [x for x in ["N", "H", "CA", "HA", "C", "O"] if x in mol.name]
+    ordered_idx = [_get_idx(mol, nn) for nn in bbatoms]
+    other_idx = np.setdiff1d(range(mol.numAtoms), ordered_idx)
+    mol.reorderAtoms(ordered_idx[:4] + other_idx.tolist() + ordered_idx[4:])
+
+    # Align to reference BB for pdb2pqr
     mol.align("name N CA C", refmol=backbone)
 
-    # Remove everything connected to CA
-    gg = mol.toGraph()
-    gg.remove_edge(get_idx(mol, "CA"), get_idx(mol, "CB"))
-    cd_idx = get_idx(mol, "CD")
-    n_idx = get_idx(mol, "N")
-    has_n_cd_bond = False
-    if cd_idx is not None and gg.has_edge(n_idx, cd_idx):
-        gg.remove_edge(n_idx, cd_idx)  # Prolines
-        has_n_cd_bond = True
-    to_remove = np.array(list(nx.node_connected_component(gg, get_idx(mol, "CA"))))
-    mol.remove(to_remove, _logger=False)
+    if n_heavy == 1 and "N" in mol.name:
+        # Add the H atom if N is only bonded to CA.
+        # This is necessary to add it in the right position for pdb2pqr
+        nmol = backbone.copy()
+        nmol.filter("name H", _logger=False)
+        mol.insert(nmol, 1)
+        mol.bonds = np.vstack((mol.bonds, [0, 1]))
+        mol.bondtype = np.hstack((mol.bondtype, "1"))
 
-    # Insert the standard backbone
-    mol.insert(backbone, index=0)
-
-    # Add back CA CB bond
-    mol.bonds = np.vstack(([get_idx(mol, "CA"), get_idx(mol, "CB")], mol.bonds))
-    mol.bondtype = np.hstack(("1", mol.bondtype))
-    if has_n_cd_bond:
-        mol.bonds = np.vstack(([get_idx(mol, "N"), get_idx(mol, "CD")], mol.bonds))
-        mol.bondtype = np.hstack(("1", mol.bondtype))
-
-    # Rename all added hydrogens
-    hydr = mol.name == "X_H"
-    mol.name[hydr] = [f"H{i}" for i in range(1, sum(hydr) + 1)]
-
-    # Rename residues
+    # Rename to correct resname
     mol.resname[:] = resname
-    # AMBER format is: N H CA HA [sidechain] C O
-    mol.reorderAtoms([0, 4, 1, 5] + list(range(6, mol.numAtoms)) + [2, 3])
+    return mol
+
+
+def _prepare_for_parameterize(mol):
+    # Add OXT HXT HN2 atoms to convert it to RCSB-like structures and pass it to parameterize
+    import networkx as nx
+
+    mol = mol.copy()
+    resname = mol.resname[0]
+
+    gg = mol.toGraph()
+    bb = nx.shortest_path(gg, _get_idx(mol, "N"), _get_idx(mol, "C"))
+
+    n_idx = _get_idx(mol, "N")
+    mol.formalcharge[n_idx] = 0
+    n_neighbours = list(gg.neighbors(n_idx))
+    if len(n_neighbours) == 2:
+        # Add HN2 atom
+        non_bb_idx = [nn for nn in n_neighbours if nn not in bb]
+        align_idx = [n_idx, bb[1], non_bb_idx[0]]
+        nterm = alanine.copy()
+        nterm.align(
+            [_get_idx(nterm, n) for n in ("N", "CA", "H")], refmol=mol, refsel=align_idx
+        )
+        nterm.filter("name H2", _logger=False)
+        nterm.name[0] = "HN2"
+        mol.append(nterm)
+        mol.bonds = np.vstack((mol.bonds, [n_idx, mol.numAtoms - 1]))
+        mol.bondtype = np.hstack((mol.bondtype, "1"))
+
+    c_idx = _get_idx(mol, "C")
+    mol.formalcharge[c_idx] = 0
+    c_neighbours = list(gg.neighbors(c_idx))
+    if len(c_neighbours) == 2:
+        # Add OXT HXT atoms
+        non_bb_idx = [cc for cc in c_neighbours if cc not in bb]
+        align_idx = [bb[-2], c_idx, non_bb_idx[0]]
+        cterm = alanine.copy()
+        cterm.align(
+            [_get_idx(cterm, n) for n in ("CA", "C", "O")], refmol=mol, refsel=align_idx
+        )
+        cterm.filter("name OXT HXT", _logger=False)
+        mol.append(cterm)
+        mol.bonds = np.vstack((mol.bonds, [c_idx, mol.numAtoms - 2]))
+        mol.bondtype = np.hstack((mol.bondtype, "1"))
+
+    # Rename to correct resname
+    mol.resname[:] = resname
+
+    # Reorder atoms. AMBER order is: N H CA HA [sidechain] C O
+    bbatoms = [x for x in ["N", "H", "CA", "HA", "C", "O"] if x in mol.name]
+    ordered_idx = [_get_idx(mol, nn) for nn in bbatoms]
+    other_idx = np.setdiff1d(range(mol.numAtoms), ordered_idx)
+    mol.reorderAtoms(ordered_idx[:4] + other_idx.tolist() + ordered_idx[4:])
 
     return mol
 
@@ -143,7 +262,7 @@ def _convert_amber_prepi_to_pdb2pqr_residue(prepi, outdir, name=None):
             mol = Molecule(outf, validateElements=False)  # Read everything
             sdf = Molecule(outsdf)  # Read elements
         except Exception as e:
-            print(f"ERROR: {e}")
+            raise RuntimeError(f"ERROR: {e} {prepi}")
 
         diff = mol.element != sdf.element
         if any(diff):
@@ -152,21 +271,10 @@ def _convert_amber_prepi_to_pdb2pqr_residue(prepi, outdir, name=None):
             )
         mol.element[:] = sdf.element[:]
 
-        # Align and replace the backbone with the standard backbone of pdb2pqr
-        if not all([xx in mol.name for xx in ("N", "CA", "C", "O")]):
-            print(f"Could not find backbone atoms in {name}. Skipping conversion...")
-            return
+        pmol = _process_custom_residue(mol, name)
 
-        mol.align("name N CA C", refmol=backbone)
-        for i in range(backbone.numAtoms):
-            idx = np.where(mol.name == backbone.name[i])[0]
-            if not len(idx):
-                continue
-            idx = idx[0]
-            mol.coords[idx, :, 0] = backbone.coords[i, :, 0]
-
-        _mol_to_xml_def(mol, os.path.join(outdir, f"{name}.xml"))
-        _mol_to_dat_def(mol, os.path.join(outdir, f"{name}.dat"))
+        _mol_to_xml_def(pmol, os.path.join(outdir, f"{name}.xml"))
+        _mol_to_dat_def(pmol, os.path.join(outdir, f"{name}.dat"))
 
 
 class CustomResidue(Amino):

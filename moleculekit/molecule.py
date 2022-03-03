@@ -512,7 +512,7 @@ class Molecule(object):
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
         Returns
-        ------
+        -------
         vals : np.ndarray
             Array of values of `field` for all atoms in the selection.
 
@@ -1560,7 +1560,7 @@ class Molecule(object):
         self._emptyTraj(numAtoms)
         return self
 
-    def sequence(self, oneletter=True, noseg=False, return_idx=False, sel="all"):
+    def sequence(self, oneletter=True, noseg=False, return_idx=False, sel="all", _logger=True):
         """Return the aminoacid sequence of the Molecule.
 
         Parameters
@@ -1632,16 +1632,18 @@ class Molecule(object):
                         rescode = _residueNameTable[resname]
                     elif resname in _modResidueNameTable:
                         rescode = _modResidueNameTable[resname]
-                        logger.warning(
-                            f"Modified residue {resname} was detected in the protein and mapped to one-letter code {rescode}"
-                        )
+                        if _logger:
+                            logger.warning(
+                                f"Modified residue {resname} was detected in the protein and mapped to one-letter code {rescode}"
+                            )
                     elif len(resname) == 1:
                         rescode = resname
                     else:
                         rescode = "X"
-                        logger.warning(
-                            f"Cannot provide one-letter code for non-standard residue {resname}"
-                        )
+                        if _logger:
+                            logger.warning(
+                                f"Cannot provide one-letter code for non-standard residue {resname}"
+                            )
                 else:
                     rescode = resname
                 segSequences[seg].append(rescode)
