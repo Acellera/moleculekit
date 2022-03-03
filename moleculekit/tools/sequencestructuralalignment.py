@@ -20,7 +20,7 @@ def _get_sequence(mol: Molecule, sel):
             "Your selection contains both protein and nucleic residues. You need to clarify which selection to align."
         )
     molseg = "protein" if any(protein_mask) else "nucleic"
-    seqmol, seqidx = mol.sequence(noseg=True, return_idx=True, sel=sel)
+    seqmol, seqidx = mol.sequence(noseg=True, return_idx=True, sel=sel, _logger=False)
     seqidx = seqidx[molseg]
     seqmol = seqmol[molseg]
     segment_type = molseg
