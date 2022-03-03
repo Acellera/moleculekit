@@ -18,7 +18,32 @@ backbone = Molecule(os.path.join(home(shareDir="backbone.cif")), zerowarning=Fal
 alanine = Molecule(os.path.join(home(shareDir="ALA.cif")), zerowarning=False)
 
 
-def _template_residue_from_smiles(inmol: Molecule, nsres: str):
+# def _template_residue_from_mol(molc: Molecule, template: Molecule, res: str):
+#     from moleculekit.tools.graphalignment import mcsAtomMatching
+
+#     if np.any(np.isin(template.bondtype, ("", "un"))):
+#         raise RuntimeError(f"Residue template {res} must contain correct bond orders.")
+#     if len(np.unique(molc.name)) != molc.numAtoms:
+#         raise RuntimeError(
+#             f"Residue {res} contains duplicate atom names. Please rename the atoms to have unique names."
+#         )
+
+#     template.atomtype = template.element  # Replace atomtypes for writing mol2
+#     atm1, atm2 = mcsAtomMatching(molc, template, bondCompare="any", _logger=False)
+#     heavy = molc.element != "H"
+#     if len(atm2) != len(heavy):
+#         raise RuntimeError(
+#             f"Residue template {res} matched only {len(atm2)} out of {len(heavy)} heavy atoms in the input molecule"
+#         )
+#     for a1, a2 in zip(atm1, atm2):  # Rename atoms in reference molecule
+#         template.name[a2] = molc.name[a1]
+
+#     # TODO: Not sure this is a good idea in general
+#     template.remove("name OXT HXT HN2", _logger=False)
+#     return template
+
+
+def _template_residue_from_smiles(inmol: Molecule, nsres: str, smiles=None):
     from rdkit import Chem
     from aceprep.detector import getLigandFromDict
     from aceprep.prepare import RDKprepare
@@ -38,7 +63,7 @@ def _template_residue_from_smiles(inmol: Molecule, nsres: str):
             inmol.write(resfile)
 
             outsdf = os.path.join(outdir, f"residue_{nsres}_templated.sdf")
-            new_mol = getLigandFromDict(resfile, nsres)
+            new_mol = getLigandFromDict(resfile, nsres, smiles=smiles)
             w = Chem.SDWriter(outsdf)
             w.write(new_mol)
             w.close()
@@ -133,7 +158,7 @@ def _process_custom_residue(mol: Molecule, resname: str):
         # Add the H atom if N is only bonded to CA.
         # This is necessary to add it in the right position for pdb2pqr
         nmol = backbone.copy()
-        nmol.filter("name H")
+        nmol.filter("name H", _logger=False)
         mol.insert(nmol, 1)
         mol.bonds = np.vstack((mol.bonds, [0, 1]))
         mol.bondtype = np.hstack((mol.bondtype, "1"))

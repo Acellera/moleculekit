@@ -212,13 +212,6 @@ def mcsAtomMatching(
         "isotopes": rdFMCS.AtomCompare.CompareIsotopes,
     }
     atmcmp = atmcmp[atomCompare.lower()]
-    if atomCompare.lower() != "any":
-        if np.any(np.isin(mol1.bondtype, ("", "un"))) or np.any(
-            np.isin(mol2.bondtype, ("", "un"))
-        ):
-            raise RuntimeError(
-                f"Using mcsAtomMatching with atomCompare {atomCompare} requires bond orders in the molecules"
-            )
 
     bndcmp = {
         "any": rdFMCS.BondCompare.CompareAny,
@@ -226,6 +219,13 @@ def mcsAtomMatching(
         "orderexact": rdFMCS.BondCompare.CompareOrderExact,
     }
     bndcmp = bndcmp[bondCompare.lower()]
+    if bondCompare.lower() != "any":
+        if np.any(np.isin(mol1.bondtype, ("", "un"))) or np.any(
+            np.isin(mol2.bondtype, ("", "un"))
+        ):
+            raise RuntimeError(
+                f"Using mcsAtomMatching with bondCompare {bondCompare} requires bond orders in the molecules"
+            )
 
     smol1 = SmallMol(mol1, fixHs=False, removeHs=False)._mol
     smol2 = SmallMol(mol2, fixHs=False, removeHs=False)._mol

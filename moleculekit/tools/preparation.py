@@ -87,7 +87,13 @@ def _check_chain_and_segid(mol, verbose):
 
 
 def _generate_nonstandard_residues_ff(
-    mol, definition, forcefield, _molkit_ff=True, outdir=None, ignore_ns_errors=False
+    mol,
+    definition,
+    forcefield,
+    _molkit_ff=True,
+    outdir=None,
+    ignore_ns_errors=False,
+    residue_smiles=None,
 ):
     import tempfile
     from moleculekit.tools.preparation_customres import _get_custom_ff
@@ -134,7 +140,16 @@ def _generate_nonstandard_residues_ff(
                 # Remove all other stuff
                 molc.filter(f"index {start} to {end}", _logger=False)
 
-                tmol = _template_residue_from_smiles(molc, res)
+                if len(np.unique(molc.name)) != molc.numAtoms:
+                    raise RuntimeError(
+                        f"Residue {res} contains duplicate atom names. Please rename the atoms to have unique names."
+                    )
+
+                smiles = None
+                if residue_smiles is not None and res in residue_smiles:
+                    smiles = residue_smiles[res]
+
+                tmol = _template_residue_from_smiles(molc, res, smiles=smiles)
                 cres = _process_custom_residue(tmol, res)
 
                 _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
@@ -515,6 +530,7 @@ def systemPrepare(
     _logger_level="ERROR",
     _molkit_ff=True,
     outdir=None,
+    residue_smiles=None,
 ):
     """Prepare molecular systems through protonation and h-bond optimization.
 
@@ -696,6 +712,7 @@ def systemPrepare(
         _molkit_ff,
         outdir,
         ignore_ns_errors=ignore_ns_errors,
+        residue_smiles=residue_smiles,
     )
 
     nonpept = None
@@ -1308,12 +1325,34 @@ class _TestPreparation(unittest.TestCase):
             "5VBL.pdb": "5VBL_prepared",
             "2QRV.pdb": "2QRV_prepared",
         }
+        res_smiles = {
+            "200": "c1cc(ccc1C[C@@H](C(=O)O)N)Cl",
+            "HRG": "C(CCNC(=N)N)C[C@@H](C(=O)O)N",
+            "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C(=O)O",
+            "TYS": "c1cc(ccc1C[C@@H](C(=O)O)N)OS(=O)(=O)O",
+            "SAH": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CSCC[C@@H](C(=O)O)N)O)O)N",
+        }
         for inf, outf in files.items():
-            with self.subTest(file=inf):
-                mol = Molecule(os.path.join(test_home, inf))
-                if inf == "2QRV.pdb":
-                    mol = autoSegment2(mol, fields=("chain", "segid"))
+            mol = Molecule(os.path.join(test_home, inf))
+            if inf == "2QRV.pdb":
+                mol = autoSegment2(mol, fields=("chain", "segid"))
 
+            with self.subTest(file=inf + "_smiles"):
+                pmol, df = systemPrepare(
+                    mol,
+                    return_details=True,
+                    hold_nonpeptidic_bonds=True,
+                    residue_smiles=res_smiles,
+                )
+
+                self._compare_results(
+                    os.path.join(test_home, f"{outf}.pdb"),
+                    os.path.join(test_home, f"{outf}.csv"),
+                    pmol,
+                    df,
+                )
+
+            with self.subTest(file=inf + "_aceprep"):
                 pmol, df = systemPrepare(
                     mol, return_details=True, hold_nonpeptidic_bonds=True
                 )
