@@ -99,7 +99,9 @@ def sequenceStructureAlignment(
         raise ImportError(
             "You need to install the biopython package to use this function. Try using `conda install biopython`."
         )
-    from Bio.SubsMat import MatrixInfo as matlist
+    from Bio.Align import substitution_matrices
+
+    blosum62 = substitution_matrices.load("BLOSUM62")
 
     if len([x for x in np.unique(mol.altloc) if len(x)]) > 1:
         raise RuntimeError(
@@ -120,9 +122,7 @@ def sequenceStructureAlignment(
 
     if segment_type == "protein":
         # -11 is gap creation penalty. -1 is gap extension penalty. Taken from https://www.arabidopsis.org/Blast/BLASToptions.jsp BLASTP options
-        alignments = pairwise2.align.globalds(
-            seqref, seqmol, matlist.blosum62, -11.0, -1.0
-        )
+        alignments = pairwise2.align.globalds(seqref, seqmol, blosum62, -11.0, -1.0)
     elif segment_type == "nucleic":
         alignments = pairwise2.align.globalxx(seqref, seqmol)
     numaln = len(alignments)
