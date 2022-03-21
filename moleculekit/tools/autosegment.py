@@ -298,6 +298,19 @@ class _TestPreparation(unittest.TestCase):
         mol = autoSegment(mol, sel="protein")
         assert np.all(mol.segid == ref.segid)
 
+    def test_autoSegment2(self):
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule
+        from os import path
+
+        mol = Molecule(path.join(home(dataDir="test-autosegment"), "3segments.pdb"))
+        smol1 = autoSegment2(mol, sel="nucleic or protein or resname ACE NME")
+        smol2 = autoSegment2(mol)
+        assert np.array_equal(smol1.segid, smol2.segid)
+        vals, counts = np.unique(smol1.segid, return_counts=True)
+        assert len(vals) == 3
+        assert np.array_equal(counts, np.array([331, 172, 1213]))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
