@@ -178,7 +178,7 @@ def autoSegment2(
         fields = (fields,)
 
     orig_sel = sel
-    sel += " and backbone or (resname NME ACE and name N C O CH3)"  # Looking for bonds only over the backbone of the protein
+    sel = f"({sel}) and backbone or (resname NME ACE and name N C O CH3)"  # Looking for bonds only over the backbone of the protein
     # Keep the original atom indexes to map from submol to mol
     idx = mol.atomselect(sel, indexes=True)
     # We filter out everything not on the backbone to calculate only those bonds
