@@ -678,7 +678,7 @@ def systemPrepare(
         from pdb2pqr.config import VERSION
     except ImportError:
         raise ImportError(
-            "pdb2pqr not installed. To use the system preparation features please do `conda install pdb2pqr -c conda-forge`"
+            "pdb2pqr not installed. To use the system preparation features please do `conda install pdb2pqr -c acellera -c conda-forge`"
         )
     from moleculekit.tools.preparation_customres import _get_custom_ff
 
