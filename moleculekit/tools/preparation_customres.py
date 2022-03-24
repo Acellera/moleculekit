@@ -45,8 +45,8 @@ alanine = Molecule(os.path.join(home(shareDir="ALA.cif")), zerowarning=False)
 
 def _template_residue_from_smiles(inmol: Molecule, nsres: str, smiles=None):
     from rdkit import Chem
-    from aceprep.detector import getLigandFromDict
-    from aceprep.prepare import RDKprepare
+    from aceprep.detector import template_ligand
+    from aceprep.prepare import rdk_prepare
     from moleculekit.tools.graphalignment import makeMolGraph, compareGraphs
     import tempfile
     import logging
@@ -63,13 +63,13 @@ def _template_residue_from_smiles(inmol: Molecule, nsres: str, smiles=None):
             inmol.write(resfile)
 
             outsdf = os.path.join(outdir, f"residue_{nsres}_templated.sdf")
-            new_mol = getLigandFromDict(resfile, nsres, smiles=smiles)
+            new_mol = template_ligand(resfile, nsres, smiles=smiles)
             w = Chem.SDWriter(outsdf)
             w.write(new_mol)
             w.close()
 
             outsdfh = outsdf.replace(".sdf", "_h.sdf")
-            RDKprepare(
+            rdk_prepare(
                 outsdf,
                 outsdfh,
                 os.path.join(outdir, "aceprep.log"),

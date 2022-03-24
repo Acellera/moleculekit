@@ -115,7 +115,7 @@ def _generate_nonstandard_residues_ff(
         return definition, forcefield
 
     try:
-        from aceprep.prepare import RDKprepare
+        from aceprep.prepare import rdk_prepare
     except ImportError:
         if ignore_ns_errors:
             return definition, forcefield
@@ -1153,7 +1153,7 @@ def _get_pka_plot(df, outname, pH=7.4, figSizeX=13, dpk=1.0, font_size=12):
 
 # The below is used for testing only
 try:
-    from aceprep.prepare import RDKprepare
+    from aceprep.prepare import rdk_prepare
 except ImportError:
     ACEPREP_EXISTS = False
 else:
