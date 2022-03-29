@@ -468,7 +468,8 @@ def _prepare_nucleics(mol):
         "DT": "DT",
     }
     for res in uq_resn:
-        mol.resname[mol.resname == res] = mapping[res]
+        if res in mapping:
+            mol.resname[mol.resname == res] = mapping[res]
 
 
 def _fix_protonation_resnames(mol):
