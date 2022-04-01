@@ -1485,7 +1485,7 @@ class Molecule(object):
         s = np.delete(s, remidx)
         self.set("resname", newres, sel=s)
 
-    def wrap(self, wrapsel=None, fileBonds=True, guessBonds=False):
+    def wrap(self, wrapsel="all", fileBonds=True, guessBonds=False):
         """Wraps the coordinates of the molecule into the simulation box
 
         Parameters
@@ -1500,13 +1500,9 @@ class Molecule(object):
         >>> mol.wrap()
         >>> mol.wrap('protein')
         """
-        from moleculekit.wrap import wrap
+        from moleculekit import wrapping
 
-        # TODO: selection is not used. WHY?
-        if wrapsel is not None:
-            centersel = self.atomselect(wrapsel, indexes=True)
-        else:
-            centersel = None
+        centersel = self.atomselect(wrapsel, indexes=True)
 
         nbonds = self.bonds.shape[0]
 
@@ -1516,7 +1512,7 @@ class Molecule(object):
             )
 
         if self.box.shape[1] != self.coords.shape[2]:
-            logger.warning(
+            raise RuntimeError(
                 "Detected different number of simulation frames in `Molecule.box` and `Molecule.coords`. "
                 "This could mean that you have not read correctly the box information from the simulation."
             )
@@ -1529,12 +1525,9 @@ class Molecule(object):
                 "The results may be inaccurate. If you want to use guessed bonds use the guessBonds argument."
             )
 
-        self.coords = wrap(
-            self.coords,
-            self._getBonds(fileBonds, guessBonds),
-            self.box,
-            centersel=centersel,
-        )
+        bonds = self._getBonds(fileBonds, guessBonds)
+        groups = getBondedGroups(self, bonds)
+        wrapping.calculate(groups, self.coords, self.box, centersel.astype(np.uint32))
 
     def _emptyTopo(self, numAtoms):
         for field in Molecule._atom_fields:
@@ -1560,7 +1553,9 @@ class Molecule(object):
         self._emptyTraj(numAtoms)
         return self
 
-    def sequence(self, oneletter=True, noseg=False, return_idx=False, sel="all", _logger=True):
+    def sequence(
+        self, oneletter=True, noseg=False, return_idx=False, sel="all", _logger=True
+    ):
         """Return the aminoacid sequence of the Molecule.
 
         Parameters
@@ -2389,6 +2384,50 @@ def calculateUniqueBonds(bonds, bondtype):
         )
 
 
+def getBondedGroups(mol, bonds=None):
+    """Calculates all bonded groups in a Molecule
+
+    It assumes that all bonded groups are sequential in Molecule. I.e. you don't have a molecule B
+    in between the atoms of molecule A.
+    It also requires correct bonds (ideally read from a topology file).
+
+    Parameters
+    ----------
+    mol : Molecule
+        A Molecule object
+    bonds : np.ndarray
+        Optionally pass a different array of bonds. If None it will take the bonds from mol.bonds.
+
+    Returns
+    -------
+    groups : np.ndarray
+        Groups is an array which contains the starting index of each group.
+
+    Examples
+    --------
+    >>> mol = Molecule("structure.prmtop")
+    >>> mol.read("output.xtc")
+    >>> groups = getBondedGroups(mol)
+    >>> for i in range(len(groups)-1):
+    ...     print(f"Group {i} starts at index {groups[i]} and ends at index {groups[i+1]-1}")
+    """
+    from collections import defaultdict
+
+    if bonds is None:
+        bonds = mol.bonds
+
+    bonds_dict = defaultdict(list)
+    for bb in bonds:
+        bonds_dict[max(bb)].append(min(bb))
+
+    groups = []
+    for i in range(0, mol.numAtoms):
+        if i not in bonds_dict:
+            groups.append(i)
+    groups.append(mol.numAtoms)
+    return np.array(groups, dtype=np.uint32)
+
+
 class Representations:
     """Class that stores representations for Molecule.
 
@@ -2871,10 +2910,20 @@ class _TestMolecule(TestCase):
         newmol.insert(lig, insertidx)
         assert mol_equal(self.trajmol, newmol)
 
+    def test_wrapping(self):
+        from moleculekit.home import home
+
+        homedir = home(dataDir="test-wrapping")
+        mol = Molecule(os.path.join(homedir, "structure.prmtop"))
+        mol.read(os.path.join(homedir, "output.xtc"))
+        mol.wrap("protein or resname ACE NME")
+
+        refmol = Molecule(os.path.join(homedir, "structure.prmtop"))
+        refmol.read(os.path.join(homedir, "output_wrapped.xtc"))
+        assert np.allclose(mol.coords, refmol.coords, atol=1e-2)
+
 
 if __name__ == "__main__":
-    # Unfortunately, tests affect each other because only a shallow copy is done before each test, so
-    # I do a 'copy' before each.
     import doctest
     import unittest
 
