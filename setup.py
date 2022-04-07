@@ -40,6 +40,8 @@ extentions = [
         sources=[ext],
         include_dirs=[numpy.get_include()],
         language="c++",
+        # extra_compile_args=["-fopenmp"],
+        # extra_link_args=["-fopenmp"],
     )
     for ext in extentions
 ]

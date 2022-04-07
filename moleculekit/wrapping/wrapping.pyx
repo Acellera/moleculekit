@@ -6,6 +6,7 @@ cimport numpy as np
 from libcpp.vector cimport vector
 from libcpp cimport bool
 from libc.math cimport round, sqrt, acos, floor, fabs
+from cython.parallel import prange
 
 # We now need to fix a datatype for our arrays. I've used the variable
 # DTYPE for this, which is assigned to the usual NumPy runtime
@@ -37,9 +38,9 @@ def calculate(
     cdef int n_frames = coords.shape[2]
     cdef int n_groups = groups.shape[0]
     cdef int n_centersel = centersel.shape[0]
-    cdef np.ndarray[FLOAT32_t, ndim=1] half_box = np.zeros(3, dtype=FLOAT32)
-    cdef np.ndarray[FLOAT32_t, ndim=1] box_center = np.zeros(3, dtype=FLOAT32)
-    cdef np.ndarray[FLOAT32_t, ndim=1] grp_center = np.zeros(3, dtype=FLOAT32)
+    cdef FLOAT32_t[:] half_box = np.zeros(3, dtype=FLOAT32)
+    cdef FLOAT32_t[:] box_center = np.zeros(3, dtype=FLOAT32)
+    cdef FLOAT32_t[:] grp_center = np.zeros(3, dtype=FLOAT32)
     cdef FLOAT32_t translation, diff
 
     # Wrap the coordinates
