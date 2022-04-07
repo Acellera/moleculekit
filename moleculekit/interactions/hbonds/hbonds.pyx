@@ -39,9 +39,9 @@ def calculate(
     cdef int n_acceptors = acceptors.shape[0]
     cdef int n_frames = coords.shape[2]
     cdef vector[vector[int]] results
-    cdef np.ndarray[FLOAT32_t, ndim=1] dist_vec_a = np.zeros(3, dtype=FLOAT32)
-    cdef np.ndarray[FLOAT32_t, ndim=1] dist_vec_b = np.zeros(3, dtype=FLOAT32)
-    cdef np.ndarray[FLOAT32_t, ndim=1] half_box = np.zeros(3, dtype=FLOAT32)
+    cdef FLOAT32_t[:] dist_vec_a = np.zeros(3, dtype=FLOAT32)
+    cdef FLOAT32_t[:] dist_vec_b = np.zeros(3, dtype=FLOAT32)
+    cdef FLOAT32_t[:] half_box = np.zeros(3, dtype=FLOAT32)
     cdef FLOAT32_t dist2_a, dist2_b, dotprod, val, angle
     cdef UINT32_t d_idx_d, d_idx_h, d_idx, a_idx
 

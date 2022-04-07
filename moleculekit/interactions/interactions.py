@@ -814,7 +814,9 @@ class _TestInteractions(unittest.TestCase):
             dist_threshold=3.8,
             ignore_hs=True,
         )
-        assert np.array_equal(wb, [[[3140, 2899, 2944, 2023], [3140, 2899, 2024]]]), wb
+        ref = [[[3140, 2899, 2944, 2023], [3140, 2899, 2024]]]
+        for i, x in enumerate(ref):
+            assert np.array_equal(wb[0][i], ref[0][i]), wb
 
         wb = waterbridge_calculate(
             mol,

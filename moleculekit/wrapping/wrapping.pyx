@@ -5,7 +5,7 @@ from math import sqrt
 cimport numpy as np
 from libcpp.vector cimport vector
 from libcpp cimport bool
-from libc.math cimport round, sqrt, acos, floor
+from libc.math cimport round, sqrt, acos, floor, fabs
 
 # We now need to fix a datatype for our arrays. I've used the variable
 # DTYPE for this, which is assigned to the usual NumPy runtime
@@ -69,7 +69,7 @@ def calculate(
             
             for i in range(3):
                 diff = grp_center[i] - box_center[i]
-                if abs(diff) > half_box[i]:
+                if fabs(diff) > half_box[i]:
                     translation = box[i, f] * round(diff / box[i, f])
                     for a in range(start_idx, end_idx):
                         coords[a, i, f] = coords[a, i, f] - translation

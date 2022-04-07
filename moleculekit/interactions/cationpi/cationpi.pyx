@@ -24,9 +24,9 @@ cdef void _calculate_ring_mean(
         int f,
         int start_idx, 
         int end_idx, 
-        np.ndarray[UINT32_t, ndim=1] rings_atoms, 
-        np.ndarray[FLOAT32_t, ndim=3] coords,
-        np.ndarray[FLOAT32_t, ndim=1] ring_mean,
+        UINT32_t[:] rings_atoms, 
+        FLOAT32_t[:, :, :] coords,
+        FLOAT32_t[:] ring_mean,
     ):
     cdef FLOAT32_t coor
     for i in range(3):
@@ -45,10 +45,10 @@ cdef void _calculate_ring_mean(
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 cdef float _wrapped_dist(
         int f,
-        np.ndarray[FLOAT32_t, ndim=1] point1,
-        np.ndarray[FLOAT32_t, ndim=1] point2,
-        np.ndarray[FLOAT32_t, ndim=1] half_box,
-        np.ndarray[FLOAT32_t, ndim=2] box,
+        FLOAT32_t[:] point1,
+        FLOAT32_t[:] point2,
+        FLOAT32_t[:] half_box,
+        FLOAT32_t[:, :] box,
     ):
     cdef FLOAT32_t val
     cdef float dist2 = 0
@@ -63,7 +63,7 @@ cdef float _wrapped_dist(
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-cdef void _normalize(np.ndarray[FLOAT32_t, ndim=1] vec):
+cdef void _normalize(FLOAT32_t[:] vec):
     cdef float vec_norm = 0 
     for i in range(3):
         vec_norm = vec_norm + (vec[i] * vec[i])
@@ -76,9 +76,9 @@ cdef void _normalize(np.ndarray[FLOAT32_t, ndim=1] vec):
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 cdef void _cross_product(
-        np.ndarray[FLOAT32_t, ndim=1] vec_a, 
-        np.ndarray[FLOAT32_t, ndim=1] vec_b,
-        np.ndarray[FLOAT32_t, ndim=1] res,
+        FLOAT32_t[:] vec_a, 
+        FLOAT32_t[:] vec_b,
+        FLOAT32_t[:] res,
     ):
     res[0] = vec_a[1] * vec_b[2] - vec_a[2] * vec_b[1]
     res[1] = vec_a[2] * vec_b[0] - vec_a[0] * vec_b[2]
@@ -105,12 +105,12 @@ def calculate(
 
     cdef vector[vector[int]] results
     cdef vector[vector[float]] distangles
-    cdef np.ndarray[FLOAT32_t, ndim=1] ring_mean = np.zeros(3, dtype=FLOAT32)
-    cdef np.ndarray[FLOAT32_t, ndim=1] ring_normal = np.zeros(3, dtype=FLOAT32)
-    cdef np.ndarray[FLOAT32_t, ndim=1] half_box = np.zeros(3, dtype=FLOAT32)
-    cdef np.ndarray[FLOAT32_t, ndim=1] cation_coor = np.zeros(3, dtype=FLOAT32)
-    cdef np.ndarray[FLOAT32_t, ndim=1] tmp1 = np.zeros(3, dtype=FLOAT32)
-    cdef np.ndarray[FLOAT32_t, ndim=1] tmp2 = np.zeros(3, dtype=FLOAT32)
+    cdef FLOAT32_t[:] ring_mean = np.zeros(3, dtype=FLOAT32)
+    cdef FLOAT32_t[:] ring_normal = np.zeros(3, dtype=FLOAT32)
+    cdef FLOAT32_t[:] half_box = np.zeros(3, dtype=FLOAT32)
+    cdef FLOAT32_t[:] cation_coor = np.zeros(3, dtype=FLOAT32)
+    cdef FLOAT32_t[:] tmp1 = np.zeros(3, dtype=FLOAT32)
+    cdef FLOAT32_t[:] tmp2 = np.zeros(3, dtype=FLOAT32)
     cdef FLOAT32_t dist2, dot_prod
     cdef int r_start_idx, r_end_idx
 
