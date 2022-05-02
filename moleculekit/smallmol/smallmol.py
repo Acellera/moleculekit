@@ -762,29 +762,31 @@ class SmallMol(object):
 
         Returns
         -------
-        smart: str
-            The smarts string
+        The values of the different descriptors
+        The names of the different descriptors
         """
         from rdkit.Chem import Descriptors
 
         desc_dict = dict(Descriptors.descList)
         descs = list(desc_dict.keys())
-        descs.remove('Ipc')
+        descs.remove("Ipc")
         ans = {}
         for descname in descs:
             try:
                 desc = desc_dict[descname]
                 value = desc(self._mol)
             except (ValueError, TypeError, ZeroDivisionError) as exception:
-                logger.warning(f"Descriptor {descname} was not calculated for this small molecule due to {str(exception)}")
-                value = 'NaN'
+                logger.warning(
+                    f"Descriptor {descname} was not calculated for this small molecule due to {str(exception)}"
+                )
+                value = None  # "NaN"
 
-            bin_name = 'DESC_{}'.format(descname)
+            bin_name = f"DESC_{descname}"
             ans[bin_name] = value
 
-        molstring = ans.values()
-        headers = ans.keys()
-        return molstring, headers
+        descr_values = ans.values()
+        descr_headers = ans.keys()
+        return descr_values, descr_headers
 
     def fingerprint(self, radius=2, num_bits=1024):
         """
@@ -808,7 +810,7 @@ class SmallMol(object):
         ecfp4 = AllChem.GetHashedMorganFingerprint(self._mol, radius, num_bits)
         maccs = MACCSkeys.GenMACCSKeys(self._mol)
         avalons = GetAvalonCountFP(self._mol, num_bits)
-        return (ecfp4, maccs, avalons)
+        return ecfp4, maccs, avalons
 
     def featurize(self, radius, num_bits):
         """
@@ -824,23 +826,29 @@ class SmallMol(object):
         Returns
         -------
         A list with all the features and another list with the name of the property
-        """        
+        """
         descriptors, headers = self.describe()
         ecfp4, maccs, avalons = self.fingerprint(radius, num_bits)
 
-        features = [Chem.MolToSmiles(self._mol)] + [x for x in ecfp4] + [x for x in maccs] + [x for x in avalons] 
-        features.extend(descriptors)   
+        features = (
+            [Chem.MolToSmiles(self._mol)]
+            + [x for x in ecfp4]
+            + [x for x in maccs]
+            + [x for x in avalons]
+        )
+        features.extend(descriptors)
 
-        all_headers = ['smiles']
-        all_headers.extend(['ECFC4_bit_{}'.format(str(x)) for x in range(num_bits)])
-        all_headers.extend(['MACC_bit_{}'.format(str(x)) for x in range(len(maccs))])
-        all_headers.extend(['Avalon_bit_{}'.format(str(x)) for x in range(num_bits)])
+        all_headers = ["smiles"]
+        all_headers.extend([f"ECFC4_bit_{x}" for x in range(num_bits)])
+        all_headers.extend([f"MACC_bit_{x}" for x in range(len(maccs))])
+        all_headers.extend([f"Avalon_bit_{x}" for x in range(num_bits)])
         all_headers.extend(headers)
 
         return all_headers, features
 
-
-    def strip_salts_and_detect_metals(self, metals_smart='[Mg,Ca,Zn,As,Mn,Al,Pd,Pt,Co,Ba,Cr,Cu,Ni,Ag,Fe,Hg,Cd,Gd,Na]'):
+    def strip_salts_and_detect_metals(
+        self, metals_smart="[Mg,Ca,Zn,As,Mn,Al,Pd,Pt,Co,Ba,Cr,Cu,Ni,Ag,Fe,Hg,Cd,Gd,Na]"
+    ):
         from rdkit.Chem.SaltRemover import SaltRemover
 
         query = Chem.MolFromSmarts(metals_smart)
@@ -848,9 +856,9 @@ class SmallMol(object):
         self._mol = remover.StripMol(self._mol)
         if self._mol.HasSubstructMatch(query):
             logger.warning("Metal detected in this small molecule")
-            return 1
+            return True
 
-        return 0
+        return False
 
     def toSMARTS(self, explicitHs=False):
         """
