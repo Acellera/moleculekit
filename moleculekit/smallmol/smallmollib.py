@@ -443,7 +443,7 @@ class SmallMolLib(object):
 
         legends_list = []
         if legends == "names":
-            legends_list = [_m.getProp("ligname") for _m in _smallmols]
+            legends_list = [_m.ligname for _m in _smallmols]
         elif legends == "items":
             legends_list = [str(n + 1) for n in range(len(_smallmols))]
 
