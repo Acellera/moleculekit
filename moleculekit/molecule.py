@@ -2029,6 +2029,93 @@ class Molecule(object):
         graph.add_edges_from(edges)
         return graph
 
+    def hasBond(self, idx1, idx2):
+        """Checks if the Molecule has a bond between two atom indexes
+
+        Parameters
+        ----------
+        idx1 : int
+            The index of the one atom
+        idx2 : int
+            The index of the other atom
+
+        Returns
+        -------
+        has : bool
+            True if the Molecule has that bond, False if not
+        btype : str
+            The bond type of that bond
+        bidx : int
+            The index of that bond in the bond/bondtype array
+        """
+        idx = np.where((self.bonds == (idx1, idx2)).all(axis=1))[0]
+        if len(idx):
+            return True, self.bondtype[idx[0]], idx[0]
+        else:
+            idx = np.where((self.bonds == (idx2, idx1)).all(axis=1))[0]
+            if len(idx):
+                return True, self.bondtype[idx[0]], idx[0]
+        return False, None, None
+
+    def addBond(self, idx1, idx2, btype):
+        """Add a new bond to a pair of atoms
+
+        If the bond already exists it will only update it's type
+
+        Parameters
+        ----------
+        idx1 : int
+            The index of the one atom
+        idx2 : int
+            The index of the other atom
+        btype : str
+            The type of the bond as a string
+
+        Examples
+        --------
+        >>> mol.addBond(13, 18, "2") # Adds a double bond
+        """
+        hasb, _, oldidx = self.hasBond(idx1, idx2)
+        if hasb:
+            self.bondtype[oldidx] = btype
+        else:
+            self.bonds = np.vstack((self.bonds, [idx1, idx2]))
+            self.bondtype = np.hstack((self.bondtype, [btype]))
+
+    def removeBond(self, idx1, idx2):
+        """Remove an existing bond between a pair of atoms
+
+        Parameters
+        ----------
+        idx1 : int
+            The index of the one atom
+        idx2 : int
+            The index of the other atom
+        """
+        hasb, _, oldidx = self.hasBond(idx1, idx2)
+        if hasb:
+            self.bonds = np.delete(self.bonds, oldidx, axis=0)
+            self.bondtype = np.delete(self.bondtype, oldidx, axis=0)
+
+    def getNeighbors(self, idx):
+        """Returns all atoms bonded to a specific atom
+
+        Parameters
+        ----------
+        idx : int
+            The atom for which to find bonded atoms
+
+        Returns
+        -------
+        atoms : list of int
+            The atoms bonded to `idx`
+        """
+        rows = np.where(self.bonds == idx)[0]
+        return list(set(self.bonds[rows].flatten()) - {idx})
+
+    def _ix(self, resid, name):
+        return np.where((self.name == name) & (self.resid == resid))[0][0]
+
 
 class UniqueAtomID:
     _fields = ("name", "altloc", "resname", "chain", "resid", "insertion", "segid")
@@ -2523,7 +2610,7 @@ class Representations:
             selidx = "@" + ",".join(
                 map(str, self._mol.atomselect(rep.sel, indexes=True))
             )
-        except:
+        except Exception:
             return None
         if rep.style.lower() in styletrans:
             style = styletrans[rep.style.lower()]
@@ -2927,7 +3014,7 @@ if __name__ == "__main__":
     import doctest
     import unittest
 
-    m = Molecule("3PTB")
-    doctest.testmod(extraglobs={"tryp": m.copy()})
+    # m = Molecule("3PTB")
+    # doctest.testmod(extraglobs={"tryp": m.copy()})
 
     unittest.main(verbosity=2)
