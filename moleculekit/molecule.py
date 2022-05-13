@@ -975,7 +975,7 @@ class Molecule(object):
 
         return dihedralAngle(self.coords[atom_quad, :, self.frame])
 
-    def setDihedral(self, atom_quad, radians, bonds=None):
+    def setDihedral(self, atom_quad, radians, bonds=None, guessBonds=False):
         """Sets the angle of a dihedral.
 
         Parameters
@@ -987,6 +987,8 @@ class Molecule(object):
         bonds : np.ndarray
             An array containing all bonds of the molecule. This is needed if multiple modifications are done as the
             bond guessing can get messed up if atoms come very close after the rotation.
+        guessBonds : bool
+            Set to True if you want to guess bonds based on atom distances if they are not defined
 
         Examples
         --------
@@ -1001,7 +1003,7 @@ class Molecule(object):
         from moleculekit.dihedral import dihedralAngle
 
         if bonds is None:
-            bonds = self._getBonds()
+            bonds = self._getBonds(guessBonds=guessBonds)
 
         protGraph = nx.Graph()
         protGraph.add_edges_from(bonds)
