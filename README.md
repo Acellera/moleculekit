@@ -18,36 +18,15 @@ You can install moleculekit either in the "base" conda environment or in a new c
 
 #### With conda
 
-```
-(base) user@computer:~$ conda install moleculekit -c acellera
-```
+[Installation Instructions](https://software.acellera.com/docs/latest/moleculekit/installation.html)
 
 #### With pip
+
+The pip version of moleculekit is VERY limited and not officially supported. Use at your own risk.
 
 ```
 (base) user@computer:~$ pip install moleculekit
 ```
-
-### Create a new conda environment
-
-The advantage of conda environments is that you can keep each of your python packages separate with all of their dependencies.
-This helps avoid conflicts between python packages (i.e. one requires python 2.7 and the other one python 3.6) which might be hard to resolve.
-
-To create a new conda environment named "moleculekit" you run the following command
-
-```
-(base) user@computer:~$ conda create -n moleculekit
-```
-
-Then you activate that conda environment with
-
-```
-(base) user@computer:~$ conda activate moleculekit
-(moleculekit) user@computer:~$ 
-```
-
-As you can see the environment changed now.
-Now you can use the same above install commands to install into the new conda environment.
 
 ### Optional dependencies of moleculekit
 
@@ -81,10 +60,12 @@ mol = Molecule('3ptb')
 mol.view()
 ```
 
+### API
+
+For the official documentation of the moleculekit API head over to https://software.acellera.com/docs/latest/moleculekit/index.html 
 ### Issues
 
 For any bugs or questions on usage feel free to use the issue tracker of this github repo.
-For the official documentation of moleculekit head over to https://software.acellera.com/docs/latest/moleculekit/index.html 
 
 ### Dev
 
