@@ -756,6 +756,104 @@ class SmallMol(object):
     def view(self, *args, **kwargs):
         self.toMolecule().view(*args, **kwargs)
 
+    def getDescriptors(self, prefix="", ignore=("Ipc")):
+        """Calculate descriptors for the molecule
+
+        Returns rdkit descriptors for the molecule, like DESC_NumRotatableBonds or DESC_MolLogP.
+        See rdkit.Chem.Descriptors for more.
+
+        Parameters
+        ----------
+        prefix : str
+            A string prefix to add to all dictionary keys
+        ignore : list
+            A list of descriptors which to not calculate
+
+        Returns
+        -------
+        descriptors : dict
+            A dictionary containing all descriptors of the molecule
+        """
+        from rdkit.Chem import Descriptors
+
+        desc_funcs = dict(Descriptors.descList)
+        for name in ignore:
+            del desc_funcs[name]
+
+        descriptors = {}
+        for desc_name, desc_f in desc_funcs.items():
+            try:
+                value = desc_f(self._mol)
+            except Exception as e:
+                logger.warning(
+                    f"Descriptor {desc_name} was not calculated for this small molecule due to {e}"
+                )
+                value = None
+
+            descriptors[f"{prefix}{desc_name}"] = value
+
+        return descriptors
+
+    def getFingerprint(self, mode, radius=2, num_bits=1024):
+        """
+        Returns Morgan, MACCS and AvalonCount fingerprints at specified radius and num_bits
+
+        Parameters
+        ----------
+        mode : str
+            One of 'Morgan', 'MACCS', 'AvalonCount'
+        radius: int
+           Radius to define a local environment for the relevant fingeprints
+        num_bits: int
+            The number of bits to use in the fingerprint. Larger avoids collisions.
+
+        Returns
+        -------
+        A list with the three fingerprints
+        """
+        if mode not in ("Morgan", "MACCS", "AvalonCount"):
+            raise RuntimeError(
+                "mode can be only one of 'Morgan', 'MACCS', 'AvalonCount'"
+            )
+
+        if mode == "Morgan":
+            from rdkit.Chem import AllChem
+
+            return AllChem.GetHashedMorganFingerprint(self._mol, radius, num_bits)
+        if mode == "MACCS":
+            from rdkit.Chem import MACCSkeys
+
+            return MACCSkeys.GenMACCSKeys(self._mol)
+        if mode == "AvalonCount":
+            from rdkit.Avalon.pyAvalonTools import GetAvalonCountFP
+
+            return GetAvalonCountFP(self._mol, num_bits)
+
+    def stripSalts(self):
+        """Removes any salts from the molecule"""
+        from rdkit.Chem.SaltRemover import SaltRemover
+
+        remover = SaltRemover()
+        self._mol = remover.StripMol(self._mol)
+
+    def containsMetals(
+        self, metalSMARTS="[Mg,Ca,Zn,As,Mn,Al,Pd,Pt,Co,Ba,Cr,Cu,Ni,Ag,Fe,Hg,Cd,Gd,Na]"
+    ):
+        """Returns True if the molecule contains metals
+
+        Parameters
+        ----------
+        metalSMARTS : str
+            SMARTS for detecting metals
+
+        Returns
+        -------
+        contains : bool
+            True if the molecule contains metals, else False
+        """
+        query = Chem.MolFromSmarts(metalSMARTS)
+        return self._mol.HasSubstructMatch(query)
+
     def toSMARTS(self, explicitHs=False):
         """
         Returns the smarts string of the molecule
