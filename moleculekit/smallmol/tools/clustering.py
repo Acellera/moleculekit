@@ -161,7 +161,7 @@ def cluster(
 
         matrix = np.array(matrix)
 
-    db = DBSCAN(eps=distThresholds, min_samples=0, metric="precomputed").fit(matrix)
+    db = DBSCAN(eps=distThresholds, min_samples=1, metric="precomputed").fit(matrix)
 
     labels = db.labels_
 
