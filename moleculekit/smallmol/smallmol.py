@@ -1190,6 +1190,7 @@ class _TestTautomerGeneration(unittest.TestCase):
         # )
         from moleculekit.smallmol.smallmollib import SmallMolLib
         from moleculekit.util import file_diff
+        from moleculekit.home import home
         import tempfile
 
         smiles = {
