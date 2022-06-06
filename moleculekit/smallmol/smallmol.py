@@ -11,6 +11,7 @@ from rdkit.Chem.rdchem import HybridizationType, BondType
 from collections import defaultdict
 from moleculekit.smallmol.util import _depictMol, convertToString
 from moleculekit.tools.obabel_tools import openbabelConvert
+import unittest
 import logging
 
 logger = logging.getLogger(__name__)
@@ -1104,6 +1105,51 @@ class SmallMol(object):
     def removeHs(self):
         self._mol = Chem.RemoveHs(self._mol)
 
+    def getTautomers(
+        self,
+        canonical=True,
+        genConformers=False,
+        returnScores=True,
+        maxTautomers=200,
+        filterTauts=None,
+    ):
+        from rdkit.Chem.MolStandardize import rdMolStandardize
+        from moleculekit.smallmol.smallmollib import SmallMolLib
+
+        enumerator = rdMolStandardize.TautomerEnumerator()
+        enumerator.SetMaxTautomers(maxTautomers)
+        if canonical:
+            tauts = [SmallMol(enumerator.Canonicalize(self._mol))]
+        else:
+            tauts = [SmallMol(x) for x in enumerator.Enumerate(self._mol)]
+
+        if returnScores or filterTauts is not None:
+            scores = []
+            for tt in tauts:
+                scores.append(enumerator.ScoreTautomer(tt._mol))
+
+            if filterTauts is not None:
+                max_score = max(scores)
+                new_tauts = []
+                new_scores = []
+                for i in range(len(tauts)):
+                    if scores[i] >= max_score - filterTauts:
+                        new_tauts.append(tauts[i])
+                        new_scores.append(scores[i])
+                tauts = new_tauts
+                scores = new_scores
+
+        if genConformers:
+            for tt in tauts:
+                tt.generateConformers(num_confs=1)
+
+        sms = SmallMolLib()
+        sms._mols = tauts
+        if returnScores:
+            return sms, scores
+
+        return sms
+
     def __repr__(self):
         return (
             "<{}.{} object at {}>\n".format(
@@ -1137,6 +1183,65 @@ class SmallMol(object):
         return rep
 
 
+class _TestTautomerGeneration(unittest.TestCase):
+    def test_tautomers(self):
+        # lib = SmallMolLib(
+        #     os.path.join(home(dataDir="test-smallmol"), "fda_drugs_light.sdf")
+        # )
+        from moleculekit.smallmol.smallmollib import SmallMolLib
+        from moleculekit.util import file_diff
+        import tempfile
+
+        smiles = {
+            "Oc1c(cccc3)c3nc2ccncc12": 3,
+            "CN=c1nc[nH]cc1": 3,
+            "CC=CO": 2,
+        }
+        for i, sm in enumerate(smiles):
+            with self.subTest(mol=sm):
+                mol = SmallMol(sm, fixHs=False)
+                tauts, scores = mol.getTautomers(canonical=False, genConformers=False)
+                assert len(tauts) == smiles[sm]
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    newfile = os.path.join(tmpdir, "tautomers.sdf")
+                    tauts.writeSdf(os.path.join(tmpdir, "tautomers.sdf"))
+                    reffile = os.path.join(
+                        home(dataDir="test-smallmol"), f"tautomer_results_{i}.sdf"
+                    )
+                    file_diff(newfile, reffile)
+
+        # Test FDA drug tautomers
+        lib = SmallMolLib(
+            os.path.join(home(dataDir="test-smallmol"), "fda_drugs_light.sdf"),
+            fixHs=True,
+        )
+        all_tauts = []
+        for mol in lib:
+            with self.subTest(fda_mol=mol.ligname):
+                try:
+                    tauts = mol.getTautomers(
+                        canonical=False, genConformers=False, returnScores=False
+                    )
+                except Exception:
+                    continue
+                else:
+                    all_tauts.append(tauts)
+
+        alllib = SmallMolLib()
+        alllib._mols = []
+        for tt in all_tauts:
+            alllib._mols += tt._mols
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            reffile = os.path.join(
+                home(dataDir="test-smallmol"), "fda_drugs_light_tautomers.sdf"
+            )
+            newfile = os.path.join(tmpdir, "fda_tautomers.sdf")
+            alllib.writeSdf(newfile)
+
+            file_diff(newfile, reffile)
+
+
 if __name__ == "__main__":
     import doctest
     from moleculekit.home import home
@@ -1147,3 +1252,5 @@ if __name__ == "__main__":
     )
     sm = SmallMol(os.path.join(home(dataDir="test-smallmol"), "benzamidine.mol2"))
     doctest.testmod(extraglobs={"lib": lib.copy(), "sm": sm.copy()})
+
+    unittest.main(verbosity=2)

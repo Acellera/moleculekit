@@ -20,7 +20,6 @@ exclusions = (
     "moleculekit/test-data",
     "moleculekit/pdbx",
     "moleculekit/tools/obabel_tools",
-    "moleculekit/smallmol/tools/molvstautomer.py",
 )
 
 for root, dirs, files in os.walk("moleculekit"):

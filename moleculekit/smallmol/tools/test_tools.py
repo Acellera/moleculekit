@@ -265,8 +265,6 @@ class _TestSmallMol(unittest.TestCase):
         coor_diff = refcoords[restr_atoms].squeeze() - sm._coords[restr_atoms].squeeze()
         assert np.abs(coor_diff).max() < 0.1
 
-    # TODO: Add here tests for tautomers
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

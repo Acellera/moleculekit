@@ -782,6 +782,43 @@ class _TestUtils(TestCase):
         assert np.allclose(dist, 10.771703745561421)
 
 
+def file_diff(file, reference):
+    import difflib
+
+    with open(reference) as f:
+        reflines = f.readlines()
+    with open(file) as f:
+        newlines = f.readlines()
+
+    diff = difflib.unified_diff(
+        reflines, newlines, fromfile=reference, tofile=file, n=1
+    )
+    diff = list(diff)
+    if len(diff):
+        raise RuntimeError("".join(diff))
+
+
+def folder_diff(folder, reference, ignore_ftypes=(".log", ".txt")):
+    import filecmp
+
+    def list_files(filepath):
+        paths = []
+        for root, _, files in os.walk(filepath):
+            for ff in files:
+                if os.path.splitext(ff)[-1] not in ignore_ftypes:
+                    paths.append(os.path.relpath(os.path.join(root, ff), filepath))
+        return paths
+
+    files = list_files(reference)
+    match, mismatch, error = filecmp.cmpfiles(folder, reference, files, shallow=False)
+
+    if len(mismatch) != 0 or len(error) != 0 or len(match) != len(files):
+        for ff in mismatch:
+            reffile = os.path.join(folder, ff)
+            newfile = os.path.join(reference, ff)
+            file_diff(newfile, reffile)
+
+
 if __name__ == "__main__":
     import unittest
 
