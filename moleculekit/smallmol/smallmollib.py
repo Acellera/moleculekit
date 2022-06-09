@@ -382,7 +382,7 @@ class SmallMolLib(object):
         removeHs: bool
             Set to True to hide hydrogens in the depiction
         legends: str
-            The name to used for each molecule. Can be 'names':the name of themselves; or 'items': a incremental id
+            A legend text to add under each molecule. Can be 'names':the name of the molecule; 'items': a incremental id, or any other SDF property name.
         highlightAtoms: list
             A List of atom to highligh for each molecule. It can be also a list of atom list, in this case different
             colors will be used
@@ -407,9 +407,6 @@ class SmallMolLib(object):
             raise ValueError(
                 "Impossible to use optmization in  2D sketch representation"
             )
-
-        if legends is not None and legends not in ["names", "items"]:
-            raise ValueError('The "legends" should be "names" or "items"')
 
         _smallmols = self.getMols(ids)
 
@@ -446,7 +443,12 @@ class SmallMolLib(object):
             legends_list = [_m.ligname for _m in _smallmols]
         elif legends == "items":
             legends_list = [str(n + 1) for n in range(len(_smallmols))]
-
+        else:
+            try:
+                legends_list = [f"{legends}={_m.GetDoubleProp(legends)}" for _m in _mols]
+            except Exception as e:
+                raise RuntimeError(f"Failed at getting molecule property '{legends}' passed in `legends` argument with error {e}")
+            
         return depictMultipleMols(
             _mols,
             ipython=ipython,
