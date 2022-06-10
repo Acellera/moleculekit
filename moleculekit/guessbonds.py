@@ -1,5 +1,6 @@
 import numpy as np
 from moleculekit.bondguesser import make_grid_neighborlist_nonperiodic, grid_bonds
+import unittest
 
 
 def guess_bonds(mol, num_processes=6):
@@ -100,6 +101,7 @@ def bond_grid_search(
     return results
 
 
+# One of these is executed per box
 def _thread_func(
     boxidx, atoms_in_box, gridlist, num_boxes, coords, radii, is_hydrogen, pairdist
 ):
@@ -122,3 +124,28 @@ def _thread_func(
     for i in range(int(len(pairs) / 2)):
         real_pairs.append([all_atoms[pairs[i * 2]], all_atoms[pairs[i * 2 + 1]]])
     return real_pairs
+
+
+class _TestBondGuesser(unittest.TestCase):
+    def test_bond_guessing(self):
+        from moleculekit.molecule import Molecule
+        import networkx as nx
+
+        pdbids = ["3ptb"]
+
+        for pi in pdbids:
+            with self.subTest(pdb=pi):
+                mol = Molecule(pi)
+                bonds = guess_bonds(mol)
+
+                g1 = nx.Graph()
+                g1.add_edges_from(bonds)
+
+                g2 = nx.Graph()
+                g2.add_edges_from(mol.bonds)
+
+                assert nx.is_isomorphic(g1, g2)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
