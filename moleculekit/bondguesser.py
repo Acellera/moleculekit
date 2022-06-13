@@ -1,23 +1,150 @@
 import numpy as np
-from moleculekit.bondguesser import make_grid_neighborlist_nonperiodic, grid_bonds
+from moleculekit.bondguesser_utils import make_grid_neighborlist_nonperiodic, grid_bonds
 import unittest
+
+# VdW radii are from A. Bondi J. Phys. Chem., 68, 441 - 452, 1964
+# H is overriden to 1A from 1.2A in J.Phys.Chem., 100, 7384 - 7391, 1996
+# Unavailable radii are set to 2A
+# Ion radii are taken from CHARMM27 parameters
+vdw_radii = {
+    "H": 1,
+    "He": 1.4,
+    "Li": 1.82,
+    "Be": 2.0,
+    "B": 2.0,
+    "C": 1.7,
+    "N": 1.55,
+    "O": 1.52,
+    "F": 1.47,
+    "Ne": 1.54,
+    "Na": 1.36,
+    "Mg": 1.18,
+    "Al": 2.0,
+    "Si": 2.1,
+    "P": 1.8,
+    "S": 1.8,
+    "Cl": 2.27,
+    "Ar": 1.88,
+    "K": 1.76,
+    "Ca": 1.37,
+    "Sc": 2.0,
+    "Ti": 2.0,
+    "V": 2.0,
+    "Cr": 2.0,
+    "Mn": 2.0,
+    "Fe": 2.0,
+    "Co": 2.0,
+    "Ni": 1.63,
+    "Cu": 1.4,
+    "Zn": 1.39,
+    "Ga": 1.07,
+    "Ge": 2.0,
+    "As": 1.85,
+    "Se": 1.9,
+    "Br": 1.85,
+    "Kr": 2.02,
+    "Rb": 2.0,
+    "Sr": 2.0,
+    "Y": 2.0,
+    "Zr": 2.0,
+    "Nb": 2.0,
+    "Mo": 2.0,
+    "Tc": 2.0,
+    "Ru": 2.0,
+    "Rh": 2.0,
+    "Pd": 1.63,
+    "Ag": 1.72,
+    "Cd": 1.58,
+    "In": 1.93,
+    "Sn": 2.17,
+    "Sb": 2.0,
+    "Te": 2.06,
+    "I": 1.98,
+    "Xe": 2.16,
+    "Cs": 2.1,
+    "Ba": 2.0,
+    "La": 2.0,
+    "Ce": 2.0,
+    "Pr": 2.0,
+    "Nd": 2.0,
+    "Pm": 2.0,
+    "Sm": 2.0,
+    "Eu": 2.0,
+    "Gd": 2.0,
+    "Tb": 2.0,
+    "Dy": 2.0,
+    "Ho": 2.0,
+    "Er": 2.0,
+    "Tm": 2.0,
+    "Yb": 2.0,
+    "Lu": 2.0,
+    "Hf": 2.0,
+    "Ta": 2.0,
+    "W": 2.0,
+    "Re": 2.0,
+    "Os": 2.0,
+    "Ir": 2.0,
+    "Pt": 1.72,
+    "Au": 1.66,
+    "Hg": 1.55,
+    "Tl": 1.96,
+    "Pb": 2.02,
+    "Bi": 2.0,
+    "Po": 2.0,
+    "At": 2.0,
+    "Rn": 2.0,
+    "Fr": 2.0,
+    "Ra": 2.0,
+    "Ac": 2.0,
+    "Th": 2.0,
+    "Pa": 2.0,
+    "U": 1.86,
+    "Np": 2.0,
+    "Pu": 2.0,
+    "Am": 2.0,
+    "Cm": 2.0,
+    "Bk": 2.0,
+    "Cf": 2.0,
+    "Es": 2.0,
+    "Fm": 2.0,
+    "Md": 2.0,
+    "No": 2.0,
+    "Lr": 2.0,
+    "Rf": 2.0,
+    "Db": 2.0,
+    "Sg": 2.0,
+    "Bh": 2.0,
+    "Hs": 2.0,
+    "Mt": 2.0,
+    "Ds": 2.0,
+    "Rg": 2.0,
+}
 
 
 def guess_bonds(mol, num_processes=6):
-    from moleculekit.periodictable import periodictable
+    # from moleculekit.periodictable import periodictable
+
+    # exceptions = {
+    #     "H": 1,
+    #     "Na": 1.36,
+    #     "Mg": 1.18,
+    #     "Cl": 2.27,
+    #     "K": 1.76,
+    #     "Ca": 1.37,
+    #     "Ni": 1.63,
+    #     "Cu": 1.4,
+    #     "Zn": 1.39,
+    #     "Ga": 1.07,
+    # }
 
     coords = mol.coords[:, :, mol.frame].copy()
 
     radii = []
     for el in mol.element:
-        if el not in periodictable:
+        if el not in vdw_radii:
             raise RuntimeError(f"Unknown element '{el}'")
-        if el == "H":
-            radii.append(1.0)  # Override hydrogen radius to 1A
-            continue
-        vdw = periodictable[el].vdw_radius
         # Default radius for None radius is 2A
-        radii.append(vdw if vdw is not None else 2)
+        radii.append(vdw_radii[el])
     radii = np.array(radii)
 
     is_hydrogen = mol.element == "H"
@@ -40,7 +167,7 @@ def bond_grid_search(
     radii,
     max_boxes=4e6,
     cutoff_incr=1.26,
-    num_processes=6,
+    num_processes=1,
 ):
     from collections import defaultdict
     from multiprocessing import Pool
@@ -128,23 +255,52 @@ def _thread_func(
 
 class _TestBondGuesser(unittest.TestCase):
     def test_bond_guessing(self):
-        from moleculekit.molecule import Molecule
-        import networkx as nx
+        from moleculekit.molecule import Molecule, calculateUniqueBonds
+        from moleculekit.home import home
+        import os
+        import time
 
-        pdbids = ["3ptb"]
+        pdbids = [
+            "3ptb",
+            "3hyd",
+            "6a5j",
+            "5vbl",
+            "7q5b",
+            "1unc",
+            "3zhi",
+            "1a25",
+            "1u5u",
+            "1gzm",
+            "6va1",
+            "1bna",
+            "3wbm",
+            "1awf",
+            "5vav",
+        ]
 
         for pi in pdbids:
             with self.subTest(pdb=pi):
                 mol = Molecule(pi)
                 bonds = guess_bonds(mol)
 
-                g1 = nx.Graph()
-                g1.add_edges_from(bonds)
+                reff = os.path.join(home(dataDir="test-bondguesser"), f"{pi}.csv")
 
-                g2 = nx.Graph()
-                g2.add_edges_from(mol.bonds)
+                bonds, _ = calculateUniqueBonds(bonds.astype(np.uint32), [])
+                bondsref, _ = calculateUniqueBonds(mol._guessBonds(), [])
 
-                assert nx.is_isomorphic(g1, g2)
+                x1 = time.time()
+                _ = guess_bonds(mol)
+                x1 = time.time() - x1
+                x2 = time.time()
+                _ = mol._guessBonds()
+                x2 = time.time() - x2
+                print(f"Times {x1}, {x2}")
+
+                with open(reff, "w") as f:
+                    for b in range(bondsref.shape[0]):
+                        f.write(f"{bondsref[b, 0]},{bondsref[b, 1]}\n")
+
+                assert np.array_equal(bonds, bondsref)
 
 
 if __name__ == "__main__":
