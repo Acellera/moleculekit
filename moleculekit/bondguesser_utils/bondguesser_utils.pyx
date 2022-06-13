@@ -117,27 +117,48 @@ cdef bool _is_close(
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 def grid_bonds(
-        UINT32_t[:] indexes,
         FLOAT32_t[:,:] coords,
         FLOAT32_t[:] radii,
         UINT32_t[:] is_hydrogen,
-        UINT32_t num_in_box, # First num_in_box indexes belong to the center box
         float box_cutoff,
+        int boxidx,
+        UINT32_t[:,:] atoms_in_box,
+        UINT32_t[:,:] gridlist,
     ):
-    cdef int i, j, ii, jj
+    cdef int i, j, ii, jj, startjj
     cdef float cutoff2  # squared cutoff
-    cdef int n_atoms = indexes.shape[0]
+    cdef int n_atoms = coords.shape[0]
     cdef vector[int] results
+    cdef int max_atoms = atoms_in_box.shape[1]
+    cdef int n_boxes = gridlist.shape[0]
+    cdef UINT32_t boxneigh
 
     cutoff2 = box_cutoff * box_cutoff
 
-    for ii in range(num_in_box): # Stop iterating at num_in_box to not calculate the neighbours between them
-        for jj in range(ii+1, n_atoms):
-            i = indexes[ii]
-            j = indexes[jj]
-            if _is_close(coords, radii, is_hydrogen, i, j, cutoff2):
-                results.push_back(i)
-                results.push_back(j)
+    for ii in range(max_atoms):
+        i = atoms_in_box[boxidx, ii]
+        if i == n_atoms:
+            break
+
+        # Iterate over neighbor boxes
+        for kk in range(14):
+            boxneigh = gridlist[boxidx, kk]
+            if boxneigh == n_boxes:
+                break
+
+            # If it's self-interactions, do only matrix upper triangle
+            startjj = 0
+            if boxneigh == boxidx:
+                startjj = ii+1
+
+            for jj in range(startjj, max_atoms):
+                j = atoms_in_box[boxneigh, jj]
+                if j == n_atoms:
+                    break
+
+                if _is_close(coords, radii, is_hydrogen, i, j, cutoff2):
+                    results.push_back(i)
+                    results.push_back(j)
 
     return results
             

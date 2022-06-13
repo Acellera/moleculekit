@@ -121,7 +121,7 @@ vdw_radii = {
 }
 
 
-def guess_bonds(mol, num_processes=6):
+def guess_bonds(mol):
     # from moleculekit.periodictable import periodictable
 
     # exceptions = {
@@ -152,9 +152,7 @@ def guess_bonds(mol, num_processes=6):
     # Setting the grid box distance to 1.2 times the largest VdW radius
     grid_cutoff = np.max(radii) * 1.2
 
-    bonds = bond_grid_search(
-        coords, grid_cutoff, is_hydrogen, radii, num_processes=num_processes
-    )
+    bonds = bond_grid_search(coords, grid_cutoff, is_hydrogen, radii)
 
     # bonds = guess_bonds(mol.coords, radii, is_hydrogen, grid_cutoff)
     return bonds
@@ -165,12 +163,10 @@ def bond_grid_search(
     grid_cutoff,
     is_hydrogen,
     radii,
-    num_processes,
     max_boxes=4e6,
     cutoff_incr=1.26,
 ):
     from collections import defaultdict
-    from multiprocessing import Pool
 
     # Get min and max coords
     min_c = coords.min(axis=0)
@@ -200,84 +196,40 @@ def bond_grid_search(
     box_idx = box_idx[:, 2] * xy_boxes + box_idx[:, 1] * xyz_boxes[0] + box_idx[:, 0]
 
     atoms_in_box = defaultdict(list)
+    maxlen = 0
     for i in range(len(box_idx)):
         atoms_in_box[box_idx[i]].append(i)
+        maxlen = max(maxlen, len(atoms_in_box[box_idx[i]]))
+
+    # Create 2D array with all box atoms. Padding is "natoms" to know when list finished
+    natoms = coords.shape[0]
+    atoms_in_box_full = np.full((num_boxes, maxlen), natoms).astype(np.uint32)
+    for key in atoms_in_box:
+        atm = atoms_in_box[key]
+        atoms_in_box_full[key, : len(atm)] = atm
 
     gridlist = np.full((num_boxes, 14), num_boxes).astype(np.uint32)
     make_grid_neighborlist_nonperiodic(
         gridlist, xyz_boxes[0], xyz_boxes[1], xyz_boxes[2]
     )
 
-    # args = []
-    # fixedargs = [
-    #     atoms_in_box,
-    #     gridlist,
-    #     num_boxes,
-    #     coords,
-    #     radii,
-    #     is_hydrogen,
-    #     pairdist,
-    # ]
-    # for boxidx in atoms_in_box.keys():
-    #     args.append([boxidx, *fixedargs])
-
-    # with Pool(processes=num_processes) as p:
-    #     results = p.starmap(_thread_func, args)
-    # results = np.vstack([rr for rr in results if len(rr)])
-
-    import threading
-    import queue
-
-    inqueue = queue.Queue()
-    outqueue = queue.Queue()
-
-    # One of these is executed per box
-    def _thread_func():
-        while True:
-            try:
-                boxidx = inqueue.get(block=False)
-            except queue.Empty:
-                break
-
-            if boxidx not in atoms_in_box:
-                inqueue.task_done()
-                return []
-
-            box_atoms = np.array(atoms_in_box[boxidx])
-            neigh_boxes = [x for x in gridlist[boxidx] if x != num_boxes]
-            neigh_atoms = np.hstack([atoms_in_box[nb] for nb in neigh_boxes[1:]])
-            neigh_atoms = neigh_atoms.astype(int)
-            all_atoms = np.hstack((box_atoms, neigh_atoms)).astype(np.uint32)
-            num_in_box = len(box_atoms)
-
-            pairs = grid_bonds(
-                all_atoms, coords, radii, is_hydrogen, num_in_box, pairdist
-            )
-            if len(pairs) == 0:
-                inqueue.task_done()
-                continue
-
-            pairs = np.array(pairs, dtype=np.float32).reshape(-1, 2)
-            outqueue.put(pairs)
-            inqueue.task_done()
-
-    for boxidx in list(atoms_in_box.keys()):
-        inqueue.put(boxidx)
-
-    threads = []
-    for i in range(num_processes):
-        t = threading.Thread(target=_thread_func, daemon=True)
-        threads.append(t)
-        t.start()
-
-    inqueue.join()
-
-    for t in threads:
-        t.join()
-
     result_list = []
-    while not outqueue.empty():
-        result_list.append(outqueue.get())
+    for boxidx in list(atoms_in_box.keys()):
+        pairs = grid_bonds(
+            coords,
+            radii,
+            is_hydrogen,
+            pairdist,
+            boxidx,
+            atoms_in_box_full,
+            gridlist,
+        )
+        if len(pairs) != 0:
+            pairs = np.array(pairs, dtype=np.float32).reshape(-1, 2)
+            result_list.append(pairs)
+
+    if len(result_list) == 0:
+        return np.zeros((0, 2), dtype=np.uint32)
     return np.vstack(result_list)
 
 
@@ -309,11 +261,11 @@ class _TestBondGuesser(unittest.TestCase):
         for pi in pdbids:
             with self.subTest(pdb=pi):
                 mol = Molecule(pi)
-                bonds = guess_bonds(mol, num_processes=1)
+                bonds = guess_bonds(mol)
                 bonds, _ = calculateUniqueBonds(bonds.astype(np.uint32), [])
 
                 reff = os.path.join(home(dataDir="test-bondguesser"), f"{pi}.csv")
-                bondsref = np.loadtxt(reff, delimiter=",")
+                bondsref = np.loadtxt(reff, delimiter=",").astype(np.uint32)
 
                 x1 = time.time()
                 _ = guess_bonds(mol)
@@ -328,6 +280,31 @@ class _TestBondGuesser(unittest.TestCase):
                 #         f.write(f"{bondsref[b, 0]},{bondsref[b, 1]}\n")
 
                 assert np.array_equal(bonds, bondsref)
+
+    def test_solvated_bond_guessing(self):
+        from moleculekit.molecule import Molecule, calculateUniqueBonds
+        from moleculekit.home import home
+        import os
+        import time
+
+        mol = Molecule(
+            os.path.join(home(dataDir="test-bondguesser"), "3ptb_solvated.pdb")
+        )
+        bonds = guess_bonds(mol)
+        bonds, _ = calculateUniqueBonds(bonds.astype(np.uint32), [])
+
+        reff = os.path.join(home(dataDir="test-bondguesser"), "3ptb_solvated.csv")
+        bondsref = np.loadtxt(reff, delimiter=",").astype(np.uint32)
+
+        x1 = time.time()
+        _ = guess_bonds(mol)
+        x1 = time.time() - x1
+        x2 = time.time()
+        _ = mol._guessBonds()
+        x2 = time.time() - x2
+        print(f"Times {x1}, {x2}")
+
+        assert np.array_equal(bonds, bondsref)
 
 
 if __name__ == "__main__":
