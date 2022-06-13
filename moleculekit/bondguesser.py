@@ -230,7 +230,7 @@ def bond_grid_search(
 
     if len(result_list) == 0:
         return np.zeros((0, 2), dtype=np.uint32)
-    return np.vstack(result_list)
+    return np.vstack(result_list).astype(np.uint32)
 
 
 class _TestBondGuesser(unittest.TestCase):
