@@ -19,7 +19,7 @@ try:
         .strip()
         .decode("utf-8")
     )
-except Exception as e:
+except Exception:
     print("Could not get version tag. Defaulting to version 0")
     version = "0"
 
@@ -33,6 +33,7 @@ extentions = [
     "moleculekit/interactions/cationpi/cationpi.pyx",
     "moleculekit/interactions/sigmahole/sigmahole.pyx",
     "moleculekit/wrapping/wrapping.pyx",
+    "moleculekit/bondguesser_utils/bondguesser_utils.pyx",
 ]
 extentions = [
     Extension(

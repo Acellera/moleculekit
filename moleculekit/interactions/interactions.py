@@ -5,6 +5,7 @@
 #
 import networkx as nx
 import numpy as np
+import unittest
 from moleculekit.tools.moleculechecks import isProteinProtonated
 import logging
 
@@ -95,8 +96,6 @@ def view_hbonds(mol, hbonds):
 
 
 def get_protein_rings(mol):
-    import networkx as nx
-
     _aromatics = ["PHE", "HIS", "HID", "HIE", "HIP", "TYR", "TRP"]
     _excluded_atoms = ["N", "CA", "C", "O"]  # , "CB", "OH"]
 
@@ -118,8 +117,6 @@ def get_protein_rings(mol):
 
 
 def get_nucleic_rings(mol):
-    import networkx as nx
-
     nucleic_sel = mol.atomselect("nucleic and not backbone")
     original_idx = np.where(nucleic_sel)[0]
 
@@ -560,9 +557,6 @@ def sigmahole_calculate(
     return index_list, dist_ang_list
 
 
-import unittest
-
-
 class _TestInteractions(unittest.TestCase):
     def test_hbonds(self):
         from moleculekit.home import home
@@ -589,13 +583,13 @@ class _TestInteractions(unittest.TestCase):
         assert len(hb) == 2
         ref = np.array(
             [
-                [3414, 3421, 2471],
-                [3414, 3422, 2789],
-                [3415, 3423, 2472],
                 [3415, 3424, 2482],
+                [3414, 3422, 2789],
+                [3414, 3421, 2471],
+                [3415, 3423, 2472],
             ]
         )
-        assert np.array_equal(hb[0], ref) and np.array_equal(hb[1], ref), print(hb, ref)
+        assert np.array_equal(hb[0], ref) and np.array_equal(hb[1], ref), f"{hb}, {ref}"
 
         hb = hbonds_calculate(mol, donors, acceptors, "all")
         assert len(hb) == 2
@@ -624,12 +618,12 @@ class _TestInteractions(unittest.TestCase):
 
         ref_distang = np.array(
             [
-                [5.33927107, 82.32684326],
-                [5.23078251, 85.32985687],
-                [5.16490269, 81.33213806],
+                [5.33927107, 80.63793945],
+                [5.23078251, 84.52985382],
+                [5.16490269, 80.88533020],
             ]
         )
-        assert np.allclose(distang[0], ref_distang)
+        assert np.allclose(distang[0], ref_distang), f"\n{distang[0]}\n{ref_distang}"
 
         mol = Molecule(os.path.join(home(dataDir="test-interactions"), "6dn1.pdb"))
         lig = SmallMol(
@@ -709,7 +703,7 @@ class _TestInteractions(unittest.TestCase):
         catpi, distang = cationpi_calculate(mol, prot_rings, prot_pos + metal_pos)
 
         ref_atms = np.array([[0, 8], [17, 1001], [18, 1001]])
-        assert np.array_equal(ref_atms, catpi[0]), print(ref_atms, catpi[0])
+        assert np.array_equal(ref_atms, catpi[0]), f"{ref_atms}, {catpi[0]}"
         ref_distang = np.array(
             [
                 [4.10110903, 63.69768524],
@@ -744,7 +738,7 @@ class _TestInteractions(unittest.TestCase):
         )
 
         ref_atms = np.array([[11, 3494]])
-        assert np.array_equal(ref_atms, catpi[0]), print(ref_atms, catpi[0])
+        assert np.array_equal(ref_atms, catpi[0]), f"{ref_atms}, {catpi[0]}"
         ref_distang = np.array([[4.74848127, 74.07044983]])
         assert np.allclose(ref_distang, distang), distang
 
@@ -768,7 +762,7 @@ class _TestInteractions(unittest.TestCase):
         sh, distang = sigmahole_calculate(mol, prot_rings, lig_halides)
 
         ref_atms = np.array([[29, 3702]])
-        assert np.array_equal(ref_atms, sh[0]), print(ref_atms, sh[0])
+        assert np.array_equal(ref_atms, sh[0]), f"{ref_atms}, {sh[0]}"
         ref_distang = np.array([[4.26179695, 66.55052185]])
         assert np.allclose(ref_distang, distang)
 

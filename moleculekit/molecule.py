@@ -889,20 +889,9 @@ class Molecule(object):
 
         Can fail badly when non-bonded atoms are very close together. Use with extreme caution.
         """
-        from moleculekit.vmdparser import guessbonds
+        from moleculekit.bondguesser import guess_bonds
 
-        framecoords = self.coords[:, :, self.frame].copy()
-        return guessbonds(
-            framecoords,
-            self.element,
-            self.name,
-            self.resname,
-            self.resid,
-            self.chain,
-            self.segid,
-            self.insertion,
-            self.altloc,
-        )
+        return guess_bonds(self)
 
     def moveBy(self, vector, sel=None):
         """Move a selection of atoms by a given vector

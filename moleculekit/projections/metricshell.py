@@ -225,13 +225,12 @@ class _TestMetricShell(unittest.TestCase):
 
     def test_metricshell_simple(self):
         from moleculekit.molecule import Molecule
-        from moleculekit.home import home
-        from os import path
         import numpy as np
 
         mol = Molecule().empty(3)
         mol.name[:] = "CL"
         mol.resname[:] = "CL"
+        mol.element[:] = "Cl"
         mol.resid[:] = np.arange(3)
         mol.coords = np.zeros((3, 3, 1), dtype=np.float32)
 
