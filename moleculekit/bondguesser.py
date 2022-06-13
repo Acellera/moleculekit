@@ -145,9 +145,9 @@ def guess_bonds(mol, num_processes=6):
             raise RuntimeError(f"Unknown element '{el}'")
         # Default radius for None radius is 2A
         radii.append(vdw_radii[el])
-    radii = np.array(radii)
+    radii = np.array(radii, dtype=np.float32)
 
-    is_hydrogen = mol.element == "H"
+    is_hydrogen = (mol.element == "H").astype(np.uint32)
 
     # Setting the grid box distance to 1.2 times the largest VdW radius
     grid_cutoff = np.max(radii) * 1.2
@@ -165,9 +165,9 @@ def bond_grid_search(
     grid_cutoff,
     is_hydrogen,
     radii,
+    num_processes,
     max_boxes=4e6,
     cutoff_incr=1.26,
-    num_processes=1,
 ):
     from collections import defaultdict
     from multiprocessing import Pool
@@ -208,49 +208,77 @@ def bond_grid_search(
         gridlist, xyz_boxes[0], xyz_boxes[1], xyz_boxes[2]
     )
 
-    args = []
-    fixedargs = [
-        atoms_in_box,
-        gridlist,
-        num_boxes,
-        coords,
-        radii,
-        is_hydrogen,
-        pairdist,
-    ]
-    for boxidx in atoms_in_box.keys():
-        args.append([boxidx, *fixedargs])
+    # args = []
+    # fixedargs = [
+    #     atoms_in_box,
+    #     gridlist,
+    #     num_boxes,
+    #     coords,
+    #     radii,
+    #     is_hydrogen,
+    #     pairdist,
+    # ]
+    # for boxidx in atoms_in_box.keys():
+    #     args.append([boxidx, *fixedargs])
 
-    with Pool(processes=num_processes) as p:
-        results = p.starmap(_thread_func, args)
-    results = np.vstack([rr for rr in results if len(rr)])
+    # with Pool(processes=num_processes) as p:
+    #     results = p.starmap(_thread_func, args)
+    # results = np.vstack([rr for rr in results if len(rr)])
 
-    return results
+    import threading
+    import queue
 
+    inqueue = queue.Queue()
+    outqueue = queue.Queue()
 
-# One of these is executed per box
-def _thread_func(
-    boxidx, atoms_in_box, gridlist, num_boxes, coords, radii, is_hydrogen, pairdist
-):
-    if boxidx not in atoms_in_box:
-        return []
+    # One of these is executed per box
+    def _thread_func():
+        while True:
+            try:
+                boxidx = inqueue.get(block=False)
+            except queue.Empty:
+                break
 
-    box_atoms = np.array(atoms_in_box[boxidx])
-    neigh_boxes = [x for x in gridlist[boxidx] if x != num_boxes]
-    neigh_atoms = np.hstack([atoms_in_box[nb] for nb in neigh_boxes[1:]])
-    neigh_atoms = neigh_atoms.astype(int)
-    all_atoms = np.hstack((box_atoms, neigh_atoms)).astype(int)
-    # First come the coords of atoms in the box, then neighbouring cells
-    sub_coords = np.concatenate([coords[box_atoms], coords[neigh_atoms]], axis=0)
-    num_in_box = len(box_atoms)
+            if boxidx not in atoms_in_box:
+                inqueue.task_done()
+                return []
 
-    sub_radii = radii[all_atoms].astype(np.float32)
-    sub_is_hydrogen = is_hydrogen[all_atoms].astype(np.uint32)
-    pairs = grid_bonds(sub_coords, sub_radii, sub_is_hydrogen, num_in_box, pairdist)
-    real_pairs = []
-    for i in range(int(len(pairs) / 2)):
-        real_pairs.append([all_atoms[pairs[i * 2]], all_atoms[pairs[i * 2 + 1]]])
-    return real_pairs
+            box_atoms = np.array(atoms_in_box[boxidx])
+            neigh_boxes = [x for x in gridlist[boxidx] if x != num_boxes]
+            neigh_atoms = np.hstack([atoms_in_box[nb] for nb in neigh_boxes[1:]])
+            neigh_atoms = neigh_atoms.astype(int)
+            all_atoms = np.hstack((box_atoms, neigh_atoms)).astype(np.uint32)
+            num_in_box = len(box_atoms)
+
+            pairs = grid_bonds(
+                all_atoms, coords, radii, is_hydrogen, num_in_box, pairdist
+            )
+            if len(pairs) == 0:
+                inqueue.task_done()
+                continue
+
+            pairs = np.array(pairs, dtype=np.float32).reshape(-1, 2)
+            outqueue.put(pairs)
+            inqueue.task_done()
+
+    for boxidx in list(atoms_in_box.keys()):
+        inqueue.put(boxidx)
+
+    threads = []
+    for i in range(num_processes):
+        t = threading.Thread(target=_thread_func, daemon=True)
+        threads.append(t)
+        t.start()
+
+    inqueue.join()
+
+    for t in threads:
+        t.join()
+
+    result_list = []
+    while not outqueue.empty():
+        result_list.append(outqueue.get())
+    return np.vstack(result_list)
 
 
 class _TestBondGuesser(unittest.TestCase):
@@ -281,12 +309,11 @@ class _TestBondGuesser(unittest.TestCase):
         for pi in pdbids:
             with self.subTest(pdb=pi):
                 mol = Molecule(pi)
-                bonds = guess_bonds(mol)
+                bonds = guess_bonds(mol, num_processes=1)
+                bonds, _ = calculateUniqueBonds(bonds.astype(np.uint32), [])
 
                 reff = os.path.join(home(dataDir="test-bondguesser"), f"{pi}.csv")
-
-                bonds, _ = calculateUniqueBonds(bonds.astype(np.uint32), [])
-                bondsref, _ = calculateUniqueBonds(mol._guessBonds(), [])
+                bondsref = np.loadtxt(reff, delimiter=",")
 
                 x1 = time.time()
                 _ = guess_bonds(mol)
@@ -294,11 +321,11 @@ class _TestBondGuesser(unittest.TestCase):
                 x2 = time.time()
                 _ = mol._guessBonds()
                 x2 = time.time() - x2
-                print(f"Times {x1}, {x2}")
+                print(f"Times {pi} {x1}, {x2}")
 
-                with open(reff, "w") as f:
-                    for b in range(bondsref.shape[0]):
-                        f.write(f"{bondsref[b, 0]},{bondsref[b, 1]}\n")
+                # with open(reff, "w") as f:
+                #     for b in range(bondsref.shape[0]):
+                #         f.write(f"{bondsref[b, 0]},{bondsref[b, 1]}\n")
 
                 assert np.array_equal(bonds, bondsref)
 

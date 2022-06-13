@@ -28,7 +28,7 @@ import cython
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 def make_grid_neighborlist_nonperiodic(
-        np.ndarray[UINT32_t, ndim=2] gridlist, 
+        UINT32_t[:,:] gridlist, 
         UINT32_t xboxes,
         UINT32_t yboxes,
         UINT32_t zboxes,
@@ -84,44 +84,60 @@ def make_grid_neighborlist_nonperiodic(
                     n += 1
                 box_idx += 1
 
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+cdef bool _is_close(
+        FLOAT32_t[:,:] coords,
+        FLOAT32_t[:] radii,
+        UINT32_t[:] is_hydrogen,
+        int i,
+        int j,
+        float cutoff2,
+    ):
+    cdef float dist2, dx, dy, dz, cut
+    if is_hydrogen[i] and is_hydrogen[j]:
+        # Skip bonds between two hydrogens
+        return False
+
+    dx = coords[i, 0] - coords[j, 0]
+    dy = coords[i, 1] - coords[j, 1]
+    dz = coords[i, 2] - coords[j, 2]
+    dist2 = dx * dx + dy * dy + dz * dz
+
+    # Ignore also atoms with near identical coords
+    if dist2 > cutoff2 or dist2 < 0.001:
+        return False
+
+    cut = 0.6 * (radii[i] + radii[j])
+    if dist2 > (cut * cut):
+        return False
+
+    return True
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 def grid_bonds(
-        np.ndarray[FLOAT32_t, ndim=2] coords, 
-        np.ndarray[FLOAT32_t, ndim=1] radii,
-        np.ndarray[UINT32_t, ndim=1] is_hydrogen,
-        UINT32_t num_in_box, # First num_in_box atoms belong to the center box
+        UINT32_t[:] indexes,
+        FLOAT32_t[:,:] coords,
+        FLOAT32_t[:] radii,
+        UINT32_t[:] is_hydrogen,
+        UINT32_t num_in_box, # First num_in_box indexes belong to the center box
         float box_cutoff,
     ):
-    cdef int i, j
-    cdef float dist2, dx, dy, dz, cutoff2, cut  # squared dist
-    cdef int n_atoms = coords.shape[0]
+    cdef int i, j, ii, jj
+    cdef float cutoff2  # squared cutoff
+    cdef int n_atoms = indexes.shape[0]
     cdef vector[int] results
 
     cutoff2 = box_cutoff * box_cutoff
 
-    for i in range(num_in_box): # Stop iterating at num_in_box to not calculate the neighbours between them
-        for j in range(i+1, n_atoms):
-            if is_hydrogen[i] and is_hydrogen[j]:
-                # Skip bonds between two hydrogens
-                continue
-
-            dx = coords[i, 0] - coords[j, 0]
-            dy = coords[i, 1] - coords[j, 1]
-            dz = coords[i, 2] - coords[j, 2]
-            dist2 = dx * dx + dy * dy + dz * dz
-
-            # Ignore also atoms with near identical coords
-            if dist2 > cutoff2 or dist2 < 0.001:
-                continue
-
-            cut = 0.6 * (radii[i] + radii[j])
-            if dist2 > (cut * cut):
-                continue
-
-            results.push_back(i)
-            results.push_back(j)
+    for ii in range(num_in_box): # Stop iterating at num_in_box to not calculate the neighbours between them
+        for jj in range(ii+1, n_atoms):
+            i = indexes[ii]
+            j = indexes[jj]
+            if _is_close(coords, radii, is_hydrogen, i, j, cutoff2):
+                results.push_back(i)
+                results.push_back(j)
 
     return results
             
