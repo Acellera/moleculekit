@@ -595,7 +595,7 @@ class _TestInteractions(unittest.TestCase):
                 [3415, 3424, 2482],
             ]
         )
-        assert np.array_equal(hb[0], ref) and np.array_equal(hb[1], ref), print(hb, ref)
+        assert np.array_equal(hb[0], ref) and np.array_equal(hb[1], ref), f"{hb}, {ref}"
 
         hb = hbonds_calculate(mol, donors, acceptors, "all")
         assert len(hb) == 2
@@ -629,7 +629,7 @@ class _TestInteractions(unittest.TestCase):
                 [5.16490269, 81.33213806],
             ]
         )
-        assert np.allclose(distang[0], ref_distang)
+        assert np.allclose(distang[0], ref_distang), f"\n{distang[0]}\n{ref_distang}"
 
         mol = Molecule(os.path.join(home(dataDir="test-interactions"), "6dn1.pdb"))
         lig = SmallMol(
@@ -709,7 +709,7 @@ class _TestInteractions(unittest.TestCase):
         catpi, distang = cationpi_calculate(mol, prot_rings, prot_pos + metal_pos)
 
         ref_atms = np.array([[0, 8], [17, 1001], [18, 1001]])
-        assert np.array_equal(ref_atms, catpi[0]), print(ref_atms, catpi[0])
+        assert np.array_equal(ref_atms, catpi[0]), f"{ref_atms}, {catpi[0]}"
         ref_distang = np.array(
             [
                 [4.10110903, 63.69768524],
@@ -744,7 +744,7 @@ class _TestInteractions(unittest.TestCase):
         )
 
         ref_atms = np.array([[11, 3494]])
-        assert np.array_equal(ref_atms, catpi[0]), print(ref_atms, catpi[0])
+        assert np.array_equal(ref_atms, catpi[0]), f"{ref_atms}, {catpi[0]}"
         ref_distang = np.array([[4.74848127, 74.07044983]])
         assert np.allclose(ref_distang, distang), distang
 
@@ -768,7 +768,7 @@ class _TestInteractions(unittest.TestCase):
         sh, distang = sigmahole_calculate(mol, prot_rings, lig_halides)
 
         ref_atms = np.array([[29, 3702]])
-        assert np.array_equal(ref_atms, sh[0]), print(ref_atms, sh[0])
+        assert np.array_equal(ref_atms, sh[0]), f"{ref_atms}, {sh[0]}"
         ref_distang = np.array([[4.26179695, 66.55052185]])
         assert np.allclose(ref_distang, distang)
 

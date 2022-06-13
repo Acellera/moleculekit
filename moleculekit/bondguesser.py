@@ -180,7 +180,7 @@ def bond_grid_search(
     num_boxes = xyz_boxes[0] * xyz_boxes[1] * xyz_boxes[2]
     while num_boxes > max_boxes or num_boxes < 1:
         pairdist = newpairdist
-        xyz_boxes = (xyzrange / pairdist) + 1
+        xyz_boxes = np.floor(xyzrange / pairdist).astype(np.uint32) + 1
         num_boxes = xyz_boxes[0] * xyz_boxes[1] * xyz_boxes[2]
         newpairdist = pairdist * cutoff_incr  # sqrt(2) ~= 1.26
 
@@ -203,12 +203,12 @@ def bond_grid_search(
 
     # Create 2D array with all box atoms. Padding is "natoms" to know when list finished
     natoms = coords.shape[0]
-    atoms_in_box_full = np.full((num_boxes, maxlen), natoms).astype(np.uint32)
+    atoms_in_box_full = np.full((num_boxes, maxlen), natoms, dtype=np.uint32)
     for key in atoms_in_box:
         atm = atoms_in_box[key]
         atoms_in_box_full[key, : len(atm)] = atm
 
-    gridlist = np.full((num_boxes, 14), num_boxes).astype(np.uint32)
+    gridlist = np.full((num_boxes, 14), num_boxes, dtype=np.uint32)
     make_grid_neighborlist_nonperiodic(
         gridlist, xyz_boxes[0], xyz_boxes[1], xyz_boxes[2]
     )
