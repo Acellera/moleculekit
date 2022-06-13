@@ -238,7 +238,6 @@ class _TestBondGuesser(unittest.TestCase):
         from moleculekit.molecule import Molecule, calculateUniqueBonds
         from moleculekit.home import home
         import os
-        import time
 
         pdbids = [
             "3ptb",
@@ -267,14 +266,6 @@ class _TestBondGuesser(unittest.TestCase):
                 reff = os.path.join(home(dataDir="test-bondguesser"), f"{pi}.csv")
                 bondsref = np.loadtxt(reff, delimiter=",").astype(np.uint32)
 
-                x1 = time.time()
-                _ = guess_bonds(mol)
-                x1 = time.time() - x1
-                x2 = time.time()
-                _ = mol._guessBonds()
-                x2 = time.time() - x2
-                print(f"Times {pi} {x1}, {x2}")
-
                 # with open(reff, "w") as f:
                 #     for b in range(bondsref.shape[0]):
                 #         f.write(f"{bondsref[b, 0]},{bondsref[b, 1]}\n")
@@ -285,7 +276,6 @@ class _TestBondGuesser(unittest.TestCase):
         from moleculekit.molecule import Molecule, calculateUniqueBonds
         from moleculekit.home import home
         import os
-        import time
 
         mol = Molecule(
             os.path.join(home(dataDir="test-bondguesser"), "3ptb_solvated.pdb")
@@ -295,14 +285,6 @@ class _TestBondGuesser(unittest.TestCase):
 
         reff = os.path.join(home(dataDir="test-bondguesser"), "3ptb_solvated.csv")
         bondsref = np.loadtxt(reff, delimiter=",").astype(np.uint32)
-
-        x1 = time.time()
-        _ = guess_bonds(mol)
-        x1 = time.time() - x1
-        x2 = time.time()
-        _ = mol._guessBonds()
-        x2 = time.time() - x2
-        print(f"Times {x1}, {x2}")
 
         assert np.array_equal(bonds, bondsref)
 
