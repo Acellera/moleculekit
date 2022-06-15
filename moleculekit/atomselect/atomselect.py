@@ -475,39 +475,40 @@ for sel in selections:
     print(f"{sel}:\n   ", ast)
     # print_first_elems(ast)
 
-from moleculekit.atomselect.analyze import selections, find_backbone
+from moleculekit.atomselect.analyze import analyze
 
 
-def traverse_ast(mol, node):
+def traverse_ast(mol, analysis, node):
     node = list(node)
     operation = node[0]
 
     # Recurse tree to resolve leaf nodes first
     for i in range(1, len(node)):
         if isinstance(node[i], tuple):
-            node[i] = traverse_ast(mol, node[i])
+            node[i] = traverse_ast(mol, analysis, node[i])
 
     if operation == "molecule":
         molec = node[1]
         if molec in ("lipid", "lipids"):
-            return np.isin(mol.resname, selections["lipid_resnames"])
+            return analysis["lipids"]
         if molec in ("ion", "ions"):
-            return np.isin(mol.resname, selections["ion_resnames"])
+            return analysis["ions"]
         if molec in ("water", "waters"):
-            return np.isin(mol.resname, selections["water_resnames"])
+            return analysis["waters"]
         if molec == "hydrogen":
             return mol.element == "H"
         if molec == "noh":
             return mol.element != "H"
         if molec == "backbone":
-            return find_backbone(mol, "protein") | find_backbone(mol, "nucleic")
+            return analysis["protein_bb"] | analysis["nucleic_bb"]
         if molec == "sidechain":
-            # TODO: Implement
-            pass
+            bbs = analysis["protein_bb"] | analysis["nucleic_bb"]
+            protnuc = analysis["protein"] | analysis["nucleic"]
+            return protnuc & ~bbs
         if molec == "protein":
-            pass
+            return analysis["protein"]
         if molec == "nucleic":
-            pass
+            return analysis["nucleic"]
         raise RuntimeError(f"Invalid molecule selection {molec}")
 
     if operation == "molprop":
@@ -592,6 +593,8 @@ mol = Molecule("3ptb")
 mol.serial[10] = -88
 mol.charge[1000:] = -1
 
+analysis = analyze(mol)
+
 tests = [
     "serial 1",
     "serial -88",
@@ -609,13 +612,13 @@ tests = [
     "noh",
     "hydrogen",
     "backbone",
-    # "sidechain",
-    # "protein",
-    # "nucleic",
+    "sidechain",
+    "protein",
+    "nucleic",
 ]
 
 for test in tests:
     ast = parser.parse(test)
     print(ast)
-    res = traverse_ast(mol, ast)
+    res = traverse_ast(mol, analysis, ast)
     print(res.sum())
