@@ -632,6 +632,18 @@ def traverse_ast(mol, analysis, node):
             return np.sqrt(node[2])
         raise RuntimeError(f"Invalid function {fn}")
 
+    if operation == "mathop":
+        raise NotImplementedError("Not implemented yet")
+
+    if operation == "sameas":
+        raise NotImplementedError("Not implemented yet")
+
+    if operation == "within":
+        raise NotImplementedError("Not implemented yet")
+
+    if operation == "exwithin":
+        raise NotImplementedError("Not implemented yet")
+
     raise RuntimeError(f"Invalid operation {operation}")
 
 
