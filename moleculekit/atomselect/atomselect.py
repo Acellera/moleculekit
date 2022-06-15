@@ -345,7 +345,12 @@ def p_molprop_string(p):
             | CHAIN string
             | CHAIN number
     """
-    p[0] = ("molprop", p[1], str(p[2]))
+    val2 = p[2]
+    if not isinstance(val2, list):
+        val2 = str(val2)
+    else:
+        val2 = [str(x) for x in val2]
+    p[0] = ("molprop", p[1], val2)
 
 
 def p_expression_numprop(p):
@@ -377,6 +382,19 @@ def p_molprop_int(p):
     p[0] = ("molprop", p[1], p[2])
 
 
+def p_string_list(p):
+    """
+    string : string string
+    """
+    val1 = p[1]
+    val2 = p[2]
+    if not isinstance(val1, list):
+        val1 = [val1]
+    if not isinstance(val2, list):
+        val2 = [val2]
+    p[0] = val1 + val2
+
+
 def p_string(p):
     """
     string : ID
@@ -384,6 +402,19 @@ def p_string(p):
            | NORMSTRINGSINGLE
     """
     p[0] = p[1]
+
+
+def p_integer_list(p):
+    """
+    integer : integer integer
+    """
+    val1 = p[1]
+    val2 = p[2]
+    if not isinstance(val1, list):
+        val1 = [val1]
+    if not isinstance(val2, list):
+        val2 = [val2]
+    p[0] = val1 + val2
 
 
 def p_number(p):
@@ -440,13 +471,14 @@ parser = yacc.yacc()
 selections = [
     r"not protein",
     r"index -15",
-    # r"index 1 3 5", # TODO: Implement this!
+    r"index 1 3 5",  # TODO: Implement this!
     r"name 'A 1'",
     r"chain X",
     r"chain 'y'",
     r"chain 0",
     r'resname "GL"',
     r'resname "GL\*"',
+    r"resname ACE NME",
     r"same fragment as lipid",
     r"protein and within 8.3 of resname ACE",
     r"protein and (within -8.3 of resname ACE or exwithin 4 of index 2)",
@@ -524,24 +556,29 @@ def traverse_ast(mol, analysis, node):
         )
         molprop = node[1]
         value = node[2]
+
+        fn = lambda x, y: x == y
+        if isinstance(value, list):
+            fn = lambda x, y: np.isin(x, y)
+
         if molprop in matchingprops:
-            return getattr(mol, molprop) == value
+            return fn(getattr(mol, molprop), value)
         if molprop == "index":
-            return np.arange(1, mol.numAtoms + 1) == value
+            return fn(np.arange(1, mol.numAtoms + 1), value)
         if molprop == "residue":
             # Unique sequential residue numbering
             residues = sequenceID((mol.resid, mol.insertion, mol.chain, mol.segid)) + 1
-            return residues == value
+            return fn(residues, value)
         if molprop == "altloc":
-            return mol.altloc == value
+            return fn(mol.altloc, value)
         if molprop == "segname":
-            return mol.segid == value
+            return fn(mol.segid, value)
         if molprop == "mass":
-            return mol.masses == value
+            return fn(mol.masses, value)
         if molprop == "charge":
-            return mol.charge == value
+            return fn(mol.charge, value)
         if molprop == "occupancy":
-            return mol.beta == value
+            return fn(mol.beta, value)
         raise RuntimeError(f"Invalid molprop {molprop}")
 
     if operation == "logop":
@@ -599,7 +636,9 @@ tests = [
     "serial 1",
     "serial -88",
     "index 1",
+    "index 1 2 3",
     "resname ILE and (index 2)",
+    "resname ALA ILE",
     "chain A",
     "charge >= 0",
     "abs(charge) >= 0",

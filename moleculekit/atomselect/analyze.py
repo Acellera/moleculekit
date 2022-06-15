@@ -65,6 +65,8 @@ def find_residues(mol, pbb, nbb):
     for ri in np.unique(uqres):
         resmask = uqres == ri
         residx = np.where(resmask)[0]
+
+        # If there are 4 backbone atoms in this residue it's protein/nucleic
         isprot = pbb[resmask].sum() == 4
         isnucl = nbb[resmask].sum() == 4
 
