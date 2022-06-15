@@ -529,6 +529,67 @@ ion_resnames = (
     "ZN2",
 )
 
+protein_backbone_names = ("CA", "C", "N", "O")
+
+protein_terminal_names = ("OT1", "OT2", "OXT", "O1", "O2")
+
+water_resnames = (
+    "H2O",
+    "HH0",
+    "OHH",
+    "HOH",
+    "OH2",
+    "SOL",
+    "WAT",
+    "TIP",
+    "TIP2",
+    "TIP3",
+    "TIP4",
+    "SPC",
+)
+
+nucleic_backbone_names = (
+    "P",
+    "O1P",
+    "O2P",
+    "OP1",
+    "OP2",
+    "C3*",
+    "C3'",
+    "O3*",
+    "O3'",
+    "C4*",
+    "C4'",
+    "C5*",
+    "C5'",
+    "O5*",
+    "O5'",
+)
+
+nucleic_terminal_names = ("H5T", "H3T")
+
+
+def get_backbone(mol: Molecule, mode):
+    if mode == "protein":
+        backb = np.isin(mol.name, protein_backbone_names)
+        terms = np.isin(mol.name, protein_terminal_names)
+    elif mode == "nucleic":
+        backb = np.isin(mol.name, nucleic_backbone_names)
+        terms = np.isin(mol.name, nucleic_terminal_names)
+    else:
+        raise RuntimeError(f"Invalid backbone mode {mode}")
+
+    for tt in np.where(terms)[0]:
+        # Check if atoms bonded to terminal Os are backbone
+        nn = mol.getNeighbors(tt)
+        for n in nn:
+            if backb[n]:  # If bonded atom is backbone break
+                break
+        else:
+            # Could not find any backbone atom bonded to the term
+            terms[tt] = False
+    return backb | terms
+
 
 def traverse_ast(mol, node):
     node = list(node)
@@ -545,7 +606,12 @@ def traverse_ast(mol, node):
             return np.isin(mol.resname, lipid_resnames)
         if molec in ("ion", "ions"):
             return np.isin(mol.resname, ion_resnames)
+        if molec in ("water", "waters"):
+            return np.isin(mol.resname, water_resnames)
+        if molec == "backbone":
+            return get_backbone(mol, "protein") | get_backbone(mol, "nucleic")
         raise RuntimeError(f"Invalid molecule selection {molec}")
+
     if operation == "molprop":
         matchingprops = (
             "serial",
@@ -578,6 +644,7 @@ def traverse_ast(mol, node):
         if molprop == "occupancy":
             return mol.beta == value
         raise RuntimeError(f"Invalid molprop {molprop}")
+
     if operation == "logop":
         op = node[1]
         if op == "and":
@@ -587,12 +654,16 @@ def traverse_ast(mol, node):
         if op == "not":
             return ~node[2]
         raise RuntimeError(f"Invalid logop {op}")
+
     if operation == "uminus":
         return -node[1]
+
     if operation == "grouped":
         return node[1]
+
     if operation == "numprop":
         return getattr(mol, node[1])
+
     if operation == "comp":
         op = node[1]
         val1, val2 = node[2], node[3]
@@ -607,6 +678,7 @@ def traverse_ast(mol, node):
         if op == ">=":
             return val1 >= val2
         raise RuntimeError(f"Invalid comparison op {op}")
+
     if operation == "func":
         fn = node[1]
         if fn == "abs":
@@ -614,6 +686,7 @@ def traverse_ast(mol, node):
         if fn == "sqr":
             return np.sqrt(node[2])
         raise RuntimeError(f"Invalid function {fn}")
+
     raise RuntimeError(f"Invalid operation {operation}")
 
 
@@ -631,6 +704,8 @@ tests = [
     "abs(charge) >= 0",
     "ion",
     "lipids",
+    "waters",
+    "backbone",
 ]
 
 for test in tests:
