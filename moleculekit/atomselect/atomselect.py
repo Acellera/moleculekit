@@ -48,6 +48,7 @@ reserved += [
     "same",
     "as",
     "not",
+    "to",
 ]
 # functions
 reserved += ["abs", "sqr"]
@@ -404,6 +405,13 @@ def p_string(p):
     p[0] = p[1]
 
 
+def p_integer_range(p):
+    """
+    integer : integer TO integer
+    """
+    p[0] = list(range(p[1], p[3]))
+
+
 def p_integer_list(p):
     """
     integer : integer integer
@@ -471,7 +479,8 @@ parser = yacc.yacc()
 selections = [
     r"not protein",
     r"index -15",
-    r"index 1 3 5",  # TODO: Implement this!
+    r"index 1 3 5",
+    r"index 1 to 5",
     r"name 'A 1'",
     r"chain X",
     r"chain 'y'",
@@ -637,6 +646,7 @@ tests = [
     "serial -88",
     "index 1",
     "index 1 2 3",
+    "index 1 to 5",
     "resname ILE and (index 2)",
     "resname ALA ILE",
     "chain A",
