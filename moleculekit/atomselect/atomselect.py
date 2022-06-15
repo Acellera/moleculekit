@@ -1,5 +1,8 @@
 import moleculekit.ply.lex as lex
 import moleculekit.ply.yacc as yacc
+import numpy as np
+from moleculekit.util import sequenceID
+from moleculekit.molecule import Molecule
 
 # molecule types
 reserved = [
@@ -34,9 +37,6 @@ reserved += [
     "charge",
     "occupancy",
     "fragment",
-    # "x",
-    # "y",
-    # "z",
 ]
 # operands
 reserved += [
@@ -160,16 +160,7 @@ precedence = (
 )
 
 
-# Write functions for each grammar rule which is
-# specified in the docstring.
-# def p_expression_binop(p):
-#     """
-#     expression : expression PLUS expression
-#                | expression MINUS expression
-#                | expression TIMES expression
-#                | expression DIVIDE expression
-#     """
-#     p[0] = ("binop", p[2], p[1], p[3])
+# --------- Grammar rules ---------
 
 
 def p_expression_logop(p):
@@ -449,6 +440,7 @@ parser = yacc.yacc()
 selections = [
     r"not protein",
     r"index -15",
+    # r"index 1 3 5", # TODO: Implement this!
     r"name 'A 1'",
     r"chain X",
     r"chain 'y'",
@@ -469,6 +461,180 @@ selections = [
     r"x < 6 and x > 3",
     r"sqr(x-5)+sqr(y+4)+sqr(z) > sqr(5)",
 ]
+
+
+def print_first_elems(ast):
+    print(ast[0])
+    for elem in ast:
+        if isinstance(elem, tuple):
+            print_first_elems(elem)
+
+
 for sel in selections:
     ast = parser.parse(sel)
     print(f"{sel}:\n   ", ast)
+    # print_first_elems(ast)
+
+lipid_resnames = (
+    "DLPE",
+    "DMPC",
+    "DPPC",
+    "GPC",
+    "LPPC",
+    "PALM",
+    "PC",
+    "PGCL",
+    "POPC",
+    "POPE",
+)
+
+ion_resnames = (
+    "AL",
+    "BA",
+    "CA",
+    "CAL",
+    "CD",
+    "CES",
+    "CLA",
+    "CL",
+    "CO",
+    "CS",
+    "CU",
+    "CU1",
+    "CUA",
+    "HG",
+    "IN",
+    "IOD",
+    "K",
+    "MG",
+    "MN3",
+    "MO3",
+    "MO4",
+    "MO5",
+    "MO6",
+    "NA",
+    "NAW",
+    "OC7",
+    "PB",
+    "POT",
+    "PT",
+    "RB",
+    "SOD",
+    "TB",
+    "TL",
+    "WO4",
+    "YB",
+    "ZN",
+    "ZN1",
+    "ZN2",
+)
+
+
+def traverse_ast(mol, node):
+    node = list(node)
+    operation = node[0]
+
+    # Recurse tree to resolve leaf nodes first
+    for i in range(1, len(node)):
+        if isinstance(node[i], tuple):
+            node[i] = traverse_ast(mol, node[i])
+
+    if operation == "molecule":
+        molec = node[1]
+        if molec in ("lipid", "lipids"):
+            return np.isin(mol.resname, lipid_resnames)
+        if molec in ("ion", "ions"):
+            return np.isin(mol.resname, ion_resnames)
+        raise RuntimeError(f"Invalid molecule selection {molec}")
+    if operation == "molprop":
+        matchingprops = (
+            "serial",
+            "name",
+            "element",
+            "resname",
+            "resid",
+            "insertion",
+            "chain",
+            "segid",
+        )
+        molprop = node[1]
+        value = node[2]
+        if molprop in matchingprops:
+            return getattr(mol, molprop) == value
+        if molprop == "index":
+            return np.arange(1, mol.numAtoms + 1) == value
+        if molprop == "residue":
+            # Unique sequential residue numbering
+            residues = sequenceID((mol.resid, mol.insertion, mol.chain, mol.segid)) + 1
+            return residues == value
+        if molprop == "altloc":
+            return mol.altloc == value
+        if molprop == "segname":
+            return mol.segid == value
+        if molprop == "mass":
+            return mol.masses == value
+        if molprop == "charge":
+            return mol.charge == value
+        if molprop == "occupancy":
+            return mol.beta == value
+        raise RuntimeError(f"Invalid molprop {molprop}")
+    if operation == "logop":
+        op = node[1]
+        if op == "and":
+            return node[2] & node[3]
+        if op == "or":
+            return node[2] | node[3]
+        if op == "not":
+            return ~node[2]
+        raise RuntimeError(f"Invalid logop {op}")
+    if operation == "uminus":
+        return -node[1]
+    if operation == "grouped":
+        return node[1]
+    if operation == "numprop":
+        return getattr(mol, node[1])
+    if operation == "comp":
+        op = node[1]
+        val1, val2 = node[2], node[3]
+        if op == "=":
+            return val1 == val2
+        if op == "<":
+            return val1 < val2
+        if op == ">":
+            return val1 > val2
+        if op == "<=":
+            return val1 <= val2
+        if op == ">=":
+            return val1 >= val2
+        raise RuntimeError(f"Invalid comparison op {op}")
+    if operation == "func":
+        fn = node[1]
+        if fn == "abs":
+            return np.abs(node[2])
+        if fn == "sqr":
+            return np.sqrt(node[2])
+        raise RuntimeError(f"Invalid function {fn}")
+    raise RuntimeError(f"Invalid operation {operation}")
+
+
+mol = Molecule("3ptb")
+mol.serial[10] = -88
+mol.charge[1000:] = -1
+
+tests = [
+    "serial 1",
+    "serial -88",
+    "index 1",
+    "resname ILE and (index 2)",
+    "chain A",
+    "charge >= 0",
+    "abs(charge) >= 0",
+    "ion",
+    "lipids",
+]
+
+for test in tests:
+    ast = parser.parse(test)
+    print(ast)
+    res = traverse_ast(mol, ast)
+    print(res.sum())
