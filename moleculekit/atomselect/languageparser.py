@@ -264,40 +264,11 @@ def p_prop_funcs(p):
 
 def p_expression_comp(p):
     """
-    expression : comp
-    """
-    p[0] = p[1]
-
-
-def p_prop_comp(p):
-    """
-    comp : numprop EQUAL number
-         | numprop LESSER number
-         | numprop GREATER number
-         | numprop LESSEREQUAL number
-         | numprop GREATEREQUAL number
-    """
-    p[0] = ("comp", p[2], p[1], p[3])
-
-
-def p_func_comp(p):
-    """
-    comp : func EQUAL number
-         | func LESSER number
-         | func GREATER number
-         | func LESSEREQUAL number
-         | func GREATEREQUAL number
-    """
-    p[0] = ("comp", p[2], p[1], p[3])
-
-
-def p_number_comp(p):
-    """
-    comp : number EQUAL number
-         | number LESSER number
-         | number GREATER number
-         | number LESSEREQUAL number
-         | number GREATEREQUAL number
+    expression : expression EQUAL expression
+               | expression LESSER expression
+               | expression GREATER expression
+               | expression LESSEREQUAL expression
+               | expression GREATEREQUAL expression
     """
     p[0] = ("comp", p[2], p[1], p[3])
 

@@ -168,12 +168,9 @@ def atomselect(mol, selection, _debug=False, _analysis=None):
         _analysis = analyze(mol)
 
     try:
-        ast = parser.parse(selection)
+        ast = parser.parse(selection, debug=_debug)
     except Exception as e:
         raise RuntimeError(f"Failed to parse selection {selection} with error {e}")
-
-    if _debug:
-        print(ast)
 
     try:
         mask = traverse_ast(mol, _analysis, ast)
@@ -190,7 +187,7 @@ class _TestAtomSelect(unittest.TestCase):
 
         selections = [
             "not protein",
-            "index -15",
+            # "index -15",
             "index 1 3 5",
             "index 1 to 5",
             "name 'A 1'",
@@ -202,15 +199,17 @@ class _TestAtomSelect(unittest.TestCase):
             "resname ACE NME",
             "same fragment as lipid",
             "protein and within 8.3 of resname ACE",
+            "within 8.3 of resname ACE or exwithin 4 of index 2",
             "protein and (within 8.3 of resname ACE or exwithin 4 of index 2)",
             "mass < 5",
             "mass = 4",
-            "-sqr(charge) < 0",
+            "-sqr(mass) < 0",
             "abs(charge) > 1",
             "abs(charge) <= sqr(4)",
             "x < 6",
             "x < 6 and x > 3",
             "sqr(x-5)+sqr(y+4)+sqr(z) > sqr(5)",
+            "(sqr(x-5)+sqr(y+4)+sqr(z)) > sqr(5)",
             "same fragment as resid 5",
             "same residue as within 8 of resid 100",
             "same residue as exwithin 8 of resid 100",
@@ -246,19 +245,24 @@ class _TestAtomSelect(unittest.TestCase):
             "same fragment as within 8 of resid 100",
         ]
 
+        # selections = [
+        #     "(sqr(x-5)+sqr(y+4)+sqr(z)) > sqr(5)",
+        # ]
+
         mol = Molecule("3ptb")
         mol.serial[10] = -88
         mol.charge[1000:] = -1
+        mol.bonds = mol._guessBonds()
 
         analysis = analyze(mol)
 
         for sel in selections:
             with self.subTest(sel=sel):
-                mask1 = atomselect(mol, sel, _analysis=analysis)
+                mask1 = atomselect(mol, sel, _analysis=analysis, _debug=False)
                 mask2 = mol.atomselect(sel)
                 assert np.array_equal(
                     mask1, mask2
-                ), f"{mask1.sum()} vs {mask2.sum()} atoms"
+                ), f"test: {mask1.sum()} vs ref: {mask2.sum()} atoms"
 
 
 if __name__ == "__main__":
