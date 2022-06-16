@@ -58,6 +58,8 @@ def traverse_ast(mol, analysis, node):
         molprop = node[1]
         value = node[2]
 
+        # TODO: Implement X.* selections
+
         fn = lambda x, y: x == y
         if isinstance(value, list):
             fn = lambda x, y: np.isin(x, y)
@@ -199,7 +201,8 @@ class _TestAtomSelect(unittest.TestCase):
             "chain 'y'",
             "chain 0",
             'resname "GL"',
-            r'resname "GL\*"',
+            r'name "C.*"',
+            r'resname "GL.*"',
             "resname ACE NME",
             "same fragment as lipid",
             "protein and within 8.3 of resname ACE",

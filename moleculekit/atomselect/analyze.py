@@ -13,6 +13,9 @@ def analyze(mol: Molecule, bonds):
     from moleculekit.util import sequenceID
 
     analysis = {}
+    analysis["waters"] = np.isin(mol.resname, _sel["water_resnames"])
+    analysis["lipids"] = np.isin(mol.resname, _sel["lipid_resnames"])
+    analysis["ions"] = np.isin(mol.resname, _sel["ion_resnames"])
     analysis["residues"] = sequenceID((mol.resid, mol.insertion, mol.chain, mol.segid))
     analysis["protein_bb"] = find_backbone(mol, "protein")
     analysis["nucleic_bb"] = find_backbone(mol, "nucleic")
@@ -23,9 +26,11 @@ def analyze(mol: Molecule, bonds):
         analysis["residues"],
         bonds,
     )
-    analysis["waters"] = np.isin(mol.resname, _sel["water_resnames"])
-    analysis["lipids"] = np.isin(mol.resname, _sel["lipid_resnames"])
-    analysis["ions"] = np.isin(mol.resname, _sel["ion_resnames"])
+    # Fix BB atoms by unmarking them if they are not polymers
+    # This is necessary since we use just N CA C O names and other
+    # molecules such as waters or ligands might have them
+    analysis["protein_bb"] &= analysis["protein"]
+    analysis["nucleic_bb"] &= analysis["nucleic"]
     analysis["fragments"] = find_fragments(mol, bonds)
 
     return analysis
@@ -67,11 +72,13 @@ def find_protein_nucleic(mol, pbb, nbb, uqres, bonds):
 
     for ri in np.unique(uqres):
         resmask = uqres == ri
-        residx = np.where(resmask)[0]
+        chainmask = mol.chain == mol.chain[resmask][0]
+        segmask = mol.segid == mol.segid[resmask][0]
+        chainsegidx = np.where(chainmask | segmask)[0]
 
         # If there are 4 backbone atoms in this residue it's protein/nucleic
-        isprot = pbb[resmask].sum() == 4
-        isnucl = nbb[resmask].sum() == 4
+        isprot = pbb[resmask].sum() >= 4
+        isnucl = nbb[resmask].sum() >= 4
 
         if not isprot and not isnucl:
             continue
@@ -82,10 +89,10 @@ def find_protein_nucleic(mol, pbb, nbb, uqres, bonds):
         resbb = resmask & bb
         array[resbb] = True  # BB is protein
 
-        # Check which atoms in residue are only bonded to this residue (sidechain)
+        # Check which atoms in residue are only bonded to this chain/segment
         resnotbb = resmask & ~bb
         resnotbb_idx = np.where(resnotbb)[0]
-        badbondrows = np.sum(np.isin(bonds, residx), axis=1) == 1
+        badbondrows = np.sum(np.isin(bonds, chainsegidx), axis=1) == 1
         resnotbb_idx = np.setdiff1d(resnotbb_idx, bonds[badbondrows].flatten())
         array[resnotbb_idx] = True
 
