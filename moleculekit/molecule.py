@@ -736,7 +736,7 @@ class Molecule(object):
         return bonds
 
     def atomselect(
-        self, sel, indexes=False, strict=False, fileBonds=True, guessBonds=True
+        self, sel, indexes=False, strict=False, fileBonds=True, guessBonds=True, newver=False
     ):
         """Get a boolean mask or the indexes of a set of selected atoms
 
@@ -769,22 +769,27 @@ class Molecule(object):
         if sel is None or (isinstance(sel, str) and sel == "all"):
             s = np.ones(self.numAtoms, dtype=bool)
         elif isinstance(sel, str):
-            selc = self.coords[:, :, self.frame].copy()
-            s = vmdselection(
-                sel,
-                selc,
-                self.element,
-                self.name,
-                self.resname,
-                self.resid,
-                chain=self.chain,
-                segname=self.segid,
-                insert=self.insertion,
-                altloc=self.altloc,
-                beta=self.beta,
-                occupancy=self.occupancy,
-                bonds=self._getBonds(fileBonds, guessBonds),
-            )
+            if newver:
+                from moleculekit.atomselect.atomselect import atomselect
+                s = atomselect(self, sel, bonds=self._getBonds(fileBonds, guessBonds))
+            else:
+                selc = self.coords[:, :, self.frame].copy()
+                s = vmdselection(
+                    sel,
+                    selc,
+                    self.element,
+                    self.name,
+                    self.resname,
+                    self.resid,
+                    chain=self.chain,
+                    segname=self.segid,
+                    insert=self.insertion,
+                    altloc=self.altloc,
+                    beta=self.beta,
+                    occupancy=self.occupancy,
+                    bonds=self._getBonds(fileBonds, guessBonds),
+                )
+
             if np.sum(s) == 0 and strict:
                 raise RuntimeError(
                     f'No atoms were selected with atom selection "{sel}".'

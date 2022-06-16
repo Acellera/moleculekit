@@ -165,9 +165,9 @@ def traverse_ast(mol, analysis, node):
     raise RuntimeError(f"Invalid operation {operation}")
 
 
-def atomselect(mol, selection, _debug=False, _analysis=None, _return_ast=False):
+def atomselect(mol, selection, bonds, _debug=False, _analysis=None, _return_ast=False):
     if _analysis is None:
-        _analysis = analyze(mol)
+        _analysis = analyze(mol, bonds)
 
     try:
         ast = parser.parse(selection, debug=_debug)
@@ -249,21 +249,17 @@ class _TestAtomSelect(unittest.TestCase):
             "same fragment as within 8 of resid 100",
         ]
 
-        # selections = [
-        #     "(sqr(x-5)+sqr(y+4)+sqr(z)) > sqr(5)",
-        # ]
-
         mol = Molecule("3ptb")
         mol.serial[10] = -88
         mol.charge[1000:] = -1
-        mol.bonds = mol._guessBonds()
+        bonds = mol._getBonds(fileBonds=True, guessBonds=True)
 
-        analysis = analyze(mol)
+        analysis = analyze(mol, bonds)
 
         for sel in selections:
             with self.subTest(sel=sel):
                 mask1, ast = atomselect(
-                    mol, sel, _analysis=analysis, _debug=False, _return_ast=True
+                    mol, sel, bonds, _analysis=analysis, _debug=False, _return_ast=True
                 )
                 mask2 = mol.atomselect(sel)
                 assert np.array_equal(

@@ -9,7 +9,7 @@ with open(_sel, "r") as f:
     _sel = json.load(f)
 
 
-def analyze(mol: Molecule):
+def analyze(mol: Molecule, bonds):
     from moleculekit.util import sequenceID
 
     analysis = {}
@@ -17,19 +17,23 @@ def analyze(mol: Molecule):
     analysis["protein_bb"] = find_backbone(mol, "protein")
     analysis["nucleic_bb"] = find_backbone(mol, "nucleic")
     analysis["protein"], analysis["nucleic"] = find_protein_nucleic(
-        mol, analysis["protein_bb"], analysis["nucleic_bb"], analysis["residues"]
+        mol,
+        analysis["protein_bb"],
+        analysis["nucleic_bb"],
+        analysis["residues"],
+        bonds,
     )
     analysis["waters"] = np.isin(mol.resname, _sel["water_resnames"])
     analysis["lipids"] = np.isin(mol.resname, _sel["lipid_resnames"])
     analysis["ions"] = np.isin(mol.resname, _sel["ion_resnames"])
-    analysis["fragments"] = find_fragments(mol)
+    analysis["fragments"] = find_fragments(mol, bonds)
 
     return analysis
 
 
-def find_fragments(mol):
+def find_fragments(mol, bonds):
     fragments = np.zeros(mol.numAtoms, dtype=bool)
-    groups = getBondedGroups(mol, mol.bonds)
+    groups = getBondedGroups(mol, bonds)
     for i in range(len(groups) - 1):
         fragments[groups[i] : groups[i + 1]] = i
     return fragments
@@ -57,7 +61,7 @@ def find_backbone(mol: Molecule, mode):
     return backb | terms
 
 
-def find_protein_nucleic(mol, pbb, nbb, uqres):
+def find_protein_nucleic(mol, pbb, nbb, uqres, bonds):
     protein = np.zeros(mol.numAtoms, dtype=bool)
     nucleic = np.zeros(mol.numAtoms, dtype=bool)
 
@@ -81,8 +85,8 @@ def find_protein_nucleic(mol, pbb, nbb, uqres):
         # Check which atoms in residue are only bonded to this residue (sidechain)
         resnotbb = resmask & ~bb
         resnotbb_idx = np.where(resnotbb)[0]
-        badbondrows = np.sum(np.isin(mol.bonds, residx), axis=1) == 1
-        resnotbb_idx = np.setdiff1d(resnotbb_idx, mol.bonds[badbondrows].flatten())
+        badbondrows = np.sum(np.isin(bonds, residx), axis=1) == 1
+        resnotbb_idx = np.setdiff1d(resnotbb_idx, bonds[badbondrows].flatten())
         array[resnotbb_idx] = True
 
     return protein, nucleic
