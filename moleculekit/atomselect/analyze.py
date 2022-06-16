@@ -1,12 +1,12 @@
 from moleculekit.molecule import Molecule, getBondedGroups
 from moleculekit.home import home
 import numpy as np
-import yaml
+import json
 import os
 
-_sel = os.path.join(home(shareDir="atomselect"), "atomselect.yaml")
+_sel = os.path.join(home(shareDir="atomselect"), "atomselect.json")
 with open(_sel, "r") as f:
-    _sel = yaml.load(f, Loader=yaml.BaseLoader)
+    _sel = json.load(f)
 
 
 def analyze(mol: Molecule):

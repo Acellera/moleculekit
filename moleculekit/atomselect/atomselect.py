@@ -17,6 +17,7 @@ molpropmap = {
     "altloc": "altloc",
     "mass": "masses",
     "occupancy": "beta",
+    "charge": "charge",
 }
 
 
@@ -87,7 +88,7 @@ def traverse_ast(mol, analysis, node):
         return node[1]
 
     if operation == "numprop":
-        return getattr(mol, node[1])
+        return getattr(mol, molpropmap[node[1]])
 
     if operation == "comp":
         op = node[1]
@@ -166,7 +167,14 @@ def atomselect(mol, selection, _debug=False, _analysis=None):
 
     if _debug:
         print(ast)
-    return traverse_ast(mol, _analysis, ast)
+
+    try:
+        mask = traverse_ast(mol, _analysis, ast)
+    except Exception as e:
+        raise RuntimeError(
+            f"Atomselect {selection} failed with error {e}. AST trace: {ast}"
+        )
+    return mask
 
 
 class _TestAtomSelect(unittest.TestCase):
@@ -174,6 +182,32 @@ class _TestAtomSelect(unittest.TestCase):
         from moleculekit.molecule import Molecule
 
         selections = [
+            "not protein",
+            "index -15",
+            "index 1 3 5",
+            "index 1 to 5",
+            "name 'A 1'",
+            "chain X",
+            "chain 'y'",
+            "chain 0",
+            'resname "GL"',
+            r'resname "GL\*"',
+            "resname ACE NME",
+            "same fragment as lipid",
+            "protein and within 8.3 of resname ACE",
+            "protein and (within 8.3 of resname ACE or exwithin 4 of index 2)",
+            "mass < 5",
+            "mass = 4",
+            "-sqr(charge) < 0",
+            "abs(charge) > 1",
+            "abs(charge) <= sqr(4)",
+            "x < 6",
+            "x < 6 and x > 3",
+            "sqr(x-5)+sqr(y+4)+sqr(z) > sqr(5)",
+            "same fragment as resid 5",
+            "same residue as within 8 of resid 100",
+            "same residue as exwithin 8 of resid 100",
+            "same fragment as within 8 of resid 100",
             "serial 1",
             # "serial -88",
             "index 1",
