@@ -179,6 +179,15 @@ def p_expression_unary_not(p):
     p[0] = ("logop", "not", p[2])
 
 
+def p_expression_sameas(p):
+    """
+    expression : SAME FRAGMENT AS expression
+               | SAME molprop_int AS expression
+               | SAME molprop_str AS expression
+    """
+    p[0] = ("sameas", p[2], p[4])
+
+
 def p_expression_within(p):
     """
     expression : WITHIN number OF expression
@@ -191,14 +200,6 @@ def p_expression_exwithin(p):
     expression : EXWITHIN number OF expression
     """
     p[0] = ("exwithin", p[2], p[4])
-
-
-def p_expression_sameas(p):
-    """
-    expression : SAME molecule AS expression
-               | SAME molprop AS expression
-    """
-    p[0] = ("sameas", p[2], p[4])
 
 
 def p_expression_grouped(p):
@@ -225,7 +226,6 @@ def p_molecule(p):
              | LIPIDS
              | WATER
              | WATERS
-             | FRAGMENT
              | BACKBONE
              | HYDROGEN
              | NOH
@@ -326,32 +326,53 @@ def p_numprop_mathop(p):
 
 def p_expression_molprop(p):
     """
-    expression : molprop
+    expression : molprop_str_eq
+               | molprop_int_eq
     """
     p[0] = p[1]
 
 
-def p_molprop_string(p):
+def p_molprop_string_eq(p):
     """
-    molprop : NAME string
-            | ELEMENT string
-            | RESNAME string
-            | ALTLOC string
-            | SEGNAME string
-            | RESNAME number
-            | SEGID string
-            | SEGID number
-            | INSERTION string
-            | INSERTION number
-            | CHAIN string
-            | CHAIN number
+    molprop_str_eq : molprop_str string
     """
     val2 = p[2]
     if not isinstance(val2, list):
         val2 = str(val2)
     else:
         val2 = [str(x) for x in val2]
-    p[0] = ("molprop", p[1], val2)
+    p[0] = ("molprop_str_eq", p[1], val2)
+
+
+def p_molprop_string(p):
+    """
+    molprop_str : NAME
+                | ELEMENT
+                | RESNAME
+                | ALTLOC
+                | SEGNAME
+                | SEGID
+                | INSERTION
+                | CHAIN
+    """
+    p[0] = p[1]
+
+
+def p_molprop_int_eq(p):
+    """
+    molprop_int_eq : molprop_int integer
+    """
+    p[0] = ("molprop_int_eq", p[1], p[2])
+
+
+def p_molprop_int(p):
+    """
+    molprop_int : INDEX
+                | SERIAL
+                | RESID
+                | RESIDUE
+    """
+    p[0] = p[1]
 
 
 def p_expression_numprop(p):
@@ -361,7 +382,7 @@ def p_expression_numprop(p):
     p[0] = p[1]
 
 
-def p_molprop_number(p):
+def p_numprop_number(p):
     """
     numprop : CHARGE
             | MASS
@@ -371,16 +392,6 @@ def p_molprop_number(p):
             | ZCOOR
     """
     p[0] = ("numprop", p[1])
-
-
-def p_molprop_int(p):
-    """
-    molprop : INDEX integer
-            | SERIAL integer
-            | RESID integer
-            | RESIDUE integer
-    """
-    p[0] = ("molprop", p[1], p[2])
 
 
 def p_string_list(p):
@@ -501,6 +512,10 @@ selections = [
     r"x < 6",
     r"x < 6 and x > 3",
     r"sqr(x-5)+sqr(y+4)+sqr(z) > sqr(5)",
+    "same fragment as resid 5",
+    "same residue as within 8 of resid 100",
+    "same residue as exwithin 8 of resid 100",
+    "same fragment as within 8 of resid 100",
 ]
 
 
@@ -517,6 +532,21 @@ for sel in selections:
     # print_first_elems(ast)
 
 from moleculekit.atomselect.analyze import analyze
+
+molpropmap = {
+    "serial": "serial",
+    "name": "name",
+    "element": "element",
+    "resname": "resname",
+    "resid": "resid",
+    "insertion": "insertion",
+    "chain": "chain",
+    "segid": "segid",
+    "segname": "segid",
+    "altloc": "altloc",
+    "mass": "masses",
+    "occupancy": "beta",
+}
 
 
 def traverse_ast(mol, analysis, node):
@@ -552,17 +582,7 @@ def traverse_ast(mol, analysis, node):
             return analysis["nucleic"]
         raise RuntimeError(f"Invalid molecule selection {molec}")
 
-    if operation == "molprop":
-        matchingprops = (
-            "serial",
-            "name",
-            "element",
-            "resname",
-            "resid",
-            "insertion",
-            "chain",
-            "segid",
-        )
+    if operation in ("molprop_int_eq", "molprop_str_eq"):
         molprop = node[1]
         value = node[2]
 
@@ -570,24 +590,14 @@ def traverse_ast(mol, analysis, node):
         if isinstance(value, list):
             fn = lambda x, y: np.isin(x, y)
 
-        if molprop in matchingprops:
-            return fn(getattr(mol, molprop), value)
+        if molprop in molpropmap:
+            return fn(getattr(mol, molpropmap[molprop]), value)
         if molprop == "index":
             return fn(np.arange(1, mol.numAtoms + 1), value)
         if molprop == "residue":
             # Unique sequential residue numbering
             residues = sequenceID((mol.resid, mol.insertion, mol.chain, mol.segid)) + 1
             return fn(residues, value)
-        if molprop == "altloc":
-            return fn(mol.altloc, value)
-        if molprop == "segname":
-            return fn(mol.segid, value)
-        if molprop == "mass":
-            return fn(mol.masses, value)
-        if molprop == "charge":
-            return fn(mol.charge, value)
-        if molprop == "occupancy":
-            return fn(mol.beta, value)
         raise RuntimeError(f"Invalid molprop {molprop}")
 
     if operation == "logop":
@@ -633,10 +643,30 @@ def traverse_ast(mol, analysis, node):
         raise RuntimeError(f"Invalid function {fn}")
 
     if operation == "mathop":
-        raise NotImplementedError("Not implemented yet")
+        op = node[1]
+        if op == "+":
+            fn = lambda x, y: x + y
+        if op == "-":
+            fn = lambda x, y: x - y
+        if op == "*":
+            fn = lambda x, y: x * y
+        if op == "/":
+            fn = lambda x, y: x / y
+        val1 = node[2]
+        val2 = node[3]
+        return fn(val1, val2)
 
     if operation == "sameas":
-        raise NotImplementedError("Not implemented yet")
+        prop = node[1]
+        sel = node[2]
+        if prop == "fragment":
+            frags = np.unique(analysis["fragments"][sel])
+            return np.isin(analysis["fragments"], frags)
+        if prop in molpropmap:
+            propvalues = getattr(mol, molpropmap[prop])
+            pp = np.unique(propvalues[sel])
+            return np.isin(propvalues, pp)
+        raise RuntimeError(f"Invalid property {prop} in 'same {prop} as'")
 
     if operation == "within":
         raise NotImplementedError("Not implemented yet")
@@ -676,6 +706,12 @@ tests = [
     "sidechain",
     "protein",
     "nucleic",
+    "charge + 5 >= 2+3",
+    "same fragment as resid 17",
+    "same resid as resid 17 18",
+    "same residue as within 8 of resid 100",
+    "same residue as exwithin 8 of resid 100",
+    "same fragment as within 8 of resid 100",
 ]
 
 for test in tests:
