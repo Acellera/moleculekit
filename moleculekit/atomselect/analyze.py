@@ -37,7 +37,7 @@ def analyze(mol: Molecule, bonds):
 
 
 def find_fragments(mol, bonds):
-    fragments = np.zeros(mol.numAtoms, dtype=bool)
+    fragments = np.zeros(mol.numAtoms, dtype=np.uint32)
     groups = getBondedGroups(mol, bonds)
     for i in range(len(groups) - 1):
         fragments[groups[i] : groups[i + 1]] = i
