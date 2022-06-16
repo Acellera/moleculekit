@@ -207,6 +207,7 @@ class _TestAtomSelect(unittest.TestCase):
             "abs(charge) > 1",
             "abs(charge) <= sqr(4)",
             "x < 6",
+            "(x < 6) and (x > 3)",
             "x < 6 and x > 3",
             "sqr(x-5)+sqr(y+4)+sqr(z) > sqr(5)",
             "(sqr(x-5)+sqr(y+4)+sqr(z)) > sqr(5)",

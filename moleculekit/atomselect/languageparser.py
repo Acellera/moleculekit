@@ -152,6 +152,8 @@ def t_error(t):
 lexer = lex.lex()
 
 precedence = (
+    ("nonassoc", "COMP"),
+    ("nonassoc", "AND_OR"),
     ("left", "PLUS", "MINUS"),
     ("left", "TIMES", "DIVIDE"),
     ("right", "UMINUS"),
@@ -164,10 +166,17 @@ precedence = (
 
 def p_expression_logop(p):
     """
-    expression : expression AND expression
-               | expression OR expression
+    expression : expression logop expression  %prec AND_OR
     """
     p[0] = ("logop", p[2], p[1], p[3])
+
+
+def p_logop(p):
+    """
+    logop : AND
+          | OR
+    """
+    p[0] = p[1]
 
 
 def p_expression_unary_not(p):
@@ -264,33 +273,44 @@ def p_prop_funcs(p):
 
 def p_expression_comp(p):
     """
-    expression : expression EQUAL expression
-               | expression LESSER expression
-               | expression GREATER expression
-               | expression LESSEREQUAL expression
-               | expression GREATEREQUAL expression
+    expression : expression compop expression  %prec COMP
     """
     p[0] = ("comp", p[2], p[1], p[3])
 
 
+def p_compop(p):
+    """
+    compop : EQUAL
+           | LESSER
+           | GREATER
+           | LESSEREQUAL
+           | GREATEREQUAL
+    """
+    p[0] = p[1]
+
+
 def p_number_mathop(p):
     """
-    number : number PLUS number
-           | number MINUS number
-           | number TIMES number
-           | number DIVIDE number
+    number : number mathop number
     """
     p[0] = ("mathop", p[2], p[1], p[3])
 
 
 def p_numprop_mathop(p):
     """
-    numprop : numprop PLUS number
-            | numprop MINUS number
-            | numprop TIMES number
-            | numprop DIVIDE number
+    numprop : numprop mathop number
     """
     p[0] = ("mathop", p[2], p[1], p[3])
+
+
+def p_mathop(p):
+    """
+    mathop : PLUS
+           | MINUS
+           | TIMES
+           | DIVIDE
+    """
+    p[0] = p[1]
 
 
 def p_expression_molprop(p):
