@@ -167,6 +167,7 @@ precedence = (
 def p_expression_logop(p):
     """
     expression : expression logop expression  %prec AND_OR
+               | numprop logop expression  %prec AND_OR
     """
     p[0] = ("logop", p[2], p[1], p[3])
 
@@ -274,6 +275,7 @@ def p_prop_funcs(p):
 def p_expression_comp(p):
     """
     expression : expression compop expression  %prec COMP
+               | numprop compop expression  %prec COMP
     """
     p[0] = ("comp", p[2], p[1], p[3])
 
@@ -365,11 +367,11 @@ def p_molprop_int(p):
     p[0] = p[1]
 
 
-def p_expression_numprop(p):
-    """
-    expression : numprop
-    """
-    p[0] = p[1]
+# def p_expression_numprop(p):
+#     """
+#     expression : numprop
+#     """
+#     p[0] = p[1]
 
 
 def p_numprop_number(p):
