@@ -18,6 +18,7 @@ molpropmap = {
     "altloc": "altloc",
     "mass": "masses",
     "occupancy": "beta",
+    "beta": "beta",
     "charge": "charge",
 }
 
@@ -226,8 +227,8 @@ class _TestAtomSelect(unittest.TestCase):
             "mass < 5",
             "mass = 4",
             "-sqr(mass) < 0",
-            "abs(charge) > 1",
-            "abs(charge) <= sqr(4)",
+            "abs(beta) > 1",
+            "abs(beta) <= sqr(4)",
             "x < 6",
             "(x < 6) and (x > 3)",
             "x < 6 and x > 3",
@@ -244,8 +245,8 @@ class _TestAtomSelect(unittest.TestCase):
             "resname ILE and (index 2)",
             "resname ALA ILE",
             "chain A",
-            "charge >= 0",
-            "abs(charge) >= 0",
+            "beta >= 0",
+            "abs(beta) >= 0",
             "lipid",
             "lipids",
             "ion",
@@ -259,7 +260,7 @@ class _TestAtomSelect(unittest.TestCase):
             "protein",
             "nucleic",
             "residue 0",
-            "charge + 5 >= 2+3",
+            "beta + 5 >= 2+3",
             "same fragment as resid 17",
             "same resid as resid 17 18",
             "same residue as within 8 of resid 100",
@@ -269,7 +270,8 @@ class _TestAtomSelect(unittest.TestCase):
 
         mol = Molecule("3ptb")
         mol.serial[10] = -88
-        mol.charge[1000:] = -1
+        mol.beta[:] = 0
+        mol.beta[1000:] = -1
         bonds = mol._getBonds(fileBonds=True, guessBonds=True)
 
         analysis = analyze(mol, bonds)

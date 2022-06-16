@@ -34,6 +34,7 @@ reserved += [
     "mass",
     "charge",
     "occupancy",
+    "beta",
     "fragment",
 ]
 # operands
@@ -379,6 +380,7 @@ def p_numprop_number(p):
     numprop : CHARGE
             | MASS
             | OCCUPANCY
+            | BETA
             | XCOOR
             | YCOOR
             | ZCOOR
