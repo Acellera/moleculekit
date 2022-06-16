@@ -532,6 +532,7 @@ for sel in selections:
     # print_first_elems(ast)
 
 from moleculekit.atomselect.analyze import analyze
+from scipy.spatial.distance import cdist
 
 molpropmap = {
     "serial": "serial",
@@ -596,8 +597,7 @@ def traverse_ast(mol, analysis, node):
             return fn(np.arange(1, mol.numAtoms + 1), value)
         if molprop == "residue":
             # Unique sequential residue numbering
-            residues = sequenceID((mol.resid, mol.insertion, mol.chain, mol.segid)) + 1
-            return fn(residues, value)
+            return fn(analysis["residues"], value)
         raise RuntimeError(f"Invalid molprop {molprop}")
 
     if operation == "logop":
@@ -660,19 +660,27 @@ def traverse_ast(mol, analysis, node):
         prop = node[1]
         sel = node[2]
         if prop == "fragment":
-            frags = np.unique(analysis["fragments"][sel])
-            return np.isin(analysis["fragments"], frags)
+            selvals = np.unique(analysis["fragments"][sel])
+            return np.isin(analysis["fragments"], selvals)
         if prop in molpropmap:
             propvalues = getattr(mol, molpropmap[prop])
-            pp = np.unique(propvalues[sel])
-            return np.isin(propvalues, pp)
+            selvals = np.unique(propvalues[sel])
+            return np.isin(propvalues, selvals)
+        if prop == "residue":
+            selvals = np.unique(analysis["residues"][sel])
+            return np.isin(analysis["residues"], selvals)
         raise RuntimeError(f"Invalid property {prop} in 'same {prop} as'")
 
-    if operation == "within":
-        raise NotImplementedError("Not implemented yet")
-
-    if operation == "exwithin":
-        raise NotImplementedError("Not implemented yet")
+    if operation in ("within", "exwithin"):
+        cutoff = node[1]
+        source = node[2]
+        dists = cdist(mol.coords[:, :, mol.frame], mol.coords[source, :, mol.frame])
+        idx = np.unique(np.where(dists <= cutoff)[0])
+        mask = np.zeros(mol.numAtoms, dtype=bool)
+        mask[idx] = True
+        if operation == "exwithin":
+            mask[source] = False
+        return mask
 
     raise RuntimeError(f"Invalid operation {operation}")
 
@@ -706,6 +714,7 @@ tests = [
     "sidechain",
     "protein",
     "nucleic",
+    "residue 0",
     "charge + 5 >= 2+3",
     "same fragment as resid 17",
     "same resid as resid 17 18",

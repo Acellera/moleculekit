@@ -10,11 +10,14 @@ with open(_sel, "r") as f:
 
 
 def analyze(mol: Molecule):
+    from moleculekit.util import sequenceID
+
     analysis = {}
+    analysis["residues"] = sequenceID((mol.resid, mol.insertion, mol.chain, mol.segid))
     analysis["protein_bb"] = find_backbone(mol, "protein")
     analysis["nucleic_bb"] = find_backbone(mol, "nucleic")
-    analysis["protein"], analysis["nucleic"] = find_residues(
-        mol, analysis["protein_bb"], analysis["nucleic_bb"]
+    analysis["protein"], analysis["nucleic"] = find_protein_nucleic(
+        mol, analysis["protein_bb"], analysis["nucleic_bb"], analysis["residues"]
     )
     analysis["waters"] = np.isin(mol.resname, _sel["water_resnames"])
     analysis["lipids"] = np.isin(mol.resname, _sel["lipid_resnames"])
@@ -54,11 +57,7 @@ def find_backbone(mol: Molecule, mode):
     return backb | terms
 
 
-def find_residues(mol, pbb, nbb):
-    from moleculekit.util import sequenceID
-
-    uqres = sequenceID((mol.resid, mol.insertion, mol.chain, mol.segid))
-
+def find_protein_nucleic(mol, pbb, nbb, uqres):
     protein = np.zeros(mol.numAtoms, dtype=bool)
     nucleic = np.zeros(mol.numAtoms, dtype=bool)
 
