@@ -3,6 +3,7 @@ from moleculekit.atomselect.analyze import analyze
 from scipy.spatial.distance import cdist
 import numpy as np
 import unittest
+import re
 
 molpropmap = {
     "serial": "serial",
@@ -58,11 +59,25 @@ def traverse_ast(mol, analysis, node):
         molprop = node[1]
         value = node[2]
 
-        # TODO: Implement X.* selections
-
-        fn = lambda x, y: x == y
-        if isinstance(value, list):
-            fn = lambda x, y: np.isin(x, y)
+        # TODO: Improve this with Cython
+        def fn(x, y):
+            if not isinstance(y, list):
+                if not isinstance(y, str) or ".*" not in y:
+                    return x == y
+                else:
+                    return np.array([re.match(y[1:-1], xx) for xx in x], dtype=bool)
+            else:
+                if not isinstance(y, str) or all([".*" not in yy for yy in y]):
+                    return np.isin(x, y)
+                else:
+                    res = []
+                    for xx in x:
+                        for yy in y:
+                            if ".*" in yy:
+                                res.append(re.match(yy[1:-1], xx))
+                            else:
+                                res.append(xx == yy)
+                    return np.array(res, dtype=bool)
 
         if molprop in molpropmap:
             return fn(getattr(mol, molpropmap[molprop]), value)
