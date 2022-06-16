@@ -117,6 +117,8 @@ def traverse_ast(mol, analysis, node):
         if fn == "abs":
             return np.abs(node[2])
         if fn == "sqr":
+            if np.any(node[2] < 0):
+                raise RuntimeError(f"Negative values in sqr() call: {node[2]}")
             return np.sqrt(node[2])
         raise RuntimeError(f"Invalid function {fn}")
 
@@ -163,7 +165,7 @@ def traverse_ast(mol, analysis, node):
     raise RuntimeError(f"Invalid operation {operation}")
 
 
-def atomselect(mol, selection, _debug=False, _analysis=None):
+def atomselect(mol, selection, _debug=False, _analysis=None, _return_ast=False):
     if _analysis is None:
         _analysis = analyze(mol)
 
@@ -176,8 +178,10 @@ def atomselect(mol, selection, _debug=False, _analysis=None):
         mask = traverse_ast(mol, _analysis, ast)
     except Exception as e:
         raise RuntimeError(
-            f"Atomselect '{selection}' failed with error {e}. AST trace:\n{ast}"
+            f"Atomselect '{selection}' failed with error '{e}'. AST trace:\n{ast}"
         )
+    if _return_ast:
+        return mask, ast
     return mask
 
 
@@ -209,8 +213,7 @@ class _TestAtomSelect(unittest.TestCase):
             "x < 6",
             "(x < 6) and (x > 3)",
             "x < 6 and x > 3",
-            "sqr(x-5)+sqr(y+4)+sqr(z) > sqr(5)",
-            "(sqr(x-5)+sqr(y+4)+sqr(z)) > sqr(5)",
+            "sqr(abs(x-5))+sqr(abs(y+4))+sqr(abs(z)) > sqr(5)",
             "same fragment as resid 5",
             "same residue as within 8 of resid 100",
             "same residue as exwithin 8 of resid 100",
@@ -259,11 +262,13 @@ class _TestAtomSelect(unittest.TestCase):
 
         for sel in selections:
             with self.subTest(sel=sel):
-                mask1 = atomselect(mol, sel, _analysis=analysis, _debug=False)
+                mask1, ast = atomselect(
+                    mol, sel, _analysis=analysis, _debug=False, _return_ast=True
+                )
                 mask2 = mol.atomselect(sel)
                 assert np.array_equal(
                     mask1, mask2
-                ), f"test: {mask1.sum()} vs ref: {mask2.sum()} atoms"
+                ), f"test: {mask1.sum()} vs ref: {mask2.sum()} atoms. AST:\n{ast}"
 
 
 if __name__ == "__main__":
