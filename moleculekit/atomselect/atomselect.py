@@ -88,7 +88,14 @@ def traverse_ast(mol, analysis, node):
         return node[1]
 
     if operation == "numprop":
-        return getattr(mol, molpropmap[node[1]])
+        val1 = node[1]
+        if val1 == "x":
+            return mol.coords[:, 0, mol.frame]
+        if val1 == "y":
+            return mol.coords[:, 1, mol.frame]
+        if val1 == "z":
+            return mol.coords[:, 2, mol.frame]
+        return getattr(mol, molpropmap[val1])
 
     if operation == "comp":
         op = node[1]
@@ -172,7 +179,7 @@ def atomselect(mol, selection, _debug=False, _analysis=None):
         mask = traverse_ast(mol, _analysis, ast)
     except Exception as e:
         raise RuntimeError(
-            f"Atomselect {selection} failed with error {e}. AST trace: {ast}"
+            f"Atomselect '{selection}' failed with error {e}. AST trace:\n{ast}"
         )
     return mask
 
