@@ -56,6 +56,33 @@ def get_bonded_groups(
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
+cdef bool _mark_residues(
+        bool[:] protein,
+        bool[:] nucleic,
+        bool[:] segcrossers,
+        int p_bb_count,
+        int n_bb_count,
+        int res_start,
+        int i
+    ):
+    if p_bb_count >= 4:
+        # If we have 4 or more protein backbone atoms in the residue it's a protein
+        for j in range(res_start, i):
+            if segcrossers[j] == 1:
+                # If the atom has a bond to another segment don't mark as protein
+                continue
+            protein[j] = 1
+    elif n_bb_count >= 4:
+        # If we have 4 or more nucleic backbone atoms in the residue it's a nucleic
+        for j in range(res_start, i):
+            if segcrossers[j] == 1:
+                # If the atom has a bond to another segment don't mark as nucleic
+                continue
+            nucleic[j] = 1
+
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
 def find_protein_nucleic_ext(
         bool[:] protein,
         bool[:] nucleic,
@@ -72,21 +99,7 @@ def find_protein_nucleic_ext(
     n_bb_count = 0
     for i in range(n_atoms):
         if curr_res != resseq[i]:
-            if p_bb_count >= 4:
-                # If we have 4 or more protein backbone atoms in the residue it's a protein
-                for j in range(res_start, i):
-                    if segcrossers[j] == 1:
-                        # If the atom has a bond to another segment don't mark as protein
-                        continue
-                    protein[j] = 1
-            elif n_bb_count >= 4:
-                # If we have 4 or more nucleic backbone atoms in the residue it's a nucleic
-                for j in range(res_start, i):
-                    if segcrossers[j] == 1:
-                        # If the atom has a bond to another segment don't mark as nucleic
-                        continue
-                    nucleic[j] = 1
-
+            _mark_residues(protein, nucleic, segcrossers, p_bb_count, n_bb_count, res_start, i)
             # New residue. Reset vars
             res_start = i
             p_bb_count = 0
@@ -97,5 +110,7 @@ def find_protein_nucleic_ext(
             p_bb_count += 1
         elif nucleic_bb[i] == 1:
             n_bb_count += 1
+
+    _mark_residues(protein, nucleic, segcrossers, p_bb_count, n_bb_count, res_start, i+1)
             
             

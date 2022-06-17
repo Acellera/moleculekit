@@ -733,7 +733,7 @@ class Molecule(object):
             bonds = np.vstack((bonds, self.bonds))
         if guessBonds:
             bonds = np.vstack((bonds, self._guessBonds()))
-        return bonds
+        return bonds.astype(np.uint32)
 
     def atomselect(
         self,

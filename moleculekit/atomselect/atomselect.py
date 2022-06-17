@@ -219,8 +219,8 @@ class _TestAtomSelect(unittest.TestCase):
             "chain 'y'",
             "chain 0",
             'resname "GL"',
-            r'name "C.*"',
-            r'resname "GL.*"',
+            'name "C.*"',
+            'resname "GL.*"',
             "resname ACE NME",
             "same fragment as lipid",
             "protein and within 8.3 of resname ALA",
@@ -273,7 +273,25 @@ class _TestAtomSelect(unittest.TestCase):
             "same fragment as within 8 of resid 100",
         ]
 
-        pdbids = ["3ptb", "3wbm", "4k98"]
+        pdbids = [
+            "3ptb",
+            "3wbm",
+            "4k98",
+            "3hyd",
+            "6a5j",
+            "5vbl",
+            "7q5b",
+            "1unc",
+            "3zhi",
+            "1a25",
+            "1u5u",
+            "1gzm",
+            "6va1",
+            "1bna",
+            "1awf",
+            "5vav",
+        ]
+        timecomp = False
         # pdbids = ["4k98"]
         for pdbid in pdbids:
             with self.subTest(pdbid=pdbid):
@@ -282,18 +300,20 @@ class _TestAtomSelect(unittest.TestCase):
                 mol.beta[:] = 0
                 mol.beta[1000:] = -1
                 bonds = mol._getBonds(fileBonds=True, guessBonds=True)
-
                 analysis = analyze(mol, bonds)
 
                 for sel in selections:
                     with self.subTest(sel=sel):
                         t1 = time.time()
-                        bonds = mol._getBonds(fileBonds=True, guessBonds=True)
+                        if timecomp:  # Making the comparison fair
+                            bonds = mol._getBonds(fileBonds=True, guessBonds=True)
+                            analysis = analyze(mol, bonds)
+
                         mask1, ast = atomselect(
                             mol,
                             sel,
                             bonds,
-                            _analysis=analyze(mol, bonds),
+                            _analysis=analysis,
                             _debug=False,
                             _return_ast=True,
                         )
@@ -301,7 +321,8 @@ class _TestAtomSelect(unittest.TestCase):
                         t2 = time.time()
                         mask2 = mol.atomselect(sel)
                         t2 = time.time() - t2
-                        print(f"TIMING: new {t1} vs ref {t2}")
+                        if timecomp:
+                            print(f"TIMING: new {t1} vs ref {t2}")
                         assert np.array_equal(
                             mask1, mask2
                         ), f"test: {mask1.sum()} vs ref: {mask2.sum()} atoms. AST:\n{ast}"
