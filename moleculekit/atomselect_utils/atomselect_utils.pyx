@@ -68,16 +68,16 @@ cdef bool _mark_residues(
     if p_bb_count >= 4:
         # If we have 4 or more protein backbone atoms in the residue it's a protein
         for j in range(res_start, i):
-            if segcrossers[j] == 1:
-                # If the atom has a bond to another segment don't mark as protein
-                continue
+            # if segcrossers[j] == 1:
+            #     # If the atom has a bond to another segment don't mark as protein
+            #     continue
             protein[j] = 1
     elif n_bb_count >= 4:
         # If we have 4 or more nucleic backbone atoms in the residue it's a nucleic
         for j in range(res_start, i):
-            if segcrossers[j] == 1:
-                # If the atom has a bond to another segment don't mark as nucleic
-                continue
+            # if segcrossers[j] == 1:
+            #     # If the atom has a bond to another segment don't mark as nucleic
+            #     continue
             nucleic[j] = 1
 
 
