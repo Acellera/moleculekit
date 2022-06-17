@@ -4,6 +4,8 @@ import numpy as np
 import json
 import os
 
+from moleculekit.util import sequenceID
+
 _sel = os.path.join(home(shareDir="atomselect"), "atomselect.json")
 with open(_sel, "r") as f:
     _sel = json.load(f)
@@ -16,7 +18,9 @@ def analyze(mol: Molecule, bonds):
     analysis["waters"] = np.isin(mol.resname, _sel["water_resnames"])
     analysis["lipids"] = np.isin(mol.resname, _sel["lipid_resnames"])
     analysis["ions"] = np.isin(mol.resname, _sel["ion_resnames"])
-    analysis["residues"] = sequenceID((mol.resid, mol.insertion, mol.chain, mol.segid))
+    analysis["residues"] = sequenceID(
+        (mol.resid, mol.insertion, mol.chain, mol.segid)
+    ).astype(np.uint32)
     analysis["protein_bb"] = find_backbone(mol, "protein")
     analysis["nucleic_bb"] = find_backbone(mol, "nucleic")
     analysis["protein"], analysis["nucleic"] = find_protein_nucleic(
@@ -31,17 +35,9 @@ def analyze(mol: Molecule, bonds):
     # molecules such as waters or ligands might have them
     analysis["protein_bb"] &= analysis["protein"]
     analysis["nucleic_bb"] &= analysis["nucleic"]
-    analysis["fragments"] = find_fragments(mol, bonds)
+    _, analysis["fragments"] = getBondedGroups(mol, bonds)
 
     return analysis
-
-
-def find_fragments(mol, bonds):
-    fragments = np.zeros(mol.numAtoms, dtype=np.uint32)
-    groups = getBondedGroups(mol, bonds)
-    for i in range(len(groups) - 1):
-        fragments[groups[i] : groups[i + 1]] = i
-    return fragments
 
 
 def find_backbone(mol: Molecule, mode):
@@ -67,33 +63,18 @@ def find_backbone(mol: Molecule, mode):
 
 
 def find_protein_nucleic(mol, pbb, nbb, uqres, bonds):
+    from moleculekit.atomselect_utils import find_protein_nucleic_ext
+
     protein = np.zeros(mol.numAtoms, dtype=bool)
     nucleic = np.zeros(mol.numAtoms, dtype=bool)
+    segcrossers = np.zeros(mol.numAtoms, dtype=bool)
 
-    for ri in np.unique(uqres):
-        resmask = uqres == ri
-        chainmask = mol.chain == mol.chain[resmask][0]
-        segmask = mol.segid == mol.segid[resmask][0]
-        chainsegidx = np.where(chainmask | segmask)[0]
+    uqseg = sequenceID((mol.chain,))  # mol.segid  had disagreements with VMD
+    bondsegs = uqseg[bonds]
 
-        # If there are 4 backbone atoms in this residue it's protein/nucleic
-        isprot = pbb[resmask].sum() >= 4
-        isnucl = nbb[resmask].sum() >= 4
+    # Find atoms with bonds which cross segments
+    segcrossers[bonds[bondsegs[:, 0] != bondsegs[:, 1]].flatten()] = True
 
-        if not isprot and not isnucl:
-            continue
-
-        array = protein if isprot else nucleic
-        bb = pbb if isprot else nbb
-
-        resbb = resmask & bb
-        array[resbb] = True  # BB is protein
-
-        # Check which atoms in residue are only bonded to this chain/segment
-        resnotbb = resmask & ~bb
-        resnotbb_idx = np.where(resnotbb)[0]
-        badbondrows = np.sum(np.isin(bonds, chainsegidx), axis=1) == 1
-        resnotbb_idx = np.setdiff1d(resnotbb_idx, bonds[badbondrows].flatten())
-        array[resnotbb_idx] = True
+    find_protein_nucleic_ext(protein, nucleic, pbb, nbb, segcrossers, uqres)
 
     return protein, nucleic

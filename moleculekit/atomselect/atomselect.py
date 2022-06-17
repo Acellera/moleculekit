@@ -47,9 +47,10 @@ def traverse_ast(mol, analysis, node):
         if molec == "backbone":
             return analysis["protein_bb"] | analysis["nucleic_bb"]
         if molec == "sidechain":
-            bbs = analysis["protein_bb"] | analysis["nucleic_bb"]
-            protnuc = analysis["protein"] | analysis["nucleic"]
-            return protnuc & ~bbs
+            # bbs = analysis["protein_bb"] | analysis["nucleic_bb"]
+            # protnuc = analysis["protein"] | analysis["nucleic"]
+            # return protnuc & ~bbs
+            return analysis["protein"] & ~analysis["protein_bb"]
         if molec == "protein":
             return analysis["protein"]
         if molec == "nucleic":
@@ -206,6 +207,7 @@ def atomselect(mol, selection, bonds, _debug=False, _analysis=None, _return_ast=
 class _TestAtomSelect(unittest.TestCase):
     def test_atomselect(self):
         from moleculekit.molecule import Molecule
+        import time
 
         selections = [
             "not protein",
@@ -221,9 +223,9 @@ class _TestAtomSelect(unittest.TestCase):
             r'resname "GL.*"',
             "resname ACE NME",
             "same fragment as lipid",
-            "protein and within 8.3 of resname ACE",
-            "within 8.3 of resname ACE or exwithin 4 of index 2",
-            "protein and (within 8.3 of resname ACE or exwithin 4 of index 2)",
+            "protein and within 8.3 of resname ALA",
+            "within 8.3 of resname ALA or exwithin 4 of index 2",
+            "protein and (within 8.3 of resname ALA or exwithin 4 of index 2)",
             "mass < 5",
             "mass = 4",
             "-sqr(mass) < 0",
@@ -262,6 +264,8 @@ class _TestAtomSelect(unittest.TestCase):
             "nucleic",
             "residue 0",
             "beta + 5 >= 2+3",
+            "within 5 of nucleic",
+            "exwithin 5 of nucleic",
             "same fragment as resid 17",
             "same resid as resid 17 18",
             "same residue as within 8 of resid 100",
@@ -269,23 +273,38 @@ class _TestAtomSelect(unittest.TestCase):
             "same fragment as within 8 of resid 100",
         ]
 
-        mol = Molecule("3ptb")
-        mol.serial[10] = -88
-        mol.beta[:] = 0
-        mol.beta[1000:] = -1
-        bonds = mol._getBonds(fileBonds=True, guessBonds=True)
+        pdbids = ["3ptb", "3wbm", "4k98"]
+        # pdbids = ["4k98"]
+        for pdbid in pdbids:
+            with self.subTest(pdbid=pdbid):
+                mol = Molecule(pdbid)
+                mol.serial[10] = -88
+                mol.beta[:] = 0
+                mol.beta[1000:] = -1
+                bonds = mol._getBonds(fileBonds=True, guessBonds=True)
 
-        analysis = analyze(mol, bonds)
+                analysis = analyze(mol, bonds)
 
-        for sel in selections:
-            with self.subTest(sel=sel):
-                mask1, ast = atomselect(
-                    mol, sel, bonds, _analysis=analysis, _debug=False, _return_ast=True
-                )
-                mask2 = mol.atomselect(sel)
-                assert np.array_equal(
-                    mask1, mask2
-                ), f"test: {mask1.sum()} vs ref: {mask2.sum()} atoms. AST:\n{ast}"
+                for sel in selections:
+                    with self.subTest(sel=sel):
+                        t1 = time.time()
+                        bonds = mol._getBonds(fileBonds=True, guessBonds=True)
+                        mask1, ast = atomselect(
+                            mol,
+                            sel,
+                            bonds,
+                            _analysis=analyze(mol, bonds),
+                            _debug=False,
+                            _return_ast=True,
+                        )
+                        t1 = time.time() - t1
+                        t2 = time.time()
+                        mask2 = mol.atomselect(sel)
+                        t2 = time.time() - t2
+                        print(f"TIMING: new {t1} vs ref {t2}")
+                        assert np.array_equal(
+                            mask1, mask2
+                        ), f"test: {mask1.sum()} vs ref: {mask2.sum()} atoms. AST:\n{ast}"
 
 
 if __name__ == "__main__":
