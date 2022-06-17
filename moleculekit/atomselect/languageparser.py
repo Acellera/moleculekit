@@ -153,8 +153,8 @@ def t_error(t):
 lexer = lex.lex()
 
 precedence = (
+    ("nonassoc", "AND", "OR"),
     ("nonassoc", "COMP"),
-    ("nonassoc", "AND_OR"),
     ("left", "PLUS", "MINUS"),
     ("left", "TIMES", "DIVIDE"),
     ("right", "UMINUS"),
@@ -167,8 +167,7 @@ precedence = (
 
 def p_expression_logop(p):
     """
-    expression : expression logop expression  %prec AND_OR
-               | numprop logop expression  %prec AND_OR
+    expression : expression logop expression
     """
     p[0] = ("logop", p[2], p[1], p[3])
 
@@ -276,7 +275,6 @@ def p_prop_funcs(p):
 def p_expression_comp(p):
     """
     expression : expression compop expression  %prec COMP
-               | numprop compop expression  %prec COMP
     """
     p[0] = ("comp", p[2], p[1], p[3])
 
@@ -295,13 +293,6 @@ def p_compop(p):
 def p_number_mathop(p):
     """
     number : number mathop number
-    """
-    p[0] = ("mathop", p[2], p[1], p[3])
-
-
-def p_numprop_mathop(p):
-    """
-    numprop : numprop mathop number
     """
     p[0] = ("mathop", p[2], p[1], p[3])
 
@@ -368,11 +359,18 @@ def p_molprop_int(p):
     p[0] = p[1]
 
 
-# def p_expression_numprop(p):
-#     """
-#     expression : numprop
-#     """
-#     p[0] = p[1]
+def p_expression_numprop(p):
+    """
+    expression : numprop
+    """
+    p[0] = p[1]
+
+
+def p_numprop_mathop(p):
+    """
+    numprop : numprop mathop number
+    """
+    p[0] = ("mathop", p[2], p[1], p[3])
 
 
 def p_numprop_number(p):
@@ -507,6 +505,7 @@ class _TestLanguareParser(unittest.TestCase):
             "abs(charge) > 1",
             "abs(charge) <= sqr(4)",
             "x < 6",
+            "x > y",
             "x < 6 and x > 3",
             "sqr(x-5)+sqr(y+4)+sqr(z) > sqr(5)",
             "same fragment as resid 5",

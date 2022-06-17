@@ -230,6 +230,7 @@ class _TestAtomSelect(unittest.TestCase):
             "abs(beta) > 1",
             "abs(beta) <= sqr(4)",
             "x < 6",
+            "x > y",
             "(x < 6) and (x > 3)",
             "x < 6 and x > 3",
             "sqr(abs(x-5))+sqr(abs(y+4))+sqr(abs(z)) > sqr(5)",
