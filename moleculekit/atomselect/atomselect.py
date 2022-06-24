@@ -328,5 +328,30 @@ class _TestAtomSelect(unittest.TestCase):
                         ), f"test: {mask1.sum()} vs ref: {mask2.sum()} atoms. AST:\n{ast}"
 
 
+def test_atomselect():
+    from moleculekit.atomselect_utils import analyze_molecule
+    from moleculekit.molecule import Molecule, calculateUniqueBonds
+    import numpy as np
+
+    mol = Molecule("3ptb")
+    insertion = np.unique(mol.insertion, return_inverse=True)[1].astype(np.uint32)
+    chain_id = np.unique(mol.chain, return_inverse=True)[1].astype(np.uint32)
+    seg_id = np.unique(mol.segid, return_inverse=True)[1].astype(np.uint32)
+    bonds, _ = calculateUniqueBonds(mol.bonds.astype(np.uint32), [])
+    atom_bonds, uq_resid, residue_atoms = analyze_molecule(
+        mol.numAtoms,
+        bonds,
+        mol.resid.astype(np.uint32),
+        insertion,
+        chain_id,
+        seg_id,
+        np.zeros(0, dtype=bool),
+        np.zeros(0, dtype=bool),
+        np.zeros(0, dtype=bool),
+        np.zeros(0, dtype=bool),
+    )
+    return atom_bonds, uq_resid, residue_atoms
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
