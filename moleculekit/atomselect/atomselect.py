@@ -207,6 +207,7 @@ def atomselect(mol, selection, bonds, _debug=False, _analysis=None, _return_ast=
 class _TestAtomSelect(unittest.TestCase):
     def test_atomselect(self):
         from moleculekit.molecule import Molecule
+        from moleculekit.atomselect.analyze import analyze2
         import time
 
         selections = [
@@ -291,7 +292,8 @@ class _TestAtomSelect(unittest.TestCase):
             "1awf",
             "5vav",
         ]
-        timecomp = False
+        pdbids = ["7q5b"]
+        timecomp = True
         # pdbids = ["4k98"]
         for pdbid in pdbids:
             with self.subTest(pdbid=pdbid):
@@ -300,14 +302,14 @@ class _TestAtomSelect(unittest.TestCase):
                 mol.beta[:] = 0
                 mol.beta[1000:] = -1
                 bonds = mol._getBonds(fileBonds=True, guessBonds=True)
-                analysis = analyze(mol, bonds)
+                analysis = analyze2(mol, bonds)
 
                 for sel in selections:
                     with self.subTest(sel=sel):
                         t1 = time.time()
                         if timecomp:  # Making the comparison fair
                             bonds = mol._getBonds(fileBonds=True, guessBonds=True)
-                            analysis = analyze(mol, bonds)
+                            analysis = analyze2(mol, bonds)
 
                         mask1, ast = atomselect(
                             mol,
@@ -322,7 +324,7 @@ class _TestAtomSelect(unittest.TestCase):
                         mask2 = mol.atomselect(sel)
                         t2 = time.time() - t2
                         if timecomp:
-                            print(f"TIMING: new {t1} vs ref {t2}")
+                            print(f"TIMING {pdbid}: new {t1} vs ref {t2}")
                         assert np.array_equal(
                             mask1, mask2
                         ), f"test: {mask1.sum()} vs ref: {mask2.sum()} atoms. AST:\n{ast}"

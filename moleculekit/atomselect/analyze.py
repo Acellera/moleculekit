@@ -80,17 +80,16 @@ def find_protein_nucleic(mol, pbb, nbb, uqres, bonds):
     return protein, nucleic
 
 
-def test_analysis():
+def analyze2(mol: Molecule, bonds):
     from moleculekit.atomselect_utils import analyze_molecule
-    from moleculekit.molecule import Molecule, calculateUniqueBonds
+    from moleculekit.molecule import calculateUniqueBonds
     from moleculekit.atomselect.analyze import find_backbone
     import numpy as np
 
-    mol = Molecule("5vbl")
     insertion = np.unique(mol.insertion, return_inverse=True)[1].astype(np.uint32)
     chain_id = np.unique(mol.chain, return_inverse=True)[1].astype(np.uint32)
     seg_id = np.unique(mol.segid, return_inverse=True)[1].astype(np.uint32)
-    bonds, _ = calculateUniqueBonds(mol.bonds.astype(np.uint32), [])
+    bonds, _ = calculateUniqueBonds(bonds.astype(np.uint32), [])
     analysis = {}
     analysis["waters"] = np.isin(mol.resname, _sel["water_resnames"])
     analysis["lipids"] = np.isin(mol.resname, _sel["lipid_resnames"])
@@ -100,10 +99,11 @@ def test_analysis():
     analysis["nucleic_bb"] = find_backbone(mol, "nucleic")
     analysis["protein"] = np.zeros(mol.numAtoms, dtype=bool)
     analysis["nucleic"] = np.zeros(mol.numAtoms, dtype=bool)
-    atom_bonds, residue_atoms = analyze_molecule(
+    analysis["fragments"] = np.full(mol.numAtoms, mol.numAtoms + 1, dtype=np.uint32)
+    analyze_molecule(
         mol.numAtoms,
         bonds,
-        mol.resid.astype(np.uint32),
+        mol.resid,
         insertion,
         chain_id,
         seg_id,
@@ -112,13 +112,16 @@ def test_analysis():
         analysis["protein_bb"],
         analysis["nucleic_bb"],
         analysis["residues"],
+        mol.name == "SG",
+        analysis["fragments"],
     )
+    # assert not np.any(analysis["fragments"] == (mol.numAtoms + 1))
     # Fix BB atoms by unmarking them if they are not polymers
     # This is necessary since we use just N CA C O names and other
     # molecules such as waters or ligands might have them
     analysis["protein_bb"] &= analysis["protein"]
     analysis["nucleic_bb"] &= analysis["nucleic"]
-    return analysis, atom_bonds, residue_atoms
+    return analysis  # , atom_bonds, residue_atoms
 
 
 def timerun():
