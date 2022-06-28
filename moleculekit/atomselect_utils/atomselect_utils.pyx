@@ -57,66 +57,6 @@ def get_bonded_groups(
     results.push_back(n_atoms)
 
     return results
-
-
-@cython.boundscheck(False) # turn off bounds-checking for entire function
-@cython.wraparound(False)  # turn off negative index wrapping for entire function
-cdef bool _mark_residues(
-        bool[:] protein,
-        bool[:] nucleic,
-        bool[:] segcrossers,
-        int p_bb_count,
-        int n_bb_count,
-        int res_start,
-        int i
-    ):
-    if p_bb_count >= 4:
-        # If we have 4 or more protein backbone atoms in the residue it's a protein
-        for j in range(res_start, i):
-            # if segcrossers[j] == 1:
-            #     # If the atom has a bond to another segment don't mark as protein
-            #     continue
-            protein[j] = 1
-    elif n_bb_count >= 4:
-        # If we have 4 or more nucleic backbone atoms in the residue it's a nucleic
-        for j in range(res_start, i):
-            # if segcrossers[j] == 1:
-            #     # If the atom has a bond to another segment don't mark as nucleic
-            #     continue
-            nucleic[j] = 1
-
-
-@cython.boundscheck(False) # turn off bounds-checking for entire function
-@cython.wraparound(False)  # turn off negative index wrapping for entire function
-def find_protein_nucleic_ext(
-        bool[:] protein,
-        bool[:] nucleic,
-        bool[:] protein_bb,
-        bool[:] nucleic_bb,
-        bool[:] segcrossers,
-        UINT32_t[:] resseq,
-    ):
-    cdef int i, j, k, p_bb_count, n_bb_count, curr_res, res_start
-    cdef int n_atoms = protein.shape[0]
-
-    curr_res = -1
-    p_bb_count = 0
-    n_bb_count = 0
-    for i in range(n_atoms):
-        if curr_res != resseq[i]:
-            _mark_residues(protein, nucleic, segcrossers, p_bb_count, n_bb_count, res_start, i)
-            # New residue. Reset vars
-            res_start = i
-            p_bb_count = 0
-            n_bb_count = 0
-
-        curr_res = resseq[i]
-        if protein_bb[i] == 1:
-            p_bb_count += 1
-        elif nucleic_bb[i] == 1:
-            n_bb_count += 1
-
-    _mark_residues(protein, nucleic, segcrossers, p_bb_count, n_bb_count, res_start, i+1)
             
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
@@ -133,7 +73,8 @@ cdef vector[vector[int]] _make_uniq_resids(
     ):
     cdef stack[int] st
     cdef vector[vector[int]] residue_atoms
-    cdef int i, j, bi, res, ins, num_residues
+    cdef int i, j, bi, res, num_residues
+    cdef UINT32_t ins
 
     residue_atoms.push_back(vector[int]())
     
@@ -198,10 +139,11 @@ cdef bool _has_n_backbone(
         UINT32_t[:] chain_id,
         UINT32_t[:] seg_id,
         int i,
-        int tmpid,
+        UINT32_t tmpid,
         UINT32_t[:] flgs,
         vector[vector[int]] atom_bonds,
-        int n
+        int n,
+        int residueid,
     ):
     cdef stack[int] st
     cdef int j, count
@@ -209,10 +151,10 @@ cdef bool _has_n_backbone(
 
     # find n backbone atoms connected together with the given residueid
     if flgs[i] != 0:
-        return 0 # Already seen
+        return False # Already seen
     
-    if not bb[i]:
-        return 0 # Not a backbone atom
+    if not bb[i] or resid[i] != residueid:
+        return False # Not a backbone atom
 
     st.push(i)
 
@@ -229,7 +171,7 @@ cdef bool _has_n_backbone(
             if flgs[j] == 0:
                 if chain_id[i] != chain_id[j] or seg_id[i] != seg_id[j]:
                     continue
-                if bb[j] and resid[i] == resid[j]:
+                if bb[j] and residueid == resid[j]:
                     st.push(j)
     return False
 
@@ -238,12 +180,15 @@ cdef bool _has_n_backbone(
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 cdef bool _clean_up_connection(
         int i,
-        int tmpid,
+        UINT32_t tmpid,
         vector[vector[int]] atom_bonds,
         UINT32_t[:] flgs,
     ):
     cdef stack[int] st
     cdef int j
+
+    if flgs[i] != tmpid: # Been here before
+        return False
 
     st.push(i)
     while not st.empty():
@@ -261,18 +206,19 @@ cdef bool _clean_up_connection(
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 cdef bool _find_connected_atoms_in_resid(
         int i,
-        int tmpid,
+        UINT32_t tmpid,
         vector[vector[int]] atom_bonds,
         UINT32_t[:] flgs,
         INT64_t[:] resid,
         UINT32_t[:] chain_id,
         UINT32_t[:] seg_id,
         bool[:] polymer, 
+        int residueid,
     ):
     cdef stack[int] st
     cdef int j
 
-    if flgs[i] != 0:
+    if flgs[i] != 0 or resid[i] != residueid:
         return False
 
     st.push(i)
@@ -283,7 +229,7 @@ cdef bool _find_connected_atoms_in_resid(
         polymer[i] = True
 
         for j in atom_bonds[i]:
-            if flgs[j] == 0 and chain_id[i] == chain_id[j] and seg_id[i] == seg_id[j] and resid[i] == resid[j]:
+            if flgs[j] == 0 and chain_id[i] == chain_id[j] and seg_id[i] == seg_id[j] and residueid == resid[j]:
                 st.push(j)
     return True
 
@@ -300,15 +246,16 @@ cdef bool _find_and_mark(
         UINT32_t[:] seg_id,
     ):
     cdef stack[int] st
-    cdef int n_atoms, i, tmpid
+    cdef int n_atoms, i
+    cdef UINT32_t tmpid
     n_atoms = bb.shape[0]
     tmpid = 1
 
     for i in range(n_atoms):
         if bb[i] and flgs[i] == 0:
-            if _has_n_backbone(bb, resid, chain_id, seg_id, i, tmpid, flgs, atom_bonds, n):
+            if _has_n_backbone(bb, resid, chain_id, seg_id, i, tmpid, flgs, atom_bonds, n, resid[i]):
                 _clean_up_connection(i, tmpid, atom_bonds, flgs)
-                _find_connected_atoms_in_resid(i, tmpid, atom_bonds, flgs, resid, chain_id, seg_id, polymer)
+                _find_connected_atoms_in_resid(i, tmpid, atom_bonds, flgs, resid, chain_id, seg_id, polymer, resid[i])
                 tmpid += 1
             else:
                 _clean_up_connection(i, tmpid, atom_bonds, flgs)

@@ -207,7 +207,7 @@ def atomselect(mol, selection, bonds, _debug=False, _analysis=None, _return_ast=
 class _TestAtomSelect(unittest.TestCase):
     def test_atomselect(self):
         from moleculekit.molecule import Molecule
-        from moleculekit.atomselect.analyze import analyze2
+        from moleculekit.atomselect.analyze import analyze
         import time
 
         selections = [
@@ -273,6 +273,7 @@ class _TestAtomSelect(unittest.TestCase):
             "same residue as exwithin 8 of resid 100",
             "same fragment as within 8 of resid 100",
         ]
+        selections = [selections[0]]
 
         pdbids = [
             "3ptb",
@@ -302,14 +303,14 @@ class _TestAtomSelect(unittest.TestCase):
                 mol.beta[:] = 0
                 mol.beta[1000:] = -1
                 bonds = mol._getBonds(fileBonds=True, guessBonds=True)
-                analysis = analyze2(mol, bonds)
+                analysis = analyze(mol, bonds)
 
                 for sel in selections:
                     with self.subTest(sel=sel):
                         t1 = time.time()
                         if timecomp:  # Making the comparison fair
                             bonds = mol._getBonds(fileBonds=True, guessBonds=True)
-                            analysis = analyze2(mol, bonds)
+                            analysis = analyze(mol, bonds)
 
                         mask1, ast = atomselect(
                             mol,
@@ -319,6 +320,7 @@ class _TestAtomSelect(unittest.TestCase):
                             _debug=False,
                             _return_ast=True,
                         )
+
                         t1 = time.time() - t1
                         t2 = time.time()
                         mask2 = mol.atomselect(sel)
