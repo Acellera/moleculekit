@@ -31,12 +31,11 @@ def find_backbone(mol: Molecule, mode):
     return backb | terms
 
 
-def analyze(mol: Molecule, bonds):
+def analyze(mol: Molecule, bonds, _profile=False):
     from moleculekit.atomselect_utils import analyze_molecule
     from moleculekit.molecule import calculateUniqueBonds
     from moleculekit.atomselect.analyze import find_backbone
     import numpy as np
-    import pstats, cProfile
 
     insertion = np.unique(mol.insertion, return_inverse=True)[1].astype(np.uint32)
     chain_id = np.unique(mol.chain, return_inverse=True)[1].astype(np.uint32)
@@ -52,29 +51,35 @@ def analyze(mol: Molecule, bonds):
     analysis["protein"] = np.zeros(mol.numAtoms, dtype=bool)
     analysis["nucleic"] = np.zeros(mol.numAtoms, dtype=bool)
     analysis["fragments"] = np.full(mol.numAtoms, mol.numAtoms + 1, dtype=np.uint32)
-    analyze_molecule(
-        mol.numAtoms,
-        bonds,
-        mol.resid,
-        insertion,
-        chain_id,
-        seg_id,
-        analysis["protein"],
-        analysis["nucleic"],
-        analysis["protein_bb"],
-        analysis["nucleic_bb"],
-        analysis["residues"],
-        mol.name == "SG",
-        analysis["fragments"],
-    )
-    # cProfile.runctx(
-    #     'analyze_molecule(mol.numAtoms,bonds,mol.resid,insertion,chain_id,seg_id,analysis["protein"],analysis["nucleic"],analysis["protein_bb"],analysis["nucleic_bb"],analysis["residues"],mol.name == "SG",analysis["fragments"])',
-    #     globals(),
-    #     locals(),
-    #     "Profile.prof",
-    # )
-    # s = pstats.Stats("Profile.prof")
-    # s.strip_dirs().sort_stats("time").print_stats()
+
+    if not _profile:
+        analyze_molecule(
+            mol.numAtoms,
+            bonds,
+            mol.resid,
+            insertion,
+            chain_id,
+            seg_id,
+            analysis["protein"],
+            analysis["nucleic"],
+            analysis["protein_bb"],
+            analysis["nucleic_bb"],
+            analysis["residues"],
+            mol.name == "SG",
+            analysis["fragments"],
+        )
+    else:
+        import pstats, cProfile
+
+        cProfile.runctx(
+            'analyze_molecule(mol.numAtoms,bonds,mol.resid,insertion,chain_id,seg_id,analysis["protein"],analysis["nucleic"],analysis["protein_bb"],analysis["nucleic_bb"],analysis["residues"],mol.name == "SG",analysis["fragments"])',
+            globals(),
+            locals(),
+            "Profile.prof",
+        )
+        s = pstats.Stats("Profile.prof")
+        s.strip_dirs().sort_stats("time").print_stats()
+
     # assert not np.any(analysis["fragments"] == (mol.numAtoms + 1))
     # Fix BB atoms by unmarking them if they are not polymers
     # This is necessary since we use just N CA C O names and other
@@ -82,19 +87,3 @@ def analyze(mol: Molecule, bonds):
     analysis["protein_bb"] &= analysis["protein"]
     analysis["nucleic_bb"] &= analysis["nucleic"]
     return analysis  # , atom_bonds, residue_atoms
-
-
-def timerun():
-    atom_bonds, residue_atoms = analyze_molecule(
-        mol.numAtoms,
-        bonds,
-        mol.resid.astype(np.uint32),
-        insertion,
-        chain_id,
-        seg_id,
-        analysis["protein"],
-        analysis["nucleic"],
-        analysis["protein_bb"],
-        analysis["nucleic_bb"],
-        analysis["residues"],
-    )

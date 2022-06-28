@@ -273,7 +273,7 @@ class _TestAtomSelect(unittest.TestCase):
             "same residue as exwithin 8 of resid 100",
             "same fragment as within 8 of resid 100",
         ]
-        selections = [selections[0]]
+        # selections = [selections[0]]
 
         pdbids = [
             "3ptb",
@@ -293,8 +293,8 @@ class _TestAtomSelect(unittest.TestCase):
             "1awf",
             "5vav",
         ]
-        pdbids = ["7q5b"]
-        timecomp = True
+        # pdbids = ["7q5b"]
+        timecomp = False
         # pdbids = ["4k98"]
         for pdbid in pdbids:
             with self.subTest(pdbid=pdbid):

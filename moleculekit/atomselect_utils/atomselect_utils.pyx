@@ -61,9 +61,10 @@ def get_bonded_groups(
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-cdef vector[vector[int]] _make_uniq_resids(
+cdef bool _make_uniq_resids(
         int n_atoms,
-        vector[vector[int]] atom_bonds,
+        vector[vector[int]] &atom_bonds,
+        vector[vector[int]] &residue_atoms,
         INT64_t[:] resid,
         UINT32_t[:] insertion,
         UINT32_t[:] chain_id,
@@ -72,7 +73,6 @@ cdef vector[vector[int]] _make_uniq_resids(
         bool[:] flgs
     ):
     cdef stack[int] st
-    cdef vector[vector[int]] residue_atoms
     cdef int i, j, bi, res, num_residues
     cdef UINT32_t ins
 
@@ -106,15 +106,16 @@ cdef vector[vector[int]] _make_uniq_resids(
             residue_atoms.push_back(vector[int]())
 
     residue_atoms.pop_back()
-    return residue_atoms
+    return True
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-cdef vector[vector[int]] _get_atom_bonds(
+cdef bool _get_atom_bonds(
         int n_atoms,
-        UINT32_t[:, :] bonds
+        UINT32_t[:, :] bonds,
+        vector[vector[int]] &atom_bonds,
     ):
-    cdef vector[vector[int]] atom_bonds
+    
     cdef int n_bonds, b1, b2
 
     # Create nested list of bonded atoms
@@ -128,7 +129,7 @@ cdef vector[vector[int]] _get_atom_bonds(
         atom_bonds[b1].push_back(b2)
         atom_bonds[b2].push_back(b1)
 
-    return atom_bonds
+    return True
 
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
@@ -141,7 +142,7 @@ cdef bool _has_n_backbone(
         int i,
         UINT32_t tmpid,
         UINT32_t[:] flgs,
-        vector[vector[int]] atom_bonds,
+        vector[vector[int]] &atom_bonds,
         int n,
         int residueid,
     ):
@@ -181,7 +182,7 @@ cdef bool _has_n_backbone(
 cdef bool _clean_up_connection(
         int i,
         UINT32_t tmpid,
-        vector[vector[int]] atom_bonds,
+        vector[vector[int]] &atom_bonds,
         UINT32_t[:] flgs,
     ):
     cdef stack[int] st
@@ -207,7 +208,7 @@ cdef bool _clean_up_connection(
 cdef bool _find_connected_atoms_in_resid(
         int i,
         UINT32_t tmpid,
-        vector[vector[int]] atom_bonds,
+        vector[vector[int]] &atom_bonds,
         UINT32_t[:] flgs,
         INT64_t[:] resid,
         UINT32_t[:] chain_id,
@@ -240,7 +241,7 @@ cdef bool _find_and_mark(
         bool[:] bb,
         bool[:] polymer, 
         UINT32_t[:] flgs,
-        vector[vector[int]] atom_bonds,
+        vector[vector[int]] &atom_bonds,
         INT64_t[:] resid,
         UINT32_t[:] chain_id,
         UINT32_t[:] seg_id,
@@ -273,7 +274,7 @@ cdef bool _find_residues(
         INT64_t[:] resid,
         UINT32_t[:] chain_id,
         UINT32_t[:] seg_id,
-        vector[vector[int]] atom_bonds,
+        vector[vector[int]] &atom_bonds,
         UINT32_t[:] flgs
     ):
     # TODO: Replace with pure C: cdef UINT32_t[:] flgs = array_new[UINT32](n_atoms)
@@ -287,8 +288,8 @@ cdef bool _find_residues(
 cdef bool _find_connected_fragments(
         int n_residues,
         int n_atoms,
-        vector[vector[int]] residue_atoms,
-        vector[vector[int]] atom_bonds,
+        vector[vector[int]] &residue_atoms,
+        vector[vector[int]] &atom_bonds,
         UINT32_t[:] uq_resid,
         UINT32_t[:] fragments,
         UINT32_t[:] chain_id,
@@ -326,8 +327,8 @@ cdef bool _find_connected_fragments(
 cdef bool _find_fragments(
         int n_residues,
         int n_atoms,
-        vector[vector[int]] residue_atoms,
-        vector[vector[int]] atom_bonds,
+        vector[vector[int]] &residue_atoms,
+        vector[vector[int]] &atom_bonds,
         UINT32_t[:] uq_resid,
         UINT32_t[:] chain_id,
         UINT32_t[:] seg_id,
@@ -368,12 +369,14 @@ def analyze_molecule(
         # UINT32_t[:] nucleic_frag_cyclic,
     ):
     cdef bool[:] flgs = np.zeros(n_atoms, dtype=np.bool)
+    cdef vector[vector[int]] atom_bonds
+    cdef vector[vector[int]] residue_atoms
     cdef int n_residues
 
-    atom_bonds = _get_atom_bonds(n_atoms, bonds)
+    _get_atom_bonds(n_atoms, bonds, atom_bonds)
 
     # Create unique residue IDs and residue list
-    residue_atoms = _make_uniq_resids(n_atoms, atom_bonds, resid, insertion, chain_id, seg_id, uq_resid, flgs)
+    _make_uniq_resids(n_atoms, atom_bonds, residue_atoms, resid, insertion, chain_id, seg_id, uq_resid, flgs)
 
     # Mark atoms as protein or nucleic
     cdef UINT32_t[:] atm_flgs = np.zeros(n_atoms, dtype=UINT32)
@@ -382,35 +385,3 @@ def analyze_molecule(
     n_residues = uq_resid[n_atoms-1] + 1
     cdef bool[:] res_flgs = np.zeros(n_residues, dtype=np.bool)
     _find_fragments(n_residues, n_atoms, residue_atoms, atom_bonds, uq_resid, chain_id, seg_id, sg_atoms, res_flgs, fragments)#, protein_frag, nucleic_frag, protein_frag_cyclic, nucleic_frag_cyclic)
-
-
-@cython.boundscheck(False) # turn off bounds-checking for entire function
-@cython.wraparound(False)  # turn off negative index wrapping for entire function
-def analyze_molecule2(
-        int n_atoms,
-        UINT32_t[:, :] bonds
-    ):
-    cdef vector[int] atom_bonds
-    _get_atom_bonds2(n_atoms, bonds, atom_bonds) 
-
-@cython.boundscheck(False) # turn off bounds-checking for entire function
-@cython.wraparound(False)  # turn off negative index wrapping for entire function
-cdef bool _get_atom_bonds2(
-        int n_atoms,
-        UINT32_t[:, :] bonds,
-        vector[int] atom_bonds,
-    ):
-    
-    cdef int n_bonds, b1, b2, i
-
-    # Create nested list of bonded atoms
-    for i in range(n_atoms):
-        atom_bonds.push_back(i)
-
-    # n_bonds = bonds.shape[0]
-    # for i in range(n_bonds):
-    #     b1 = bonds[i, 0]
-    #     b2 = bonds[i, 1]
-    #     atom_bonds[b1].push_back(b2)
-    #     atom_bonds[b2].push_back(b1)
-    return True
