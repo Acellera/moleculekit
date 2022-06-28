@@ -294,7 +294,7 @@ class _TestAtomSelect(unittest.TestCase):
             "5vav",
         ]
         # pdbids = ["7q5b"]
-        timecomp = False
+        timecomp = True
         # pdbids = ["4k98"]
         for pdbid in pdbids:
             with self.subTest(pdbid=pdbid):
