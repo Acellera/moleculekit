@@ -38,7 +38,7 @@ def analyze(mol: Molecule, bonds, _profile=False):
     import numpy as np
 
     # To avoid passing name strings to cython I map the "interesting" names to some integers
-    name_map = {"SG": 1, "N": 2, "C": 3}
+    name_map = {"SG": 1, "N": 2, "C": 3, "O3'": 4, "O3*": 5, "H3T": 6}
     names = np.zeros(mol.numAtoms, dtype=np.uint32)
     for nn, idx in name_map.items():
         names[mol.name == nn] = idx
