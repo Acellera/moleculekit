@@ -1,5 +1,6 @@
 from moleculekit.atomselect.languageparser import parser
 from moleculekit.atomselect.analyze import analyze
+from moleculekit.atomselect_utils import within_distance
 from scipy.spatial.distance import cdist
 import numpy as np
 import unittest
@@ -133,8 +134,10 @@ def traverse_ast(mol, analysis, node):
         if fn == "abs":
             return np.abs(node[2])
         if fn == "sqr":
+            return node[2] * node[2]
+        if fn == "sqrt":
             if np.any(node[2] < 0):
-                raise RuntimeError(f"Negative values in sqr() call: {node[2]}")
+                raise RuntimeError(f"Negative values in sqrt() call: {node[2]}")
             return np.sqrt(node[2])
         raise RuntimeError(f"Invalid function {fn}")
 
@@ -168,12 +171,24 @@ def traverse_ast(mol, analysis, node):
         raise RuntimeError(f"Invalid property {prop} in 'same {prop} as'")
 
     if operation in ("within", "exwithin"):
+        mask = np.zeros(mol.numAtoms, dtype=bool)
         cutoff = node[1]
         source = node[2]
-        dists = cdist(mol.coords[:, :, mol.frame], mol.coords[source, :, mol.frame])
-        idx = np.unique(np.where(dists <= cutoff)[0])
-        mask = np.zeros(mol.numAtoms, dtype=bool)
-        mask[idx] = True
+        if not np.any(source):
+            return mask
+
+        source_coor = mol.coords[source, :, mol.frame]
+        min_source = source_coor.min(axis=0)
+        max_source = source_coor.max(axis=0)
+
+        within_distance(
+            mol.coords[:, :, mol.frame],
+            cutoff,
+            np.where(source)[0].astype(np.uint32),
+            min_source,
+            max_source,
+            mask,
+        )
         if operation == "exwithin":
             mask[source] = False
         return mask
@@ -205,7 +220,10 @@ class _TestAtomSelect(unittest.TestCase):
     def test_atomselect(self):
         from moleculekit.molecule import Molecule
         from moleculekit.atomselect.analyze import analyze
+        from moleculekit.home import home
+        import pickle
         import time
+        import os
 
         selections = [
             "not protein",
@@ -233,7 +251,10 @@ class _TestAtomSelect(unittest.TestCase):
             "x > y",
             "(x < 6) and (x > 3)",
             "x < 6 and x > 3",
+            "x > sqr(5)",
+            "(x + y) > sqr(5)",
             "sqr(abs(x-5))+sqr(abs(y+4))+sqr(abs(z)) > sqr(5)",
+            "sqrt(abs(x-5))+sqrt(abs(y+4))+sqrt(abs(z)) > sqrt(5)",
             "same fragment as resid 5",
             "same residue as within 8 of resid 100",
             "same residue as exwithin 8 of resid 100",
@@ -270,7 +291,6 @@ class _TestAtomSelect(unittest.TestCase):
             "same residue as exwithin 8 of resid 100",
             "same fragment as within 8 of resid 100",
         ]
-        # selections = [selections[0]]
 
         pdbids = [
             "3ptb",
@@ -290,9 +310,17 @@ class _TestAtomSelect(unittest.TestCase):
             "1awf",
             "5vav",
         ]
-        # pdbids = ["7q5b"]
-        timecomp = True
-        # pdbids = ["4k98"]
+
+        reffile = os.path.join(home(dataDir="test-atomselect"), "selections.pickle")
+
+        timecomp = False
+        write_reffile = False
+
+        if not write_reffile:
+            with open(reffile, "rb") as f:
+                ref = pickle.load(f)
+
+        results = {}
         for pdbid in pdbids:
             with self.subTest(pdbid=pdbid):
                 mol = Molecule(pdbid)
@@ -317,18 +345,28 @@ class _TestAtomSelect(unittest.TestCase):
                             _debug=False,
                             _return_ast=True,
                         )
+                        if write_reffile:
+                            results[(pdbid, sel)] = mask1
+                        else:
+                            assert np.array_equal(
+                                mask1, ref[(pdbid, sel)]
+                            ), f"test: {mask1.sum()} vs ref: {ref[(pdbid, sel)].sum()} atoms. AST:\n{ast}"
 
-                        t1 = time.time() - t1
-                        t2 = time.time()
-                        mask2 = mol.atomselect(sel)
-                        t2 = time.time() - t2
-                        if timecomp:
-                            print(
-                                f"TIMING {pdbid}: new {t1:.5f} vs ref {t2:.5f} selection {sel}"
-                            )
-                        assert np.array_equal(
-                            mask1, mask2
-                        ), f"test: {mask1.sum()} vs ref: {mask2.sum()} atoms. AST:\n{ast}"
+                        # t1 = time.time() - t1
+                        # t2 = time.time()
+                        # mask2 = mol.atomselect(sel)
+                        # t2 = time.time() - t2
+                        # if timecomp:
+                        #     print(
+                        #         f"TIMING {pdbid}: new {t1:.5f} vs ref {t2:.5f} selection {sel}"
+                        #     )
+                        # assert np.array_equal(
+                        #     mask1, mask2
+                        # ), f"test: {mask1.sum()} vs ref: {mask2.sum()} atoms. AST:\n{ast}"
+
+        if write_reffile:
+            with open(reffile, "wb") as f:
+                pickle.dump(results, f)
 
 
 if __name__ == "__main__":
