@@ -588,7 +588,7 @@ cdef bool _atomsel_sidechain(
                     ca_idx = i
 
             if ca_idx < 0:
-                printf("Atomselection: sidechain: cannot find CA atom")
+                printf("Atomselection: sidechain: cannot find CA atom\n")
                 continue
 
             # Find at most two neighbours of CA which are not on the backbone
@@ -602,7 +602,7 @@ cdef bool _atomsel_sidechain(
                         if b2 == -1:
                             b2 = ba
                         else:
-                            printf("Atomselection: sidechain: protein residue index %i, CA atom idx %i has more than two non-backbone bonds. Ignoring the others", res, ca_idx)
+                            printf("Atomselection: sidechain: protein residue index %i, CA atom idx %i has more than two non-backbone bonds. Ignoring the others\n", res, ca_idx)
                             pass
 
             if b1 == -1:
@@ -629,7 +629,7 @@ cdef bool _atomsel_sidechain(
                         if strcmp(atomnames[b1].c_str(), atomnames[b2].c_str()) > 0:
                             b1 = b2
                     else:
-                        printf("Atomselect: sidechain: protein residue index %i, CA atom idx %i has sidechain-like atom (indices %i and %i) and we cannot determine which to call a sidechain. Taking a guess...", res, ca_idx, b1, b2)
+                        printf("Atomselect: sidechain: protein residue index %i, CA atom idx %i has sidechain-like atom (indices %i and %i) and we cannot determine which to call a sidechain. Taking a guess...\n", res, ca_idx, b1, b2)
                         if strcmp(atomnames[b1].c_str(), atomnames[b2].c_str()) > 0:
                             b1 = b2
             sidechain[b1] = 1
