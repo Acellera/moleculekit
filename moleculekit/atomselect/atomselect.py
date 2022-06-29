@@ -1,3 +1,4 @@
+from distutils.log import debug
 from moleculekit.atomselect.languageparser import parser
 from moleculekit.atomselect.analyze import analyze
 from moleculekit.atomselect_utils import within_distance
@@ -65,7 +66,7 @@ def traverse_ast(mol, analysis, node):
                 if not isinstance(y, str) or ".*" not in y:
                     return x == y
                 else:
-                    return np.array([re.match(y[1:-1], xx) for xx in x], dtype=bool)
+                    return np.array([re.match(y, xx) for xx in x], dtype=bool)
             else:
                 if not isinstance(y, str) or all([".*" not in yy for yy in y]):
                     return np.isin(x, y)
@@ -74,7 +75,7 @@ def traverse_ast(mol, analysis, node):
                     for xx in x:
                         for yy in y:
                             if ".*" in yy:
-                                res.append(re.match(yy[1:-1], xx))
+                                res.append(re.match(yy, xx))
                             else:
                                 res.append(xx == yy)
                     return np.array(res, dtype=bool)

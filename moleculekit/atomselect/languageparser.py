@@ -63,10 +63,10 @@ tokens = [
     "ID",
     "INTEGER",
     "FLOAT",
-    "NORMNUM",
-    "NORMNUMSINGLE",
-    "NORMSTRING",
-    "NORMSTRINGSINGLE",
+    "QUOTEDINT",
+    "QUOTEDFLOAT",
+    "QUOTEDSTRING",
+    "QUOTEDSTRINGSINGLE",
     "EQUAL",
     "LESSER",
     "GREATER",
@@ -94,6 +94,8 @@ t_GREATEREQUAL = r"\>\="
 t_DOUBLEEQ = r"\=\="
 
 # Put the coors here for priority overriding
+
+
 def t_XCOOR(t):
     r"x"
     return t
@@ -117,23 +119,27 @@ def t_ID(t):
     return t
 
 
-def t_NORMNUM(t):
-    r'"(-?\d+)"|"(\d*\.\d+)"'
+def t_QUOTEDINT(t):
+    r'"(-?\d+)"|\'(-?\d+)\' '
+    t.value = int(t.value[1:-1])
     return t
 
 
-def t_NORMNUMSINGLE(t):
-    r"'(-?\d+)'|'(\d*\.\d+)'"
+def t_QUOTEDFLOAT(t):
+    r'"(\d*\.\d+)"|"(\d+\.\d*)"|\'(\d*\.\d+)\'|\'(\d+\.\d*)\' '
+    t.value = float(t.value[1:-1])
     return t
 
 
-def t_NORMSTRING(t):
+def t_QUOTEDSTRING(t):
     r'"(?:[^"\\]|\\.)*"'
+    t.value = t.value[1:-1]
     return t
 
 
-def t_NORMSTRINGSINGLE(t):
+def t_QUOTEDSTRINGSINGLE(t):
     r"'(?:[^'\\]|\\.)*'"
+    t.value = t.value[1:-1]
     return t
 
 
@@ -428,8 +434,8 @@ def p_string_list(p):
 def p_string(p):
     """
     string : ID
-           | NORMSTRING
-           | NORMSTRINGSINGLE
+           | QUOTEDSTRING
+           | QUOTEDSTRINGSINGLE
     """
     p[0] = p[1]
 
@@ -486,8 +492,7 @@ def p_float_unary_minus(p):
 def p_integer(p):
     """
     integer : INTEGER
-            | NORMNUM
-            | NORMNUMSINGLE
+            | QUOTEDINT
     """
     p[0] = p[1]
 
@@ -495,8 +500,7 @@ def p_integer(p):
 def p_float(p):
     """
     float : FLOAT
-          | NORMNUM
-          | NORMNUMSINGLE
+          | QUOTEDFLOAT
     """
     p[0] = p[1]
 
