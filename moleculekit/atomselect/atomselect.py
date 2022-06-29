@@ -312,10 +312,7 @@ class _TestAtomSelect(unittest.TestCase):
         ]
 
         reffile = os.path.join(home(dataDir="test-atomselect"), "selections.pickle")
-
-        timecomp = False
         write_reffile = False
-
         if not write_reffile:
             with open(reffile, "rb") as f:
                 ref = pickle.load(f)
@@ -332,11 +329,6 @@ class _TestAtomSelect(unittest.TestCase):
 
                 for sel in selections:
                     with self.subTest(sel=sel):
-                        t1 = time.time()
-                        if timecomp:  # Making the comparison fair
-                            bonds = mol._getBonds(fileBonds=True, guessBonds=True)
-                            analysis = analyze(mol, bonds)
-
                         mask1, ast = atomselect(
                             mol,
                             sel,
@@ -351,18 +343,6 @@ class _TestAtomSelect(unittest.TestCase):
                             assert np.array_equal(
                                 mask1, ref[(pdbid, sel)]
                             ), f"test: {mask1.sum()} vs ref: {ref[(pdbid, sel)].sum()} atoms. AST:\n{ast}"
-
-                        # t1 = time.time() - t1
-                        # t2 = time.time()
-                        # mask2 = mol.atomselect(sel)
-                        # t2 = time.time() - t2
-                        # if timecomp:
-                        #     print(
-                        #         f"TIMING {pdbid}: new {t1:.5f} vs ref {t2:.5f} selection {sel}"
-                        #     )
-                        # assert np.array_equal(
-                        #     mask1, mask2
-                        # ), f"test: {mask1.sum()} vs ref: {mask2.sum()} atoms. AST:\n{ast}"
 
         if write_reffile:
             with open(reffile, "wb") as f:

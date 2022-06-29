@@ -770,32 +770,12 @@ class Molecule(object):
         >>> mol.atomselect('resname MOL')
         array([False, False, False, ..., False, False, False], dtype=bool)
         """
-        from moleculekit.vmdparser import vmdselection
+        from moleculekit.atomselect.atomselect import atomselect
 
         if sel is None or (isinstance(sel, str) and sel == "all"):
             s = np.ones(self.numAtoms, dtype=bool)
         elif isinstance(sel, str):
-            if newver:
-                from moleculekit.atomselect.atomselect import atomselect
-
-                s = atomselect(self, sel, bonds=self._getBonds(fileBonds, guessBonds))
-            else:
-                selc = self.coords[:, :, self.frame].copy()
-                s = vmdselection(
-                    sel,
-                    selc,
-                    self.element,
-                    self.name,
-                    self.resname,
-                    self.resid,
-                    chain=self.chain,
-                    segname=self.segid,
-                    insert=self.insertion,
-                    altloc=self.altloc,
-                    beta=self.beta,
-                    occupancy=self.occupancy,
-                    bonds=self._getBonds(fileBonds, guessBonds),
-                )
+            s = atomselect(self, sel, bonds=self._getBonds(fileBonds, guessBonds))
 
             if np.sum(s) == 0 and strict:
                 raise RuntimeError(
