@@ -293,7 +293,7 @@ class _TestAtomSelect(unittest.TestCase):
             "1awf",
             "5vav",
         ]
-        # pdbids = ["7q5b"]
+        pdbids = ["7q5b"]
         timecomp = True
         # pdbids = ["4k98"]
         for pdbid in pdbids:

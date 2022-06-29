@@ -38,11 +38,11 @@ def analyze(mol: Molecule, bonds, _profile=False):
     from moleculekit.periodictable import periodictable
     import numpy as np
 
-    # To avoid passing name strings to cython I map the "interesting" names to some integers
-    name_map = {"SG": 1, "N": 2, "C": 3, "O3'": 4, "O3*": 5, "H3T": 6, "CA": 7}
-    names = np.zeros(mol.numAtoms, dtype=np.uint32)
-    for nn, idx in name_map.items():
-        names[mol.name == nn] = idx
+    # # To avoid passing name strings to cython I map the "interesting" names to some integers
+    # name_map = {"SG": 1, "N": 2, "C": 3, "O3'": 4, "O3*": 5, "H3T": 6, "CA": 7}
+    # names = np.zeros(mol.numAtoms, dtype=np.uint32)
+    # for nn, idx in name_map.items():
+    #     names[mol.name == nn] = idx
 
     insertion = np.unique(mol.insertion, return_inverse=True)[1].astype(np.uint32)
     chain_id = np.unique(mol.chain, return_inverse=True)[1].astype(np.uint32)
@@ -69,7 +69,6 @@ def analyze(mol: Molecule, bonds, _profile=False):
             insertion,
             chain_id,
             seg_id,
-            names,
             analysis["protein"],
             analysis["nucleic"],
             analysis["protein_bb"],

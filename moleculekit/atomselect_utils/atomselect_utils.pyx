@@ -296,7 +296,7 @@ cdef bool _find_connected_fragments(
         UINT32_t[:] fragments,
         UINT32_t[:] chain_id,
         UINT32_t[:] seg_id,
-        UINT32_t[:] names,
+        vector[string] &atomnames,
         bool[:] res_flgs,
     ):
     cdef stack[int] st
@@ -317,7 +317,10 @@ cdef bool _find_connected_fragments(
                     for ba in atom_bonds[ra]:
                         ri = uq_resid[ba]
 
-                        if ri != i and res_flgs[ri] == 0 and chain_id[ra] == chain_id[ba] and seg_id[ra] == seg_id[ba] and not (names[ra] == 1 and names[ba] == 1): # name: SG
+                        if (ri != i and res_flgs[ri] == 0 and 
+                            chain_id[ra] == chain_id[ba] and 
+                            seg_id[ra] == seg_id[ba] and 
+                            not (strcmp(atomnames[ra].c_str(), "SG") == 0 and strcmp(atomnames[ba].c_str(), "SG") == 0)): # name: SG
                             res_flgs[ri] = True
                             st.push(ri)
             count += 1
@@ -329,13 +332,13 @@ cdef bool _find_connected_fragments(
 cdef bool _find_connected_subfragment(
         int resnum,
         int fragnum,
-        int endatom,
-        int altendatom,
-        int alt2endatom,
+        const char* endatom,
+        const char* altendatom,
+        const char* alt2endatom,
         bool[:] res_flgs,
         bool[:] polymer,
         bool[:] bb,
-        UINT32_t[:] names,
+        vector[string] &atomnames,
         UINT32_t[:] uq_resid,
         vector[vector[int]] &residue_atoms,
         vector[vector[int]] &atom_bonds,
@@ -350,12 +353,14 @@ cdef bool _find_connected_subfragment(
     res_flgs[resnum] = True # Avoid repeats
 
     for ra in residue_atoms[resnum]:
-        if names[ra] != endatom and names[ra] != altendatom and names[ra] != alt2endatom: # name: C
+        if (strcmp(atomnames[ra].c_str(), endatom) != 0 and 
+            strcmp(atomnames[ra].c_str(), altendatom) != 0 and 
+            strcmp(atomnames[ra].c_str(), alt2endatom) != 0):
             continue
 
         for ba in atom_bonds[ra]: # Look at the bonds
             if bb[ra] and bb[ba] and uq_resid[ba] != resnum and res_flgs[ba] == False:
-                _find_connected_subfragment(uq_resid[ba], fragnum, endatom, altendatom, alt2endatom, res_flgs, polymer, bb, names, uq_resid, residue_atoms, atom_bonds, pfragList)
+                _find_connected_subfragment(uq_resid[ba], fragnum, endatom, altendatom, alt2endatom, res_flgs, polymer, bb, atomnames, uq_resid, residue_atoms, atom_bonds, pfragList)
                 return True # Only find one, assume no branching
     return True
 
@@ -368,7 +373,7 @@ cdef bool _find_subfragments(
         UINT32_t[:] uq_resid,
         bool[:] res_flgs,
         bool[:] protein_bb,
-        UINT32_t[:] names,
+        vector[string] &atomnames,
         bool[:] protein,
         vector[vector[int]] &pfragList,
     ):
@@ -379,7 +384,7 @@ cdef bool _find_subfragments(
             continue
         
         for ra in residue_atoms[i]:  # Does the residue have a matching starting atom?
-            if names[ra] != 2: # name: N
+            if strcmp(atomnames[ra].c_str(), "N") != 0: # name: N
                 continue
 
             off_res_bonds = False
@@ -391,7 +396,7 @@ cdef bool _find_subfragments(
             if not off_res_bonds:
                 for raa in residue_atoms[i]:
                     pfragList.push_back(vector[int]())
-                    _find_connected_subfragment(i, pfragList.size() - 1, 3, 9999, 9999, res_flgs, protein, protein_bb, names, uq_resid, residue_atoms, atom_bonds, pfragList)
+                    _find_connected_subfragment(i, pfragList.size() - 1, "C", "", "", res_flgs, protein, protein_bb, atomnames, uq_resid, residue_atoms, atom_bonds, pfragList)
 
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
@@ -403,7 +408,7 @@ cdef bool _find_subfragments_topologically(
         UINT32_t[:] uq_resid,
         bool[:] res_flgs,
         bool[:] nucleic_bb,
-        UINT32_t[:] names,
+        vector[string] &atomnames,
         bool[:] nucleic,
         vector[vector[int]] &nfragList,
     ):
@@ -423,7 +428,7 @@ cdef bool _find_subfragments_topologically(
 
             if offresbondcount == 1: # Valid fragment start atom. Find residues downchain
                 nfragList.push_back(vector[int]())
-                _find_connected_subfragment(i, nfragList.size() - 1, 4, 5, 6, res_flgs, nucleic, nucleic_bb, names, uq_resid, residue_atoms, atom_bonds, nfragList)
+                _find_connected_subfragment(i, nfragList.size() - 1, "O3'", "O3*", "H3T", res_flgs, nucleic, nucleic_bb, atomnames, uq_resid, residue_atoms, atom_bonds, nfragList)
 
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
@@ -438,7 +443,7 @@ cdef bool _find_fragments(
         UINT32_t[:] uq_resid,
         UINT32_t[:] chain_id,
         UINT32_t[:] seg_id,
-        UINT32_t[:] names,
+        vector[string] &atomnames,
         bool[:] res_flgs,
         bool[:] protein,
         bool[:] nucleic,
@@ -446,11 +451,11 @@ cdef bool _find_fragments(
         bool[:] nucleic_bb,
         UINT32_t[:] fragments,
     ):
-    _find_connected_fragments(n_residues, n_atoms, residue_atoms, atom_bonds, uq_resid, fragments, chain_id, seg_id, names, res_flgs)
+    _find_connected_fragments(n_residues, n_atoms, residue_atoms, atom_bonds, uq_resid, fragments, chain_id, seg_id, atomnames, res_flgs)
     for r in range(n_residues):  # Zero the residue flags
         res_flgs[r] = 0
-    _find_subfragments(n_residues, residue_atoms, atom_bonds, uq_resid, res_flgs, protein_bb, names, protein, pfragList)
-    _find_subfragments_topologically(n_residues, residue_atoms, atom_bonds, uq_resid, res_flgs, nucleic_bb, names, nucleic, nfragList)
+    _find_subfragments(n_residues, residue_atoms, atom_bonds, uq_resid, res_flgs, protein_bb, atomnames, protein, pfragList)
+    _find_subfragments_topologically(n_residues, residue_atoms, atom_bonds, uq_resid, res_flgs, nucleic_bb, atomnames, nucleic, nfragList)
     # find_cyclic_subfragments(protein_frag, protein_frag_cyclic)
     # find_cyclic_subfragments(nucleic_frag, nucleic_frag_cyclic)
 
@@ -481,7 +486,6 @@ def analyze_molecule(
         UINT32_t[:] insertion,
         UINT32_t[:] chain_id,
         UINT32_t[:] seg_id,
-        UINT32_t[:] names,
         bool[:] protein,
         bool[:] nucleic,
         bool[:] protein_bb,
@@ -490,7 +494,7 @@ def analyze_molecule(
         UINT32_t[:] fragments,
         FLOAT32_t[:] masses,
         UINT32_t[:] sidechain,
-        vector[string] atomnames,
+        vector[string] &atomnames,
     ):
     cdef bool[:] flgs = np.zeros(n_atoms, dtype=np.bool)
     cdef vector[vector[int]] atom_bonds
@@ -510,7 +514,7 @@ def analyze_molecule(
 
     n_residues = uq_resid[n_atoms-1] + 1
     cdef bool[:] res_flgs = np.zeros(n_residues, dtype=np.bool)
-    _find_fragments(n_residues, n_atoms, residue_atoms, atom_bonds, pfragList, nfragList, uq_resid, chain_id, seg_id, names, res_flgs, protein, nucleic, protein_bb, nucleic_bb, fragments)#, protein_frag, nucleic_frag, protein_frag_cyclic, nucleic_frag_cyclic)
+    _find_fragments(n_residues, n_atoms, residue_atoms, atom_bonds, pfragList, nfragList, uq_resid, chain_id, seg_id, atomnames, res_flgs, protein, nucleic, protein_bb, nucleic_bb, fragments)#, protein_frag, nucleic_frag, protein_frag_cyclic, nucleic_frag_cyclic)
 
     _fix_backbones(protein, nucleic, protein_bb, nucleic_bb)
 
