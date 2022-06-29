@@ -93,9 +93,4 @@ def analyze(mol: Molecule, bonds, _profile=False):
 
     analysis["sidechain"] = analysis["sidechain"] > 0
     # assert not np.any(analysis["fragments"] == (mol.numAtoms + 1))
-    # Fix BB atoms by unmarking them if they are not polymers
-    # This is necessary since we use just N CA C O names and other
-    # molecules such as waters or ligands might have them
-    analysis["protein_bb"] &= analysis["protein"]
-    analysis["nucleic_bb"] &= analysis["nucleic"]
     return analysis  # , atom_bonds, residue_atoms

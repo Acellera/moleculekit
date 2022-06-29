@@ -452,6 +452,23 @@ cdef bool _find_fragments(
     # find_cyclic_subfragments(protein_frag, protein_frag_cyclic)
     # find_cyclic_subfragments(nucleic_frag, nucleic_frag_cyclic)
 
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+cdef bool _fix_backbones(
+        bool[:] protein,
+        bool[:] nucleic,
+        bool[:] protein_bb,
+        bool[:] nucleic_bb,
+    ):
+    # Fix BB atoms by unmarking them if they are not polymers
+    # This is necessary since we use just N CA C O names and other
+    # molecules such as waters or ligands might have them
+    cdef int n_atoms = protein.shape[0]
+    for i in range(n_atoms):
+        if protein_bb[i] and not protein[i]:
+            protein_bb[i] = False
+        if nucleic_bb[i] and not nucleic[i]:
+            nucleic_bb[i] = False
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
@@ -491,6 +508,8 @@ def analyze_molecule(
     n_residues = uq_resid[n_atoms-1] + 1
     cdef bool[:] res_flgs = np.zeros(n_residues, dtype=np.bool)
     _find_fragments(n_residues, n_atoms, residue_atoms, atom_bonds, pfragList, nfragList, uq_resid, chain_id, seg_id, names, res_flgs, protein, nucleic, protein_bb, nucleic_bb, fragments)#, protein_frag, nucleic_frag, protein_frag_cyclic, nucleic_frag_cyclic)
+
+    _fix_backbones(protein, nucleic, protein_bb, nucleic_bb)
 
     _atomsel_sidechain(residue_atoms, atom_bonds, pfragList, protein_bb, nucleic_bb, names, masses, sidechain)
 
