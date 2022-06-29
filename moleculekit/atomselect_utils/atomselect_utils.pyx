@@ -8,6 +8,7 @@ from libcpp.stack cimport stack
 from libcpp cimport bool
 from libcpp.string cimport string
 from libc.string cimport strcmp
+from libc.stdio cimport printf
 from libc.math cimport round, sqrt, acos, floor, fabs
 from cython.parallel import prange
 from cpython cimport array
@@ -453,8 +454,7 @@ cdef bool _find_fragments(
         res_flgs[r] = 0
     _find_subfragments(n_residues, residue_atoms, atom_bonds, uq_resid, res_flgs, protein_bb, atomnames, protein, pfragList)
     _find_subfragments_topologically(n_residues, residue_atoms, atom_bonds, uq_resid, res_flgs, nucleic_bb, atomnames, nucleic, nfragList)
-    # find_cyclic_subfragments(protein_frag, protein_frag_cyclic)
-    # find_cyclic_subfragments(nucleic_frag, nucleic_frag_cyclic)
+
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
@@ -588,7 +588,7 @@ cdef bool _atomsel_sidechain(
                     ca_idx = i
 
             if ca_idx < 0:
-                print("Atomselection: sidechain: cannot find CA atom")
+                printf("Atomselection: sidechain: cannot find CA atom")
                 continue
 
             # Find at most two neighbours of CA which are not on the backbone
@@ -602,8 +602,9 @@ cdef bool _atomsel_sidechain(
                         if b2 == -1:
                             b2 = ba
                         else:
-                            print(f"Atomselection: sidechain: protein residue index {res}, CA atom idx {ca_idx} has more than two non-backbone bonds. Ignoring the others")
-            
+                            printf("Atomselection: sidechain: protein residue index %i, CA atom idx %i has more than two non-backbone bonds. Ignoring the others", res, ca_idx)
+                            pass
+
             if b1 == -1:
                 continue
 
@@ -628,7 +629,7 @@ cdef bool _atomsel_sidechain(
                         if strcmp(atomnames[b1].c_str(), atomnames[b2].c_str()) > 0:
                             b1 = b2
                     else:
-                        print(f"Atomselect: sidechain: protein residue index {res}, CA atom idx {ca_idx} has sidechain-like atom (indices {b1} and {b2}) and we cannot determine which to call a sidechain. Taking a guess...")
+                        printf("Atomselect: sidechain: protein residue index %i, CA atom idx %i has sidechain-like atom (indices %i and %i) and we cannot determine which to call a sidechain. Taking a guess...", res, ca_idx, b1, b2)
                         if strcmp(atomnames[b1].c_str(), atomnames[b2].c_str()) > 0:
                             b1 = b2
             sidechain[b1] = 1
