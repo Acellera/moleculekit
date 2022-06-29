@@ -50,7 +50,7 @@ reserved += [
     "to",
 ]
 # functions
-reserved += ["abs", "sqr"]
+reserved += ["abs", "sqr", "sqrt"]
 # List of token names.   This is always required
 tokens = [
     "PLUS",
@@ -260,6 +260,7 @@ def p_num_funcs(p):
     """
     func : ABS LPAREN number RPAREN
          | SQR LPAREN number RPAREN
+         | SQRT LPAREN number RPAREN
     """
     p[0] = ("func", p[1], p[3])
 
@@ -268,6 +269,7 @@ def p_prop_funcs(p):
     """
     func : ABS LPAREN numprop RPAREN
          | SQR LPAREN numprop RPAREN
+         | SQRT LPAREN numprop RPAREN
     """
     p[0] = ("func", p[1], p[3])
 
@@ -369,6 +371,7 @@ def p_expression_numprop(p):
 def p_numprop_mathop(p):
     """
     numprop : numprop mathop number
+            | numprop mathop numprop
     """
     p[0] = ("mathop", p[2], p[1], p[3])
 
