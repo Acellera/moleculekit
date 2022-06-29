@@ -1,8 +1,6 @@
-from distutils.log import debug
 from moleculekit.atomselect.languageparser import parser
 from moleculekit.atomselect.analyze import analyze
 from moleculekit.atomselect_utils import within_distance
-from scipy.spatial.distance import cdist
 import numpy as np
 import unittest
 import re
