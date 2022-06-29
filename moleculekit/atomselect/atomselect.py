@@ -313,7 +313,7 @@ class _TestAtomSelect(unittest.TestCase):
             "6va1",
             "1bna",
             "1awf",
-            "5vav",
+            # "5vav",
         ]
 
         reffile = os.path.join(home(dataDir="test-atomselect"), "selections.pickle")
