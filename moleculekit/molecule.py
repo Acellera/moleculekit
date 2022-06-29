@@ -742,7 +742,7 @@ class Molecule(object):
         strict=False,
         fileBonds=True,
         guessBonds=True,
-        newver=False,
+        _debug=False,
     ):
         """Get a boolean mask or the indexes of a set of selected atoms
 
@@ -772,10 +772,19 @@ class Molecule(object):
         """
         from moleculekit.atomselect.atomselect import atomselect
 
+        ast = None
         if sel is None or (isinstance(sel, str) and sel == "all"):
             s = np.ones(self.numAtoms, dtype=bool)
         elif isinstance(sel, str):
-            s = atomselect(self, sel, bonds=self._getBonds(fileBonds, guessBonds))
+            s = atomselect(
+                self,
+                sel,
+                bonds=self._getBonds(fileBonds, guessBonds),
+                _return_ast=_debug,
+                _debug=_debug,
+            )
+            if _debug:
+                s, ast = s
 
             if np.sum(s) == 0 and strict:
                 raise RuntimeError(
@@ -789,6 +798,8 @@ class Molecule(object):
         if indexes and s.dtype == bool:
             return np.array(np.where(s)[0], dtype=np.int32)
         else:
+            if ast is not None:
+                return s, ast
             return s
 
     def copy(self):

@@ -222,14 +222,14 @@ class _TestAtomSelect(unittest.TestCase):
         from moleculekit.atomselect.analyze import analyze
         from moleculekit.home import home
         import pickle
-        import time
         import os
 
         selections = [
             "not protein",
-            # "index -15",
             "index 1 3 5",
             "index 1 to 5",
+            "resid -27",
+            'resid "-27"',
             "name 'A 1'",
             "chain X",
             "chain 'y'",
@@ -260,7 +260,6 @@ class _TestAtomSelect(unittest.TestCase):
             "same residue as exwithin 8 of resid 100",
             "same fragment as within 8 of resid 100",
             "serial 1",
-            # "serial -88",
             "index 1",
             "index 1 2 3",
             "index 1 to 5",

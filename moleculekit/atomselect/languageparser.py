@@ -62,6 +62,8 @@ tokens = [
     "ID",
     "INTEGER",
     "FLOAT",
+    "NORMNUM",
+    "NORMNUMSINGLE",
     "NORMSTRING",
     "NORMSTRINGSINGLE",
     "EQUAL",
@@ -108,6 +110,16 @@ def t_ID(t):
     t.type = "ID"
     if t.value.lower() in reserved:
         t.type = t.value.upper()
+    return t
+
+
+def t_NORMNUM(t):
+    r'"(-?\d+)"|"(\d*\.\d+)"'
+    return t
+
+
+def t_NORMNUMSINGLE(t):
+    r"'(-?\d+)'|'(\d*\.\d+)'"
     return t
 
 
@@ -463,6 +475,8 @@ def p_float_unary_minus(p):
 def p_integer(p):
     """
     integer : INTEGER
+            | NORMNUM
+            | NORMNUMSINGLE
     """
     p[0] = p[1]
 
@@ -470,6 +484,8 @@ def p_integer(p):
 def p_float(p):
     """
     float : FLOAT
+          | NORMNUM
+          | NORMNUMSINGLE
     """
     p[0] = p[1]
 
