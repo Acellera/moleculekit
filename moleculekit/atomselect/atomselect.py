@@ -88,6 +88,12 @@ def traverse_ast(mol, analysis, node):
             return fn(analysis["residues"], value)
         raise RuntimeError(f"Invalid molprop {molprop}")
 
+    if operation == "molprop_int_modulo":
+        molprop = node[1]
+        val1 = node[2]
+        val2 = node[3]
+        return (getattr(mol, molpropmap[molprop]) % val1) == val2
+
     if operation == "logop":
         op = node[1]
         if op == "and":
@@ -228,6 +234,7 @@ class _TestAtomSelect(unittest.TestCase):
             "not protein",
             "index 1 3 5",
             "index 1 to 5",
+            "serial % 2 == 0",
             "resid -27",
             'resid "-27"',
             "name 'A 1'",

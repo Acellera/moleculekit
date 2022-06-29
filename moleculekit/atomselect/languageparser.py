@@ -56,6 +56,7 @@ tokens = [
     "PLUS",
     "MINUS",
     "TIMES",
+    "MODULO",
     "DIVIDE",
     "LPAREN",
     "RPAREN",
@@ -74,12 +75,14 @@ tokens = [
     "XCOOR",
     "YCOOR",
     "ZCOOR",
+    "DOUBLEEQ",
 ] + [rr.upper() for rr in reserved]
 
 # Regular expression rules for simple tokens
 t_PLUS = r"\+"
 t_MINUS = r"-"
 t_TIMES = r"\*"
+t_MODULO = r"\%"
 t_DIVIDE = r"/"
 t_LPAREN = r"\("
 t_RPAREN = r"\)"
@@ -88,8 +91,9 @@ t_LESSER = r"\<"
 t_GREATER = r"\>"
 t_LESSEREQUAL = r"\<\="
 t_GREATEREQUAL = r"\>\="
+t_DOUBLEEQ = r"\=\="
 
-
+# Put the coors here for priority overriding
 def t_XCOOR(t):
     r"x"
     return t
@@ -354,6 +358,13 @@ def p_molprop_string(p):
                 | CHAIN
     """
     p[0] = p[1]
+
+
+def p_molprop_int_modulo(p):
+    """
+    molprop_int_eq : molprop_int MODULO integer DOUBLEEQ integer
+    """
+    p[0] = ("molprop_int_modulo", p[1], p[3], p[5])
 
 
 def p_molprop_int_eq(p):
