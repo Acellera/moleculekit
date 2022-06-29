@@ -75,8 +75,8 @@ cdef bool _make_uniq_resids(
         bool[:] flgs
     ):
     cdef stack[int] st
-    cdef int i, j, bi, res, num_residues
-    cdef UINT32_t ins
+    cdef int i, j, bi, res
+    cdef UINT32_t ins, num_residues
 
     residue_atoms.push_back(vector[int]())
     
@@ -634,3 +634,46 @@ cdef bool _atomsel_sidechain(
             sidechain[b1] = 1
 
     _find_sidechain_atoms(n_atoms, atom_bonds, protein_bb, nucleic_bb, sidechain)
+
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+def within_distance(
+        FLOAT32_t[:, :] coords,
+        float cutoff,
+        UINT32_t[:] source,
+        FLOAT32_t[:] source_min,
+        FLOAT32_t[:] source_max,
+        bool[:] mask,
+    ):
+    # TODO: Improve with neighbour list / cell list implementation
+    cdef int n_atoms = coords.shape[0]
+    cdef int n_source = source.shape[0]
+    cdef bool close_enough
+    cdef int i, j, k
+    cdef FLOAT32_t diff, sq_cutoff
+
+    sq_cutoff = cutoff * cutoff
+
+    for i in range(n_atoms):
+        # Trivial check if it's too far from all source atoms
+        close_enough = False
+        for k in range(3):
+            if coords[i, k] >= (source_min[k] - cutoff):
+                close_enough = True
+                break
+            if coords[i, k] <= (source_max[k] + cutoff):
+                close_enough = True
+                break
+
+        if not close_enough:
+            continue
+
+        for j in range(n_source):
+            diff = 0
+            for k in range(3):
+                diff += (coords[i, k] - coords[source[j], k]) ** 2
+            if diff < sq_cutoff:
+                mask[i] = True
+                break
+
