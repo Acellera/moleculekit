@@ -326,7 +326,9 @@ class _TestAtomSelect(unittest.TestCase):
                         mask2 = mol.atomselect(sel)
                         t2 = time.time() - t2
                         if timecomp:
-                            print(f"TIMING {pdbid}: new {t1} vs ref {t2}")
+                            print(
+                                f"TIMING {pdbid}: new {t1:.5f} vs ref {t2:.5f} selection {sel}"
+                            )
                         assert np.array_equal(
                             mask1, mask2
                         ), f"test: {mask1.sum()} vs ref: {mask2.sum()} atoms. AST:\n{ast}"

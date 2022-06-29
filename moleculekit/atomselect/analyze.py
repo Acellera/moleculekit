@@ -35,10 +35,11 @@ def analyze(mol: Molecule, bonds, _profile=False):
     from moleculekit.atomselect_utils import analyze_molecule
     from moleculekit.molecule import calculateUniqueBonds
     from moleculekit.atomselect.analyze import find_backbone
+    from moleculekit.periodictable import periodictable
     import numpy as np
 
     # To avoid passing name strings to cython I map the "interesting" names to some integers
-    name_map = {"SG": 1, "N": 2, "C": 3, "O3'": 4, "O3*": 5, "H3T": 6}
+    name_map = {"SG": 1, "N": 2, "C": 3, "O3'": 4, "O3*": 5, "H3T": 6, "CA": 7}
     names = np.zeros(mol.numAtoms, dtype=np.uint32)
     for nn, idx in name_map.items():
         names[mol.name == nn] = idx
@@ -57,6 +58,8 @@ def analyze(mol: Molecule, bonds, _profile=False):
     analysis["protein"] = np.zeros(mol.numAtoms, dtype=bool)
     analysis["nucleic"] = np.zeros(mol.numAtoms, dtype=bool)
     analysis["fragments"] = np.full(mol.numAtoms, mol.numAtoms + 1, dtype=np.uint32)
+    analysis["sidechain"] = np.zeros(mol.numAtoms, dtype=np.uint32)
+    masses = np.array([periodictable[el].mass for el in mol.element], dtype=np.float32)
 
     if not _profile:
         analyze_molecule(
@@ -73,6 +76,8 @@ def analyze(mol: Molecule, bonds, _profile=False):
             analysis["nucleic_bb"],
             analysis["residues"],
             analysis["fragments"],
+            masses,
+            analysis["sidechain"],
         )
     else:
         import pstats, cProfile
@@ -86,6 +91,7 @@ def analyze(mol: Molecule, bonds, _profile=False):
         s = pstats.Stats("Profile.prof")
         s.strip_dirs().sort_stats("time").print_stats()
 
+    analysis["sidechain"] = analysis["sidechain"] > 0
     # assert not np.any(analysis["fragments"] == (mol.numAtoms + 1))
     # Fix BB atoms by unmarking them if they are not polymers
     # This is necessary since we use just N CA C O names and other

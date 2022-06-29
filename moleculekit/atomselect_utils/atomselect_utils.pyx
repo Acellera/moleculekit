@@ -369,10 +369,6 @@ cdef bool _find_subfragments(
         UINT32_t[:] names,
         bool[:] protein,
         vector[vector[int]] &pfragList,
-        # UINT32_t[:] protein_frag,
-        # UINT32_t[:] nucleic_frag,
-        # UINT32_t[:] protein_frag_cyclic,
-        # UINT32_t[:] nucleic_frag_cyclic,
     ):
     cdef bool off_res_bonds = False
 
@@ -393,7 +389,7 @@ cdef bool _find_subfragments(
             if not off_res_bonds:
                 for raa in residue_atoms[i]:
                     pfragList.push_back(vector[int]())
-                    _find_connected_subfragment(i, pfragList.size() - 1, 3, 0, 0, res_flgs, protein, protein_bb, names, uq_resid, residue_atoms, atom_bonds, pfragList)
+                    _find_connected_subfragment(i, pfragList.size() - 1, 3, 9999, 9999, res_flgs, protein, protein_bb, names, uq_resid, residue_atoms, atom_bonds, pfragList)
 
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
@@ -426,8 +422,6 @@ cdef bool _find_subfragments_topologically(
             if offresbondcount == 1: # Valid fragment start atom. Find residues downchain
                 nfragList.push_back(vector[int]())
                 _find_connected_subfragment(i, nfragList.size() - 1, 4, 5, 6, res_flgs, nucleic, nucleic_bb, names, uq_resid, residue_atoms, atom_bonds, nfragList)
-
-
 
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
@@ -475,10 +469,8 @@ def analyze_molecule(
         bool[:] nucleic_bb,
         UINT32_t[:] uq_resid,
         UINT32_t[:] fragments,
-        # UINT32_t[:] protein_frag,
-        # UINT32_t[:] nucleic_frag,
-        # UINT32_t[:] protein_frag_cyclic,
-        # UINT32_t[:] nucleic_frag_cyclic,
+        FLOAT32_t[:] masses,
+        UINT32_t[:] sidechain,
     ):
     cdef bool[:] flgs = np.zeros(n_atoms, dtype=np.bool)
     cdef vector[vector[int]] atom_bonds
@@ -500,17 +492,121 @@ def analyze_molecule(
     cdef bool[:] res_flgs = np.zeros(n_residues, dtype=np.bool)
     _find_fragments(n_residues, n_atoms, residue_atoms, atom_bonds, pfragList, nfragList, uq_resid, chain_id, seg_id, names, res_flgs, protein, nucleic, protein_bb, nucleic_bb, fragments)#, protein_frag, nucleic_frag, protein_frag_cyclic, nucleic_frag_cyclic)
 
+    _atomsel_sidechain(residue_atoms, atom_bonds, pfragList, protein_bb, nucleic_bb, names, masses, sidechain)
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+cdef bool _recursive_find_sidechain_atoms(
+        int atom_index, 
+        vector[vector[int]] &atom_bonds,
+        bool[:] protein_bb,
+        bool[:] nucleic_bb,
+        UINT32_t[:] sidechain,
+    ):
+    cdef int ba
+
+    # Have we been here?
+    if sidechain[atom_index] == 2:
+        return False
+
+    # Is it a backbone atom?
+    if protein_bb[atom_index] or nucleic_bb[atom_index]:
+        return False
+
+    sidechain[atom_index] = 2
+
+    # Try the atoms it's bonded to
+    for ba in atom_bonds[atom_index]:
+        _recursive_find_sidechain_atoms(ba, atom_bonds, protein_bb, nucleic_bb, sidechain)
+
+    return True
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+cdef bool _find_sidechain_atoms(
+        int n_atoms, 
+        vector[vector[int]] &atom_bonds,
+        bool[:] protein_bb,
+        bool[:] nucleic_bb,
+        UINT32_t[:] sidechain,
+    ):
+    cdef int i
+
+    for i in range(n_atoms):
+        if sidechain[i]:
+            _recursive_find_sidechain_atoms(i, atom_bonds, protein_bb, nucleic_bb, sidechain)
+
+    return True
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 cdef bool _atomsel_sidechain(
-        int n, 
-        bool[:] bb,
-        bool[:] polymer, 
-        UINT32_t[:] flgs,
+        vector[vector[int]] &residue_atoms,
         vector[vector[int]] &atom_bonds,
-        INT64_t[:] resid,
-        UINT32_t[:] chain_id,
-        UINT32_t[:] seg_id,
+        vector[vector[int]] &pfragList,
+        bool[:] protein_bb,
+        bool[:] nucleic_bb,
+        UINT32_t[:] names,
+        FLOAT32_t[:] masses,
+        UINT32_t[:] sidechain,
     ):
-    pass
+    cdef int ca_idx, b1, b2, c1, c2
+    cdef FLOAT32_t m1, m2
+    cdef int n_atoms = protein_bb.shape[0]
+    cdef int n_fragments = pfragList.size()
+
+    for f in range(n_fragments):
+        for res in pfragList[f]:
+
+            ca_idx = -1
+            for i in residue_atoms[res]:
+                if names[i] == 7: # name: CA
+                    ca_idx = i
+
+            if ca_idx < 0:
+                print("Atomselection: sidechain: cannot find CA atom")
+                continue
+
+            # Find at most two neighbours of CA which are not on the backbone
+            b1 = -1
+            b2 = -1
+            for ba in atom_bonds[ca_idx]:
+                if not protein_bb[ba] and not nucleic_bb[ba]:
+                    if b1 == -1:
+                        b1 = ba
+                    else:
+                        if b2 == -1:
+                            b2 = ba
+                        else:
+                            print(f"Atomselection: sidechain: protein residue index {res}, CA atom idx {ca_idx} has more than two non-backbone bonds. Ignoring the others")
+            
+            if b1 == -1:
+                continue
+
+            if b2 != -1: # Find the right one. Check number of atoms to see if they have a lone H
+                c1 = atom_bonds[b1].size()
+                c2 = atom_bonds[b2].size()
+
+                if c1 == 1 and c2 > 1:
+                    b1 = b2
+                elif c2 == 1 and c1 > 1:
+                    b1 = b1
+                elif c1 == 1 and c2 == 1:
+                    # check the masses
+                    m1 = masses[b1]
+                    m2 = masses[b2]
+                    if m1 > 2.3 and m2 <= 2.3:
+                        b1 = b2
+                    elif m2 > 2.3 and m1 <= 2.3:
+                        b1 = b1
+                    elif m1 <= 2.0 and m2 <= 2.3:
+                        # should have two H's, find the "first" of those
+                        # TODO: string comparison of hydrogen names...
+                        pass
+                    else:
+                        print(f"Atomselect: sidechain: protein residue index {res}, CA atom idx {ca_idx} has sidechain-like atom (indices {b1} and {b2}) and we cannot determine which to call a sidechain. Taking a guess...")
+                        # TODO: string comparison of names
+                        pass
+            sidechain[b1] = 1
+
+    _find_sidechain_atoms(n_atoms, atom_bonds, protein_bb, nucleic_bb, sidechain)
