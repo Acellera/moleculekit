@@ -6,6 +6,8 @@ cimport numpy as np
 from libcpp.vector cimport vector
 from libcpp.stack cimport stack
 from libcpp cimport bool
+from libcpp.string cimport string
+from libc.string cimport strcmp
 from libc.math cimport round, sqrt, acos, floor, fabs
 from cython.parallel import prange
 from cpython cimport array
@@ -488,6 +490,7 @@ def analyze_molecule(
         UINT32_t[:] fragments,
         FLOAT32_t[:] masses,
         UINT32_t[:] sidechain,
+        vector[string] atomnames,
     ):
     cdef bool[:] flgs = np.zeros(n_atoms, dtype=np.bool)
     cdef vector[vector[int]] atom_bonds
@@ -511,7 +514,7 @@ def analyze_molecule(
 
     _fix_backbones(protein, nucleic, protein_bb, nucleic_bb)
 
-    _atomsel_sidechain(residue_atoms, atom_bonds, pfragList, protein_bb, nucleic_bb, names, masses, sidechain)
+    _atomsel_sidechain(residue_atoms, atom_bonds, pfragList, protein_bb, nucleic_bb, atomnames, masses, sidechain)
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
@@ -565,7 +568,7 @@ cdef bool _atomsel_sidechain(
         vector[vector[int]] &pfragList,
         bool[:] protein_bb,
         bool[:] nucleic_bb,
-        UINT32_t[:] names,
+        vector[string] &atomnames,
         FLOAT32_t[:] masses,
         UINT32_t[:] sidechain,
     ):
@@ -579,7 +582,7 @@ cdef bool _atomsel_sidechain(
 
             ca_idx = -1
             for i in residue_atoms[res]:
-                if names[i] == 7: # name: CA
+                if strcmp(atomnames[i].c_str(), "CA") == 0: # name: CA
                     ca_idx = i
 
             if ca_idx < 0:
@@ -620,12 +623,12 @@ cdef bool _atomsel_sidechain(
                         b1 = b1
                     elif m1 <= 2.0 and m2 <= 2.3:
                         # should have two H's, find the "first" of those
-                        # TODO: string comparison of hydrogen names...
-                        pass
+                        if strcmp(atomnames[b1].c_str(), atomnames[b2].c_str()) > 0:
+                            b1 = b2
                     else:
                         print(f"Atomselect: sidechain: protein residue index {res}, CA atom idx {ca_idx} has sidechain-like atom (indices {b1} and {b2}) and we cannot determine which to call a sidechain. Taking a guess...")
-                        # TODO: string comparison of names
-                        pass
+                        if strcmp(atomnames[b1].c_str(), atomnames[b2].c_str()) > 0:
+                            b1 = b2
             sidechain[b1] = 1
 
     _find_sidechain_atoms(n_atoms, atom_bonds, protein_bb, nucleic_bb, sidechain)

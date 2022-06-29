@@ -78,6 +78,7 @@ def analyze(mol: Molecule, bonds, _profile=False):
             analysis["fragments"],
             masses,
             analysis["sidechain"],
+            [x.encode("utf-8") for x in mol.name],
         )
     else:
         import pstats, cProfile
