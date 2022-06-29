@@ -47,10 +47,7 @@ def traverse_ast(mol, analysis, node):
         if molec == "backbone":
             return analysis["protein_bb"] | analysis["nucleic_bb"]
         if molec == "sidechain":
-            # bbs = analysis["protein_bb"] | analysis["nucleic_bb"]
-            # protnuc = analysis["protein"] | analysis["nucleic"]
-            # return protnuc & ~bbs
-            return analysis["protein"] & ~analysis["protein_bb"]
+            return analysis["sidechain"]
         if molec == "protein":
             return analysis["protein"]
         if molec == "nucleic":
@@ -293,7 +290,7 @@ class _TestAtomSelect(unittest.TestCase):
             "1awf",
             "5vav",
         ]
-        pdbids = ["7q5b"]
+        # pdbids = ["7q5b"]
         timecomp = True
         # pdbids = ["4k98"]
         for pdbid in pdbids:

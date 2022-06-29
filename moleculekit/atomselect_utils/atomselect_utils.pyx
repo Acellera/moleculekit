@@ -320,7 +320,7 @@ cdef bool _find_connected_fragments(
                         if (ri != i and res_flgs[ri] == 0 and 
                             chain_id[ra] == chain_id[ba] and 
                             seg_id[ra] == seg_id[ba] and 
-                            not (strcmp(atomnames[ra].c_str(), "SG") == 0 and strcmp(atomnames[ba].c_str(), "SG") == 0)): # name: SG
+                            not (strcmp(atomnames[ra].c_str(), "SG") == 0 and strcmp(atomnames[ba].c_str(), "SG") == 0)):
                             res_flgs[ri] = True
                             st.push(ri)
             count += 1
@@ -337,7 +337,7 @@ cdef bool _find_connected_subfragment(
         const char* alt2endatom,
         bool[:] res_flgs,
         bool[:] polymer,
-        bool[:] bb,
+        bool[:] backbone,
         vector[string] &atomnames,
         UINT32_t[:] uq_resid,
         vector[vector[int]] &residue_atoms,
@@ -359,8 +359,8 @@ cdef bool _find_connected_subfragment(
             continue
 
         for ba in atom_bonds[ra]: # Look at the bonds
-            if bb[ra] and bb[ba] and uq_resid[ba] != resnum and res_flgs[ba] == False:
-                _find_connected_subfragment(uq_resid[ba], fragnum, endatom, altendatom, alt2endatom, res_flgs, polymer, bb, atomnames, uq_resid, residue_atoms, atom_bonds, pfragList)
+            if (backbone[ra] or backbone[ba]) and uq_resid[ba] != resnum and not res_flgs[uq_resid[ba]]:
+                _find_connected_subfragment(uq_resid[ba], fragnum, endatom, altendatom, alt2endatom, res_flgs, polymer, backbone, atomnames, uq_resid, residue_atoms, atom_bonds, pfragList)
                 return True # Only find one, assume no branching
     return True
 
@@ -380,11 +380,11 @@ cdef bool _find_subfragments(
     cdef bool off_res_bonds = False
 
     for i in range(n_residues):
-        if res_flgs[i] or not protein[i]: # Has been seen before or isn't protein
+        if res_flgs[i] or not protein[residue_atoms[i][0]]: # Has been seen before or isn't protein
             continue
-        
+
         for ra in residue_atoms[i]:  # Does the residue have a matching starting atom?
-            if strcmp(atomnames[ra].c_str(), "N") != 0: # name: N
+            if strcmp(atomnames[ra].c_str(), "N") != 0:
                 continue
 
             off_res_bonds = False
@@ -394,9 +394,8 @@ cdef bool _find_subfragments(
                     break
 
             if not off_res_bonds:
-                for raa in residue_atoms[i]:
-                    pfragList.push_back(vector[int]())
-                    _find_connected_subfragment(i, pfragList.size() - 1, "C", "", "", res_flgs, protein, protein_bb, atomnames, uq_resid, residue_atoms, atom_bonds, pfragList)
+                pfragList.push_back(vector[int]())
+                _find_connected_subfragment(i, pfragList.size() - 1, "C", "", "", res_flgs, protein, protein_bb, atomnames, uq_resid, residue_atoms, atom_bonds, pfragList)
 
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
@@ -415,17 +414,15 @@ cdef bool _find_subfragments_topologically(
     cdef int offresbondcount = 0
 
     for i in range(n_residues):
-        if res_flgs[i] or not nucleic[i]: # Has been seen before or isn't nucleic
+        if res_flgs[i] or not nucleic[residue_atoms[i][0]]: # Has been seen before or isn't nucleic
             continue
         
         for ra in residue_atoms[i]:  # Does the residue have a matching starting atom?
-
             offresbondcount = 0
             for ba in atom_bonds[ra]:
                 if uq_resid[ba] != i and nucleic[ba]: # Are there off-residue bonds to protein?
                     offresbondcount +=1
                     
-
             if offresbondcount == 1: # Valid fragment start atom. Find residues downchain
                 nfragList.push_back(vector[int]())
                 _find_connected_subfragment(i, nfragList.size() - 1, "O3'", "O3*", "H3T", res_flgs, nucleic, nucleic_bb, atomnames, uq_resid, residue_atoms, atom_bonds, nfragList)
@@ -520,6 +517,7 @@ def analyze_molecule(
 
     _atomsel_sidechain(residue_atoms, atom_bonds, pfragList, protein_bb, nucleic_bb, atomnames, masses, sidechain)
 
+
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 cdef bool _recursive_find_sidechain_atoms(
@@ -586,7 +584,7 @@ cdef bool _atomsel_sidechain(
 
             ca_idx = -1
             for i in residue_atoms[res]:
-                if strcmp(atomnames[i].c_str(), "CA") == 0: # name: CA
+                if strcmp(atomnames[i].c_str(), "CA") == 0:
                     ca_idx = i
 
             if ca_idx < 0:
