@@ -603,7 +603,6 @@ cdef bool _atomsel_sidechain(
                             b2 = ba
                         else:
                             printf("Atomselection: sidechain: protein residue index %i, CA atom idx %i has more than two non-backbone bonds. Ignoring the others\n", res, ca_idx)
-                            pass
 
             if b1 == -1:
                 continue
