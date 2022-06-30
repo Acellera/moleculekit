@@ -6,7 +6,7 @@
 import os
 
 _config = {
-    "viewer": "VMD",
+    "viewer": "pymol",
     "configfile": os.getenv("HTMD_CONFIG") if os.getenv("HTMD_CONFIG") else None,
     "ncpus": 1,
 }

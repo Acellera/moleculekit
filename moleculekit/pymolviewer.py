@@ -15,7 +15,13 @@ _checkFrequency = 0.5
 
 
 def getCurrentViewer():
-    import pymol
+    try:
+        import pymol
+    except ImportError:
+        raise ImportError(
+            "Pymol is not installed. You can install it with 'conda install pymol-open-source -c conda-forge'"
+        )
+
     import sys
 
     if len(_viewers) == 0:

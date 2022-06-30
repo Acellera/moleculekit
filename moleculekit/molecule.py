@@ -1878,13 +1878,13 @@ class Molecule(object):
             Coloring mode (str) or ColorID (int).
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
         guessBonds : bool
-            Allow VMD to guess bonds for the molecule
-        viewer : str ('vmd', 'webgl')
+            Allow the viewer to guess bonds for the molecule
+        viewer : str ('pymol', 'vmd', 'webgl')
             Choose viewer backend. Default is taken from either moleculekit.config or if it doesn't exist from moleculekit.config
         hold : bool
             If set to True, it will not visualize the molecule but instead collect representations until set back to False.
         name : str, optional
-            A name to give to the molecule in VMD
+            A name to give to the molecule in the viewer
         viewerhandle : :class:`VMD <moleculekit.vmdviewer.VMD>` object, optional
             A specific viewer in which to visualize the molecule. If None it will use the current default viewer.
         """
