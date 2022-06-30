@@ -122,29 +122,19 @@ vdw_radii = {
 
 
 def guess_bonds(mol):
-    # from moleculekit.periodictable import periodictable
-
-    # exceptions = {
-    #     "H": 1,
-    #     "Na": 1.36,
-    #     "Mg": 1.18,
-    #     "Cl": 2.27,
-    #     "K": 1.76,
-    #     "Ca": 1.37,
-    #     "Ni": 1.63,
-    #     "Cu": 1.4,
-    #     "Zn": 1.39,
-    #     "Ga": 1.07,
-    # }
+    defaults = {"H": 1.0, "C": 1.5, "N": 1.4, "O": 1.3, "F": 1.2, "S": 1.9}
 
     coords = mol.coords[:, :, mol.frame].copy()
-
     radii = []
-    for el in mol.element:
-        if el not in vdw_radii:
-            raise RuntimeError(f"Unknown element '{el}'")
-        # Default radius for None radius is 2A
-        radii.append(vdw_radii[el])
+    for i, el in enumerate(mol.element):
+        radius = 1.5  # Default radius if all guessing fails
+        if el in vdw_radii:
+            radius = vdw_radii[el]
+        else:
+            nn = mol.name[i][0].upper()
+            if nn in defaults:
+                radius = defaults[nn]
+        radii.append(radius)
     radii = np.array(radii, dtype=np.float32)
 
     is_hydrogen = (mol.element == "H").astype(np.uint32)

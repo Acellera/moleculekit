@@ -31,6 +31,38 @@ def find_backbone(mol: Molecule, mode):
     return backb | terms
 
 
+def _guessMass(name):
+    val = 12  # Default mass if element cannot be found
+    while len(name) and name[0].isdigit():
+        name = name[1:]
+
+    if len(name):
+        nn = name[0].upper()
+        nn2 = name[1].upper()
+        if nn == "H":
+            val = 1.008
+        elif nn == "C":
+            val = 12.011
+        elif nn == "N":
+            val = 14.007
+        elif nn == "O":
+            val = 15.999
+        elif nn == "F":
+            val = 55.847
+        elif nn == "P":
+            val = 30.97376
+        elif nn == "S":
+            val = 32.06
+
+        if nn == "C" and nn2 == "L":
+            val = 35.453  # Chlorine
+        elif nn == "N" and nn2 == "A":
+            val = 22.98977  # Natrium
+        elif nn == "M" and nn2 == "G":
+            val = 24.3050  # Magnesium
+    return val
+
+
 def analyze(mol: Molecule, bonds, _profile=False):
     from moleculekit.atomselect_utils import analyze_molecule
     from moleculekit.molecule import calculateUniqueBonds
@@ -55,7 +87,13 @@ def analyze(mol: Molecule, bonds, _profile=False):
     analysis["nucleic"] = np.zeros(mol.numAtoms, dtype=bool)
     analysis["fragments"] = np.full(mol.numAtoms, mol.numAtoms + 1, dtype=np.uint32)
     analysis["sidechain"] = np.zeros(mol.numAtoms, dtype=np.uint32)
-    masses = np.array([periodictable[el].mass for el in mol.element], dtype=np.float32)
+    masses = []
+    for i, el in enumerate(mol.element):
+        if el not in periodictable:
+            masses.append(_guessMass(mol.name[i]))
+            continue
+        masses.append(periodictable[el].mass)
+    masses = np.array(masses, dtype=np.float32)
 
     if not _profile:
         analyze_molecule(
