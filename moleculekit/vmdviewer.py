@@ -369,32 +369,3 @@ def _tempfilename():
     return os.path.join(
         tempfile._get_default_tempdir(), next(tempfile._get_candidate_names())
     )
-
-
-from unittest import TestCase
-
-
-class _TestVMDViewer(TestCase):
-    def test_send(self):
-        viewer = getCurrentViewer(dispdev="text")
-        viewer.send("menu main off")
-        viewer.send("menu main on")
-        viewer.close()
-
-    def test_rep(self):
-        from moleculekit.molecule import Molecule
-        from moleculekit.home import home
-
-        mol = Molecule(os.path.join(home(dataDir="pdb"), "alanine.pdb"))
-
-        viewer = getCurrentViewer(dispdev="text")
-        viewer.loadMol(mol)
-        viewer.rep(mode="protein", sel="protein")
-        viewer.rep(mode="ligand", sel="protein")
-        viewer.close()
-
-
-if __name__ == "__main__":
-    import unittest
-
-    unittest.main(verbosity=2)

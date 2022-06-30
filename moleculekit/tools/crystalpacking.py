@@ -143,7 +143,7 @@ def generateCrystalPacking(pdbid, hexagonal=False, visualize=False, viewerhandle
             [
                 c * np.cos(beta),
                 c * caux,
-                c * np.sqrt(1 - np.cos(beta) ** 2 - caux ** 2),
+                c * np.sqrt(1 - np.cos(beta) ** 2 - caux**2),
             ],
         ]
     )
@@ -262,33 +262,33 @@ def _build_hexagon(molunit, hexagonal_molunit):
         hexagonal_molunit.append(cellunit)
 
 
-class _TestCrystalPacking(unittest.TestCase):
-    def test_crystalpacking_visualization(self):
-        from moleculekit.vmdviewer import getCurrentViewer
+# class _TestCrystalPacking(unittest.TestCase):
+#     def test_crystalpacking_visualization(self):
+#         from moleculekit.vmdviewer import getCurrentViewer
 
-        viewer = getCurrentViewer(dispdev="text")
-        generateCrystalPacking("3ptb", visualize=True, viewerhandle=viewer)
+#         viewer = getCurrentViewer(dispdev="text")
+#         generateCrystalPacking("3ptb", visualize=True, viewerhandle=viewer)
 
-    def test_crystalpacking_asymmetric_unit(self):
-        from moleculekit.home import home
-        from os.path import join
-        from moleculekit.molecule import mol_equal
+#     def test_crystalpacking_asymmetric_unit(self):
+#         from moleculekit.home import home
+#         from os.path import join
+#         from moleculekit.molecule import mol_equal
 
-        mol = generateCrystalPacking("2hhb")
-        refmol = Molecule(join(home(dataDir="test-crystalpacking"), "2hhb_packing.pdb"))
-        assert mol_equal(mol, refmol, fieldPrecision={"coords": 1e-3})
+#         mol = generateCrystalPacking("2hhb")
+#         refmol = Molecule(join(home(dataDir="test-crystalpacking"), "2hhb_packing.pdb"))
+#         assert mol_equal(mol, refmol, fieldPrecision={"coords": 1e-3})
 
-    def test_crystalpacking_biological_unit(self):
-        from moleculekit.home import home
-        from os.path import join
-        from moleculekit.molecule import mol_equal
+#     def test_crystalpacking_biological_unit(self):
+#         from moleculekit.home import home
+#         from os.path import join
+#         from moleculekit.molecule import mol_equal
 
-        mol = generateCrystalPacking("1out")
-        refmol = Molecule(join(home(dataDir="test-crystalpacking"), "1out_packing.pdb"))
-        assert mol_equal(mol, refmol, fieldPrecision={"coords": 1e-3})
+#         mol = generateCrystalPacking("1out")
+#         refmol = Molecule(join(home(dataDir="test-crystalpacking"), "1out_packing.pdb"))
+#         assert mol_equal(mol, refmol, fieldPrecision={"coords": 1e-3})
 
 
-if __name__ == "__main__":
-    import unittest
+# if __name__ == "__main__":
+#     import unittest
 
-    unittest.main(verbosity=2)
+#     unittest.main(verbosity=2)
