@@ -1,2 +1,3 @@
 ignore:
   - "moleculekit/pdbx"  # Not our code. Taken from RCSB
+  - "moleculekit/ply" # Not our code. Taken from PLY

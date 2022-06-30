@@ -5,3 +5,4 @@ include moleculekit/interactions/pipi/pipi.pyx
 include moleculekit/interactions/sigmahole/sigmahole.pyx
 include moleculekit/wrapping/wrapping.pyx
 include moleculekit/bondguesser_utils/bondguesser_utils.pyx
+include moleculekit/atomselect_utils/atomselect_utils.pyx

@@ -5,7 +5,6 @@
 #
 from tempfile import NamedTemporaryFile
 import moleculekit.home
-import numpy
 import os
 import ctypes as ct
 
@@ -36,12 +35,6 @@ def string_to_tempfile(content, ext):
     f.write(content.encode("ascii", "ignore"))
     f.close()
     return f.name
-
-
-def pack_string_buffer(data):
-    ptr = (ct.c_char_p * len(data))()
-    ptr[:] = [x.encode() for x in data]
-    return ptr
 
 
 def pack_int_buffer(data):

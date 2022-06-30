@@ -34,6 +34,7 @@ extentions = [
     "moleculekit/interactions/sigmahole/sigmahole.pyx",
     "moleculekit/wrapping/wrapping.pyx",
     "moleculekit/bondguesser_utils/bondguesser_utils.pyx",
+    "moleculekit/atomselect_utils/atomselect_utils.pyx",
 ]
 extentions = [
     Extension(

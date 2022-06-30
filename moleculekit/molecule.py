@@ -733,10 +733,16 @@ class Molecule(object):
             bonds = np.vstack((bonds, self.bonds))
         if guessBonds:
             bonds = np.vstack((bonds, self._guessBonds()))
-        return bonds
+        return bonds.astype(np.uint32)
 
     def atomselect(
-        self, sel, indexes=False, strict=False, fileBonds=True, guessBonds=True
+        self,
+        sel,
+        indexes=False,
+        strict=False,
+        fileBonds=True,
+        guessBonds=True,
+        _debug=False,
     ):
         """Get a boolean mask or the indexes of a set of selected atoms
 
@@ -764,27 +770,22 @@ class Molecule(object):
         >>> mol.atomselect('resname MOL')
         array([False, False, False, ..., False, False, False], dtype=bool)
         """
-        from moleculekit.vmdparser import vmdselection
+        from moleculekit.atomselect.atomselect import atomselect
 
+        ast = None
         if sel is None or (isinstance(sel, str) and sel == "all"):
             s = np.ones(self.numAtoms, dtype=bool)
         elif isinstance(sel, str):
-            selc = self.coords[:, :, self.frame].copy()
-            s = vmdselection(
+            s = atomselect(
+                self,
                 sel,
-                selc,
-                self.element,
-                self.name,
-                self.resname,
-                self.resid,
-                chain=self.chain,
-                segname=self.segid,
-                insert=self.insertion,
-                altloc=self.altloc,
-                beta=self.beta,
-                occupancy=self.occupancy,
                 bonds=self._getBonds(fileBonds, guessBonds),
+                _return_ast=_debug,
+                _debug=_debug,
             )
+            if _debug:
+                s, ast = s
+
             if np.sum(s) == 0 and strict:
                 raise RuntimeError(
                     f'No atoms were selected with atom selection "{sel}".'
@@ -797,6 +798,8 @@ class Molecule(object):
         if indexes and s.dtype == bool:
             return np.array(np.where(s)[0], dtype=np.int32)
         else:
+            if ast is not None:
+                return s, ast
             return s
 
     def copy(self):
@@ -1517,7 +1520,7 @@ class Molecule(object):
             )
 
         bonds = self._getBonds(fileBonds, guessBonds)
-        groups = getBondedGroups(self, bonds)
+        groups, _ = getBondedGroups(self, bonds)
         wrapping.calculate(groups, self.coords, self.box, centersel.astype(np.uint32))
 
     def _emptyTopo(self, numAtoms):
@@ -2480,30 +2483,26 @@ def getBondedGroups(mol, bonds=None):
     -------
     groups : np.ndarray
         Groups is an array which contains the starting index of each group.
+    group : np.ndarray
+        An array with the group index of each atom
 
     Examples
     --------
     >>> mol = Molecule("structure.prmtop")
     >>> mol.read("output.xtc")
-    >>> groups = getBondedGroups(mol)
+    >>> groups, _ = getBondedGroups(mol)
     >>> for i in range(len(groups)-1):
     ...     print(f"Group {i} starts at index {groups[i]} and ends at index {groups[i+1]-1}")
     """
-    from collections import defaultdict
+    from moleculekit.atomselect_utils import get_bonded_groups
 
     if bonds is None:
         bonds = mol.bonds
 
-    bonds_dict = defaultdict(list)
-    for bb in bonds:
-        bonds_dict[max(bb)].append(min(bb))
-
-    groups = []
-    for i in range(0, mol.numAtoms):
-        if i not in bonds_dict:
-            groups.append(i)
-    groups.append(mol.numAtoms)
-    return np.array(groups, dtype=np.uint32)
+    has_lower_bond = np.zeros(mol.numAtoms, dtype=np.uint32)
+    grouparray = np.zeros(mol.numAtoms, dtype=np.uint32)
+    grouplist = get_bonded_groups(bonds, has_lower_bond, mol.numAtoms, grouparray)
+    return np.array(grouplist, dtype=np.uint32), grouparray
 
 
 class Representations:
