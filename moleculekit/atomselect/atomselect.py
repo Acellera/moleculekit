@@ -227,6 +227,7 @@ class _TestAtomSelect(unittest.TestCase):
         from moleculekit.atomselect.analyze import analyze
         from moleculekit.home import home
         import pickle
+        import time
         import os
 
         selections = [
@@ -318,9 +319,14 @@ class _TestAtomSelect(unittest.TestCase):
 
         reffile = os.path.join(home(dataDir="test-atomselect"), "selections.pickle")
         write_reffile = False
+        time_comp = True
         if not write_reffile:
             with open(reffile, "rb") as f:
                 ref = pickle.load(f)
+
+        analysis_time_threshold = 0.4  # second
+        atomsel_time_threshold = 0.1
+        atomsel_time_threshold_within = 0.7
 
         results = {}
         for pdbid in pdbids:
@@ -330,10 +336,18 @@ class _TestAtomSelect(unittest.TestCase):
                 mol.beta[:] = 0
                 mol.beta[1000:] = -1
                 bonds = mol._getBonds(fileBonds=True, guessBonds=True)
+
+                t = time.time()
                 analysis = analyze(mol, bonds)
+                t = time.time() - t
+                if time_comp and t > analysis_time_threshold:
+                    raise RuntimeError(
+                        f"Analysis took longer than expected {t:.2f} > {analysis_time_threshold:.2f}"
+                    )
 
                 for sel in selections:
                     with self.subTest(sel=sel):
+                        t = time.time()
                         mask1, ast = atomselect(
                             mol,
                             sel,
@@ -342,6 +356,17 @@ class _TestAtomSelect(unittest.TestCase):
                             _debug=False,
                             _return_ast=True,
                         )
+                        t = time.time() - t
+                        if time_comp:
+                            if "within" in sel and t > atomsel_time_threshold_within:
+                                raise RuntimeError(
+                                    f"Atom selection took longer than expected {t:.2f} > {atomsel_time_threshold_within:.2f}"
+                                )
+                            elif "within" not in sel and t > atomsel_time_threshold:
+                                raise RuntimeError(
+                                    f"Atom selection took longer than expected {t:.2f} > {atomsel_time_threshold:.2f}"
+                                )
+
                         if write_reffile:
                             results[(pdbid, sel)] = mask1
                         else:
