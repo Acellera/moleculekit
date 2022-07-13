@@ -296,6 +296,7 @@ class _TestAtomSelect(unittest.TestCase):
             "same residue as within 8 of resid 100",
             "same residue as exwithin 8 of resid 100",
             "same fragment as within 8 of resid 100",
+            "nucleic and name C3'",
         ]
 
         pdbids = [

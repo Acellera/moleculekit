@@ -60,7 +60,7 @@ tokens = [
     "DIVIDE",
     "LPAREN",
     "RPAREN",
-    "ID",
+    "STRING",
     "INTEGER",
     "FLOAT",
     "QUOTEDINT",
@@ -111,14 +111,6 @@ def t_ZCOOR(t):
     return t
 
 
-def t_ID(t):
-    r"[a-zA-Z_][a-zA-Z_0-9]*"
-    t.type = "ID"
-    if t.value.lower() in reserved:
-        t.type = t.value.upper()
-    return t
-
-
 def t_QUOTEDINT(t):
     r'"(-?\d+)"|\'(-?\d+)\' '
     t.value = int(t.value[1:-1])
@@ -128,6 +120,18 @@ def t_QUOTEDINT(t):
 def t_QUOTEDFLOAT(t):
     r'"(\d*\.\d+)"|"(\d+\.\d*)"|\'(\d*\.\d+)\'|\'(\d+\.\d*)\' '
     t.value = float(t.value[1:-1])
+    return t
+
+
+def t_FLOAT(t):
+    r"(\d*\.\d+)|(\d+\.\d*)"
+    t.value = float(t.value)
+    return t
+
+
+def t_INTEGER(t):
+    r"\d+"
+    t.value = int(t.value)
     return t
 
 
@@ -143,15 +147,11 @@ def t_QUOTEDSTRINGSINGLE(t):
     return t
 
 
-def t_FLOAT(t):
-    r"(\d*\.\d+)|(\d+\.\d*)"
-    t.value = float(t.value)
-    return t
-
-
-def t_INTEGER(t):
-    r"\d+"
-    t.value = int(t.value)
+def t_STRING(t):
+    r"[a-zA-Z_0-9']+"
+    t.type = "STRING"
+    if t.value.lower() in reserved:
+        t.type = t.value.upper()
     return t
 
 
@@ -433,7 +433,7 @@ def p_string_list(p):
 
 def p_string(p):
     """
-    string : ID
+    string : STRING
            | QUOTEDSTRING
            | QUOTEDSTRINGSINGLE
     """
@@ -546,6 +546,7 @@ class _TestLanguareParser(unittest.TestCase):
             "same residue as within 8 of resid 100",
             "same residue as exwithin 8 of resid 100",
             "same fragment as within 8 of resid 100",
+            "nucleic and name C3'",
         ]
 
         for sel in selections:
