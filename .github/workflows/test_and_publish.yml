@@ -35,9 +35,10 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    - name: Install moleculekit conda deps
+    - name: Install moleculekit conda deps. rdkit version is just set high for tests to pass
       run: |
         conda install -y -q --file extra_requirements.txt python=${{ matrix.python-version }} -c acellera -c conda-forge
+        conda install -y -q rdkit=2022.03.4 -c conda-forge
 
     - name: Compile cython 
       run: |
@@ -77,10 +78,9 @@ jobs:
         auto-update-conda: true
         python-version: ${{ matrix.python-version }}
 
-    - name: Install conda deps. rdkit version is just set high for tests to pass
+    - name: Install conda deps
       run: |
         conda install -y -q --file extra_requirements.txt nbconvert sphinx python=${{ matrix.python-version }} -c acellera -c conda-forge
-        conda install -y -q rdkit=2022.03.4 -c conda-forge
 
     - name: Generate rst docs
       run: |
