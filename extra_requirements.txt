@@ -3,7 +3,7 @@ ipython
 matplotlib
 joblib
 scikit-learn
-rdkit>=2022.03.4
+rdkit>=2020.09.5
 mdtraj
 pdb2pqr>=3.3.3
 propka
