@@ -80,7 +80,7 @@ jobs:
     - name: Install conda deps. rdkit version is just set high for tests to pass
       run: |
         conda install -y -q --file extra_requirements.txt nbconvert sphinx python=${{ matrix.python-version }} -c acellera -c conda-forge
-        conda install rdkit=2022.03.4 -c conda-forge
+        conda install -y -q rdkit=2022.03.4 -c conda-forge
 
     - name: Generate rst docs
       run: |
