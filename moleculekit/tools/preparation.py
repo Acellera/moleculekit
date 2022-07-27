@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 def _fixup_water_names(mol):
     """Rename WAT / OW HW HW atoms as O H1 H2"""
     mol.set("name", "O", sel="resname WAT and name OW")
-    mol.set("name", "H1", sel="resname WAT and name HW and serial % 2 == 0")
-    mol.set("name", "H2", sel="resname WAT and name HW and serial % 2 == 1")
+    mol.set("name", "H1", sel="resname WAT and name HW and index % 2 == 0")
+    mol.set("name", "H2", sel="resname WAT and name HW and index % 2 == 1")
 
 
 def _warn_if_contains_DUM(mol):

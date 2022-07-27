@@ -76,6 +76,7 @@ tokens = [
     "YCOOR",
     "ZCOOR",
     "DOUBLEEQ",
+    "NOTEQ",
 ] + [rr.upper() for rr in reserved]
 
 # Regular expression rules for simple tokens
@@ -92,6 +93,7 @@ t_GREATER = r"\>"
 t_LESSEREQUAL = r"\<\="
 t_GREATEREQUAL = r"\>\="
 t_DOUBLEEQ = r"\=\="
+t_NOTEQ = r"\!\="
 
 # Put the coors here for priority overriding
 
@@ -369,8 +371,9 @@ def p_molprop_string(p):
 def p_molprop_int_modulo(p):
     """
     molprop_int_eq : molprop_int MODULO integer DOUBLEEQ integer
+                   | molprop_int MODULO integer NOTEQ integer
     """
-    p[0] = ("molprop_int_modulo", p[1], p[3], p[5])
+    p[0] = ("molprop_int_modulo", p[1], p[3], p[5], p[4])
 
 
 def p_molprop_int_eq(p):
@@ -547,6 +550,9 @@ class _TestLanguareParser(unittest.TestCase):
             "same residue as exwithin 8 of resid 100",
             "same fragment as within 8 of resid 100",
             "nucleic and name C3'",
+            "serial % 2 == 0",
+            "resname WAT and serial % 2 == 0",
+            "resname WAT and index % 2 == 0",
         ]
 
         for sel in selections:

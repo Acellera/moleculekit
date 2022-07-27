@@ -23,6 +23,19 @@ molpropmap = {
 }
 
 
+def get_molprop(mol, molprop, analysis):
+    if molprop == "fragment":
+        return analysis["fragments"]
+    if molprop in molpropmap:
+        return getattr(mol, molpropmap[molprop])
+    if molprop == "index":
+        return np.arange(0, mol.numAtoms)
+    if molprop == "residue":
+        # Unique sequential residue numbering
+        return analysis["residues"]
+    raise RuntimeError(f"Invalid molecule property {molprop} requested")
+
+
 def traverse_ast(mol, analysis, node):
     node = list(node)
     operation = node[0]
@@ -78,20 +91,22 @@ def traverse_ast(mol, analysis, node):
                                 res.append(xx == yy)
                     return np.array(res, dtype=bool)
 
-        if molprop in molpropmap:
-            return fn(getattr(mol, molpropmap[molprop]), value)
-        if molprop == "index":
-            return fn(np.arange(0, mol.numAtoms), value)
-        if molprop == "residue":
-            # Unique sequential residue numbering
-            return fn(analysis["residues"], value)
-        raise RuntimeError(f"Invalid molprop {molprop}")
+        propvals = get_molprop(mol, molprop, analysis)
+        return fn(propvals, value)
 
     if operation == "molprop_int_modulo":
+        # TODO: This can probably be simplified by upgrading it to a comp_op on a numerical property
         molprop = node[1]
         val1 = node[2]
         val2 = node[3]
-        return (getattr(mol, molpropmap[molprop]) % val1) == val2
+        oper = node[4]
+
+        propvals = get_molprop(mol, molprop, analysis)
+        if oper == "==":
+            return (propvals % val1) == val2
+        if oper == "!=":
+            return (propvals % val1) != val2
+        raise RuntimeError(f"Unknown modulo operand {oper}")
 
     if operation == "logop":
         op = node[1]
