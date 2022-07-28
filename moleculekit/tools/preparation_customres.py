@@ -18,29 +18,18 @@ backbone = Molecule(os.path.join(home(shareDir="backbone.cif")), zerowarning=Fal
 alanine = Molecule(os.path.join(home(shareDir="ALA.cif")), zerowarning=False)
 
 
-# def _template_residue_from_mol(molc: Molecule, template: Molecule, res: str):
-#     from moleculekit.tools.graphalignment import mcsAtomMatching
+def _hydrogen_name_gen(mol, matched):
+    import string
 
-#     if np.any(np.isin(template.bondtype, ("", "un"))):
-#         raise RuntimeError(f"Residue template {res} must contain correct bond orders.")
-#     if len(np.unique(molc.name)) != molc.numAtoms:
-#         raise RuntimeError(
-#             f"Residue {res} contains duplicate atom names. Please rename the atoms to have unique names."
-#         )
-
-#     template.atomtype = template.element  # Replace atomtypes for writing mol2
-#     atm1, atm2 = mcsAtomMatching(molc, template, bondCompare="any", _logger=False)
-#     heavy = molc.element != "H"
-#     if len(atm2) != len(heavy):
-#         raise RuntimeError(
-#             f"Residue template {res} matched only {len(atm2)} out of {len(heavy)} heavy atoms in the input molecule"
-#         )
-#     for a1, a2 in zip(atm1, atm2):  # Rename atoms in reference molecule
-#         template.name[a2] = molc.name[a1]
-
-#     # TODO: Not sure this is a good idea in general
-#     template.remove("name OXT HXT HN2", _logger=False)
-#     return template
+    for second in string.digits[1:] + string.ascii_uppercase:
+        for third in range(10):
+            name = f"H{second}{third}"
+            if name in mol.name[matched]:
+                continue
+            yield name
+    raise RuntimeError(
+        "Could not generate any more hydrogen names... Report error to moleculekit issue tracker"
+    )
 
 
 def _template_residue_from_smiles(inmol: Molecule, nsres: str, smiles=None):
@@ -48,6 +37,7 @@ def _template_residue_from_smiles(inmol: Molecule, nsres: str, smiles=None):
     from aceprep.detector import template_ligand
     from aceprep.prepare import rdk_prepare
     from moleculekit.tools.graphalignment import makeMolGraph, compareGraphs
+    import networkx as nx
     import tempfile
     import logging
 
@@ -93,12 +83,25 @@ def _template_residue_from_smiles(inmol: Molecule, nsres: str, smiles=None):
     for pp in matching:  # Rename atoms in reference molecule
         mol.name[pp[0]] = inmol.name[pp[1]]
 
-    # Rename non-matched hydrogens to X_H to rename later
+    # Rename non-matched hydrogens
     matched = [pp[0] for pp in matching]
+    hgen = _hydrogen_name_gen(mol, matched)
     for i in np.where(mol.element == "H")[0]:
         if i in matched:
             continue
-        mol.name[i] = "X_H"
+        mol.name[i] = next(hgen)
+
+    # Fix one hydrogen of CA to HA
+    gg = mol.toGraph()
+    ca_idx = _get_idx(mol, "CA")
+    ca_hs = [nn for nn in gg.neighbors(ca_idx) if gg.nodes[nn]["element"] == "H"]
+    if len(ca_hs) and not any([mol.name[c] == "HA" for c in ca_hs]):
+        mol.name[sorted(ca_hs)[0]] = "HA"
+
+    # Reorder atoms to follow backbone
+    bb_idx = nx.shortest_path(gg, _get_idx(mol, "N"), _get_idx(mol, "C"))
+    other_idx = np.setdiff1d(range(mol.numAtoms), bb_idx)
+    mol.reorderAtoms(bb_idx + other_idx.tolist())
 
     return mol
 
@@ -110,23 +113,17 @@ def _get_idx(mol, name):
     return res[0][0]
 
 
-def _process_custom_residue(mol: Molecule, resname: str):
+def _process_custom_residue(mol: Molecule, resname: str, allow_elongated=False):
     import networkx as nx
+
+    mol = mol.copy()
 
     gg = mol.toGraph()
     sp = nx.shortest_path(gg, _get_idx(mol, "N"), _get_idx(mol, "C"))
-    if len(sp) != 3:
+    if not allow_elongated and len(sp) != 3:
         raise RuntimeError(
             f"Cannot prepare residues with elongated backbones. This backbone consists of atoms {' '.join(mol.name[sp])}"
         )
-
-    # Fix hydrogen names for CA / N
-    ca_idx = _get_idx(mol, "CA")
-    ca_hs = [nn for nn in gg.neighbors(ca_idx) if gg.nodes[nn]["element"] == "H"]
-    if len(ca_hs) > 1:
-        raise RuntimeError("Found more than 1 hydrogen on CA atom!")
-    if len(ca_hs) == 1:
-        mol.name[ca_hs[0]] = "HA"
 
     # Remove all N terminal hydrogens
     gg = mol.toGraph()
@@ -137,34 +134,27 @@ def _process_custom_residue(mol: Molecule, resname: str):
     if len(n_hs):
         mol.remove(f"index {' '.join(map(str, n_hs))}", _logger=False)
 
-    # Remove all hydrogens attached to terminal C
+    # Remove hydrogen for peptidic bond on terminal C
     gg = mol.toGraph()
     idx = _get_idx(mol, "C")
     neighbours = list(gg.neighbors(idx))
     hs = [nn for nn in neighbours if gg.nodes[nn]["element"] == "H"]
     if len(hs):
-        mol.remove(f"index {' '.join(map(str, hs))}", _logger=False)
+        mol.remove(f"index {hs[0]}", _logger=False)
 
-    # Remove all hydrogens attached to C-terminal O
-    gg = mol.toGraph()
-    idx = _get_idx(mol, "O")
-    neighbours = list(gg.neighbors(idx))
-    hs = [nn for nn in neighbours if gg.nodes[nn]["element"] == "H"]
-    if len(hs):
-        mol.remove(f"index {' '.join(map(str, hs))}", _logger=False)
-
-    # Rename all non-matched hydrogens
-    hydr = mol.name == "X_H"
-    mol.name[hydr] = [f"H{i}" for i in range(10, sum(hydr) + 10)]
-
-    # Reorder atoms. AMBER order is: N H CA HA [sidechain] C O
-    bbatoms = [x for x in ["N", "H", "CA", "HA", "C", "O"] if x in mol.name]
-    ordered_idx = [_get_idx(mol, nn) for nn in bbatoms]
-    other_idx = np.setdiff1d(range(mol.numAtoms), ordered_idx)
-    mol.reorderAtoms(ordered_idx[:4] + other_idx.tolist() + ordered_idx[4:])
+    # # Remove all hydrogens attached to C-terminal O
+    # gg = mol.toGraph()
+    # idx = _get_idx(mol, "O")
+    # neighbours = list(gg.neighbors(idx))
+    # hs = [nn for nn in neighbours if gg.nodes[nn]["element"] == "H"]
+    # if len(hs):
+    #     mol.remove(f"index {' '.join(map(str, hs))}", _logger=False)
 
     # Align to reference BB for pdb2pqr
-    mol.align("name N CA C", refmol=backbone)
+    bb = nx.shortest_path(mol.toGraph(), _get_idx(mol, "N"), _get_idx(mol, "C"))
+    mol.align(
+        f"name {' '.join(mol.name[bb[:3]])}", refsel="name N CA C", refmol=backbone
+    )
 
     if n_heavy == 1 and "N" in mol.name:
         # Add the H atom if N is only bonded to CA.

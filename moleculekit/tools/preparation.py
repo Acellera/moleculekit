@@ -151,13 +151,17 @@ def _generate_nonstandard_residues_ff(
 
                 tmol = _template_residue_from_smiles(molc, res, smiles=smiles)
                 cres = _process_custom_residue(tmol, res)
+                from IPython.core.debugger import set_trace
+
+                set_trace()
 
                 _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
                 _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
                 if outdir is not None:
                     os.makedirs(outdir, exist_ok=True)
-                    pres = _prepare_for_parameterize(cres)
-                    pres.write(os.path.join(outdir, f"{res}.cif"))
+                    # pres = _prepare_for_parameterize(cres)
+                    tmol.resname[:] = res
+                    tmol.write(os.path.join(outdir, f"{res}.cif"))
                 logger.info(f"Succesfully templated non-canonical residue {res}.")
             except Exception as e:
                 import traceback
@@ -629,6 +633,9 @@ def systemPrepare(
         If True it will ignore errors on non-canonical residues leaving them unprotonated.
     outdir : str
         A path where to save custom residue cif files used for building
+    residue_smiles : dict
+        Pass a dictionary of residue SMILES for non-canonical aminoacids. Keys should be the upper-case residue name
+        and values the SMILES. i.e. {"OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C(=O)O", "DAL": "C[C@H](C(=O)O)N"}
 
     Returns
     -------
@@ -1325,6 +1332,7 @@ class _TestPreparation(unittest.TestCase):
             "1A4W.pdb": "1A4W_prepared",
             "5VBL.pdb": "5VBL_prepared",
             "2QRV.pdb": "2QRV_prepared",
+            "1C4B.pdb": "1C4B_prepared",
         }
         res_smiles = {
             "200": "c1cc(ccc1C[C@@H](C(=O)O)N)Cl",
@@ -1332,6 +1340,14 @@ class _TestPreparation(unittest.TestCase):
             "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C(=O)O",
             "TYS": "c1cc(ccc1C[C@@H](C(=O)O)N)OS(=O)(=O)O",
             "SAH": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CSCC[C@@H](C(=O)O)N)O)O)N",
+            "DAL": "C[C@H](C(=O)O)N",
+            "DAS": "C([C@H](C(=O)O)N)C(=O)O",
+            "DCY": "C([C@H](C(=O)O)N)S",
+            "DGL": "C(CC(=O)O)[C@H](C(=O)O)N",
+            "DIL": "CC[C@@H](C)[C@H](C(=O)O)N",
+            "DLE": "CC(C)C[C@H](C(=O)O)N",
+            "DLY": "C(CCN)C[C@H](C(=O)O)N",
+            "DTY": "c1cc(ccc1C[C@H](C(=O)O)N)O",
         }
         for inf, outf in files.items():
             mol = Molecule(os.path.join(test_home, inf))
