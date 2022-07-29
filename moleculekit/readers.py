@@ -2360,7 +2360,7 @@ def ALPHAFOLDread(filename, frame=None, topoloc=None, validateElements=True, uri
     import urllib.request
     import tempfile
 
-    filename = filename[3:]
+    filename = filename[3:].upper()
     with urllib.request.urlopen(uri.format(uniprot=filename)) as f:
         contents = f.read().decode('utf-8')
 
