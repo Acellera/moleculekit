@@ -1109,6 +1109,7 @@ class Molecule(object):
                 and not isinstance(ff, Frame)
                 and len(ff) != 4
                 and not os.path.isfile(ff)
+                and not ff.startswith("AF-")
             ):
                 raise FileNotFoundError(f"File {ff} was not found.")
 
@@ -1208,6 +1209,8 @@ class Molecule(object):
             return type
         if not os.path.isfile(fname) and len(fname) == 4:
             return "mmtf"
+        if not os.path.isfile(fname) and fname.startswith("AF-"):
+            return "alphafold"
         return os.path.splitext(fname)[1][1:]
 
     def _unzip(self, fname):

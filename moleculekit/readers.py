@@ -2356,6 +2356,22 @@ def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
     return MolFactory.construct(topo, traj, filename, frame, validateElements=validateElements)
 
 
+def ALPHAFOLDread(filename, frame=None, topoloc=None, validateElements=True, uri="https://alphafold.ebi.ac.uk/files/AF-{uniprot}-F1-model_v3.cif"):
+    import urllib.request
+    import tempfile
+
+    filename = filename[3:]
+    with urllib.request.urlopen(uri.format(uniprot=filename)) as f:
+        contents = f.read().decode('utf-8')
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpfile = os.path.join(tmpdir, f"{filename}.cif")
+        with open(tmpfile, "w") as f:
+            f.write(contents)
+        results = CIFread(tmpfile)
+    return results
+
+
 # Register here all readers with their extensions
 _TOPOLOGY_READERS = {
     "prmtop": PRMTOPread,
@@ -2376,6 +2392,7 @@ _TOPOLOGY_READERS = {
     "sdf": SDFread,
     "mmtf": MMTFread,
     "mmtf.gz": MMTFread,
+    "alphafold": ALPHAFOLDread,
 }
 
 _MDTRAJ_TOPOLOGY_EXTS = [
