@@ -1933,19 +1933,20 @@ class Molecule(object):
         elif viewer.lower() == "ngl" or viewer.lower() == "webgl":
             retval = self._viewNGL(gui=gui)
         elif viewer.lower() == "pymol":
-            self._viewPymol()
+            self._viewPymol(name)
         else:
             raise ValueError("Unknown viewer.")
 
         if retval is not None:
             return retval
 
-    def _viewPymol(self):
+    def _viewPymol(self, name):
         from moleculekit.pymolviewer import getCurrentViewer, pymolViewingMols
         import uuid
 
         getCurrentViewer()
-        viewname = f"{self.viewname}_{uuid.uuid4().hex[:6].upper()}"
+        name = self.viewname if name is None else name
+        viewname = f"{name}_{uuid.uuid4().hex[:6].upper()}"
         for val in pymolViewingMols.values():
             if val == self:
                 return
