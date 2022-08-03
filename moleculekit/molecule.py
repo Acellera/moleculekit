@@ -1945,8 +1945,11 @@ class Molecule(object):
         import uuid
 
         getCurrentViewer()
-        name = self.viewname if name is None else name
-        viewname = f"{name}_{uuid.uuid4().hex[:6].upper()}"
+
+        viewname = name
+        if name is None:
+            viewname = f"{self.viewname}_{uuid.uuid4().hex[:6].upper()}"
+
         for val in pymolViewingMols.values():
             if val == self:
                 return
