@@ -128,7 +128,7 @@ class SmallMol(object):
         self._mol = self._initializeMolObj(mol, force_reading, ignore_errors, verbose)
         if removeHs:
             self.removeHs()
-        if fixHs:
+        if fixHs and not removeHs:
             self.addHs(addCoords=True)
 
     def _initializeMolObj(self, mol, force_reading, ignore_errors, verbose=True):
@@ -820,7 +820,9 @@ class SmallMol(object):
         if mode == "Morgan":
             from rdkit.Chem import AllChem
 
-            return AllChem.GetHashedMorganFingerprint(self._mol, radius, num_bits)
+            return AllChem.GetHashedMorganFingerprint(
+                self._mol, radius, num_bits, useChirality=True
+            )
         if mode == "MACCS":
             from rdkit.Chem import MACCSkeys
 
