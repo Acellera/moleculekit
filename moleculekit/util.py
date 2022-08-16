@@ -819,6 +819,57 @@ def folder_diff(folder, reference, ignore_ftypes=(".log", ".txt")):
             file_diff(newfile, reffile)
 
 
+def find_executable(execname):
+    import shutil
+
+    exe = shutil.which(execname, mode=os.X_OK)
+    if not exe:
+        return None
+
+    if os.path.islink(exe):
+        if os.path.isabs(os.readlink(exe)):
+            exe = os.readlink(exe)
+        else:
+            exe = os.path.join(os.path.dirname(exe), os.readlink(exe))
+    return exe
+
+
+def wait_for_port(port, host="127.0.0.1", timeout=240.0):
+    """Wait until a port starts accepting TCP connections.
+    Args:
+        port (int): Port number.
+        host (str): Host address on which the port should exist.
+        timeout (float): In seconds. How long to wait before raising errors.
+    Raises:
+        TimeoutError: The port isn't accepting connection after time specified in `timeout`.
+    """
+    import time
+    import socket
+
+    print(f"Waiting for port {host}:{port} to start accepting connections")
+    start_time = time.time()
+    while True:
+        try:
+            with socket.create_connection((host, port), timeout=timeout):
+                break
+        except OSError as ex:
+            time.sleep(0.5)
+            if time.time() - start_time >= timeout:
+                raise TimeoutError(
+                    f"Waited too long for the port {port} on host {host} to start accepting connections."
+                ) from ex
+
+
+def check_port(port, host="127.0.0.1", timeout=120):
+    import socket
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            pass
+        return True
+    except OSError:
+        return False
+
+
 if __name__ == "__main__":
     import unittest
 

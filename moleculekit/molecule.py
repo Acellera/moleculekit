@@ -1867,6 +1867,7 @@ class Molecule(object):
         name=None,
         viewerhandle=None,
         gui=False,
+        molstarurl="localhost:50051",
     ):
         """Visualizes the molecule in a molecular viewer
 
@@ -1890,6 +1891,8 @@ class Molecule(object):
             A name to give to the molecule in the viewer
         viewerhandle : :class:`VMD <moleculekit.vmdviewer.VMD>` object, optional
             A specific viewer in which to visualize the molecule. If None it will use the current default viewer.
+        molstarurl : string
+            URL of molstar GRPC server
         """
         from moleculekit.util import tempname
 
@@ -1934,26 +1937,43 @@ class Molecule(object):
             retval = self._viewNGL(gui=gui)
         elif viewer.lower() == "pymol":
             self._viewPymol(name)
+        elif viewer.lower() == "molstar":
+            self._viewMolstar(name, url=molstarurl)
         else:
             raise ValueError("Unknown viewer.")
 
         if retval is not None:
             return retval
 
-    def _viewPymol(self, name):
-        from moleculekit.pymolviewer import getCurrentViewer, pymolViewingMols
+    def _viewMolstar(self, name, url):
+        from moleculekit.viewer import getCurrentMolstarViewer, viewingMols
         import uuid
 
-        getCurrentViewer()
+        getCurrentMolstarViewer(url=url)
 
         viewname = name
         if name is None:
             viewname = f"{self.viewname}_{uuid.uuid4().hex[:6].upper()}"
 
-        for val in pymolViewingMols.values():
+        for val in viewingMols.values():
             if val == self:
                 return
-        pymolViewingMols[viewname] = self
+        viewingMols[viewname] = self
+
+    def _viewPymol(self, name):
+        from moleculekit.viewer import getCurrentPymolViewer, viewingMols
+        import uuid
+
+        getCurrentPymolViewer()
+
+        viewname = name
+        if name is None:
+            viewname = f"{self.viewname}_{uuid.uuid4().hex[:6].upper()}"
+
+        for val in viewingMols.values():
+            if val == self:
+                return
+        viewingMols[viewname] = self
 
     def _viewVMD(self, psf, pdb, xtc, vhandle, name, guessbonds):
         from moleculekit.vmdviewer import getCurrentViewer
