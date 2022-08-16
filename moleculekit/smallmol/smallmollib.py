@@ -15,7 +15,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def smiReader(file, removeHs, fixHs, isgzip=False):
+def smiReader(file, removeHs, fixHs, isgzip=False, _logger=True):
     from tqdm import tqdm
 
     if isgzip:
@@ -32,7 +32,7 @@ def smiReader(file, removeHs, fixHs, isgzip=False):
 
     lines = file.readlines()[1:]
     mols = []
-    for i, line in enumerate(tqdm(lines)):
+    for i, line in enumerate(tqdm(lines, disable=not _logger)):
         if decode:
             line = line.decode("utf-8")
         smi, name = line.strip().split()
@@ -47,7 +47,7 @@ def smiReader(file, removeHs, fixHs, isgzip=False):
     return mols
 
 
-def sdfReader(file, removeHs, fixHs, sanitize, isgzip=False):
+def sdfReader(file, removeHs, fixHs, sanitize, isgzip=False, _logger=True):
     from tqdm import tqdm
     from moleculekit.util import tempname
 
@@ -61,12 +61,12 @@ def sdfReader(file, removeHs, fixHs, sanitize, isgzip=False):
     supplier = Chem.SDMolSupplier(file, removeHs=removeHs, sanitize=sanitize)
     mols = []
     countfailed = 0
-    for mol in tqdm(supplier):
+    for mol in tqdm(supplier, disable=not _logger):
         if mol is None:
             countfailed += 1
             continue
         try:
-            mols.append(SmallMol(mol, removeHs=removeHs, fixHs=fixHs))
+            mols.append(SmallMol(mol, removeHs=removeHs, fixHs=fixHs, _logger=False))
         except Exception:
             if mol.HasProp("_Name"):
                 name = mol.GetProp("_Name")
@@ -116,15 +116,31 @@ class SmallMolLib(object):
     """
 
     def __init__(
-        self, libfile=None, removeHs=False, fixHs=True, sanitize=True
+        self,
+        libfile=None,
+        removeHs=False,
+        fixHs=True,
+        sanitize=True,
+        _logger=True,
     ):  # , n_jobs=1
+        if removeHs and _logger:
+            logger.info("Removing hydrogens from library molecules (removeHs=True)")
+        if fixHs and _logger:
+            logger.info(
+                "Adding any missing hydrogens to library molecules (fixHs=True)"
+            )
         if libfile is not None:
             self._mols = self._loadLibrary(
-                libfile, removeHs=removeHs, fixHs=fixHs, sanitize=sanitize, ext=None
+                libfile,
+                removeHs=removeHs,
+                fixHs=fixHs,
+                sanitize=sanitize,
+                ext=None,
+                _logger=_logger,
             )
 
     def _loadLibrary(
-        self, libfile, removeHs=False, fixHs=True, sanitize=True, ext=None
+        self, libfile, removeHs=False, fixHs=True, sanitize=True, ext=None, _logger=True
     ):
         isgzip = False
         if ext is None:
@@ -134,9 +150,9 @@ class SmallMolLib(object):
             ext = os.path.splitext(os.path.splitext(libfile)[-2])[-1]
 
         if ext == ".sdf":
-            return sdfReader(libfile, removeHs, fixHs, sanitize, isgzip)
+            return sdfReader(libfile, removeHs, fixHs, sanitize, isgzip, _logger)
         elif ext == ".smi":
-            return smiReader(libfile, removeHs, fixHs, isgzip)
+            return smiReader(libfile, removeHs, fixHs, isgzip, _logger)
         else:
             raise RuntimeError(f"Invalid file extension {ext}. Could not read it.")
 
@@ -445,10 +461,14 @@ class SmallMolLib(object):
             legends_list = [str(n + 1) for n in range(len(_smallmols))]
         else:
             try:
-                legends_list = [f"{legends}={_m.GetDoubleProp(legends)}" for _m in _mols]
+                legends_list = [
+                    f"{legends}={_m.GetDoubleProp(legends)}" for _m in _mols
+                ]
             except Exception as e:
-                raise RuntimeError(f"Failed at getting molecule property '{legends}' passed in `legends` argument with error {e}")
-            
+                raise RuntimeError(
+                    f"Failed at getting molecule property '{legends}' passed in `legends` argument with error {e}"
+                )
+
         return depictMultipleMols(
             _mols,
             ipython=ipython,

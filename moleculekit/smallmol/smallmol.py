@@ -122,16 +122,22 @@ class SmallMol(object):
         fixHs=True,
         removeHs=False,
         verbose=True,
+        _logger=True,
     ):
         self._frame = 0
+        _logger = _logger & verbose
 
-        self._mol = self._initializeMolObj(mol, force_reading, ignore_errors, verbose)
+        self._mol = self._initializeMolObj(mol, force_reading, ignore_errors)
         if removeHs:
+            if _logger:
+                logger.info("Removing hydrogens (removeHs=True)")
             self.removeHs()
         if fixHs:
+            if _logger:
+                logger.info("Adding any missing hydrogens (fixHs=True)")
             self.addHs(addCoords=True)
 
-    def _initializeMolObj(self, mol, force_reading, ignore_errors, verbose=True):
+    def _initializeMolObj(self, mol, force_reading, ignore_errors):
         """
         Read the input and tries to convert it into a rdkit.Chem.rdchem.Mol obj
 
