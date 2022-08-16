@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import molstar_pb2 as molstar__pb2
+import .molstar_pb2 as molstar__pb2
 
 
 class MoleculeLoaderStub(object):

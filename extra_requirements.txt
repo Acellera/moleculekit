@@ -11,3 +11,4 @@ openbabel>=3.1.1
 vina
 biopython
 grpcio
+protobuf
