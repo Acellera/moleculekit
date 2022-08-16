@@ -128,7 +128,7 @@ class SmallMol(object):
         self._mol = self._initializeMolObj(mol, force_reading, ignore_errors, verbose)
         if removeHs:
             self.removeHs()
-        if fixHs and not removeHs:
+        if fixHs:
             self.addHs(addCoords=True)
 
     def _initializeMolObj(self, mol, force_reading, ignore_errors, verbose=True):
