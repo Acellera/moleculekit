@@ -55,7 +55,6 @@ def _pymol_get_mols():
 
 def _launch_molkitstar_exe(port):
     from moleculekit.util import find_executable, wait_for_port, check_port
-    import time
     from subprocess import Popen
 
     if not check_port(port):
@@ -67,9 +66,6 @@ def _launch_molkitstar_exe(port):
         Popen([molkitstarexe])
 
         wait_for_port(port)
-        time.sleep(
-            1
-        )  # TODO: FIX THIS! NEED TO KNOW WHEN VIEWER IS TOTALLY UP AND RUNNING
 
 
 def _molstar_launch(url):
