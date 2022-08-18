@@ -540,6 +540,7 @@ class _TestLanguareParser(unittest.TestCase):
             "serial % 2 == 0",
             "resname WAT and serial % 2 == 0",
             "resname WAT and index % 2 == 0",
+            "resid 1 5 7 to 20 25",
         ]
 
         for sel in selections:
