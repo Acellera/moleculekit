@@ -81,7 +81,7 @@ def _molstar_launch(url):
         _launch_molkitstar_exe(port)
 
     channel = grpc.insecure_channel(url)
-    stub = molstar_pb2_grpc.MoleculeLoaderStub(channel)
+    stub = molstar_pb2_grpc.MolStarStub(channel)
     _molstar_stub = stub
     _molstar_url = url
 
@@ -90,6 +90,7 @@ def _molstar_view(mol, viewname, bonds=None, url=None):
     from moleculekit.util import check_port
     from moleculekit.molstar_grpc import molstar_pb2
     from grpc._channel import _InactiveRpcError
+    import time
 
     port = int(url.split(":")[1])
     if not check_port(port):
@@ -112,20 +113,41 @@ def _molstar_view(mol, viewname, bonds=None, url=None):
         # repr_selection='hetero',
         traj=xtcbinaryblob,
     )
+
+    os.remove(xtc)
+    os.remove(psf)
+
+    t = time.time()
+
     try:
         _ = _molstar_stub.LoadMolecule(data)
     except _InactiveRpcError:
         print(f"ERROR: No viewer found at URL: {_molstar_url}")
 
-    os.remove(xtc)
-    os.remove(psf)
+    while viewname not in _molstar_get_mols(url):
+        # Wait for the mol to appear in the viewer before marking it as showing
+        time.sleep(_checkFrequency)
+        if time.time() - t > 10:  # Something went bad
+            return
+
+    showing[viewname] = True
 
 
-def _molstar_get_mols():
-    # TODO: Write this!
-    response = _molstar_stub.GetMolecules()
-    print("Molstar server replied: " + response.molecules)
-    return response.molecules
+def _molstar_get_mols(url):
+    from moleculekit.molstar_grpc import molstar_pb2
+    from grpc._channel import _InactiveRpcError
+    from moleculekit.util import check_port
+
+    port = int(url.split(":")[1])
+    if not check_port(port):
+        _molstar_launch(url)
+
+    try:
+        response = _molstar_stub.GetMolecules(molstar_pb2.GetRequest())
+    except _InactiveRpcError:
+        return []
+
+    return response.message.split(",")
 
 
 def getCurrentPymolViewer():
@@ -134,7 +156,9 @@ def getCurrentPymolViewer():
 
 def getCurrentMolstarViewer(url):
     getCurrentViewer(
-        lambda: _molstar_launch(url), lambda *args: _molstar_view(*args, url=url), None
+        lambda: _molstar_launch(url),
+        lambda *args: _molstar_view(*args, url=url),
+        lambda: _molstar_get_mols(url),
     )
 
 

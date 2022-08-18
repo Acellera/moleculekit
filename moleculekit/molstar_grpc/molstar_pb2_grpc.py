@@ -5,7 +5,7 @@ import grpc
 import moleculekit.molstar_grpc.molstar_pb2 as molstar__pb2
 
 
-class MoleculeLoaderStub(object):
+class MolStarStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -15,13 +15,18 @@ class MoleculeLoaderStub(object):
             channel: A grpc.Channel.
         """
         self.LoadMolecule = channel.unary_unary(
-            "/molstar.MoleculeLoader/LoadMolecule",
+            "/molstar.MolStar/LoadMolecule",
             request_serializer=molstar__pb2.MoleculeData.SerializeToString,
             response_deserializer=molstar__pb2.LoadResponse.FromString,
         )
+        self.GetMolecules = channel.unary_unary(
+            "/molstar.MolStar/GetMolecules",
+            request_serializer=molstar__pb2.GetRequest.SerializeToString,
+            response_deserializer=molstar__pb2.GetReply.FromString,
+        )
 
 
-class MoleculeLoaderServicer(object):
+class MolStarServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def LoadMolecule(self, request, context):
@@ -30,23 +35,34 @@ class MoleculeLoaderServicer(object):
         context.set_details("Method not implemented!")
         raise NotImplementedError("Method not implemented!")
 
+    def GetMolecules(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
 
-def add_MoleculeLoaderServicer_to_server(servicer, server):
+
+def add_MolStarServicer_to_server(servicer, server):
     rpc_method_handlers = {
         "LoadMolecule": grpc.unary_unary_rpc_method_handler(
             servicer.LoadMolecule,
             request_deserializer=molstar__pb2.MoleculeData.FromString,
             response_serializer=molstar__pb2.LoadResponse.SerializeToString,
         ),
+        "GetMolecules": grpc.unary_unary_rpc_method_handler(
+            servicer.GetMolecules,
+            request_deserializer=molstar__pb2.GetRequest.FromString,
+            response_serializer=molstar__pb2.GetReply.SerializeToString,
+        ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-        "molstar.MoleculeLoader", rpc_method_handlers
+        "molstar.MolStar", rpc_method_handlers
     )
     server.add_generic_rpc_handlers((generic_handler,))
 
 
 # This class is part of an EXPERIMENTAL API.
-class MoleculeLoader(object):
+class MolStar(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -65,9 +81,38 @@ class MoleculeLoader(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/molstar.MoleculeLoader/LoadMolecule",
+            "/molstar.MolStar/LoadMolecule",
             molstar__pb2.MoleculeData.SerializeToString,
             molstar__pb2.LoadResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )
+
+    @staticmethod
+    def GetMolecules(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            "/molstar.MolStar/GetMolecules",
+            molstar__pb2.GetRequest.SerializeToString,
+            molstar__pb2.GetReply.FromString,
             options,
             channel_credentials,
             insecure,

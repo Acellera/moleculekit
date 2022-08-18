@@ -1955,6 +1955,9 @@ class Molecule(object):
         if name is None:
             viewname = f"{self.viewname}_{uuid.uuid4().hex[:6].upper()}"
 
+        if "," in viewname:
+            raise RuntimeError("Commas are not allowed in molecule names in MolKit*")
+
         for val in viewingMols.values():
             if val == self:
                 return
