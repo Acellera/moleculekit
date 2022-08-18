@@ -70,6 +70,10 @@ def traverse_ast(mol, analysis, node):
     if operation in ("molprop_int_eq", "molprop_str_eq"):
         molprop = node[1]
         value = node[2]
+        if operation == "molprop_int_eq" and isinstance(value, list):
+            value = list(map(int, value))
+        if operation == "molprop_str_eq" and isinstance(value, list):
+            value = list(map(str, value))
 
         # TODO: Improve this with Cython
         def fn(x, y):
@@ -312,6 +316,7 @@ class _TestAtomSelect(unittest.TestCase):
             "same residue as exwithin 8 of resid 100",
             "same fragment as within 8 of resid 100",
             "nucleic and name C3'",
+            'resname C8E GR4 "200" 1PE',
         ]
 
         pdbids = [
@@ -331,6 +336,7 @@ class _TestAtomSelect(unittest.TestCase):
             "1bna",
             "1awf",
             "5vav",
+            "2p09",
         ]
 
         reffile = os.path.join(home(dataDir="test-atomselect"), "selections.pickle")
@@ -364,7 +370,7 @@ class _TestAtomSelect(unittest.TestCase):
                 for sel in selections:
                     with self.subTest(sel=sel):
                         t = time.time()
-                        mask1, ast = atomselect(
+                        mask, ast = atomselect(
                             mol,
                             sel,
                             bonds,
@@ -372,6 +378,7 @@ class _TestAtomSelect(unittest.TestCase):
                             _debug=False,
                             _return_ast=True,
                         )
+                        indices = np.where(mask)[0].tolist()
                         t = time.time() - t
                         if time_comp:
                             if "within" in sel and t > atomsel_time_threshold_within:
@@ -384,11 +391,11 @@ class _TestAtomSelect(unittest.TestCase):
                                 )
 
                         if write_reffile:
-                            results[(pdbid, sel)] = mask1
+                            results[(pdbid, sel)] = indices
                         else:
                             assert np.array_equal(
-                                mask1, ref[(pdbid, sel)]
-                            ), f"test: {mask1.sum()} vs ref: {ref[(pdbid, sel)].sum()} atoms. AST:\n{ast}"
+                                indices, ref[(pdbid, sel)]
+                            ), f"test: {len(indices)} vs ref: {len(ref[(pdbid, sel)])} atoms. AST:\n{ast}"
 
         if write_reffile:
             with open(reffile, "wb") as f:

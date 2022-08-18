@@ -131,8 +131,10 @@ def t_FLOAT(t):
     return t
 
 
+# Don't consider it an integer if it continues with letter.
+# (?![A-Za-z]) is a negative look-ahead, i.e. doesn't consume the characters
 def t_INTEGER(t):
-    r"\d+"
+    r"\d+(?![A-Za-z])"
     t.value = int(t.value)
     return t
 
@@ -155,12 +157,6 @@ def t_STRING(t):
     if t.value.lower() in reserved:
         t.type = t.value.upper()
     return t
-
-
-# Define a rule so we can track line numbers
-def t_newline(t):
-    r"\n+"
-    t.lexer.lineno += len(t.value)
 
 
 # A string containing ignored characters (spaces and tabs)
@@ -241,27 +237,20 @@ def p_expression_grouped(p):
     p[0] = ("grouped", p[2])
 
 
-def p_expression_molecule(p):
-    """
-    expression : molecule
-    """
-    p[0] = p[1]
-
-
 def p_molecule(p):
     """
-    molecule : PROTEIN
-             | NUCLEIC
-             | ION
-             | IONS
-             | LIPID
-             | LIPIDS
-             | WATER
-             | WATERS
-             | BACKBONE
-             | HYDROGEN
-             | NOH
-             | SIDECHAIN
+    expression : PROTEIN
+               | NUCLEIC
+               | ION
+               | IONS
+               | LIPID
+               | LIPIDS
+               | WATER
+               | WATERS
+               | BACKBONE
+               | HYDROGEN
+               | NOH
+               | SIDECHAIN
     """
     p[0] = ("molecule", p[1])
 
@@ -345,6 +334,7 @@ def p_molprop_string_eq(p):
     """
     molprop_str_eq : molprop_str string
                    | molprop_str number
+                   | molprop_str list
     """
     val2 = p[2]
     if not isinstance(val2, list):
@@ -379,6 +369,7 @@ def p_molprop_int_modulo(p):
 def p_molprop_int_eq(p):
     """
     molprop_int_eq : molprop_int integer
+                   | molprop_int list
     """
     p[0] = ("molprop_int_eq", p[1], p[2])
 
@@ -421,9 +412,14 @@ def p_numprop_number(p):
     p[0] = ("numprop", p[1])
 
 
-def p_string_list(p):
+def p_literal_list(p):
     """
-    string : string string
+    list : list string
+         | list integer
+         | string string
+         | string integer
+         | integer integer
+         | integer string
     """
     val1 = p[1]
     val2 = p[2]
@@ -448,19 +444,6 @@ def p_integer_range(p):
     integer : integer TO integer
     """
     p[0] = list(range(p[1], p[3] + 1))
-
-
-def p_integer_list(p):
-    """
-    integer : integer integer
-    """
-    val1 = p[1]
-    val2 = p[2]
-    if not isinstance(val1, list):
-        val1 = [val1]
-    if not isinstance(val2, list):
-        val2 = [val2]
-    p[0] = val1 + val2
 
 
 def p_number(p):
@@ -530,6 +513,10 @@ class _TestLanguareParser(unittest.TestCase):
             "chain 0",
             'resname "GL"',
             r'resname "GL\*"',
+            "resname 1PE",
+            "resname PE1",
+            'resid "-27"',
+            'resname C8E GR4 "200" 1PE',
             "resname ACE NME",
             "same fragment as lipid",
             "protein and within 8.3 of resname ACE",
@@ -557,9 +544,13 @@ class _TestLanguareParser(unittest.TestCase):
 
         for sel in selections:
             try:
-                _ = parser.parse(sel)
+                parser.parse(sel, debug=False)
             except Exception as e:
-                raise RuntimeError(f"Failed to parse selection {sel} with error {e}")
+                try:
+                    parser.parse(sel, debug=True)
+                except Exception:
+                    pass
+                raise RuntimeError(f"Failed to parse selection '{sel}' with error {e}")
 
 
 if __name__ == "__main__":
