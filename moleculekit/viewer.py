@@ -140,7 +140,7 @@ def _molstar_get_mols(url):
 
     port = int(url.split(":")[1])
     if not check_port(port):
-        _molstar_launch(url)
+        return []
 
     try:
         response = _molstar_stub.GetMolecules(molstar_pb2.GetRequest())
@@ -200,7 +200,7 @@ def _monitoringThread(view_fn, get_mols_fn):
 
         time.sleep(_checkFrequency)
 
-        if get_mols_fn is not None:
+        if len(viewingMols) and get_mols_fn is not None:
             # Check if molecule which was showing before does not exist in viewer anymore
             # If it doesn't remove it from our lists here to clean-up
             molnames = get_mols_fn()

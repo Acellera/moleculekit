@@ -834,7 +834,7 @@ def find_executable(execname):
     return exe
 
 
-def wait_for_port(port, host="127.0.0.1", timeout=240.0):
+def wait_for_port(port, host="127.0.0.1", timeout=240.0, _logger=False):
     """Wait until a port starts accepting TCP connections.
     Args:
         port (int): Port number.
@@ -846,7 +846,9 @@ def wait_for_port(port, host="127.0.0.1", timeout=240.0):
     import time
     import socket
 
-    print(f"Waiting for port {host}:{port} to start accepting connections")
+    if _logger:
+        print(f"Waiting for port {host}:{port} to start accepting connections")
+
     start_time = time.time()
     while True:
         try:
@@ -862,6 +864,7 @@ def wait_for_port(port, host="127.0.0.1", timeout=240.0):
 
 def check_port(port, host="127.0.0.1", timeout=120):
     import socket
+
     try:
         with socket.create_connection((host, port), timeout=timeout):
             pass
