@@ -12,8 +12,6 @@ _viewers = []
 viewingMols = {}
 showing = {}
 _checkFrequency = 0.5
-_molstar_stub = None
-_molstar_url = ""
 
 
 def _pymol_launch():
@@ -70,29 +68,18 @@ def _launch_molkitstar_exe(port):
 
 def _molstar_launch(url):
     from moleculekit.util import check_port
-    from moleculekit.molstar_grpc import molstar_pb2_grpc
-    import grpc
 
-    global _molstar_stub
-    global _molstar_url
-
-    port = int(url.split(":")[1])
+    port = int(url.split(":")[-1])
     if not check_port(port):
         _launch_molkitstar_exe(port)
-
-    channel = grpc.insecure_channel(url)
-    stub = molstar_pb2_grpc.MolStarStub(channel)
-    _molstar_stub = stub
-    _molstar_url = url
 
 
 def _molstar_view(mol, viewname, bonds=None, url=None):
     from moleculekit.util import check_port
-    from moleculekit.molstar_grpc import molstar_pb2
-    from grpc._channel import _InactiveRpcError
+    import requests
     import time
 
-    port = int(url.split(":")[1])
+    port = int(url.split(":")[-1])
     if not check_port(port):
         _molstar_launch(url)
 
@@ -101,29 +88,15 @@ def _molstar_view(mol, viewname, bonds=None, url=None):
     mol.write(psf, explicitbonds=bonds)
     mol.write(xtc)
 
-    with open(psf) as fh:
-        psfblob = fh.read()
-    with open(xtc, "rb") as fh:
-        xtcbinaryblob = fh.read()
-
-    data = molstar_pb2.MoleculeData(
-        name=viewname,
-        structure=psfblob,
-        # repr_type='ball+stick',
-        # repr_selection='hetero',
-        traj=xtcbinaryblob,
-    )
+    files = {"psf": ("psf", open(psf, "rb")), "xtc": ("xtc", open(xtc, "rb"))}
+    data = {"topoext": "psf", "label": viewname}
+    response = requests.post(f"{url}/loadMolecule", headers={}, data=data, files=files)
+    response.close()
 
     os.remove(xtc)
     os.remove(psf)
 
     t = time.time()
-
-    try:
-        _ = _molstar_stub.LoadMolecule(data)
-    except _InactiveRpcError:
-        print(f"ERROR: No viewer found at URL: {_molstar_url}")
-
     while viewname not in _molstar_get_mols(url):
         # Wait for the mol to appear in the viewer before marking it as showing
         time.sleep(_checkFrequency)
@@ -134,20 +107,17 @@ def _molstar_view(mol, viewname, bonds=None, url=None):
 
 
 def _molstar_get_mols(url):
-    from moleculekit.molstar_grpc import molstar_pb2
-    from grpc._channel import _InactiveRpcError
     from moleculekit.util import check_port
+    import requests
 
-    port = int(url.split(":")[1])
+    port = int(url.split(":")[-1])
     if not check_port(port):
         return []
 
-    try:
-        response = _molstar_stub.GetMolecules(molstar_pb2.GetRequest())
-    except _InactiveRpcError:
-        return []
+    response = requests.get(f"{url}/getMolecules")
+    response.close()
 
-    return response.message.split(",")
+    return response.text.split(",")
 
 
 def getCurrentPymolViewer():

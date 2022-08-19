@@ -1867,7 +1867,7 @@ class Molecule(object):
         name=None,
         viewerhandle=None,
         gui=False,
-        molstarurl="localhost:50051",
+        molstarurl="http://localhost:8090",
     ):
         """Visualizes the molecule in a molecular viewer
 
@@ -1892,7 +1892,7 @@ class Molecule(object):
         viewerhandle : :class:`VMD <moleculekit.vmdviewer.VMD>` object, optional
             A specific viewer in which to visualize the molecule. If None it will use the current default viewer.
         molstarurl : string
-            URL of molstar GRPC server
+            URL of molkitstar REST server
         """
         from moleculekit.util import tempname
 
