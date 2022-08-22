@@ -3,3 +3,6 @@ __pycache__
 .vscode
 .ipynb_checkpoints
 *.cpython-*.so
+.pyodide-xbuildenv/
+dist/
+build/
