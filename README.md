@@ -1,7 +1,7 @@
 # MoleculeKit
 
 [![Build Status](https://dev.azure.com/stefdoerr/moleculekit/_apis/build/status/Acellera.moleculekit?branchName=master)](https://dev.azure.com/stefdoerr/moleculekit/_build/latest?definitionId=1&branchName=master)
-[![Language Grade: Python](https://img.shields.io/lgtm/grade/python/g/Acellera/moleculekit.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/Acellera/moleculekit/context:python) 
+[![Language Grade: Python](https://img.shields.io/lgtm/grade/python/g/Acellera/moleculekit.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/Acellera/moleculekit/context:python)
 [![Conda](https://anaconda.org/acellera/moleculekit/badges/version.svg)](https://anaconda.org/acellera/moleculekit)
 [![codecov](https://codecov.io/gh/Acellera/moleculekit/branch/master/graph/badge.svg)](https://codecov.io/gh/Acellera/moleculekit)
 
@@ -12,7 +12,6 @@ A molecule manipulation library
 We recommend installing Miniconda on your machine to better manage python packages and environments.
 
 You can install moleculekit either in the "base" conda environment or in a new conda environment. We recommend the second.
-
 
 ### Install it into the base conda environment
 
@@ -35,7 +34,7 @@ Moleculekit has a small number of optional dependencies which are needed for som
 ```
 (moleculekit) user@computer:~$ wget https://raw.githubusercontent.com/Acellera/moleculekit/master/extra_requirements.txt
 (moleculekit) user@computer:~$ conda install --file extra_requirements.txt -c acellera
-``` 
+```
 
 ### Using moleculekit in ipython
 
@@ -62,7 +61,8 @@ mol.view()
 
 ### API
 
-For the official documentation of the moleculekit API head over to https://software.acellera.com/docs/latest/moleculekit/index.html 
+For the official documentation of the moleculekit API head over to https://software.acellera.com/docs/latest/moleculekit/index.html
+
 ### Issues
 
 For any bugs or questions on usage feel free to use the issue tracker of this github repo.
@@ -75,12 +75,25 @@ If you are using moleculekit without installing it by using the PYTHONPATH env v
 python setup.py build_ext --inplace
 ```
 
+#### Building for WebAssembly
+
+```
+conda create -n pyodide-build
+conda install python=3.10
+pip install pyodide-build==0.22.0.dev0
+pyodide build # Requires some hacking around the pip installation
+cp dist/moleculekit-*wasm32.whl test_wasm/moleculekit-X-cp310-cp310-emscripten_3_1_14_wasm32.whl
+cd test_wasm
+python3 -m http.server
+```
+
+Requires installation of emscripten https://emscripten.org/docs/getting_started/downloads.html specific version
+
 ## Citing MoleculeKit
 
 If you use this software in your publication please cite:
 
-Stefan Doerr, Matthew J. Harvey, Frank Noé, and Gianni De Fabritiis. 
-**HTMD: High-throughput molecular dynamics for molecular discovery.** 
-*Journal of Chemical Theory and Computation*, **2016**, *12* (4), pp 1845–1852.
+Stefan Doerr, Matthew J. Harvey, Frank Noé, and Gianni De Fabritiis.
+**HTMD: High-throughput molecular dynamics for molecular discovery.**
+_Journal of Chemical Theory and Computation_, **2016**, _12_ (4), pp 1845–1852.
 [doi:10.1021/acs.jctc.6b00049](http://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b00049)
-
