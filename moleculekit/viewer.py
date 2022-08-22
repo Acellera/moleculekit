@@ -83,18 +83,26 @@ def _molstar_view(mol, viewname, bonds=None, url=None):
     if not check_port(port):
         _molstar_launch(url)
 
-    psf = tempname(suffix=".psf")
-    xtc = tempname(suffix=".xtc")
-    mol.write(psf, explicitbonds=bonds)
-    mol.write(xtc)
+    trajext = "xtc"
+    if len(np.unique(mol.resname)) == 1:
+        ext = ".mol2"
+        topoext = "mol2"
+    else:
+        ext = ".cif"
+        topoext = "mmcif"
 
-    files = {"psf": ("psf", open(psf, "rb")), "xtc": ("xtc", open(xtc, "rb"))}
-    data = {"topoext": "psf", "label": viewname}
+    topo = tempname(suffix=ext)
+    traj = tempname(suffix=".xtc")
+    mol.write(topo)
+    mol.write(traj)
+
+    files = {"topo": ("topo", open(topo, "rb")), "traj": ("traj", open(traj, "rb"))}
+    data = {"topoext": topoext, "trajext": trajext, "label": viewname}
     response = requests.post(f"{url}/loadMolecule", headers={}, data=data, files=files)
     response.close()
 
-    os.remove(xtc)
-    os.remove(psf)
+    os.remove(traj)
+    os.remove(topo)
 
     t = time.time()
     while viewname not in _molstar_get_mols(url):

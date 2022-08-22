@@ -787,7 +787,7 @@ def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
 
     myDataList = []
     with open(filename, "w") as ofh:
-        curContainer = DataContainer(mol.resname[0])
+        curContainer = DataContainer(mol.resname[0] if single_mol else mol.viewname)
         if atom_block == "chem_comp_atom":
             aCat = DataCategory("chem_comp")
             aCat.appendAttribute("id")
