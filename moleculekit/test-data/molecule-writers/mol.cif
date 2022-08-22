@@ -1,4 +1,4 @@
-data_ILE
+data_filtered.pdb
 #
 #
 loop_
