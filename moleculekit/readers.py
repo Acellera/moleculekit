@@ -164,7 +164,7 @@ class TopologyInconsistencyError(Exception):
 
 
 class MolFactory(object):
-    """ This class converts Topology and Trajectory data into Molecule objects """
+    """This class converts Topology and Trajectory data into Molecule objects"""
 
     @staticmethod
     def construct(
@@ -399,7 +399,7 @@ class MolFactory(object):
 
     @staticmethod
     def _writeNumFrames(filepath, numFrames):
-        """ Write the number of frames in a hidden file. Allows us to check for trajectory length issues before projecting
+        """Write the number of frames in a hidden file. Allows us to check for trajectory length issues before projecting
 
         Parameters
         ----------
@@ -587,13 +587,21 @@ def MOL2read(filename, frame=None, topoloc=None, singlemol=True, validateElement
             logger.warning(
                 f"Mol2 file {filename} contained multiple molecules. Only the first was read."
             )
-        return MolFactory.construct(topologies[0], trajectories[0], filename, frame, validateElements=validateElements)
+        return MolFactory.construct(
+            topologies[0],
+            trajectories[0],
+            filename,
+            frame,
+            validateElements=validateElements,
+        )
     else:
-        return MolFactory.construct(topologies, trajectories, filename, frame, validateElements=validateElements)
+        return MolFactory.construct(
+            topologies, trajectories, filename, frame, validateElements=validateElements
+        )
 
 
 def MAEread(fname, frame=None, topoloc=None):
-    """ Reads maestro files.
+    """Reads maestro files.
 
     Parameters
     ----------
@@ -606,6 +614,7 @@ def MAEread(fname, frame=None, topoloc=None):
     coords : list of lists
     """
     from moleculekit.periodictable import periodictable_by_number
+
     section = None
     section_desc = False
     section_data = False
@@ -1485,7 +1494,7 @@ def XTCread2(filename, frame=None, topoloc=None):
 
 
 def XTCread(filename, frame=None, topoloc=None):
-    """ Reads XTC file
+    """Reads XTC file
 
     Parameters
     ----------
@@ -1597,7 +1606,7 @@ def XTCread(filename, frame=None, topoloc=None):
 
     coords *= 10.0  # Convert from nm to Angstrom
     box *= 10.0  # Convert from nm to Angstrom
-    time *= 1E3  # Convert from ps to fs. This seems to be ACEMD3 specific. GROMACS writes other units in time
+    time *= 1e3  # Convert from ps to fs. This seems to be ACEMD3 specific. GROMACS writes other units in time
     nframes = coords.shape[2]
     if len(step) != nframes or np.sum(step) == 0:
         step = np.arange(nframes)
@@ -1629,7 +1638,13 @@ def XSCread(filename, frame=None, topoloc=None):
 
     return MolFactory.construct(
         None,
-        Trajectory(box=box, step=[step, ], time=np.zeros(1, dtype=np.float32)),
+        Trajectory(
+            box=box,
+            step=[
+                step,
+            ],
+            time=np.zeros(1, dtype=np.float32),
+        ),
         filename,
         frame,
     )
@@ -1673,34 +1688,34 @@ def CRDread(filename, frame=None, topoloc=None):
 
 
 def CRDCARDread(filename, frame=None, topoloc=None):
-    """ https://www.charmmtutorial.org/index.php/CHARMM:The_Basics
-        title = * WATER
-        title = *  DATE:     4/10/07      4:25:51      CREATED BY USER: USER
-        title = *
-        Number of atoms (NATOM)       = 6
-        Atom number (ATOMNO)          = 1 (just an exmaple)
-        Residue number (RESNO)        = 1
-        Residue name (RESName)        = TIP3
-        Atom type (TYPE)              = OH2
-        Coordinate (X)                = -1.30910
-        Coordinate (Y)                = -0.25601
-        Coordinate (Z)                = -0.24045
-        Segment ID (SEGID)            = W
-        Residue ID (RESID)            = 1
-        Atom weight (Weighting)       = 0.00000
+    """https://www.charmmtutorial.org/index.php/CHARMM:The_Basics
+    title = * WATER
+    title = *  DATE:     4/10/07      4:25:51      CREATED BY USER: USER
+    title = *
+    Number of atoms (NATOM)       = 6
+    Atom number (ATOMNO)          = 1 (just an exmaple)
+    Residue number (RESNO)        = 1
+    Residue name (RESName)        = TIP3
+    Atom type (TYPE)              = OH2
+    Coordinate (X)                = -1.30910
+    Coordinate (Y)                = -0.25601
+    Coordinate (Z)                = -0.24045
+    Segment ID (SEGID)            = W
+    Residue ID (RESID)            = 1
+    Atom weight (Weighting)       = 0.00000
 
-        now what that looks like...
+    now what that looks like...
 
-        * WATER
-        *  DATE:     4/10/07      4:25:51      CREATED BY USER: USER
-        *
-            6
-            1    1 TIP3 OH2   -1.30910  -0.25601  -0.24045 W    1      0.00000
-            2    1 TIP3 H1    -1.85344   0.07163   0.52275 W    1      0.00000
-            3    1 TIP3 H2    -1.70410   0.16529  -1.04499 W    1      0.00000
-            4    2 TIP3 OH2    1.37293   0.05498   0.10603 W    2      0.00000
-            5    2 TIP3 H1     1.65858  -0.85643   0.10318 W    2      0.00000
-            6    2 TIP3 H2     0.40780  -0.02508  -0.02820 W    2      0.00000
+    * WATER
+    *  DATE:     4/10/07      4:25:51      CREATED BY USER: USER
+    *
+        6
+        1    1 TIP3 OH2   -1.30910  -0.25601  -0.24045 W    1      0.00000
+        2    1 TIP3 H1    -1.85344   0.07163   0.52275 W    1      0.00000
+        3    1 TIP3 H2    -1.70410   0.16529  -1.04499 W    1      0.00000
+        4    2 TIP3 OH2    1.37293   0.05498   0.10603 W    2      0.00000
+        5    2 TIP3 H1     1.65858  -0.85643   0.10318 W    2      0.00000
+        6    2 TIP3 H2     0.40780  -0.02508  -0.02820 W    2      0.00000
     """
     coords = []
     topo = Topology()
@@ -1813,7 +1828,9 @@ def _guess_element_from_name(name):
     name = name[:2]
     if name[0] in periodictable:
         if name in periodictable:
-            logger.warning(f"Atom name {name} could match either element {name[0]} or {name.capitalize()}. Choosing the first.")
+            logger.warning(
+                f"Atom name {name} could match either element {name[0]} or {name.capitalize()}. Choosing the first."
+            )
         return name[0]
     elif name in periodictable:
         return name
@@ -1977,9 +1994,10 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True):
             val = dtype(fixDefault(row[cryst.getAttributeIndex(source_field)], dtype))
             crystalinfo[target_field] = val
 
-        if "sGroup" in crystalinfo and (isinstance(crystalinfo["sGroup"], str) or not np.isnan(
-            crystalinfo["sGroup"]
-        )):
+        if "sGroup" in crystalinfo and (
+            isinstance(crystalinfo["sGroup"], str)
+            or not np.isnan(crystalinfo["sGroup"])
+        ):
             crystalinfo["sGroup"] = crystalinfo["sGroup"].split()
         topo.crystalinfo = crystalinfo
 
@@ -2030,7 +2048,15 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True):
                 val = row[atom_site.getAttributeIndex(source_field)]
                 val = dtype(fixDefault(val, dtype))
                 if (
-                    source_field in ("label_alt_id", "alt_atom_id", "auth_asym_id", "label_asym_id", "pdbx_PDB_ins_code") and val == "."
+                    source_field
+                    in (
+                        "label_alt_id",
+                        "alt_atom_id",
+                        "auth_asym_id",
+                        "label_asym_id",
+                        "pdbx_PDB_ins_code",
+                    )
+                    and val == "."
                 ):  # Atoms without altloc seem to be stored with a dot
                     val = ""
                 topo.__dict__[target_field].append(val)
@@ -2046,16 +2072,31 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True):
         elif "model_Cartn_x" in attrs:
             coords.append(
                 [
-                    fixDefault(row[atom_site.getAttributeIndex("model_Cartn_x")], float),
-                    fixDefault(row[atom_site.getAttributeIndex("model_Cartn_y")], float),
-                    fixDefault(row[atom_site.getAttributeIndex("model_Cartn_z")], float),
+                    fixDefault(
+                        row[atom_site.getAttributeIndex("model_Cartn_x")], float
+                    ),
+                    fixDefault(
+                        row[atom_site.getAttributeIndex("model_Cartn_y")], float
+                    ),
+                    fixDefault(
+                        row[atom_site.getAttributeIndex("model_Cartn_z")], float
+                    ),
                 ]
             )
             ideal_coords.append(
                 [
-                    fixDefault(row[atom_site.getAttributeIndex("pdbx_model_Cartn_x_ideal")], float),
-                    fixDefault(row[atom_site.getAttributeIndex("pdbx_model_Cartn_y_ideal")], float),
-                    fixDefault(row[atom_site.getAttributeIndex("pdbx_model_Cartn_z_ideal")], float),
+                    fixDefault(
+                        row[atom_site.getAttributeIndex("pdbx_model_Cartn_x_ideal")],
+                        float,
+                    ),
+                    fixDefault(
+                        row[atom_site.getAttributeIndex("pdbx_model_Cartn_y_ideal")],
+                        float,
+                    ),
+                    fixDefault(
+                        row[atom_site.getAttributeIndex("pdbx_model_Cartn_z_ideal")],
+                        float,
+                    ),
                 ]
             )
 
@@ -2083,7 +2124,9 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True):
     coords = allcoords
     if np.any(np.all(allcoords == 0, axis=1)) and len(ideal_allcoords):
         if np.any(np.all(ideal_allcoords == 0, axis=1)) and zerowarning:
-            logger.warning("Found [0, 0, 0] coordinates in molecule! Proceed with caution.")
+            logger.warning(
+                "Found [0, 0, 0] coordinates in molecule! Proceed with caution."
+            )
         coords = ideal_allcoords
 
     return MolFactory.construct(topo, Trajectory(coords=coords), filename, frame)
@@ -2216,7 +2259,9 @@ def PREPIread(filename, frame=None, topoloc=None):
                 impropernames = [impn.upper() for impn in line.split()]
                 not_found = np.setdiff1d(impropernames, names)
                 if len(not_found):
-                    logger.warning(f"Could not find atoms: {', '.join(not_found)}. Skipping reading of improper '{line.strip()}'")
+                    logger.warning(
+                        f"Could not find atoms: {', '.join(not_found)}. Skipping reading of improper '{line.strip()}'"
+                    )
                     continue
                 impropers.append([names.index(impn) for impn in impropernames])
 
@@ -2249,11 +2294,15 @@ def SDFread(filename, frame=None, topoloc=None):
         molend = False
         for line in lines:
             if "V3000" in line:
-                raise RuntimeError("Moleculekit does not support parsing V3000 SDF files yet.")
+                raise RuntimeError(
+                    "Moleculekit does not support parsing V3000 SDF files yet."
+                )
             if line.strip() == "$$$$":
                 molend = True
             elif molend and line.strip() != "":
-                logger.warning("MoleculeKit will only read the first molecule from the SDF file.")
+                logger.warning(
+                    "MoleculeKit will only read the first molecule from the SDF file."
+                )
                 break
 
         topo = Topology()
@@ -2268,7 +2317,13 @@ def SDFread(filename, frame=None, topoloc=None):
         bond_end = bond_start + n_bonds
         for n in range(coord_start, bond_start):
             line = lines[n]
-            coords.append([float(line[:10].strip()), float(line[10:20].strip()), float(line[20:30].strip())])
+            coords.append(
+                [
+                    float(line[:10].strip()),
+                    float(line[10:20].strip()),
+                    float(line[20:30].strip()),
+                ]
+            )
             atom_symbol = line[31:34].strip()
             topo.record.append("HETATM")
             topo.element.append(atom_symbol)
@@ -2311,7 +2366,9 @@ def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
     gtypes = np.array(data.group_type_list).reshape(data.num_models, -1)
     first_coords_only = False
     if np.any(gtypes != gtypes[0]):
-        logger.warning("File contained multiple models with different topologies. Reading only first")
+        logger.warning(
+            "File contained multiple models with different topologies. Reading only first"
+        )
         first_coords_only = True
 
     a_idx = 0
@@ -2325,10 +2382,14 @@ def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
             gr = data.group_list[data.group_type_list[g_idx]]
             resid = data.group_id_list[g_idx]
             ins = data.ins_code_list[g_idx]
-        
+
             # Iterate over atoms in residue
-            for name, elem, fchg in zip(gr["atomNameList"], gr["elementList"], gr["formalChargeList"]):
-                topo.record.append("ATOM" if gr["singleLetterCode"] != "?" else "HETATM")
+            for name, elem, fchg in zip(
+                gr["atomNameList"], gr["elementList"], gr["formalChargeList"]
+            ):
+                topo.record.append(
+                    "ATOM" if gr["singleLetterCode"] != "?" else "HETATM"
+                )
                 topo.resname.append(gr["groupName"])
                 topo.name.append(name)
                 topo.element.append(elem)
@@ -2339,12 +2400,19 @@ def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
                 topo.altloc.append(data.alt_loc_list[a_idx].replace("\x00", ""))
                 topo.insertion.append(ins.replace("\x00", ""))
                 topo.chain.append(data.chain_name_list[chain_idx])
-                topo.segid.append(str(chain_idx))  # Set segid as chain since there is no segid in mmtf
+                topo.segid.append(
+                    str(chain_idx)
+                )  # Set segid as chain since there is no segid in mmtf
                 topo.resid.append(resid)
                 a_idx += 1
 
             for b in range(len(gr["bondOrderList"])):
-                topo.bonds.append([gr["bondAtomList"][b*2]+group_first_a_idx, gr["bondAtomList"][b*2+1]+group_first_a_idx])
+                topo.bonds.append(
+                    [
+                        gr["bondAtomList"][b * 2] + group_first_a_idx,
+                        gr["bondAtomList"][b * 2 + 1] + group_first_a_idx,
+                    ]
+                )
                 topo.bondtype.append(str(gr["bondOrderList"][b]))
 
             g_idx += 1
@@ -2356,23 +2424,43 @@ def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
             continue
         topo.bonds.append(bond_idx)
         topo.bondtype.append(str(data.bond_order_list[b]))
-    
+
     if first_coords_only:
-        coords = np.array([data.x_coord_list[:n_atoms], data.y_coord_list[:n_atoms], data.z_coord_list[:n_atoms]])
+        coords = np.array(
+            [
+                data.x_coord_list[:n_atoms],
+                data.y_coord_list[:n_atoms],
+                data.z_coord_list[:n_atoms],
+            ]
+        )
     else:
-        coords = np.array([data.x_coord_list.reshape(data.num_models, n_atoms), data.y_coord_list.reshape(data.num_models, n_atoms), data.z_coord_list.reshape(data.num_models, n_atoms)])
+        coords = np.array(
+            [
+                data.x_coord_list.reshape(data.num_models, n_atoms),
+                data.y_coord_list.reshape(data.num_models, n_atoms),
+                data.z_coord_list.reshape(data.num_models, n_atoms),
+            ]
+        )
         coords = np.transpose(coords, [2, 0, 1])
     traj = Trajectory(coords=coords)
-    return MolFactory.construct(topo, traj, filename, frame, validateElements=validateElements)
+    return MolFactory.construct(
+        topo, traj, filename, frame, validateElements=validateElements
+    )
 
 
-def ALPHAFOLDread(filename, frame=None, topoloc=None, validateElements=True, uri="https://alphafold.ebi.ac.uk/files/AF-{uniprot}-F1-model_v3.cif"):
+def ALPHAFOLDread(
+    filename,
+    frame=None,
+    topoloc=None,
+    validateElements=True,
+    uri="https://alphafold.ebi.ac.uk/files/AF-{uniprot}-F1-model_v3.cif",
+):
     import urllib.request
     import tempfile
 
     filename = filename[3:].upper()
     with urllib.request.urlopen(uri.format(uniprot=filename)) as f:
-        contents = f.read().decode('utf-8')
+        contents = f.read().decode("utf-8")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpfile = os.path.join(tmpdir, f"{filename}.cif")
@@ -2448,6 +2536,7 @@ for k in _COORDINATE_READERS:
     if k not in _ALL_READERS:
         _ALL_READERS[k] = []
     _ALL_READERS[k] += ensurelist(_COORDINATE_READERS[k])
+
 
 
 class _TestReaders(unittest.TestCase):
