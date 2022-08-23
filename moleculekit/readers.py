@@ -2538,7 +2538,7 @@ for k in _COORDINATE_READERS:
     _ALL_READERS[k] += ensurelist(_COORDINATE_READERS[k])
 
 
-
+# fmt: off
 class _TestReaders(unittest.TestCase):
     def testfolder(self, subname=None):
         from moleculekit.home import home
@@ -2805,7 +2805,6 @@ class _TestReaders(unittest.TestCase):
         assert np.array_equal(mol1.box, ref1box)
         assert np.array_equal(mol1.step, ref1step)
 
-# fmt: off
     def test_pdb_element_guessing(self):
         mol = Molecule(os.path.join(self.testfolder(), 'errors.pdb'))
         refelem = np.array(['C', 'C', 'C', 'C', 'C', 'C', 'C', 'N', 'Na', 'N', 'H', 'H', 'C', 'Cl', 'Ca'], dtype=object)
@@ -2911,6 +2910,7 @@ class _TestReaders(unittest.TestCase):
                 assert mol_equal(mol1, mol2, exceptFields=exc)
 # fmt: on
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import unittest
+
     unittest.main(verbosity=2)
