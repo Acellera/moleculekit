@@ -8,6 +8,10 @@ import numpy as np
 from moleculekit.support import pack_double_buffer, pack_int_buffer, xtc_lib
 from moleculekit.util import sequenceID
 from moleculekit.periodictable import elements_from_masses
+from moleculekit.util import ensurelist
+from moleculekit.molecule import Molecule, mol_equal
+from glob import glob
+import unittest
 import os
 import re
 import logging
@@ -1408,53 +1412,53 @@ def PSFread(filename, frame=None, topoloc=None, validateElements=True):
                 mode = None
 
             if mode == "atom":
-                l = line.split()
-                topo.serial.append(l[0])
-                topo.segid.append(l[1])
-                match = residinsertion.findall(l[2])
+                ll = line.split()
+                topo.serial.append(ll[0])
+                topo.segid.append(ll[1])
+                match = residinsertion.findall(ll[2])
                 if match:
                     resid = int(match[0][0])
                     insertion = match[0][1]
                 else:
-                    resid = int(l[2])
+                    resid = int(ll[2])
                     insertion = ""
                 topo.resid.append(resid)
                 topo.insertion.append(insertion)
-                topo.resname.append(l[3])
-                topo.name.append(l[4])
-                topo.atomtype.append(l[5] if l[5] != "NULL" else "")
-                topo.charge.append(float(l[6]))
-                topo.masses.append(float(l[7]))
+                topo.resname.append(ll[3])
+                topo.name.append(ll[4])
+                topo.atomtype.append(ll[5] if ll[5] != "NULL" else "")
+                topo.charge.append(float(ll[6]))
+                topo.masses.append(float(ll[7]))
             elif mode == "bond":
-                l = line.split()
-                for x in range(0, len(l), 2):
-                    topo.bonds.append([int(l[x]) - 1, int(l[x + 1]) - 1])
+                ll = line.split()
+                for x in range(0, len(ll), 2):
+                    topo.bonds.append([int(ll[x]) - 1, int(ll[x + 1]) - 1])
             elif mode == "angle":
-                l = line.split()
-                for x in range(0, len(l), 3):
+                ll = line.split()
+                for x in range(0, len(ll), 3):
                     topo.angles.append(
-                        [int(l[x]) - 1, int(l[x + 1]) - 1, int(l[x + 2]) - 1]
+                        [int(ll[x]) - 1, int(ll[x + 1]) - 1, int(ll[x + 2]) - 1]
                     )
             elif mode == "dihedral":
-                l = line.split()
-                for x in range(0, len(l), 4):
+                ll = line.split()
+                for x in range(0, len(ll), 4):
                     topo.dihedrals.append(
                         [
-                            int(l[x]) - 1,
-                            int(l[x + 1]) - 1,
-                            int(l[x + 2]) - 1,
-                            int(l[x + 3]) - 1,
+                            int(ll[x]) - 1,
+                            int(ll[x + 1]) - 1,
+                            int(ll[x + 2]) - 1,
+                            int(ll[x + 3]) - 1,
                         ]
                     )
             elif mode == "improper":
-                l = line.split()
-                for x in range(0, len(l), 4):
+                ll = line.split()
+                for x in range(0, len(ll), 4):
                     topo.impropers.append(
                         [
-                            int(l[x]) - 1,
-                            int(l[x + 1]) - 1,
-                            int(l[x + 2]) - 1,
-                            int(l[x + 3]) - 1,
+                            int(ll[x]) - 1,
+                            int(ll[x + 1]) - 1,
+                            int(ll[x + 2]) - 1,
+                            int(ll[x + 3]) - 1,
                         ]
                     )
 
@@ -1474,6 +1478,10 @@ def PSFread(filename, frame=None, topoloc=None, validateElements=True):
     return MolFactory.construct(
         topo, None, filename, frame, validateElements=validateElements
     )
+
+
+def XTCread2(filename, frame=None, topoloc=None):
+    pass
 
 
 def XTCread(filename, frame=None, topoloc=None):
@@ -1621,7 +1629,7 @@ def XSCread(filename, frame=None, topoloc=None):
 
     return MolFactory.construct(
         None,
-        Trajectory(box=box, step=[step,], time=np.zeros(1, dtype=np.float32)),
+        Trajectory(box=box, step=[step, ], time=np.zeros(1, dtype=np.float32)),
         filename,
         frame,
     )
@@ -1642,7 +1650,7 @@ def CRDread(filename, frame=None, topoloc=None):
         natoms = None
         try:
             natoms = int(lines[1])
-        except:
+        except Exception:
             logger.warning(
                 "Didn't find number of atoms in CRD file. Will read until the end."
             )
@@ -1795,6 +1803,7 @@ def MDTRAJTOPOread(filename, frame=None, topoloc=None):
     topo.bonds = bonds
     return MolFactory.construct(topo, Trajectory(coords=coords), filename, frame)
 
+
 def _guess_element_from_name(name):
     from moleculekit.periodictable import periodictable
 
@@ -1810,6 +1819,7 @@ def _guess_element_from_name(name):
         return name
     else:
         return name[0]
+
 
 def GROTOPread(filename, frame=None, topoloc=None):
     # Reader for GROMACS .top file format:
@@ -2250,8 +2260,8 @@ def SDFread(filename, frame=None, topoloc=None):
         coords = []
         mol_start = 0
 
-        n_atoms = int(lines[mol_start+3][:3])
-        n_bonds = int(lines[mol_start+3][3:6])
+        n_atoms = int(lines[mol_start + 3][:3])
+        n_bonds = int(lines[mol_start + 3][3:6])
 
         coord_start = mol_start + 4
         bond_start = coord_start + n_atoms
@@ -2263,7 +2273,7 @@ def SDFread(filename, frame=None, topoloc=None):
             topo.record.append("HETATM")
             topo.element.append(atom_symbol)
             topo.name.append(atom_symbol)
-            topo.serial.append(n-coord_start)
+            topo.serial.append(n - coord_start)
             topo.formalcharge.append(chargemap[line[36:39].strip()])
 
         for n in range(bond_start, bond_end):
@@ -2271,7 +2281,7 @@ def SDFread(filename, frame=None, topoloc=None):
             idx1 = line[:3].strip()
             idx2 = line[3:6].strip()
             bond_type = line[6:9].strip()
-            topo.bonds.append([int(idx1)-1, int(idx2)-1])
+            topo.bonds.append([int(idx1) - 1, int(idx2) - 1])
             topo.bondtype.append(bond_type)
 
         for line in lines[bond_end:]:
@@ -2280,7 +2290,7 @@ def SDFread(filename, frame=None, topoloc=None):
             if line.startswith("M  CHG"):  # These charges are more correct
                 pairs = line.strip().split()[3:]
                 for cc in range(0, len(pairs), 2):
-                    topo.formalcharge[int(pairs[cc])-1] = int(pairs[cc+1])
+                    topo.formalcharge[int(pairs[cc]) - 1] = int(pairs[cc + 1])
 
     traj = Trajectory(coords=np.vstack(coords))
     return MolFactory.construct(topo, traj, filename, frame)
@@ -2341,7 +2351,7 @@ def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
 
     n_atoms = len(topo.name)
     for b in range(len(data.bond_order_list)):
-        bond_idx = [data.bond_atom_list[b*2], data.bond_atom_list[b*2+1]]
+        bond_idx = [data.bond_atom_list[b * 2], data.bond_atom_list[b * 2 + 1]]
         if np.any(bond_idx[0] >= n_atoms or bond_idx[1] >= n_atoms):
             continue
         topo.bonds.append(bond_idx)
@@ -2413,7 +2423,7 @@ for ext in _MDTRAJ_TOPOLOGY_EXTS:
     if ext not in _TOPOLOGY_READERS:
         _TOPOLOGY_READERS[ext] = MDTRAJTOPOread
 
-_TRAJECTORY_READERS = {"xtc": XTCread, "xsc": XSCread}
+_TRAJECTORY_READERS = {"xtc": XTCread, "xtc2": XTCread2, "xsc": XSCread}
 
 _COORDINATE_READERS = {"crd": CRDread, "coor": BINCOORread}
 
@@ -2422,7 +2432,6 @@ for ext in _MDTRAJ_TRAJECTORY_EXTS:
     if ext not in _TRAJECTORY_READERS:
         _TRAJECTORY_READERS[ext] = MDTRAJread
 
-from moleculekit.util import ensurelist
 
 _ALL_READERS = {}
 for k in _TOPOLOGY_READERS:
@@ -2441,11 +2450,6 @@ for k in _COORDINATE_READERS:
     _ALL_READERS[k] += ensurelist(_COORDINATE_READERS[k])
 
 
-from moleculekit.molecule import Molecule, mol_equal
-from glob import glob
-import unittest
-
-
 class _TestReaders(unittest.TestCase):
     def testfolder(self, subname=None):
         from moleculekit.home import home
@@ -2457,18 +2461,18 @@ class _TestReaders(unittest.TestCase):
     def test_pdb(self):
         from moleculekit.home import home
         for f in glob(os.path.join(self.testfolder(), '*.pdb')):
-            mol = Molecule(f)
+            _ = Molecule(f)
         for f in glob(os.path.join(home(dataDir='pdb/'), '*.pdb')):
-            mol = Molecule(f)
+            _ = Molecule(f)
         
     def test_pdbqt(self):
-        mol = Molecule(os.path.join(self.testfolder(), '3ptb.pdbqt'))
+        _ = Molecule(os.path.join(self.testfolder(), '3ptb.pdbqt'))
 
     def test_psf(self):
-        mol = Molecule(os.path.join(self.testfolder('4RWS'), 'structure.psf'))
+        _ = Molecule(os.path.join(self.testfolder('4RWS'), 'structure.psf'))
 
     def test_xtc(self):
-        mol = Molecule(os.path.join(self.testfolder('4RWS'), 'traj.xtc'))
+        _ = Molecule(os.path.join(self.testfolder('4RWS'), 'traj.xtc'))
 
     def test_combine_topo_traj(self):
         testfolder = self.testfolder('4RWS')
@@ -2477,16 +2481,16 @@ class _TestReaders(unittest.TestCase):
 
     def test_prmtop(self):
         testfolder = self.testfolder('3AM6')
-        mol = Molecule(os.path.join(testfolder, 'structure.prmtop'))
+        _ = Molecule(os.path.join(testfolder, 'structure.prmtop'))
 
     def test_crd(self):
         testfolder = self.testfolder('3AM6')
-        mol = Molecule(os.path.join(testfolder, 'structure.crd'))
+        _ = Molecule(os.path.join(testfolder, 'structure.crd'))
 
     def test_mol2(self):
         testfolder = self.testfolder('3L5E')
-        mol = Molecule(os.path.join(testfolder, 'protein.mol2'))
-        mol = Molecule(os.path.join(testfolder, 'ligand.mol2'))
+        _ = Molecule(os.path.join(testfolder, 'protein.mol2'))
+        _ = Molecule(os.path.join(testfolder, 'ligand.mol2'))
 
     def test_sdf(self):
         import pickle
@@ -2520,19 +2524,19 @@ class _TestReaders(unittest.TestCase):
 
     def test_gjf(self):
         testfolder = self.testfolder('3L5E')
-        mol = Molecule(os.path.join(testfolder, 'ligand.gjf'))
+        _ = Molecule(os.path.join(testfolder, 'ligand.gjf'))
 
     def test_xyz(self):
         testfolder = self.testfolder('3L5E')
-        mol = Molecule(os.path.join(testfolder, 'ligand.xyz'))
+        _ = Molecule(os.path.join(testfolder, 'ligand.xyz'))
 
     def test_MDTRAJTOPOread(self):
         testfolder = self.testfolder('3L5E')
-        mol = Molecule(os.path.join(testfolder, 'ligand.mol2'))
+        _ = Molecule(os.path.join(testfolder, 'ligand.mol2'))
 
     def test_mae(self):
         for f in glob(os.path.join(self.testfolder(), '*.mae')):
-            mol = Molecule(f)
+            _ = Molecule(f)
 
     def test_append_trajectories(self):
         testfolder = self.testfolder('CMYBKIX')
@@ -2540,7 +2544,7 @@ class _TestReaders(unittest.TestCase):
         mol.read(glob(os.path.join(testfolder, '*.xtc')))
 
     def test_missing_crystal_info(self):
-        mol = Molecule(os.path.join(self.testfolder(), 'weird-cryst.pdb'))
+        _ = Molecule(os.path.join(self.testfolder(), 'weird-cryst.pdb'))
 
     def test_missing_occu_beta(self):
         mol = Molecule(os.path.join(self.testfolder(), 'opm_missing_occu_beta.pdb'))
@@ -2550,18 +2554,15 @@ class _TestReaders(unittest.TestCase):
         assert np.all(mol.beta[2141:] == 0)
 
     def test_dcd(self):
-        from moleculekit.home import home
         mol = Molecule(os.path.join(self.testfolder('dcd'), '1kdx_0.pdb'))
         mol.read(os.path.join(self.testfolder('dcd'), '1kdx.dcd'))
 
     def test_dcd_into_prmtop(self):
-        from moleculekit.home import home
         mol = Molecule(os.path.join(self.testfolder(), 'dialanine', 'structure.prmtop'))
         mol.read(os.path.join(self.testfolder(), 'dialanine', 'traj.dcd'))
         assert mol.numFrames == 2
 
     def test_dcd_frames(self):
-        from moleculekit.home import home
         mol = Molecule(os.path.join(self.testfolder('dcd'), '1kdx_0.pdb'))
         mol.read(os.path.join(self.testfolder('dcd'), '1kdx.dcd'))
         tmpcoo = mol.coords.copy()
@@ -2630,7 +2631,6 @@ class _TestReaders(unittest.TestCase):
                                                 [0, 2, 5, 1]])
         assert len(mol.impropers) == 0
 
-
     def test_mmcif_single_frame(self):
         mol = Molecule(os.path.join(self.testfolder(), '1ffk.cif'))
         assert mol.numAtoms == 64281
@@ -2655,7 +2655,6 @@ class _TestReaders(unittest.TestCase):
         assert mol.numFrames == 1
 
     def test_multiple_file_fileloc(self):
-        from moleculekit.home import home
         mol = Molecule(os.path.join(self.testfolder('multi-traj'), 'structure.pdb'))
         mol.read(glob(os.path.join(self.testfolder('multi-traj'), 'data', '*', '*.xtc')))
         # Try to vstack fileloc. This will fail with wrong fileloc shape
@@ -2664,7 +2663,6 @@ class _TestReaders(unittest.TestCase):
         print('Correct fileloc shape with multiple file reading.')
 
     def test_topo_overwriting(self):
-        from moleculekit.home import home
         # Testing overwriting of topology fields
         mol = Molecule(os.path.join(self.testfolder('multi-topo'), 'mol.psf'))
         atomtypes = mol.atomtype.copy()
