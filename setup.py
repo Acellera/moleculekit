@@ -35,6 +35,7 @@ extentions = [
     "moleculekit/wrapping/wrapping.pyx",
     "moleculekit/bondguesser_utils/bondguesser_utils.pyx",
     "moleculekit/atomselect_utils/atomselect_utils.pyx",
+    "moleculekit/distance_utils/distance_utils.pyx",
 ]
 extentions = [
     Extension(
@@ -42,15 +43,26 @@ extentions = [
         sources=[ext],
         include_dirs=[numpy.get_include()],
         language="c++",
-        # extra_compile_args=["-fopenmp"],
+        extra_compile_args=["-O3"],
         # extra_link_args=["-fopenmp"],
     )
     for ext in extentions
 ]
-# extra_compile_args = ["-O3",]
-# extra_compile_args=extra_compile_args
-# libraries=["examples"],
-# library_dirs=["lib"],
+# compiler_args = ["-Wno-unused-function", "-Wno-unreachable-code", "-Wno-sign-compare"]
+# extentions.append(
+#     Extension(
+#         os.path.dirname("moleculekit.xtc"),
+#         sources=[
+#             "moleculekit/xtc/src/xdrfile.c",
+#             "moleculekit/xtc/src/xdr_seek.c",
+#             "moleculekit/xtc/src/xdrfile_xtc.c",
+#             "moleculekit/xtc/xtc.pyx",
+#         ],
+#         include_dirs=["moleculekit/xtc/include/", "moleculekit/xtc/"],
+#         extra_compile_args=compiler_args,
+#     )
+# )
+
 
 if __name__ == "__main__":
     with open("README.md", "r") as fh:
@@ -78,7 +90,6 @@ if __name__ == "__main__":
         ),
         package_data={
             "moleculekit": [
-                "lib/*/*",
                 "vmd_wrapper",
                 "logging.ini",
                 "share/*/*/*",

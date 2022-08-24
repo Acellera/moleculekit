@@ -12,14 +12,11 @@ logger = logging.getLogger(__name__)
 def pp_calcDistances(
     mol, sel1, sel2, periodic, metric="distances", threshold=8, gap=1, truncate=None
 ):
-    import os
-    import ctypes
-    from moleculekit.home import home
+    from moleculekit.distance_utils import dist_trajectory
 
     selfdist = np.array_equal(sel1, sel2)
-
-    sel1 = np.where(sel1)[0].astype(np.int32)
-    sel2 = np.where(sel2)[0].astype(np.int32)
+    sel1 = np.where(sel1)[0].astype(np.uint32)
+    sel2 = np.where(sel2)[0].astype(np.uint32)
 
     coords = mol.coords
     box = mol.box
@@ -40,33 +37,31 @@ def pp_calcDistances(
 
     # Digitize chains to not do PBC calculations of the same chain
     if periodic is None:  # Won't be used since box is 0
-        digitized_chains = np.zeros(mol.numAtoms, dtype=np.int32)
+        digitized_chains = np.zeros(mol.numAtoms, dtype=np.uint32)
     elif periodic == "chains":
-        digitized_chains = np.unique(mol.chain, return_inverse=True)[1].astype(np.int32)
+        digitized_chains = np.unique(mol.chain, return_inverse=True)[1].astype(
+            np.uint32
+        )
     elif periodic == "selections":
-        digitized_chains = np.ones(mol.numAtoms, dtype=np.int32)
+        digitized_chains = np.ones(mol.numAtoms, dtype=np.uint32)
         digitized_chains[sel2] = 2
+    else:
+        raise RuntimeError(f"Invalid periodic option {periodic}")
 
-    # Running the actual calculations
-    lib = ctypes.cdll.LoadLibrary(os.path.join(home(libDir=True), "dist_ext.so"))
     shape = (mol.numFrames, len(sel1) * len(sel2))
     if selfdist:
         shape = (mol.numFrames, int((len(sel1) * (len(sel2) - 1)) / 2))
     results = np.zeros(shape, dtype=np.float32)
 
-    lib.dist_trajectory(
-        coords.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-        box.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-        sel1.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-        sel2.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-        digitized_chains.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-        ctypes.c_int(len(sel1)),
-        ctypes.c_int(len(sel2)),
-        ctypes.c_int(mol.numAtoms),
-        ctypes.c_int(mol.numFrames),
-        ctypes.c_int(int(periodic is not None)),
-        ctypes.c_int(int(selfdist)),
-        results.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+    dist_trajectory(
+        coords,
+        box,
+        sel1,
+        sel2,
+        digitized_chains,
+        selfdist,
+        periodic is not None,
+        results,
     )
 
     if truncate is not None:
@@ -86,9 +81,7 @@ def pp_calcDistances(
 def pp_calcMinDistances(
     mol, sel1, sel2, periodic, metric="distances", threshold=8, gap=1, truncate=None
 ):
-    import os
-    import ctypes
-    from moleculekit.home import home
+    from moleculekit.distance_utils import mindist_trajectory
 
     # Converting non-grouped boolean atomselection to group-style atomselections
     if np.ndim(sel1) != 2:
@@ -131,16 +124,17 @@ def pp_calcMinDistances(
 
     # Digitize chains to not do PBC calculations of the same chain
     if periodic is None:  # Won't be used since box is 0
-        digitized_chains = np.zeros(mol.numAtoms, dtype=np.int32)
+        digitized_chains = np.zeros(mol.numAtoms, dtype=np.uint32)
     elif periodic == "chains":
-        digitized_chains = np.unique(mol.chain, return_inverse=True)[1].astype(np.int32)
+        digitized_chains = np.unique(mol.chain, return_inverse=True)[1].astype(
+            np.uint32
+        )
     elif periodic == "selections":
-        digitized_chains = np.ones(mol.numAtoms, dtype=np.int32)
+        digitized_chains = np.ones(mol.numAtoms, dtype=np.uint32)
         for i in range(sel2.shape[0]):
             digitized_chains[sel2[i, :]] = 2
 
     # Running the actual calculations
-    lib = ctypes.cdll.LoadLibrary(os.path.join(home(libDir=True), "mindist_ext.so"))
     mindist = np.zeros(
         (mol.numFrames, len(groups1) * len(groups2)), dtype=np.float32
     )  # Preparing the return array
@@ -152,19 +146,15 @@ def pp_calcMinDistances(
 
     # import time
     # t = time.time()
-    lib.mindist_trajectory(
-        coords.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-        box.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-        groups1.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-        groups2.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-        digitized_chains.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-        ctypes.c_int(len(groups1)),
-        ctypes.c_int(len(groups2)),
-        ctypes.c_int(mol.numAtoms),
-        ctypes.c_int(mol.numFrames),
-        ctypes.c_int(int(periodic is not None)),
-        ctypes.c_int(int(selfdist)),
-        mindist.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
+    mindist_trajectory(
+        coords,
+        box,
+        groups1,
+        groups2,
+        digitized_chains,
+        selfdist,
+        periodic is not None,
+        mindist,
     )
     # print(time.time() - t)
 
