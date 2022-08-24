@@ -40,6 +40,9 @@ def isLigandOptimized(mol):
     """Checks if a ligand is optimized. If all dihedral angles are 0 it means it's flat."""
     from moleculekit.util import guessAnglesAndDihedrals
 
+    if mol.numAtoms <= 3:  # Can't check for planarity with <=3 atoms
+        return True
+
     if not len(mol.bonds):
         mol.bonds = mol._guessBonds()
 
