@@ -36,6 +36,7 @@ extentions = [
     "moleculekit/bondguesser_utils/bondguesser_utils.pyx",
     "moleculekit/atomselect_utils/atomselect_utils.pyx",
     "moleculekit/distance_utils/distance_utils.pyx",
+    "moleculekit/occupancy_utils/occupancy_utils.pyx",
 ]
 extentions = [
     Extension(

@@ -5,7 +5,6 @@
 #
 from moleculekit.util import boundingBox
 import numpy as np
-import ctypes
 import moleculekit.home
 import os
 import unittest
@@ -25,8 +24,6 @@ _order = (
     "metal",
     "occupancies",
 )
-libdir = moleculekit.home.home(libDir=True)
-occupancylib = ctypes.cdll.LoadLibrary(os.path.join(libdir, "occupancy_ext.so"))
 
 
 def viewVoxelFeatures(
@@ -437,6 +434,8 @@ def _findDonors(mol, bonds):
 
 def _getOccupancyC(coords, centers, channelsigmas):
     """Calls the C code to calculate the voxels values for each property."""
+    from moleculekit.occupancy_utils import calculate_occupancy
+
     coords = coords.astype(np.float32)
     centers = centers.astype(np.float64)
     channelsigmas = channelsigmas.astype(np.float64)
@@ -450,16 +449,7 @@ def _getOccupancyC(coords, centers, channelsigmas):
 
     nchannels = channelsigmas.shape[1]
     occus = np.zeros((centers.shape[0], nchannels))
-
-    occupancylib.descriptor_ext(
-        centers.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        coords.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-        channelsigmas.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        occus.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-        ctypes.c_int(occus.shape[0]),  # n of centers
-        ctypes.c_int(coords.shape[0]),  # n of atoms
-        ctypes.c_int(nchannels),
-    )  # n of channels
+    calculate_occupancy(centers, coords, channelsigmas, occus)
     return occus
 
 
