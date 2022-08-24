@@ -353,7 +353,7 @@ class MolFactory(object):
             topoloc = "StringIO"
             fileloc = [["StringIO", 0]]
             viewname = "StringIO"
-        elif os.path.exists(filename):
+        else:
             topoloc = os.path.abspath(filename)
             fileloc = [[filename, 0]]
             viewname = os.path.basename(filename)
