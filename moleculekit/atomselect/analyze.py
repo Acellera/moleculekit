@@ -99,7 +99,7 @@ def analyze(mol: Molecule, bonds, _profile=False):
         analyze_molecule(
             mol.numAtoms,
             bonds,
-            mol.resid,
+            mol.resid.astype(np.int64),
             insertion,
             chain_id,
             seg_id,
