@@ -119,10 +119,13 @@
           );
         namespace.destroy();
 
+        const filedata = await fetch('/3ptb.pdb')
+        let pdbtxt = await filedata.text();
+        pdbtxt = pdbtxt.replace(/\n/g, "\\n");
+        
         pyodide.runPython(`
             from io import StringIO
-            txt = "\\nATOM     36  N   THR A  21     -13.132   1.072  21.325  1.00 13.83      0    N  \\nATOM     37  CA  THR A  21     -12.929   0.975  22.777  1.00 13.83      0    C  \\nATOM     38  C   THR A  21     -12.122  -0.272  23.103  1.00 13.83      0    C  \\nATOM     39  O   THR A  21     -12.472  -1.400  22.653  1.00 13.83      0    O  \\nATOM     40  CB  THR A  21     -14.306   0.754  23.449  1.00 13.83      0    C  \\nATOM     41  OG1 THR A  21     -15.110   1.853  23.154  1.00 16.33      0    O  \\nATOM     42  CG2 THR A  21     -14.161   0.557  24.975  1.00 16.33      0    C  \\nATOM     43  N   CYS A  22     -10.966  -0.044  23.620  1.00 11.11      0    N  "
-            stxt = StringIO(txt)
+            stxt = StringIO("${pdbtxt}")
             from moleculekit.molecule import Molecule
             mol = Molecule(stxt, type="pdb")
         `)
