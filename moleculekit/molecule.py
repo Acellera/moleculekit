@@ -1091,6 +1091,7 @@ class Molecule(object):
 
         # If a single filename is specified, turn it into an array so we can iterate
         from moleculekit.util import ensurelist
+        from io import StringIO
 
         filename = ensurelist(filename)
 
@@ -1107,6 +1108,7 @@ class Molecule(object):
             if (
                 not isinstance(ff, Sim)
                 and not isinstance(ff, Frame)
+                and not isinstance(ff, StringIO)
                 and len(ff) != 4
                 and not os.path.isfile(ff)
                 and not ff.startswith("AF-")
@@ -1125,7 +1127,8 @@ class Molecule(object):
 
         newmols = []
         for fname, frame in zip(filename, frames):
-            fname = self._unzip(fname)
+            if not isinstance(fname, StringIO):
+                fname = self._unzip(fname)
             ext = self._getExt(fname, type)
 
             # To use MDTraj we need to write out a PDB file to use it to read the trajs

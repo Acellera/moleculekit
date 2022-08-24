@@ -10,6 +10,7 @@ from moleculekit.util import sequenceID
 from moleculekit.periodictable import elements_from_masses
 from moleculekit.util import ensurelist
 from moleculekit.molecule import Molecule, mol_equal
+from contextlib import contextmanager
 from glob import glob
 import unittest
 import os
@@ -17,6 +18,25 @@ import re
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def openFileOrStringIO(strData, mode=None):
+    from io import StringIO
+    import os
+
+    if isinstance(strData, StringIO):
+        try:
+            yield strData
+        finally:
+            strData.close()
+    elif os.path.exists(strData):
+        try:
+            fi = open(strData, mode)
+            yield fi
+        finally:
+            fi.close()
+
 
 # Pandas NA values taken from https://github.com/pydata/pandas/blob/6645b2b11a82343e5f07b15a25a250f411067819/pandas/io/common.py
 # Removed NA because it's natrium!
@@ -281,6 +301,7 @@ class MolFactory(object):
     @staticmethod
     def _parseTopology(mol, topo, filename, validateElements=True, uniqueBonds=True):
         from moleculekit.molecule import Molecule
+        import io
 
         for field in topo.__dict__:
             if field == "crystalinfo":
@@ -328,17 +349,29 @@ class MolFactory(object):
 
             mol.bonds, mol.bondtype = calculateUniqueBonds(mol.bonds, mol.bondtype)
 
-        if os.path.exists(filename):
-            filename = os.path.abspath(filename)
-        mol.topoloc = filename
-        mol.fileloc = [[filename, 0]]
-        mol.viewname = os.path.basename(filename)
+        if isinstance(filename, io.StringIO):
+            topoloc = "StringIO"
+            fileloc = [["StringIO", 0]]
+            viewname = "StringIO"
+        elif os.path.exists(filename):
+            topoloc = os.path.abspath(filename)
+            fileloc = [[filename, 0]]
+            viewname = os.path.basename(filename)
+
+        mol.topoloc = topoloc
+        mol.fileloc = fileloc
+        mol.viewname = viewname
 
     @staticmethod
     def _parseTraj(mol, traj, filename, frame):
         from moleculekit.molecule import Molecule
+        import io
 
-        ext = os.path.splitext(filename)[1][1:]
+        ext = (
+            os.path.splitext(filename)[1][1:]
+            if not isinstance(filename, io.StringIO)
+            else ""
+        )
 
         if len(traj.coords):
             assert (
@@ -385,7 +418,7 @@ class MolFactory(object):
 
         if ext in _TRAJECTORY_READERS and frame is None and len(traj.coords):
             # Writing hidden index file containing number of frames in trajectory file
-            if os.path.isfile(filename):
+            if not isinstance(filename, io.StringIO) and os.path.isfile(filename):
                 MolFactory._writeNumFrames(filename, mol.numFrames)
             ff = range(mol.numFrames)
             # tr.step = tr.step + traj[-1].step[-1] + 1
@@ -395,7 +428,11 @@ class MolFactory(object):
             ff = [frame]
         else:
             raise AssertionError("Should not reach here")
-        mol.fileloc = [[filename, j] for j in ff]
+
+        if isinstance(filename, io.StringIO):
+            mol.fileloc = [["StringIO", j] for j in ff]
+        else:
+            mol.fileloc = [[filename, j] for j in ff]
 
     @staticmethod
     def _writeNumFrames(filepath, numFrames):
@@ -834,7 +871,9 @@ def PDBread(
 
     tempfile = False
     if (
-        not os.path.isfile(filename) and len(filename) == 4
+        not isinstance(filename, io.StringIO)
+        and not os.path.isfile(filename)
+        and len(filename) == 4
     ):  # Could be a PDB id. Try to load it from the PDB website
         filename, tempfile = _getPDB(filename)
 
@@ -1043,7 +1082,7 @@ def PDBread(
 
     coords = None
 
-    with open(filename, "r") as f:
+    with openFileOrStringIO(filename, "r") as f:
         for line in f:
             if line.startswith("CRYST1"):
                 cryst1data.write(line)
