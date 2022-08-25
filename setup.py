@@ -59,8 +59,29 @@ extentions.append(
             "moleculekit/xtc_utils/src/xtc.c",
             "moleculekit/xtc_utils/xtc.pyx",
         ],
-        include_dirs=["moleculekit/xtc_utils/include/", "moleculekit/xtc_utils/"],
+        include_dirs=[
+            "moleculekit/xtc_utils/include/",
+            "moleculekit/xtc_utils/",
+            numpy.get_include(),
+        ],
         extra_compile_args=compiler_args,
+    )
+)
+compiler_args = ["-w"]
+extentions.append(
+    Extension(
+        "moleculekit.tmalign",
+        sources=[
+            "moleculekit/tmalign/src/TMAlign.cpp",
+            "moleculekit/tmalign/tmalign_util.pyx",
+        ],
+        include_dirs=[
+            "moleculekit/tmalign/include/",
+            "moleculekit/tmalign/",
+            numpy.get_include(),
+        ],
+        extra_compile_args=compiler_args,
+        language="c++",
     )
 )
 
