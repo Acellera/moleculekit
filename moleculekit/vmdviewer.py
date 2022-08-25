@@ -11,7 +11,7 @@ import queue
 import time
 import os
 import sys
-from moleculekit.support import string_to_tempfile
+from moleculekit.util import string_to_tempfile
 import numpy as np
 import tempfile
 import logging

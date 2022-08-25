@@ -60,7 +60,7 @@ def getRCSBLigandByLigname(ligname, returnMol2=False):
     '/tmp/tmp....mol2'
 
     """
-    from moleculekit.support import string_to_tempfile
+    from moleculekit.util import string_to_tempfile
     from moleculekit.smallmol.smallmol import SmallMol
     from moleculekit.rcsb import _getRCSBtext
     from moleculekit.tools.obabel_tools import openbabelConvert

@@ -3,9 +3,7 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
-import ctypes as ct
 import numpy as np
-from moleculekit.support import pack_double_buffer, pack_int_buffer, xtc_lib
 from moleculekit.util import sequenceID
 from moleculekit.periodictable import elements_from_masses
 from moleculekit.util import ensurelist
@@ -774,7 +772,7 @@ def MAEread(fname, frame=None, topoloc=None):
 
 
 def _getPDB(pdbid):
-    from moleculekit.support import string_to_tempfile
+    from moleculekit.util import string_to_tempfile
     from moleculekit.home import home
 
     # Try loading it from the pdb data directory

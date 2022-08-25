@@ -4,10 +4,8 @@
 # No redistribution in whole or part
 #
 import numpy as np
-import ctypes as ct
 import os
 from moleculekit.molecule import mol_equal
-from moleculekit.support import xtc_lib
 from moleculekit.util import ensurelist, sequenceID
 import networkx as nx
 import logging
@@ -231,8 +229,9 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode="pdb"):
 
 
 def XTCwrite(mol, filename):
-    coords = mol.coords
+    from moleculekit.xtc import write_xtc
 
+    coords = mol.coords
     nframes = mol.numFrames
 
     box = np.zeros((3, nframes), dtype=np.float32)
@@ -268,23 +267,7 @@ def XTCwrite(mol, filename):
     if not coords.flags["C_CONTIGUOUS"]:
         coords = np.ascontiguousarray(coords)
 
-    lib = xtc_lib()
-    natoms = ct.c_int(coords.shape[0])
-    nframes = ct.c_int(coords.shape[2])
-
-    cstep = step.ctypes.data_as(ct.POINTER(ct.c_int))
-    ctime = time.ctypes.data_as(ct.POINTER(ct.c_float))
-    cbox = box.ctypes.data_as(ct.POINTER(ct.c_float))
-    ccoords = coords.ctypes.data_as(ct.POINTER(ct.c_float))
-    lib["libxtc"].xtc_write(
-        ct.c_char_p(filename.encode("ascii")),
-        natoms,
-        nframes,
-        cstep,
-        ctime,
-        ccoords,
-        cbox,
-    )
+    write_xtc(filename.encode("UTF-8"), coords, box, time, step)
 
 
 def BINCOORwrite(mol, filename):

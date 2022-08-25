@@ -528,7 +528,6 @@ def opm(pdb, keep=False, keepaltloc="A"):
     """
     import urllib.request
     import re
-    from moleculekit.support import string_to_tempfile
     from moleculekit.molecule import Molecule
 
     response = urllib.request.urlopen(
@@ -871,6 +870,13 @@ def check_port(port, host="127.0.0.1", timeout=120):
         return True
     except OSError:
         return False
+
+
+def string_to_tempfile(content, ext):
+    f = NamedTemporaryFile(delete=False, suffix="." + ext)
+    f.write(content.encode("ascii", "ignore"))
+    f.close()
+    return f.name
 
 
 if __name__ == "__main__":
