@@ -49,20 +49,20 @@ extentions = [
     )
     for ext in extentions
 ]
-# compiler_args = ["-Wno-unused-function", "-Wno-unreachable-code", "-Wno-sign-compare"]
-# extentions.append(
-#     Extension(
-#         os.path.dirname("moleculekit.xtc"),
-#         sources=[
-#             "moleculekit/xtc/src/xdrfile.c",
-#             "moleculekit/xtc/src/xdr_seek.c",
-#             "moleculekit/xtc/src/xdrfile_xtc.c",
-#             "moleculekit/xtc/xtc.pyx",
-#         ],
-#         include_dirs=["moleculekit/xtc/include/", "moleculekit/xtc/"],
-#         extra_compile_args=compiler_args,
-#     )
-# )
+compiler_args = ["-Wno-unused-function", "-Wno-unreachable-code", "-Wno-sign-compare"]
+extentions.append(
+    Extension(
+        "moleculekit.xtc",
+        sources=[
+            "moleculekit/xtc_utils/src/xdrfile_xtc.c",
+            "moleculekit/xtc_utils/src/xdrfile.c",
+            "moleculekit/xtc_utils/src/xtc.c",
+            "moleculekit/xtc_utils/xtc.pyx",
+        ],
+        include_dirs=["moleculekit/xtc_utils/include/", "moleculekit/xtc_utils/"],
+        extra_compile_args=compiler_args,
+    )
+)
 
 
 if __name__ == "__main__":

@@ -1528,115 +1528,16 @@ def PSFread(filename, frame=None, topoloc=None, validateElements=True):
     )
 
 
-def XTCread2(filename, frame=None, topoloc=None):
-    pass
-
-
 def XTCread(filename, frame=None, topoloc=None):
-    """Reads XTC file
+    from moleculekit.xtc import read_xtc, read_xtc_frames
 
-    Parameters
-    ----------
-    filename : str
-        Path of xtc file.
-    frame : list
-        A list of integer frames which we want to read from the file. If None will read all.
-
-    Returns
-    -------
-    coords : nd.array
-    box : nd.array
-    boxangles : nd.array
-    step : nd.array
-    time : nd.array
-    """
-    givenframes = frame
-
-    lib = xtc_lib()
-    natoms_r = pack_int_buffer([0])
-    deltat = pack_double_buffer([0])
-    deltastep = pack_int_buffer([0])
-
-    # This is fast, it's written in the header of the XTC
-    natoms = lib["libxtc"].xtc_natoms(ct.c_char_p(filename.encode("ascii")))
-
-    if givenframes is None:  # Read the whole XTC file at once
-        # Read number of frames in XTC. This will waste some time the first time to read the whole trajectory and write an index file
-        # Subsequent calls will get the number from an index file
-        nframes = lib["libxtc"].xtc_nframes(ct.c_char_p(filename.encode("ascii")))
-
-        coords = np.zeros((natoms, 3, nframes), dtype=np.float32)
-        box = np.zeros((3, nframes), dtype=np.float32)
-        time = np.zeros(nframes, dtype=np.float32)
-        step = np.zeros(nframes, dtype=np.int32)
-        # void xtc_read_new(char *filename, float *coords_arr, float *box_arr, float *time_arr, int *step_arr,
-        #                   int natoms, double *dt, int *dstep)
-        lib["libxtc"].xtc_read_new(
-            ct.c_char_p(filename.encode("ascii")),
-            coords.ctypes.data_as(ct.POINTER(ct.c_float)),
-            box.ctypes.data_as(ct.POINTER(ct.c_float)),
-            time.ctypes.data_as(ct.POINTER(ct.c_float)),
-            step.ctypes.data_as(ct.POINTER(ct.c_int)),
-            ct.c_int(natoms),
-            ct.c_int(nframes),
-            deltat,
-            deltastep,
-        )
-        step = step.astype(np.uint64)  # Change dtype here
+    if frame is None:
+        coords, box, time, step = read_xtc(filename.encode("UTF-8"))
     else:
-
-        class __xtc(ct.Structure):
-            _fields_ = [
-                ("box", (ct.c_float * 3)),
-                ("natoms", ct.c_int),
-                ("step", ct.c_ulong),
-                ("time", ct.c_double),
-                ("pos", ct.POINTER(ct.c_float)),
-            ]
-
-        lib["libxtc"].xtc_read.restype = ct.POINTER(__xtc)
-        lib["libxtc"].xtc_read_frame.restype = ct.POINTER(__xtc)
-
-        if not isinstance(givenframes, list) and not isinstance(
-            givenframes, np.ndarray
-        ):
-            givenframes = [givenframes]
-        nframes = len(givenframes)
-        frames = givenframes
-
-        coords = None
-        step = np.zeros(nframes, dtype=np.uint64)
-        time = np.zeros(nframes, dtype=np.float32)
-        box = np.zeros((3, nframes), dtype=np.float32)
-
-        for i, f in enumerate(frames):
-            if givenframes is not None:  # If frames were given, read specific frame
-                retval = lib["libxtc"].xtc_read_frame(
-                    ct.c_char_p(filename.encode("ascii")), natoms_r, ct.c_int(f)
-                )
-                if not retval:
-                    raise RuntimeError(f"XTC file {filename} possibly corrupt.")
-                if coords is None:
-                    coords = np.zeros((natoms_r[0], 3, nframes), dtype=np.float32)
-                fidx = 0
-            else:
-                fidx = f
-
-            step[i] = retval[fidx].step
-            time[i] = retval[fidx].time
-            box[:, i] = retval[fidx].box
-            coords[:, :, i] = np.ctypeslib.as_array(
-                retval[fidx].pos, shape=(natoms_r[0], 3)
-            )
-
-            if givenframes is not None:
-                lib["libc"].free(retval[0].pos)
-                lib["libc"].free(retval)
-
-        if givenframes is None:
-            for f in range(len(frames)):
-                lib["libc"].free(retval[f].pos)
-            lib["libc"].free(retval)
+        frame = ensurelist(frame)
+        coords, box, time, step = read_xtc_frames(
+            filename.encode("UTF-8"), np.array(frame, dtype=np.int32)
+        )
 
     if np.size(coords, 2) == 0:
         raise RuntimeError(f"Malformed XTC file. No frames read from: {filename}")
@@ -2550,7 +2451,7 @@ for ext in _MDTRAJ_TOPOLOGY_EXTS:
     if ext not in _TOPOLOGY_READERS:
         _TOPOLOGY_READERS[ext] = MDTRAJTOPOread
 
-_TRAJECTORY_READERS = {"xtc": XTCread, "xtc2": XTCread2, "xsc": XSCread}
+_TRAJECTORY_READERS = {"xtc": XTCread, "xsc": XSCread}
 
 _COORDINATE_READERS = {"crd": CRDread, "coor": BINCOORread}
 
