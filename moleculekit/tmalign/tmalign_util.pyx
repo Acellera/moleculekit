@@ -114,4 +114,4 @@ def tmalign(double[:,:] xa, double[:,:] ya, string seqx, string seqy):
     xaa.clear()
     yaa.clear()
 
-    return t0, u0, TM1, TM2, rmsd0
+    return t0, u0, TM1, TM2, rmsd0, n_ali8

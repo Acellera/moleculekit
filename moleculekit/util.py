@@ -120,11 +120,13 @@ def molTMscore2(mol, ref):
     rot : numpy.ndarray
         Rotation matrix
     TM1 : float
-        TM score
+        TM score (if normalized by length of ref). This should be used!
     TM2 : float
-        TM score
+        TM score (if normalized by length of mol)
     rmsd : float
         RMSD only OF COMMON RESIDUES for all frames. This is not the same as a full protein RMSD!!!
+    nali : int
+        Number of aligned residues
 
     Examples
     --------
@@ -146,8 +148,8 @@ def molTMscore2(mol, ref):
     seqy = ref.sequence(noseg=True)["protein"].encode("UTF-8")
     coords1 = mol.coords[:, :, mol.frame].astype(np.float64)
     coords2 = ref.coords[:, :, ref.frame].astype(np.float64)
-    trans, rot, TM1, TM2, rmsd = tmalign(coords1, coords2, seqx, seqy)
-    return trans, rot, TM1, TM2, rmsd
+    trans, rot, TM1, TM2, rmsd, nali = tmalign(coords1, coords2, seqx, seqy)
+    return trans, rot, TM1, TM2, rmsd, nali
 
 
 def molTMscore(mol, ref, selCAmol, selCAref):
