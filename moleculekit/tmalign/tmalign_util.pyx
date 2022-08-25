@@ -11,6 +11,7 @@ from libc.math cimport ceil
 from libcpp.string cimport string
 from libcpp.vector cimport vector
 from libcpp cimport bool
+from libc.stdlib cimport malloc, free
 
 ctypedef np.npy_int64   int64_t
 ctypedef np.npy_float32 float32_t
@@ -26,14 +27,12 @@ import cython
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-def tmalign(double[:,:] xa, double[:,:] ya, const char *seqx,
-            const char *seqy, const int xlen, const int ylen,
-            double &TM1, double &TM2, char *secx, char *secy):
+def tmalign(double[:,:] xa, double[:,:] ya, string seqx, string seqy):
     # declare variable specific to this pair of TMalign
     # cdef double t0[3]
     # cdef double u0[3][3]
-    # cdef double TM1 = 0
-    # cdef double TM2 = 0
+    cdef double TM1 = 0
+    cdef double TM2 = 0
     cdef double TM3 = 0
     cdef double TM4 = 0
     cdef double TM5 = 0   # for a_opt, u_opt, d_opt
@@ -74,10 +73,18 @@ def tmalign(double[:,:] xa, double[:,:] ya, const char *seqx,
     for i in range(ya.shape[0]):
         yaa.push_back(&ya[i, 0])
 
+    cdef int xlen = seqx.size()
+    cdef int ylen = seqy.size()
+
+    cdef char *secx = <char *> malloc((xlen + 1) * sizeof(char))
+    cdef char *secy = <char *> malloc((ylen + 1) * sizeof(char))
+    tmalignlib.make_sec(xaa.data(), xlen, secx)
+    tmalignlib.make_sec(yaa.data(), ylen, secy)
+
     # entry function for structure alignment
     if cp_opt:
         tmalignlib.CPalign_main(
-            xaa.data(), yaa.data(), seqx, seqy, secx, secy,
+            xaa.data(), yaa.data(), seqx.c_str(), seqy.c_str(), secx, secy,
             &t0[0], &u0[0], TM1, TM2, TM3, TM4, TM5,
             d0_0, TM_0, d0A, d0B, d0u, d0a, d0_out,
             seqM, seqxA, seqyA,
@@ -87,7 +94,7 @@ def tmalign(double[:,:] xa, double[:,:] ya, const char *seqx,
             mol_type, TMcut)
     else:
         tmalignlib.TMalign_main(
-            xaa.data(), yaa.data(), seqx, seqy, secx, secy,
+            xaa.data(), yaa.data(), seqx.c_str(), seqy.c_str(), secx, secy,
             &t0[0], &u0[0], TM1, TM2, TM3, TM4, TM5,
             d0_0, TM_0, d0A, d0B, d0u, d0a, d0_out,
             seqM, seqxA, seqyA,
@@ -100,5 +107,11 @@ def tmalign(double[:,:] xa, double[:,:] ya, const char *seqx,
     seqM.clear()
     seqxA.clear()
     seqyA.clear()
+
+    free(secx)
+    free(secy)
+
+    xaa.clear()
+    yaa.clear()
 
     return t0, u0, TM1, TM2

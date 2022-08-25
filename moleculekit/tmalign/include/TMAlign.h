@@ -34,4 +34,6 @@ int CPalign_main(double **xa, double **ya,
                  const double d0_scale, const int i_opt, const int a_opt,
                  const bool u_opt, const bool d_opt, const bool fast_opt,
                  const int mol_type, const double TMcut);
+
+void make_sec(double **x, int len, char *sec);
 #endif
