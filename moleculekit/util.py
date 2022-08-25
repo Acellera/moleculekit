@@ -873,6 +873,8 @@ def check_port(port, host="127.0.0.1", timeout=120):
 
 
 def string_to_tempfile(content, ext):
+    from tempfile import NamedTemporaryFile
+
     f = NamedTemporaryFile(delete=False, suffix="." + ext)
     f.write(content.encode("ascii", "ignore"))
     f.close()
