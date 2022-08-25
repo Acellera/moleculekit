@@ -103,6 +103,53 @@ def rotationMatrix(axis, theta):
     )
 
 
+def molTMscore2(mol, ref):
+    """Calculates the TMscore between two protein Molecules
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
+        A Molecule containing a single or multiple frames
+    ref : :class:`Molecule <moleculekit.molecule.Molecule>` object
+        A reference Molecule containing a single frame. Will automatically keep only ref.frame.
+
+    Returns
+    -------
+    trans : numpy.ndarray
+        Translation matrix
+    rot : numpy.ndarray
+        Rotation matrix
+    TM1 : float
+        TM score
+    TM2 : float
+        TM score
+    rmsd : float
+        RMSD only OF COMMON RESIDUES for all frames. This is not the same as a full protein RMSD!!!
+
+    Examples
+    --------
+    tmscore, rmsd = molTMscore(mol, ref)
+    """
+    from moleculekit.tmalign import tmalign
+
+    mol = mol.copy()
+    mol.filter("protein", _logger=False)
+    ref = ref.copy()
+    ref.filter("protein", _logger=False)
+
+    if mol.numAtoms == 0:
+        raise RuntimeError("No protein atoms in `mol`")
+    if ref.numAtoms == 0:
+        raise RuntimeError("No protein atoms in `ref`")
+
+    seqx = mol.sequence(noseg=True)["protein"].encode("UTF-8")
+    seqy = ref.sequence(noseg=True)["protein"].encode("UTF-8")
+    coords1 = mol.coords[:, :, mol.frame].astype(np.float64)
+    coords2 = ref.coords[:, :, ref.frame].astype(np.float64)
+    trans, rot, TM1, TM2, rmsd = tmalign(coords1, coords2, seqx, seqy)
+    return trans, rot, TM1, TM2, rmsd
+
+
 def molTMscore(mol, ref, selCAmol, selCAref):
     """Calculates the TMscore between two Molecules
 
