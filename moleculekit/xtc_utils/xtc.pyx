@@ -21,11 +21,11 @@ ctypedef np.float64_t FLOAT64_t
 import cython
 
 
-def get_xtc_nframes(char* filename):
+cdef int get_xtc_nframes(char* filename):
     """ You need to pass the string with filename.encode("UTF-8") to this function """
     return xtclib.xtc_nframes(filename)
 
-def get_xtc_natoms(char* filename):
+cdef int get_xtc_natoms(char* filename):
     """ You need to pass the string with filename.encode("UTF-8") to this function """
     return xtclib.xtc_natoms(filename)
     
@@ -67,7 +67,7 @@ def read_xtc_frames(char* filename, int[:] frames):
     cdef FLOAT32_t[::1] time = np.zeros(nframes, dtype=np.float32)
     cdef int[::1] step = np.zeros(nframes, dtype=np.int32)
 
-    for frame in frames:
+    for f in range(nframes):
         xtclib.xtc_read_frame(
             filename, 
             &coords[0, 0, 0], 
@@ -75,11 +75,10 @@ def read_xtc_frames(char* filename, int[:] frames):
             &time[0], 
             &step[0], 
             traj_natoms, 
-            frame,
+            frames[f],
             nframes,
             f
         )
-        f += 1
     return np.asarray(coords), np.asarray(box), np.asarray(time), np.asarray(step)
 
 
