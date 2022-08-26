@@ -136,11 +136,21 @@ def detectEquivalentAtoms(molecule):
     graph = _getMolecularGraph(molecule)
     trees = [_getMolecularTree(graph, node) for node in graph.nodes]
 
-    equivalent_atoms = [
-        tuple([i for i, tree1 in enumerate(trees) if _checkIsomorphism(tree1, tree2)])
-        for tree2 in trees
-    ]
-    equivalent_groups = sorted(list(set(equivalent_atoms)))
+    equivalent_atoms = {}
+    equivalent_groups = [[0]]  # Start first group with node 0
+    equivalent_atoms[0] = equivalent_groups[0]
+    for i in range(1, len(trees)):
+        for g, grp in enumerate(equivalent_groups):
+            if _checkIsomorphism(trees[i], trees[grp[0]]):
+                equivalent_groups[g].append(i)
+                equivalent_atoms[i] = equivalent_groups[g]
+                break
+        else:
+            equivalent_groups.append([i])
+            equivalent_atoms[i] = equivalent_groups[-1]
+
+    equivalent_groups = [tuple(sorted(eg)) for eg in equivalent_groups]
+    equivalent_atoms = [tuple(equivalent_atoms[i]) for i in range(len(trees))]
     equivalent_group_by_atom = list(map(equivalent_groups.index, equivalent_atoms))
 
     return equivalent_groups, equivalent_atoms, equivalent_group_by_atom
@@ -373,7 +383,6 @@ def detectParameterizableDihedrals(molecule, exclude_atoms=()):
     >>> detectParameterizableDihedrals(mol)
     [[(2, 4, 5, 9)]]
     """
-
     # Get a molecular graph
     graph = _getMolecularGraph(molecule)
 
