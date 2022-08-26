@@ -7,18 +7,17 @@ import moleculekit
 import os
 import sys
 import inspect
-import platform
 
 
-def home(dataDir=None, libDir=False, shareDir=None):
+def home(dataDir=None, shareDir=None):
     """Return the pathname of the moleculekit root directory (or a data subdirectory).
 
     Parameters
     ----------
     dataDir : str
         If not None, return the path to a specific data directory
-    libDir : bool
-        If True, return path to the lib directory
+    shareDir : bool
+        If True, return path to the share directory
 
     Returns
     -------
@@ -45,15 +44,6 @@ def home(dataDir=None, libDir=False, shareDir=None):
 
     if dataDir:
         return os.path.join(homeDir, "test-data", dataDir)
-    elif libDir:
-        if platform.machine() == "ppc64le":
-            libdir = os.path.join(homeDir, "lib", "ppc64le")
-        else:
-            libdir = os.path.join(homeDir, "lib", platform.system())
-
-        if not os.path.exists(libdir):
-            raise FileNotFoundError("Could not find libs.")
-        return libdir
     elif shareDir:
         sharedir = os.path.join(homeDir, "share")
         if not os.path.exists(sharedir):

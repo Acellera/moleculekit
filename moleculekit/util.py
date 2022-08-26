@@ -4,25 +4,14 @@
 # No redistribution in whole or part
 #
 import numpy as np
-import ctypes as ct
 import os
 from moleculekit.home import home
-import platform
 import tempfile
 import logging
 from unittest import TestCase
 
 
 logger = logging.getLogger(__name__)
-
-try:
-    libdir = home(libDir=True)
-    if platform.system() == "Windows":
-        tmalignlib = ct.cdll.LoadLibrary(os.path.join(libdir, "tmalign.dll"))
-    else:
-        tmalignlib = ct.cdll.LoadLibrary(os.path.join(libdir, "tmalign.so"))
-except Exception:
-    tmalignlib = None
 
 
 def tempname(suffix="", create=False):
