@@ -5,6 +5,7 @@
 #
 from moleculekit.projections.projection import Projection
 import numpy as np
+import unittest
 import logging
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,7 @@ class MetricTMscore(Projection):
         mol = mol.copy()
         trajtmsel = self._getMolProp(mol, "trajtmsel")
 
-        tm, _ = molTMscore(mol, self._refmol, trajtmsel, self._reftmsel)
+        tm, _, _ = molTMscore(mol, self._refmol, trajtmsel, self._reftmsel)
         return tm[:, np.newaxis]
 
     def getMapping(self, mol):
@@ -87,9 +88,6 @@ class MetricTMscore(Projection):
         return DataFrame(
             {"type": types, "atomIndexes": indexes, "description": description}
         )
-
-
-import unittest
 
 
 class _TestMetricTMscore(unittest.TestCase):

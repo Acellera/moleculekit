@@ -103,7 +103,7 @@ def rotationMatrix(axis, theta):
     )
 
 
-def molTMscore2(mol, ref):
+def molTMscore(mol, ref, molsel="protein", refsel="protein"):
     """Calculates the TMscore between two protein Molecules
 
     Parameters
@@ -112,32 +112,28 @@ def molTMscore2(mol, ref):
         A Molecule containing a single or multiple frames
     ref : :class:`Molecule <moleculekit.molecule.Molecule>` object
         A reference Molecule containing a single frame. Will automatically keep only ref.frame.
+    molsel : str
+        Atomselect string for which atoms of `mol` to calculate TMScore
+    refsel : str
+        Atomselect string for which atoms of `ref` to calculate TMScore
 
     Returns
     -------
-    trans : numpy.ndarray
-        Translation matrix
-    rot : numpy.ndarray
-        Rotation matrix
-    TM1 : float
-        TM score (if normalized by length of ref). This should be used!
-    TM2 : float
-        TM score (if normalized by length of mol)
-    rmsd : float
+    tmscore : numpy.ndarray
+        TM score (if normalized by length of ref)
+    rmsd : numpy.ndarray
         RMSD only OF COMMON RESIDUES for all frames. This is not the same as a full protein RMSD!!!
-    nali : int
+    nali : numpy.ndarray
         Number of aligned residues
 
     Examples
     --------
-    tmscore, rmsd = molTMscore(mol, ref)
+    tmscore, rmsd, nali = molTMscore(mol, ref)
     """
     from moleculekit.tmalign import tmalign
 
-    mol = mol.copy()
-    mol.filter("protein", _logger=False)
-    ref = ref.copy()
-    ref.filter("protein", _logger=False)
+    sel1 = mol.atomselect(molsel)
+    sel2 = ref.atomselect(refsel)
 
     if mol.numAtoms == 0:
         raise RuntimeError("No protein atoms in `mol`")
@@ -146,95 +142,16 @@ def molTMscore2(mol, ref):
 
     seqx = mol.sequence(noseg=True)["protein"].encode("UTF-8")
     seqy = ref.sequence(noseg=True)["protein"].encode("UTF-8")
-    coords1 = mol.coords[:, :, mol.frame].astype(np.float64)
-    coords2 = ref.coords[:, :, ref.frame].astype(np.float64)
-    trans, rot, TM1, TM2, rmsd, nali = tmalign(coords1, coords2, seqx, seqy)
-    return trans, rot, TM1, TM2, rmsd, nali
+    if len(seqx) == 0:
+        raise RuntimeError("No protein sequence found in `mol`")
+    if len(seqy) == 0:
+        raise RuntimeError("No protein sequence found in `ref`")
 
-
-def molTMscore(mol, ref, selCAmol, selCAref):
-    """Calculates the TMscore between two Molecules
-
-    Parameters
-    ----------
-    mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
-        A Molecule containing a single or multiple frames
-    ref : :class:`Molecule <moleculekit.molecule.Molecule>` object
-        A reference Molecule containing a single frame. Will automatically keep only ref.frame.
-    selCAmol : numpy.ndarray
-        An atomselection array of booleans or indexes of the CA atoms for mol
-    selCAref : numpy.ndarray
-        An atomselection array of booleans or indexes of the CA atoms for ref
-
-    Returns
-    -------
-    tmscoreRef : numpy.ndarray
-        TMscore normalized by length of ref
-    rmsd : numpy.ndarray
-        RMSD only OF COMMON RESIDUES for all frames. This is not the same as a full protein RMSD!!!
-
-    Examples
-    --------
-    tmscore, rmsd = molTMscore(mol, ref, mol.atomselect('protein'), ref.atomselect('protein'))
-    """
-    from moleculekit.util import sequenceID
-    from moleculekit.molecule import _residueNameTable
-
-    if tmalignlib is None:
-        raise RuntimeError(
-            "Failed to load tmalign libs. Check that moleculekit is installed correctly."
-        )
-
-    def calculateVariables(currmol):
-        res = sequenceID(
-            (currmol.resid, currmol.insertion, currmol.segid, currmol.chain)
-        )
-        caidx = currmol.name == "CA"
-        res = np.unique(res)
-        reslen = len(res)
-        # Calculate the protein sequence
-        seq = "".join([_residueNameTable[x] for x in currmol.resname[caidx]])
-        seq = ct.c_char_p(seq.encode("utf-8"))
-
-        # Keep only CA coordinates
-        coords = currmol.coords[caidx, :, :].copy()
-        return reslen, res.astype(np.int32), seq, coords
-
-    mol = mol.copy()
-    ref = ref.copy()
-    mol.filter(selCAmol, _logger=False)
-    ref.filter(selCAref, _logger=False)
-    ref.dropFrames(keep=ref.frame)
-
-    reslenMOL, residMOL, seqMOL, coordsMOL = calculateVariables(mol)
-    reslenREF, residREF, seqREF, coordsREF = calculateVariables(ref)
-
-    # DLLEXPORT void tmalign(int xlen, int ylen, int* xresno, int* yresno, char* seqx, char* seqy,
-    # float* xcoor, float* ycoor, int nframes,
-    # double *TM1, double *TM2, double *rmsd)
-    # tmalignlib.tmalign.argtypes = [ct.c_int, ct.c_int, ct.POINTER(ct.c_int), ct.POINTER(ct.c_int), ct.c_char_p, ct.c_char_p,
-    #                                ct.POINTER(ct.c_float), ct.POINTER(ct.c_float), ct.c_int,
-    #                                ct.POINTER(ct.c_double), ct.POINTER(ct.c_double), ct.POINTER(ct.c_double)]
-    resTM1 = (ct.c_double * mol.numFrames)()
-    resTM2 = (ct.c_double * mol.numFrames)()
-    resRMSD = (ct.c_double * mol.numFrames)()
-    tmalignlib.tmalign(
-        ct.c_int(reslenREF),
-        ct.c_int(reslenMOL),
-        residREF.ctypes.data_as(ct.POINTER(ct.c_int32)),
-        residMOL.ctypes.data_as(ct.POINTER(ct.c_int32)),
-        seqREF,
-        seqMOL,
-        coordsREF.ctypes.data_as(ct.POINTER(ct.c_float)),
-        coordsMOL.ctypes.data_as(ct.POINTER(ct.c_float)),
-        ct.c_int(mol.numFrames),
-        ct.byref(resTM1),
-        ct.byref(resTM2),
-        ct.byref(resRMSD),
-    )
-    resTM1 = np.ctypeslib.as_array(resTM1)
-    resRMSD = np.ctypeslib.as_array(resRMSD)
-    return resTM1.astype(np.float32), resRMSD.astype(np.float32)
+    # Transpose to have fastest axis as last
+    coords1 = np.transpose(mol.coords[sel1, :, :].astype(np.float64), (2, 0, 1)).copy()
+    coords2 = ref.coords[sel2, :, ref.frame].astype(np.float64).copy()
+    TM1, rmsd, nali = tmalign(coords1, coords2, seqx, seqy)
+    return np.array(TM1), np.array(rmsd), np.array(nali)
 
 
 def molRMSD(mol, refmol, rmsdsel1, rmsdsel2):
@@ -721,40 +638,39 @@ class _TestUtils(TestCase):
 
         expectedTMscore = np.array(
             [
-                0.21418524,
-                0.2367377,
-                0.23433833,
-                0.21362964,
-                0.20935164,
-                0.20279461,
-                0.27012895,
-                0.22675238,
-                0.21230793,
-                0.2372011,
+                0.21418523758241995,
+                0.23673770143317904,
+                0.23433833284964856,
+                0.21362964335736384,
+                0.2093516362636725,
+                0.2091586174519859,
+                0.2701289508300192,
+                0.2267523806405569,
+                0.21230792537194731,
+                0.23720109756991442,
             ]
         )
         expectedRMSD = np.array(
             [
-                3.70322128,
-                3.43637027,
-                3.188193,
-                3.84455877,
-                3.53053882,
-                3.46781854,
-                2.93777629,
-                2.97978692,
-                2.70792428,
-                2.63051318,
+                3.70322128077056,
+                3.4363702744873135,
+                3.18819300389854,
+                3.844558765275783,
+                3.5305388236937127,
+                3.5571699112057917,
+                2.9377762912738348,
+                2.979786917608776,
+                2.707924279670757,
+                2.6305131814498712,
             ]
         )
 
         mol = Molecule(os.path.join(home(dataDir="tmscore"), "filtered.pdb"))
         mol.read(os.path.join(home(dataDir="tmscore"), "traj.xtc"))
         ref = Molecule(os.path.join(home(dataDir="tmscore"), "ntl9_2hbb.pdb"))
-        tmscore, rmsd = molTMscore(
-            mol, ref, mol.atomselect("protein"), ref.atomselect("protein")
+        tmscore, rmsd, _ = molTMscore(
+            mol, ref, "protein and name CA", "protein and name CA"
         )
-
         self.assertTrue(np.allclose(tmscore, expectedTMscore))
         self.assertTrue(np.allclose(rmsd, expectedRMSD))
 

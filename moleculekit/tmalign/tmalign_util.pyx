@@ -27,7 +27,7 @@ import cython
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-def tmalign(double[:,:] xa, double[:,:] ya, string seqx, string seqy):
+def tmalign(double[:,:,:] coords, double[:,:] ref_coords, string seqx, string seqy):
     # declare variable specific to this pair of TMalign
     # cdef double t0[3]
     # cdef double u0[3][3]
@@ -62,39 +62,39 @@ def tmalign(double[:,:] xa, double[:,:] ya, string seqx, string seqy):
     cdef double TMcut = -1
     cdef vector[string] sequence
     cdef int mol_type = 0
-    cdef vector[double *] xaa
-    cdef vector[double *] yaa
+    cdef vector[double *] coords_vec
+    cdef vector[double *] ref_coords_vec
 
     cdef double t0[3]
     cdef double u0[3][3]
-
-    for i in range(xa.shape[0]):
-        xaa.push_back(&xa[i, 0])
-    for i in range(ya.shape[0]):
-        yaa.push_back(&ya[i, 0])
 
     cdef int xlen = seqx.size()
     cdef int ylen = seqy.size()
 
     cdef char *secx = <char *> malloc((xlen + 1) * sizeof(char))
     cdef char *secy = <char *> malloc((ylen + 1) * sizeof(char))
-    tmalignlib.make_sec(xaa.data(), xlen, secx)
-    tmalignlib.make_sec(yaa.data(), ylen, secy)
 
-    # entry function for structure alignment
-    if cp_opt:
-        tmalignlib.CPalign_main(
-            xaa.data(), yaa.data(), seqx.c_str(), seqy.c_str(), secx, secy,
-            &t0[0], &u0[0], TM1, TM2, TM3, TM4, TM5,
-            d0_0, TM_0, d0A, d0B, d0u, d0a, d0_out,
-            seqM, seqxA, seqyA,
-            rmsd0, L_ali, Liden, TM_ali, rmsd_ali, n_ali, n_ali8,
-            xlen, ylen, sequence, Lnorm_ass, d0_scale,
-            i_opt, a_opt, u_opt, d_opt, fast_opt,
-            mol_type, TMcut)
-    else:
+    cdef vector[double] TM1_all, rmsd_all
+    cdef vector[int] nali_all 
+
+    for i in range(ref_coords.shape[0]):
+        ref_coords_vec.push_back(&ref_coords[i, 0])
+    # Calculate secondary structure for ref structure
+    tmalignlib.make_sec(ref_coords_vec.data(), ylen, secy)
+
+    cdef int natoms = coords.shape[1]
+    cdef int nframes = coords.shape[0]
+
+    for f in range(nframes):
+        for i in range(natoms):
+            coords_vec.push_back(&coords[f, i, 0])            
+
+        # Calculate secondary structure for current frame
+        tmalignlib.make_sec(coords_vec.data(), xlen, secx)
+
+        # entry function for structure alignment
         tmalignlib.TMalign_main(
-            xaa.data(), yaa.data(), seqx.c_str(), seqy.c_str(), secx, secy,
+            coords_vec.data(), ref_coords_vec.data(), seqx.c_str(), seqy.c_str(), secx, secy,
             &t0[0], &u0[0], TM1, TM2, TM3, TM4, TM5,
             d0_0, TM_0, d0A, d0B, d0u, d0a, d0_out,
             seqM, seqxA, seqyA,
@@ -103,15 +103,18 @@ def tmalign(double[:,:] xa, double[:,:] ya, string seqx, string seqy):
             i_opt, a_opt, u_opt, d_opt, fast_opt,
             mol_type, TMcut)
 
-    # Done! Free memory
-    seqM.clear()
-    seqxA.clear()
-    seqyA.clear()
+        TM1_all.push_back(TM1)
+        rmsd_all.push_back(rmsd0)
+        nali_all.push_back(n_ali8)
+
+        # Done! Free memory
+        seqM.clear()
+        seqxA.clear()
+        seqyA.clear()
+        coords_vec.clear()
 
     free(secx)
     free(secy)
+    ref_coords_vec.clear()
 
-    xaa.clear()
-    yaa.clear()
-
-    return t0, u0, TM1, TM2, rmsd0, n_ali8
+    return TM1_all, rmsd_all, nali_all
