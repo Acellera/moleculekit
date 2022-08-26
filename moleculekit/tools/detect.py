@@ -131,6 +131,7 @@ def detectEquivalentAtoms(molecule):
     >>> equivalent_group_by_atom
     [0, 1, 2, 3, 4, 5, 6, 7]
     """
+    from networkx.algorithms.isomorphism import rooted_tree_isomorphism
 
     # Generate a molecular tree for each atom
     graph = _getMolecularGraph(molecule)
@@ -141,7 +142,7 @@ def detectEquivalentAtoms(molecule):
     equivalent_atoms[0] = equivalent_groups[0]
     for i in range(1, len(trees)):
         for g, grp in enumerate(equivalent_groups):
-            if _checkIsomorphism(trees[i], trees[grp[0]]):
+            if len(rooted_tree_isomorphism(trees[i], 0, trees[grp[0]], 0)):
                 equivalent_groups[g].append(i)
                 equivalent_atoms[i] = equivalent_groups[g]
                 break
