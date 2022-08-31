@@ -8,6 +8,7 @@ from collections import OrderedDict
 import itertools
 import networkx as nx
 from moleculekit.periodictable import periodictable
+import unittest
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +143,7 @@ def detectEquivalentAtoms(molecule):
     equivalent_atoms[0] = equivalent_groups[0]
     for i in range(1, len(trees)):
         for g, grp in enumerate(equivalent_groups):
-            if len(rooted_tree_isomorphism(trees[i], 0, trees[grp[0]], 0)):
+            if _checkIsomorphism(trees[i], trees[grp[0]]):
                 equivalent_groups[g].append(i)
                 equivalent_atoms[i] = equivalent_groups[g]
                 break
@@ -429,6 +430,33 @@ def detectParameterizableDihedrals(molecule, exclude_atoms=()):
     return equivalent_dihedrals
 
 
+class _TestEquivDetection(unittest.TestCase):
+    def test_atom_detection(self):
+        import os
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule
+        import numpy as np
+
+        mol = Molecule(os.path.join(home(dataDir="test-detect"), "KCX.cif"))
+        eqgroups, eqatoms, eqgroupbyatom = detectEquivalentAtoms(mol)
+
+        # fmt: off
+        eqgroups_ref = [(0, 2, 3), (1,), (4,), (5,), (6,), (7,), (8,), (9,), (10,), (11, 12, 13), (14,), (15,), (16,), (17,), (18,), (19,), (20,), (21,), (22,), (23,), (24,), (25,), (26, 27), (28, 29), (30, 31), (32, 33), (34, 35), (36,), (37,), (38,), (39,), (40,), (41,), (42,), (43,), (44, 45, 46), (47,), (48,), (49,), (50,), (51,), (52, 53, 54)]
+        eqatoms_ref = [(0, 2, 3), (1,), (0, 2, 3), (0, 2, 3), (4,), (5,), (6,), (7,), (8,), (9,), (10,), (11, 12, 13), (11, 12, 13), (11, 12, 13), (14,), (15,), (16,), (17,), (18,), (19,), (20,), (21,), (22,), (23,), (24,), (25,), (26, 27), (26, 27), (28, 29), (28, 29), (30, 31), (30, 31), (32, 33), (32, 33), (34, 35), (34, 35), (36,), (37,), (38,), (39,), (40,), (41,), (42,), (43,), (44, 45, 46), (44, 45, 46), (44, 45, 46), (47,), (48,), (49,), (50,), (51,), (52, 53, 54), (52, 53, 54), (52, 53, 54)]
+        eqgroupbyatom_ref = [0, 1, 0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 35, 35, 36, 37, 38, 39, 40, 41, 41, 41]
+        # fmt: on
+        assert np.array_equal(
+            np.array(eqgroups, dtype=object), np.array(eqgroups_ref, dtype=object)
+        )
+        assert np.array_equal(
+            np.array(eqatoms, dtype=object), np.array(eqatoms_ref, dtype=object)
+        )
+        assert np.array_equal(
+            np.array(eqgroupbyatom, dtype=object),
+            np.array(eqgroupbyatom_ref, dtype=object),
+        )
+
+
 if __name__ == "__main__":
 
     import sys
@@ -441,3 +469,5 @@ if __name__ == "__main__":
 
     if doctest.testmod().failed:
         sys.exit(1)
+
+    unittest.main(verbosity=2)
