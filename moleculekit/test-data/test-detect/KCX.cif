@@ -1,0 +1,154 @@
+data_KCX
+#
+#
+_chem_comp.id                  KCX
+_chem_comp.type                NON-POLYMER
+_chem_comp.pdbx_formal_charge  -1
+##
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+KCX  H1   hc  H   0  0.0   7.313  -0.359  -2.228   7.313  -0.359  -2.228  
+KCX  C1   c3  C   0  0.0   6.425   0.163  -2.584   6.425   0.163  -2.584  
+KCX  H2   hc  H   0  0.0   5.952  -0.421  -3.374   5.952  -0.421  -3.374  
+KCX  H3   hc  H   0  0.0   6.709   1.140  -2.974   6.709   1.140  -2.974  
+KCX  C2   c   C   0  0.0   5.460   0.354  -1.505   5.460   0.354  -1.505  
+KCX  O1   o   O   0  0.0   5.640  -0.010  -0.422   5.640  -0.010  -0.422  
+KCX  N1   ns  N   0  0.0   4.316   1.009  -1.732   4.316   1.009  -1.732  
+KCX  H4   hn  H   0  0.0   4.228   1.217  -2.716   4.228   1.217  -2.716  
+KCX  C3   c3  C   0  0.0   3.273   1.480  -0.830   3.273   1.480  -0.830  
+KCX  H5   h1  H   0  0.0   3.654   1.461   0.191   3.654   1.461   0.191  
+KCX  C4   c3  C   0  0.0   2.875   2.906  -1.175   2.875   2.906  -1.175  
+KCX  H6   hc  H   0  0.0   2.483   2.939  -2.191   2.483   2.939  -2.191  
+KCX  H7   hc  H   0  0.0   2.110   3.248  -0.479   2.110   3.248  -0.479  
+KCX  H8   hc  H   0  0.0   3.748   3.554  -1.102   3.748   3.554  -1.102  
+KCX  C5   c   C   0  0.0   2.056   0.564  -0.879   2.056   0.564  -0.879  
+KCX  O2   o   O   0  0.0   1.981  -0.338  -1.715   1.981  -0.338  -1.715  
+KCX  N2   ns  N   0  0.0   1.197   0.841  -0.000   1.197   0.841  -0.000  
+KCX  H9   hn  H   0  0.0   1.201   1.847   0.000   1.201   1.847   0.000  
+KCX  C6   c3  C   0  0.0   0.005   0.008  -0.000   0.005   0.008  -0.000  
+KCX  H10  h1  H   0  0.0  -0.001  -0.592  -0.922  -0.001  -0.592  -0.922  
+KCX  C7   c3  C   0  0.0   0.017  -0.977   1.170   0.017  -0.977   1.170  
+KCX  C8   c3  C   0  0.0   1.003  -2.128   1.002   1.003  -2.128   1.002  
+KCX  C9   c3  C   0  0.0   0.947  -3.189   2.079   0.947  -3.189   2.079  
+KCX  C10  c3  C   0  0.0   1.836  -4.376   1.735   1.836  -4.376   1.735  
+KCX  N3   ns  N   0  0.0   3.242  -4.035   1.650   3.242  -4.035   1.650  
+KCX  C11  c   C   0  0.0   3.869  -3.699   0.475   3.869  -3.699   0.475  
+KCX  O3   o   O   0  0.0   5.013  -3.305   0.430   5.013  -3.305   0.430  
+KCX  O4   o   O  -1  0.0   3.170  -3.889  -0.627   3.170  -3.889  -0.627  
+KCX  H11  hc  H   0  0.0   0.282  -0.425   2.084   0.282  -0.425   2.084  
+KCX  H12  hc  H   0  0.0  -0.987  -1.422   1.222  -0.987  -1.422   1.222  
+KCX  H13  hc  H   0  0.0   0.798  -2.613   0.036   0.798  -2.613   0.036  
+KCX  H14  hc  H   0  0.0   2.006  -1.682   1.067   2.006  -1.682   1.067  
+KCX  H15  hc  H   0  0.0   1.284  -2.753   3.030   1.284  -2.753   3.030  
+KCX  H16  hc  H   0  0.0  -0.091  -3.546   2.160  -0.091  -3.546   2.160  
+KCX  H17  h1  H   0  0.0   1.709  -5.143   2.512   1.709  -5.143   2.512  
+KCX  H18  h1  H   0  0.0   1.528  -4.735   0.742   1.528  -4.735   0.742  
+KCX  H19  hn  H   0  0.0   3.800  -4.046   2.516   3.800  -4.046   2.516  
+KCX  C12  c   C   0  0.0  -1.251   0.879  -0.000  -1.251   0.879  -0.000  
+KCX  O5   o   O   0  0.0  -2.303   0.399  -0.413  -2.303   0.399  -0.413  
+KCX  N4   ns  N   0  0.0  -1.109   2.113   0.454  -1.109   2.113   0.454  
+KCX  H20  hn  H   0  0.0  -0.187   2.457   0.680  -0.187   2.457   0.680  
+KCX  C13  c3  C   0  0.0  -2.254   2.986   0.707  -2.254   2.986   0.707  
+KCX  H21  h1  H   0  0.0  -1.907   3.877   1.233  -1.907   3.877   1.233  
+KCX  C14  c3  C   0  0.0  -2.916   3.417  -0.597  -2.916   3.417  -0.597  
+KCX  H22  hc  H   0  0.0  -3.276   2.537  -1.130  -3.276   2.537  -1.130  
+KCX  H23  hc  H   0  0.0  -3.755   4.077  -0.379  -3.755   4.077  -0.379  
+KCX  H24  hc  H   0  0.0  -2.191   3.944  -1.217  -2.191   3.944  -1.217  
+KCX  C15  c   C   0  0.0  -3.257   2.287   1.616  -3.257   2.287   1.616  
+KCX  O6   o   O   0  0.0  -3.258   1.002   1.648  -3.258   1.002   1.648  
+KCX  N5   ns  N   0  0.0  -3.985   2.903   2.454  -3.985   2.903   2.454  
+KCX  H25  hn  H   0  0.0  -3.810   3.897   2.499  -3.810   3.897   2.499  
+KCX  C16  c3  C   0  0.0  -5.018   2.336   3.334  -5.018   2.336   3.334  
+KCX  H26  h1  H   0  0.0  -5.088   1.261   3.168  -5.088   1.261   3.168  
+KCX  H27  h1  H   0  0.0  -4.756   2.526   4.374  -4.756   2.526   4.374  
+KCX  H28  h1  H   0  0.0  -5.979   2.800   3.112  -5.979   2.800   3.112  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+KCX  C6   N2   SING  
+KCX  C12  C6   SING  
+KCX  O5   C12  DOUB  
+KCX  C7   C6   SING  
+KCX  C8   C7   SING  
+KCX  C9   C8   SING  
+KCX  C10  C9   SING  
+KCX  N3   C10  SING  
+KCX  C11  N3   SING  
+KCX  O3   C11  DOUB  
+KCX  O4   C11  SING  
+KCX  C6   H10  SING  
+KCX  C7   H11  SING  
+KCX  C7   H12  SING  
+KCX  C8   H13  SING  
+KCX  C8   H14  SING  
+KCX  C9   H15  SING  
+KCX  C9   H16  SING  
+KCX  C10  H17  SING  
+KCX  C10  H18  SING  
+KCX  N3   H19  SING  
+KCX  N2   H9   SING  
+KCX  H1   C1   SING  
+KCX  C1   H3   SING  
+KCX  C1   C2   SING  
+KCX  C1   H2   SING  
+KCX  C2   O1   DOUB  
+KCX  N1   H4   SING  
+KCX  N1   C3   SING  
+KCX  C3   C4   SING  
+KCX  C3   C5   SING  
+KCX  C3   H5   SING  
+KCX  C4   H8   SING  
+KCX  C4   H6   SING  
+KCX  C4   H7   SING  
+KCX  C5   O2   DOUB  
+KCX  C2   N1   SING  
+KCX  C5   N2   SING  
+KCX  N4   H20  SING  
+KCX  N4   C13  SING  
+KCX  C13  C14  SING  
+KCX  C13  C15  SING  
+KCX  C13  H21  SING  
+KCX  C14  H24  SING  
+KCX  C14  H22  SING  
+KCX  C14  H23  SING  
+KCX  C15  O6   DOUB  
+KCX  N5   H25  SING  
+KCX  N5   C16  SING  
+KCX  C16  H26  SING  
+KCX  C16  H27  SING  
+KCX  C16  H28  SING  
+KCX  N4   H20  SING  
+KCX  N4   C13  SING  
+KCX  C13  C14  SING  
+KCX  C13  C15  SING  
+KCX  C13  H21  SING  
+KCX  C14  H24  SING  
+KCX  C14  H22  SING  
+KCX  C14  H23  SING  
+KCX  C15  O6   DOUB  
+KCX  N4   H20  SING  
+KCX  N4   C13  SING  
+KCX  C13  C14  SING  
+KCX  C13  H21  SING  
+KCX  C13  C15  SING  
+KCX  C14  H22  SING  
+KCX  C14  H23  SING  
+KCX  C14  H24  SING  
+KCX  C15  O6   DOUB  
+KCX  C15  N5   SING  
+KCX  C12  N4   SING  
+##
