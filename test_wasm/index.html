@@ -84,7 +84,7 @@
         await pyodide.loadPackage("micropip");
         await pyodide.runPythonAsync(`
             import micropip
-            await micropip.install('http://0.0.0.0:8000/moleculekit-1.3.3-cp310-cp310-emscripten_3_1_14_wasm32.whl')
+            await micropip.install('http://0.0.0.0:8000/moleculekit-1.3.5-cp310-cp310-emscripten_3_1_14_wasm32.whl')
         `);
         pyodide.runPython(
           `
@@ -123,12 +123,39 @@
         let pdbtxt = await filedata.text();
         pdbtxt = pdbtxt.replace(/\n/g, "\\n");
         
+        // Creating a Molecule object from a PDB string
         pyodide.runPython(`
             from io import StringIO
             stxt = StringIO("${pdbtxt}")
             from moleculekit.molecule import Molecule
             mol = Molecule(stxt, type="pdb")
         `)
+
+        // Creating a Molecule object from JS arrays
+        let my_js_namespace = { 
+          name :  ["N", "CA", "C"], 
+          resname: ["ALA", "ALA", "ALA"], 
+          resid: new Int32Array([1, 1, 1]), 
+          chain: ["A", "A", "A"],
+          element: ["N", "C", "C"],
+          coords: [[0, 1.5, 3], [-3.1, 2, 7.1], [1.46, 1.0, 2.74]]
+        };
+        pyodide.registerJsModule("my_js_namespace", my_js_namespace);
+        pyodide.runPython(`
+            from my_js_namespace import name, resname, resid, chain, element, coords
+            import numpy as np
+            
+            mol2 = Molecule().empty(len(name))
+            mol2.name[:] = np.array(name.to_py())
+            mol2.resname[:] = np.array(resname.to_py())
+            mol2.resid[:] = np.array(resid.to_py())
+            mol2.chain[:] = np.array(chain.to_py())
+            mol2.element[:] = np.array(element.to_py())
+            mol2.coords = np.array(coords.to_py(), dtype=np.float32)[:, :, None].copy()
+        `);
+        let mol2 = pyodide.globals.get("mol2")
+        console.log(mol2.atomselect("name CA").toJs())
+
 
         let ps1 = ">>> ",
           ps2 = "... ";
