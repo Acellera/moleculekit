@@ -77,17 +77,24 @@ python setup.py build_ext --inplace
 
 #### Building for WebAssembly
 
+Install `emscripten` https://emscripten.org/docs/getting_started/downloads.html
+
 ```
 conda create -n pyodide-build
 conda install python=3.10
 pip install pyodide-build==0.22.0.dev0
+
+# Activate the emscripten environment
+cd ../../emsdk
+source emsdk_env.sh
+cd -
+
+# Build the package
 pyodide build # Requires some hacking around the pip installation
 cp dist/moleculekit-*wasm32.whl test_wasm/moleculekit-X-cp310-cp310-emscripten_3_1_14_wasm32.whl
 cd test_wasm
 python3 -m http.server
 ```
-
-Requires installation of emscripten https://emscripten.org/docs/getting_started/downloads.html specific version
 
 ## Citing MoleculeKit
 

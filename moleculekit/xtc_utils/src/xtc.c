@@ -497,7 +497,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 	if (frame < 0)
 	{
 		fprintf(stderr, "xtc_read_frame(): Frame <0\n");
-		return NULL;
+		return;
 	}
 
 	char *f1 = strdup(filename);
@@ -578,12 +578,12 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 		if (exdrOK != read_xtc_natoms(filename, &natoms))
 		{
 			fprintf(stderr, "xtc_read_frame(): failed to call read_xtc_natoms (index path) [%s]\n", filename);
-			return NULL;
+			return;
 		}
 		if (!natoms)
 		{
 			fprintf(stderr, "xtc_read_frame(): natoms invalid (index path)\n");
-			return NULL;
+			return;
 		}
 
 		fseek(indexfn, frame * sizeof(uint64_t), SEEK_SET);
@@ -594,7 +594,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 			fprintf(stderr, "xtc_read_frame(): Could not read index [%d] of index file (index path) ret=%d errno=%d\n", frame, ret, errno);
 			// Maybe the index is corrupted? remove it, to be safe
 			unlink(index_file);
-			return NULL;
+			return;
 		}
 		fclose(indexfn);
 
@@ -602,7 +602,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 		if (NULL == xd)
 		{
 			fprintf(stderr, "xtc_read_frame(): Could not open file [%s] (index path)\n", filename);
-			return NULL;
+			return;
 		}
 
 		// MOve to offest of the single frame
@@ -638,5 +638,5 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 
 	xdrfile_close(xd);
 
-	return frames;
+	return;
 }
