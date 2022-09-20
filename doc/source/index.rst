@@ -19,7 +19,7 @@ there to report any bugs or issues you encounter using the library.
 
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 6
    
    Installation <installation>
    The Molecule class <moleculekit.molecule>
@@ -27,6 +27,7 @@ there to report any bugs or issues you encounter using the library.
    Molecule tools <moleculetools>
    Projections <projections>
    Tutorials <tutorials>
+   API <moleculekit.rst>
 
 **Indices and tables**
 
