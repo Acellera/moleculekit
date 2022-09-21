@@ -54,7 +54,7 @@ jobs:
           codecov
 
   makedocs:
-    if: startsWith(github.event.ref, 'refs/tags/')
+    # if: startsWith(github.event.ref, 'refs/tags/')
     needs: test
     runs-on: ${{ matrix.os }}
     defaults:
@@ -86,13 +86,15 @@ jobs:
         run: |
           cd doc; make rst
 
-      - name: Archive rst artifacts
-        uses: actions/upload-artifact@v2
+      - name: Publish to documentation server
+        uses: burnett01/rsync-deployments@5.2
         with:
-          name: docs
-          path: |
-            doc/source/
-            !doc/source/scipy-theme/
+          switches: -avzr --delete
+          path: doc/source/
+          remote_path: /home/docs/rst_docs/moleculekit/
+          remote_host: ${{ secrets.DOCS_SSH_HOST }}
+          remote_user: ${{ secrets.DOCS_SSH_USER }}
+          remote_key: ${{ secrets.DOCS_SSH_KEY }}
 
   deploypypi:
     if: startsWith(github.event.ref, 'refs/tags/')
