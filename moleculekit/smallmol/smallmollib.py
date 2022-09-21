@@ -107,12 +107,6 @@ class SmallMolLib(object):
     .. rubric:: Attributes
     .. autoautosummary:: moleculekit.smallmol.smallmol.SmallMolLib
        :attributes:
-
-    Attributes
-    ----------
-    numMols: int
-        Number of SmallMol molecules
-
     """
 
     def __init__(
