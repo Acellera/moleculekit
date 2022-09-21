@@ -54,7 +54,7 @@ jobs:
           codecov
 
   makedocs:
-    # if: startsWith(github.event.ref, 'refs/tags/')
+    if: startsWith(github.event.ref, 'refs/tags/')
     needs: test
     runs-on: ${{ matrix.os }}
     defaults:
