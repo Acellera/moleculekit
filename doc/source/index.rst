@@ -19,7 +19,7 @@ there to report any bugs or issues you encounter using the library.
 
 
 .. toctree::
-   :maxdepth: 6
+   :maxdepth: 1
    
    Installation <installation>
    The Molecule class <moleculekit.molecule>
