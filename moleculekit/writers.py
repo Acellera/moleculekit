@@ -290,6 +290,7 @@ def BINCOORwrite(mol, filename):
 
 def PSFwrite(m, filename, explicitbonds=None):
     import string
+    from moleculekit.periodictable import periodictable
 
     segments = np.array(
         [segid if segid != "" else chain for segid, chain in zip(m.segid, m.chain)]
@@ -319,6 +320,10 @@ def PSFwrite(m, filename, explicitbonds=None):
         # Defaults. PSF readers will fail if any are empty since it's a space delimited format
         resname = m.resname[i] if m.resname[i] != "" else "MOL"
         atomtype = m.atomtype[i] if m.atomtype[i] != "" else "NULL"
+        # If mass is not defined take it from the element
+        mass = m.masses[i]
+        if mass == 0 and len(m.element[i]):
+            mass = periodictable[m.element[i]].mass
 
         string_format = (
             f"{m.serial[i]:>{fs['serial']}} "
@@ -328,7 +333,7 @@ def PSFwrite(m, filename, explicitbonds=None):
             f"{m.name[i]:<{fs['name']}} "
             f"{atomtype:<{fs['atomtype']}} "
             f"{m.charge[i]:>9.6f} "
-            f"{m.masses[i]:>13.4f} "
+            f"{mass:>13.4f} "
             f"{0:>11} "
         )
         print(string_format, file=f)
@@ -1104,6 +1109,28 @@ class _TestWriters(unittest.TestCase):
                 mol.dropFrames(keep=0)  # We only write one frame by conviction
                 assert mol_equal(mol, mol2, exceptFields=("record"))
                 os.remove(tmpfile)
+
+    def test_psf_writer(self):
+        from moleculekit.molecule import Molecule
+        import tempfile
+
+        # This ensures the right masses are written into the psf file from the elements
+
+        reffile = os.path.join(self.testfolder, "villin.psf")
+        mol = Molecule(os.path.join(self.testfolder, "villin.pdb"))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpfile = os.path.join(tmpdir, "villin.psf")
+            mol.write(tmpfile)
+
+            with open(tmpfile, "r") as f:
+                filelines = f.readlines()
+            with open(reffile, "r") as f:
+                reflines = f.readlines()
+
+            self.assertEqual(
+                filelines, reflines, msg=f"Failed comparison of {reffile} {tmpfile}"
+            )
 
 
 if __name__ == "__main__":
