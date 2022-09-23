@@ -324,11 +324,14 @@ def elements_from_masses(masses):
         logger.warning(
             "Guessing element for atoms with mass > 140. This can lead to inaccurate element guesses."
         )
-    elements = list(
-        _all_elements[
-            np.argmin(cdist(masses[:, None], np.array(_all_masses)[:, None]), axis=1)
-        ]
-    )
+    elements = _all_elements[
+        np.argmin(cdist(masses[:, None], np.array(_all_masses)[:, None]), axis=1)
+    ]
+
+    # Fix for zero masses. Should not guess hydrogens.
+    elements[masses == 0] = ""
+
+    elements = elements.tolist()
     if len(elements) == 1:
         return elements[0]
     return elements
