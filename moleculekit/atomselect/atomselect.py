@@ -141,7 +141,7 @@ def traverse_ast(mol, analysis, node):
     if operation == "comp":
         op = node[1]
         val1, val2 = node[2], node[3]
-        if op == "=":
+        if op in ("=", "=="):
             return val1 == val2
         if op == "<":
             return val1 < val2
@@ -317,6 +317,9 @@ class _TestAtomSelect(unittest.TestCase):
             "same fragment as within 8 of resid 100",
             "nucleic and name C3'",
             'resname C8E GR4 "200" 1PE',
+            "occupancy 0",
+            "occupancy = 0",
+            "occupancy == 0",
         ]
 
         pdbids = [

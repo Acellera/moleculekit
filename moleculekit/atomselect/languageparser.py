@@ -301,6 +301,7 @@ def p_compop(p):
            | GREATER
            | LESSEREQUAL
            | GREATEREQUAL
+           | DOUBLEEQ
     """
     p[0] = p[1]
 
@@ -397,6 +398,13 @@ def p_numprop_mathop(p):
             | numprop mathop numprop
     """
     p[0] = ("mathop", p[2], p[1], p[3])
+
+
+def p_numprop_eq_number(p):
+    """
+    numprop : numprop number
+    """
+    p[0] = ("comp", "=", p[1], p[2])
 
 
 def p_numprop_number(p):
@@ -541,6 +549,9 @@ class _TestLanguareParser(unittest.TestCase):
             "resname WAT and serial % 2 == 0",
             "resname WAT and index % 2 == 0",
             "resid 1 5 7 to 20 25",
+            "occupancy 1",
+            "occupancy = 1",
+            "occupancy == 1",
         ]
 
         for sel in selections:
