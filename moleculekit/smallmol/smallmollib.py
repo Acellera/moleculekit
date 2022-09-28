@@ -15,6 +15,48 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def csvReader(file, removeHs, fixHs, isgzip=False, _logger=True):
+    from tqdm import tqdm
+    import pandas as pd
+
+    if isgzip:
+        with gzip.open(file, "rb") as f:
+            return csvReader(
+                f, removeHs=removeHs, fixHs=fixHs, isgzip=False, _logger=_logger
+            )
+
+    if isinstance(file, str):
+        with open(file, "r") as f:
+            return csvReader(f, removeHs, fixHs, _logger=_logger)
+
+    df = pd.read_csv(file)
+    smiles_col = [x for x in df.columns if x.upper() == "SMILES"]
+    if len(smiles_col) == 0:
+        raise RuntimeError(
+            f"Could not find a column named SMILES in the CSV file. Found columns {df.columns}"
+        )
+    if len(smiles_col) > 1:
+        raise RuntimeError(
+            f"Found multiple columns named SMILES in the CSV file. Found columns {df.columns}"
+        )
+    smiles_col = smiles_col[0]
+
+    mols = []
+    for i, row in tqdm(df.iterrows(), disable=not _logger):
+        smi = row[smiles_col]
+        try:
+            mols.append(SmallMol(smi, removeHs=removeHs, fixHs=fixHs, _logger=False))
+        except Exception as e:
+            logger.warning(
+                f"Failed to load molecule index {i} with error {e}. Skipping to next molecule."
+            )
+        for col in df.columns:
+            mols[-1].setProp(col, row[col])
+        if "_Name" not in df.columns:
+            mols[-1].setProp("_Name", f"mol_{i}")
+    return mols
+
+
 def smiReader(file, removeHs, fixHs, isgzip=False, _logger=True):
     from tqdm import tqdm
 
@@ -147,6 +189,8 @@ class SmallMolLib(object):
             return sdfReader(libfile, removeHs, fixHs, sanitize, isgzip, _logger)
         elif ext == ".smi":
             return smiReader(libfile, removeHs, fixHs, isgzip, _logger)
+        elif ext == ".csv":
+            return csvReader(libfile, removeHs, fixHs, isgzip, _logger)
         else:
             raise RuntimeError(f"Invalid file extension {ext}. Could not read it.")
 
