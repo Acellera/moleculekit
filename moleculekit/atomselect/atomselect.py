@@ -17,7 +17,7 @@ molpropmap = {
     "segname": "segid",
     "altloc": "altloc",
     "mass": "masses",
-    "occupancy": "beta",
+    "occupancy": "occupancy",
     "beta": "beta",
     "charge": "charge",
 }
@@ -34,6 +34,13 @@ def get_molprop(mol, molprop, analysis):
         # Unique sequential residue numbering
         return analysis["residues"]
     raise RuntimeError(f"Invalid molecule property {molprop} requested")
+
+
+def _is_float(val):
+    if isinstance(val, (float, np.floating)) or (
+        isinstance(val, np.ndarray) and np.issubdtype(val.dtype, np.floating)
+    ):
+        return True
 
 
 def traverse_ast(mol, analysis, node):
@@ -142,6 +149,8 @@ def traverse_ast(mol, analysis, node):
         op = node[1]
         val1, val2 = node[2], node[3]
         if op in ("=", "=="):
+            if _is_float(val1) or _is_float(val2):
+                return abs(val1 - val2) < 1e-6
             return val1 == val2
         if op == "<":
             return val1 < val2
@@ -320,6 +329,7 @@ class _TestAtomSelect(unittest.TestCase):
             "occupancy 0",
             "occupancy = 0",
             "occupancy == 0",
+            "(occupancy 1) and same beta as exwithin 3 of (occupancy 0)",
         ]
 
         pdbids = [

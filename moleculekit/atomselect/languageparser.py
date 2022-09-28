@@ -212,6 +212,7 @@ def p_expression_sameas(p):
     expression : SAME FRAGMENT AS expression
                | SAME molprop_int AS expression
                | SAME molprop_str AS expression
+               | SAME numprop_as_str AS expression
     """
     p[0] = ("sameas", p[2], p[4])
 
@@ -420,6 +421,19 @@ def p_numprop_number(p):
     p[0] = ("numprop", p[1])
 
 
+def p_numprop_as_str(p):
+    """
+    numprop_as_str : CHARGE
+                   | MASS
+                   | OCCUPANCY
+                   | BETA
+                   | XCOOR
+                   | YCOOR
+                   | ZCOOR
+    """
+    p[0] = p[1]
+
+
 def p_literal_list(p):
     """
     list : list string
@@ -500,6 +514,8 @@ def p_float(p):
 
 
 def p_error(p):
+    if p is None:
+        raise RuntimeError("Syntax error")
     raise RuntimeError(f"Syntax error at '{p.value!r}'")
 
 
@@ -552,6 +568,7 @@ class _TestLanguareParser(unittest.TestCase):
             "occupancy 1",
             "occupancy = 1",
             "occupancy == 1",
+            "(occupancy 1) and same beta as exwithin 3 of (occupancy 0)",
         ]
 
         for sel in selections:
