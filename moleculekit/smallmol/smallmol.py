@@ -1158,6 +1158,9 @@ class SmallMol(object):
 
         return sms
 
+    def setProp(self, key, value):
+        self._mol.SetProp(key, str(value))
+
     def __repr__(self):
         return (
             "<{}.{} object at {}>\n".format(
