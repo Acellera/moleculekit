@@ -1283,7 +1283,7 @@ def PDBQTread(filename, frame=None, topoloc=None):
     return PDBread(filename, mode="pdbqt", frame=frame, topoloc=topoloc)
 
 
-def PRMTOPread(filename, frame=None, topoloc=None):
+def PRMTOPread(filename, frame=None, topoloc=None, validateElements=True):
     with open(filename, "r") as f:
         topo = Topology()
         uqresnames = []
@@ -1440,7 +1440,9 @@ def PRMTOPread(filename, frame=None, topoloc=None):
 
     # Elements from masses
     topo.element = elements_from_masses(topo.masses)
-    return MolFactory.construct(topo, None, filename, frame)
+    return MolFactory.construct(
+        topo, None, filename, frame, validateElements=validateElements
+    )
 
 
 def PSFread(filename, frame=None, topoloc=None, validateElements=True):
