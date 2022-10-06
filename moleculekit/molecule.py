@@ -86,6 +86,47 @@ _residueNameTable = {
 _modResidueNameTable = {"MLZ": "K", "MLY": "K", "MSE": "M"}
 
 
+def _atoms_to_sequence(mol, sel, oneletter=True, incremseg=None, _logger=True):
+    from moleculekit.util import sequenceID
+
+    if incremseg is None:
+        incremseg = sequenceID((mol.resid[sel], mol.insertion[sel], mol.chain[sel]))
+
+    resnames = mol.resname[sel]
+
+    sequence = []
+    res_atoms = []
+    for i in np.unique(incremseg):  # Iterate over residues
+        resname = np.unique(resnames[incremseg == i])
+        if len(resname) != 1:
+            raise AssertionError(
+                "Unexpected non-uniqueness of chain, resid, insertion in the sequence."
+            )
+        resname = resname[0]
+        if oneletter:
+            if resname in _residueNameTable:
+                rescode = _residueNameTable[resname]
+            elif resname in _modResidueNameTable:
+                rescode = _modResidueNameTable[resname]
+                if _logger:
+                    logger.warning(
+                        f"Modified residue {resname} was detected in the protein and mapped to one-letter code {rescode}"
+                    )
+            elif len(resname) == 1:
+                rescode = resname
+            else:
+                rescode = "X"
+                if _logger:
+                    logger.warning(
+                        f"Cannot provide one-letter code for non-standard residue {resname}"
+                    )
+        else:
+            rescode = resname
+        sequence.append(rescode)
+        res_atoms.append(np.where(incremseg == i)[0])
+    return sequence, res_atoms
+
+
 class Molecule(object):
     """
     Class to manipulate molecular structures.
@@ -1613,36 +1654,15 @@ class Molecule(object):
             else:
                 segatoms = (prot | nucl) & (self.segid == seg) & selb
 
-            resnames = self.resname[segatoms]
-            incremseg = increm[segatoms]
-            for i in np.unique(incremseg):  # Iterate over residues
-                resname = np.unique(resnames[incremseg == i])
-                if len(resname) != 1:
-                    raise AssertionError(
-                        "Unexpected non-uniqueness of chain, resid, insertion in the sequence."
-                    )
-                resname = resname[0]
-                if oneletter:
-                    if resname in _residueNameTable:
-                        rescode = _residueNameTable[resname]
-                    elif resname in _modResidueNameTable:
-                        rescode = _modResidueNameTable[resname]
-                        if _logger:
-                            logger.warning(
-                                f"Modified residue {resname} was detected in the protein and mapped to one-letter code {rescode}"
-                            )
-                    elif len(resname) == 1:
-                        rescode = resname
-                    else:
-                        rescode = "X"
-                        if _logger:
-                            logger.warning(
-                                f"Cannot provide one-letter code for non-standard residue {resname}"
-                            )
-                else:
-                    rescode = resname
-                segSequences[seg].append(rescode)
-                seqAtoms[seg].append(np.where(increm == i)[0])
+            seq, res_atm = _atoms_to_sequence(
+                self,
+                segatoms,
+                oneletter=oneletter,
+                incremseg=increm[segatoms],
+                _logger=_logger,
+            )
+            segSequences[seg] = seq
+            seqAtoms[seg] = res_atm
 
         # Join single letters into strings
         if oneletter:
