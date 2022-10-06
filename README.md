@@ -17,7 +17,7 @@ You can install moleculekit either in the "base" conda environment or in a new c
 
 #### With conda
 
-[Installation Instructions](https://software.acellera.com/docs/latest/moleculekit/installation.html)
+[Installation Instructions](https://software.acellera.com/moleculekit/installation.html)
 
 #### With pip
 
@@ -61,7 +61,7 @@ mol.view()
 
 ### API
 
-For the official documentation of the moleculekit API head over to https://software.acellera.com/docs/latest/moleculekit/index.html
+For the official documentation of the moleculekit API head over to https://software.acellera.com/moleculekit/index.html
 
 ### Issues
 
