@@ -89,6 +89,8 @@ _modResidueNameTable = {"MLZ": "K", "MLY": "K", "MSE": "M"}
 def _atoms_to_sequence(mol, sel, oneletter=True, incremseg=None, _logger=True):
     from moleculekit.util import sequenceID
 
+    sel_idx = np.where(sel)[0]
+
     if incremseg is None:
         incremseg = sequenceID((mol.resid[sel], mol.insertion[sel], mol.chain[sel]))
 
@@ -123,7 +125,7 @@ def _atoms_to_sequence(mol, sel, oneletter=True, incremseg=None, _logger=True):
         else:
             rescode = resname
         sequence.append(rescode)
-        res_atoms.append(np.where(incremseg == i)[0])
+        res_atoms.append(sel_idx[incremseg == i])
     return sequence, res_atoms
 
 
