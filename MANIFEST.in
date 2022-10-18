@@ -1,8 +1,12 @@
 include requirements.txt
-include moleculekit/interactions/cationpi/cationpi.pyx
-include moleculekit/interactions/hbonds/hbonds.pyx
-include moleculekit/interactions/pipi/pipi.pyx
-include moleculekit/interactions/sigmahole/sigmahole.pyx
-include moleculekit/wrapping/wrapping.pyx
+include moleculekit/distance_utils/distance_utils.pyx
 include moleculekit/bondguesser_utils/bondguesser_utils.pyx
+include moleculekit/wrapping/wrapping.pyx
+include moleculekit/interactions/cationpi/cationpi.pyx
+include moleculekit/interactions/sigmahole/sigmahole.pyx
+include moleculekit/interactions/pipi/pipi.pyx
+include moleculekit/interactions/hbonds/hbonds.pyx
+include moleculekit/occupancy_utils/occupancy_utils.pyx
+include moleculekit/tmalign/tmalign_util.pyx
+include moleculekit/xtc_utils/xtc.pyx
 include moleculekit/atomselect_utils/atomselect_utils.pyx
