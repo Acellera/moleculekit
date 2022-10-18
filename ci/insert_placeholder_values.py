@@ -1,9 +1,23 @@
+try:
+    import subprocess
+
+    version = (
+        subprocess.check_output(["git", "describe", "--abbrev=0", "--tags"])
+        .strip()
+        .decode("utf-8")
+    )
+except Exception:
+    print("Could not get version tag. Defaulting to version 0")
+    version = "0"
+
 with open("requirements.txt", "r") as f:
     deps = f.readlines()
 
 # Fix conda meta.yaml
 with open("package/moleculekit/meta.yaml", "r") as f:
     text = f.read()
+
+text = text.replace("BUILD_VERSION_PLACEHOLDER", version)
 
 text = text.replace(
     "DEPENDENCY_PLACEHOLDER",
@@ -13,18 +27,6 @@ text = text.replace(
 with open("package/moleculekit/meta.yaml", "w") as f:
     f.write(text)
 
-
-try:
-    import subprocess
-
-    version = (
-        subprocess.check_output(["git", "describe", "--abbrev=0", "--tags"])
-        .strip()
-        .decode("utf-8")
-    )
-except Exception as e:
-    print("Could not get version tag. Defaulting to version 0")
-    version = "0"
 
 # Set version in version file for __version__ variable
 with open("moleculekit/version.py", "r") as f:

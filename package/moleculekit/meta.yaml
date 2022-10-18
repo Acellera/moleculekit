@@ -1,12 +1,12 @@
 package:
   name: moleculekit
-  version: {{ environ.get('BUILD_VERSION', 0 ) }}
+  version: BUILD_VERSION_PLACEHOLDER
 
 source:
    path: ../..
 
 build:
-  number: {{ environ.get('BUILD_NUMBER', 0 ) }}
+  number: 0
 
 requirements:
   host:

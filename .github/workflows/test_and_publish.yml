@@ -118,7 +118,6 @@ jobs:
       - name: Build PyPI 📦
         run: |
           export TAG_DESCRIBE=$(git describe)
-          export BUILD_VERSION=$(echo $TAG_DESCRIBE | sed 's/-/ /g'  | awk '{print $1}')
           export CONDA_PY=${{ matrix.python-version }}
           pip install numpy>=1.18.5 Cython>=0.29.21 build
           python ci/insert_placeholder_values.py
@@ -163,7 +162,6 @@ jobs:
         shell: bash -l {0}
         run: |
           export TAG_DESCRIBE=$(git describe)
-          export BUILD_VERSION=$(echo $TAG_DESCRIBE | sed 's/-/ /g'  | awk '{print $1}')
           conda install anaconda-client conda-build python=${{ matrix.python-version }}
           export CONDA_PY=${{ matrix.python-version }}
           python ci/insert_placeholder_values.py
