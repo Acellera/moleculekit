@@ -447,7 +447,7 @@ void split_white(const string &line, vector<string> &line_vec,
 }
 
 size_t get_PDB_lines(const string filename,
-                     vector<vector<string>> &PDB_lines, vector<string> &chainID_list,
+                     vector<vector<string> > &PDB_lines, vector<string> &chainID_list,
                      vector<int> &mol_vec, const int ter_opt, const int infmt_opt,
                      const string atom_opt, const int split_opt, const int het_opt)
 {
@@ -844,7 +844,7 @@ size_t get_PDB_lines(const string filename,
  * if split_opt >=1 and ter_opt ==0, each sequence is a separate entry.
  * if split_opt ==0 and ter_opt ==0, all sequences are combined into one */
 size_t get_FASTA_lines(const string filename,
-                       vector<vector<string>> &FASTA_lines, vector<string> &chainID_list,
+                       vector<vector<string> > &FASTA_lines, vector<string> &chainID_list,
                        vector<int> &mol_vec, const int ter_opt = 3, const int split_opt = 0)
 {
     string line;
@@ -5314,8 +5314,8 @@ int main(int argc, char *argv[])
              << "RMSD\tID1\tID2\tIDali\tL1\tL2\tLali" << endl;
 
     /* declare previously global variables */
-    vector<vector<string>> PDB_lines1; // text of chain1
-    vector<vector<string>> PDB_lines2; // text of chain2
+    vector<vector<string> > PDB_lines1; // text of chain1
+    vector<vector<string> > PDB_lines2; // text of chain2
     vector<int> mol_vec1;              // molecule type of chain1, RNA if >0
     vector<int> mol_vec2;              // molecule type of chain2, RNA if >0
     vector<string> chainID_list1;      // list of chainID1
