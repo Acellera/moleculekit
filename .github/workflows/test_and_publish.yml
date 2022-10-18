@@ -26,6 +26,8 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          mamba-version: "*"
+          channels: acellera,conda-forge,defaults
 
       - name: Lint with flake8
         run: |
@@ -37,8 +39,8 @@ jobs:
 
       - name: Install moleculekit conda deps. rdkit version is just set high for tests to pass
         run: |
-          conda install -y -q --file extra_requirements.txt python=${{ matrix.python-version }} -c acellera -c conda-forge
-          conda install -y -q rdkit=2022.03.4 -c conda-forge
+          mamba install -y -q --file extra_requirements.txt python=${{ matrix.python-version }} -c acellera -c conda-forge
+          mamba install -y -q rdkit=2022.03.4 -c conda-forge
 
       - name: Compile cython
         run: |
@@ -77,10 +79,11 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          mamba-version: "*"
 
       - name: Install conda deps
         run: |
-          conda install -y -q --file extra_requirements.txt nbconvert sphinx python=${{ matrix.python-version }} -c acellera -c conda-forge
+          mamba install -y -q --file extra_requirements.txt nbconvert sphinx python=${{ matrix.python-version }} -c acellera -c conda-forge
 
       - name: Generate rst docs
         run: |
