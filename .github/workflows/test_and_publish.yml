@@ -45,6 +45,7 @@ jobs:
       - name: Install moleculekit
         run: |
           pip install .
+          python setup.py build_ext --inplace
 
       - name: Test
         run: |

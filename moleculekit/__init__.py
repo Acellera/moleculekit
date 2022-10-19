@@ -4,10 +4,11 @@
 # No redistribution in whole or part
 #
 from moleculekit.home import home as __home
-from moleculekit._version import __version__
 import os
 import logging.config
+from moleculekit import _version
 
+__version__ = _version.get_versions()["version"]
 
 try:
     logging.config.fileConfig(
@@ -15,3 +16,6 @@ try:
     )
 except Exception:
     print("MoleculeKit: Logging setup failed")
+
+from . import _version
+__version__ = _version.get_versions()['version']

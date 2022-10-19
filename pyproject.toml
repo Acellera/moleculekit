@@ -30,14 +30,6 @@ include = ["moleculekit*", "setup.py", "moleculekit/share"]
 exclude = ["moleculekit/test-data", "moleculekit/tests", "package"]
 namespaces = false
 
-[tool.versioneer]
-VCS = "git"
-style = "pep440"
-versionfile_source = "moleculekit/_version.py"
-versionfile_build = "moleculekit/_version.py"
-tag_prefix = ""
-parentdir_prefix = "moleculekit-"
-
 [build-system]
-requires = ["setuptools", "numpy>=1.18.5", "Cython>=0.29.21", "toml", "versioneer"]
+requires = ["setuptools", "numpy>=1.18.5", "Cython>=0.29.21", "toml", "versioneer==0.26"]
 build-backend = "setuptools.build_meta"
