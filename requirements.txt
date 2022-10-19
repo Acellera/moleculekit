@@ -1,6 +1,0 @@
-numpy>=1.17
-scipy
-pandas>=1.1.2
-networkx
-tqdm
-mmtf-python

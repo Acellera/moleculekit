@@ -3,12 +3,11 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
-from moleculekit.version import version as _version
 from moleculekit.home import home as __home
+from moleculekit.__version__ import __version__
 import os
 import logging.config
 
-__version__ = _version()
 
 try:
     logging.config.fileConfig(
