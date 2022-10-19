@@ -1,3 +1,5 @@
+include versioneer.py
+include moleculekit/_version.py
 include setup.cfg
 include moleculekit/distance_utils/distance_utils.pyx
 include moleculekit/bondguesser_utils/bondguesser_utils.pyx
