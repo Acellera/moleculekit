@@ -9,6 +9,14 @@ include moleculekit/interactions/hbonds/hbonds.pyx
 include moleculekit/occupancy_utils/occupancy_utils.pyx
 include moleculekit/tmalign/tmalign_util.pyx
 include moleculekit/tmalign/tmalignlib.pxd
+include moleculekit/tmalign/include/TMAlign.h
+include moleculekit/tmalign/src/TMAlign.cpp
 include moleculekit/xtc_utils/xtc.pyx
 include moleculekit/xtc_utils/xtclib.pxd
+include moleculekit/xtc_utils/src/xdrfile_xtc.c
+include moleculekit/xtc_utils/src/xdrfile.c
+include moleculekit/xtc_utils/src/xtc.c
+include moleculekit/xtc_utils/include/xdrfile_xtc.h
+include moleculekit/xtc_utils/include/xdrfile.h
+include moleculekit/xtc_utils/include/xtc.h
 include moleculekit/atomselect_utils/atomselect_utils.pyx
