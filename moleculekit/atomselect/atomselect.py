@@ -360,7 +360,7 @@ class _TestAtomSelect(unittest.TestCase):
                 ref = pickle.load(f)
 
         analysis_time_threshold = 0.4  # second
-        atomsel_time_threshold = 0.1
+        atomsel_time_threshold = 0.2
         atomsel_time_threshold_within = 0.7
 
         results = {}

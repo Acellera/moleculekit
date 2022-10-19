@@ -26,8 +26,7 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = [""]
-include = ["moleculekit*", "setup.py", "moleculekit/share"]  
-exclude = ["moleculekit/test-data", "moleculekit/tests", "package"]
+include = ["moleculekit*"]  
 namespaces = false
 
 [build-system]

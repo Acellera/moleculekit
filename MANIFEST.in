@@ -1,7 +1,15 @@
 include moleculekit/_version.py
+include setup.py
 include setup.cfg
+include pyproject.toml
+include moleculekit/share
+
 recursive-include moleculekit *.pyx *.pxd
 recursive-include moleculekit/tmalign/include *.h
 recursive-include moleculekit/tmalign/src *.cpp
 recursive-include moleculekit/xtc_utils/include *.h
 recursive-include moleculekit/xtc_utils/src *.c
+
+prune moleculekit/test-data
+prune moleculekit/tests
+prune package
