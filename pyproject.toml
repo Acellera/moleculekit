@@ -31,5 +31,5 @@ exclude = ["moleculekit/test-data", "moleculekit/tests", "package"]
 namespaces = false
 
 [build-system]
-requires = ["setuptools", "numpy>=1.18.5", "Cython>=0.29.21", "toml"]
+requires = ["setuptools", "numpy>=1.18.5", "Cython>=0.29.21", "toml", "versioneer[toml]==0.26"]
 build-backend = "setuptools.build_meta"
