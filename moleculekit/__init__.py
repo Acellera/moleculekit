@@ -4,7 +4,7 @@
 # No redistribution in whole or part
 #
 from moleculekit.home import home as __home
-from moleculekit.__version__ import __version__
+from moleculekit._version import __version__
 import os
 import logging.config
 

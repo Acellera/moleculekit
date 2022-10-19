@@ -1,7 +1,7 @@
 import toml
 
 try:
-    from moleculekit.__version__ import __version__
+    from moleculekit._version import __version__
 except Exception:
     print("Could not get version. Defaulting to version 0")
     version = "0"
