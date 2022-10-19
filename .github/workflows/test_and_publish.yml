@@ -46,6 +46,7 @@ jobs:
         run: |
           pip install "numpy>=1.18.5" "Cython>=0.29.21"
           pip install .
+          pip install "versioneer==0.26"
           python setup.py build_ext --inplace
 
       - name: Test
