@@ -8,5 +8,7 @@ include moleculekit/interactions/pipi/pipi.pyx
 include moleculekit/interactions/hbonds/hbonds.pyx
 include moleculekit/occupancy_utils/occupancy_utils.pyx
 include moleculekit/tmalign/tmalign_util.pyx
+include moleculekit/tmalign/tmalignlib.pxd
 include moleculekit/xtc_utils/xtc.pyx
+include moleculekit/xtc_utils/xtclib.pxd
 include moleculekit/atomselect_utils/atomselect_utils.pyx
