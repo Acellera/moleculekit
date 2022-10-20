@@ -161,7 +161,6 @@ jobs:
       - name: Build moleculekit package
         shell: bash -l {0}
         run: |
-          pip install "versioneer==0.26"
           git config --global --add safe.directory '*'
           conda install anaconda-client conda-build python=${{ matrix.python-version }} toml
           python package/moleculekit/insert_placeholder_values.py

@@ -12,6 +12,7 @@ requirements:
   host:
     - python
     - cython
+    - versioneer==0.26
 DEPENDENCY_PLACEHOLDER
   run:
     - python
