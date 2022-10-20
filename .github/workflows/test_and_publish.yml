@@ -163,6 +163,7 @@ jobs:
         run: |
           git config --global --add safe.directory '*'
           conda install anaconda-client conda-build python=${{ matrix.python-version }} toml
+          pip install versioneer==0.26
           python package/moleculekit/insert_placeholder_values.py
           conda build --python ${{ matrix.python-version }} package/moleculekit/ --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload -c acellera -c conda-forge
 
