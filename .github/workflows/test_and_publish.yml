@@ -3,135 +3,135 @@ name: Test code and publish package
 on: [push]
 
 jobs:
-  # test:
-  #   runs-on: ${{ matrix.os }}
+  test:
+    runs-on: ${{ matrix.os }}
 
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       os: ["ubuntu-latest"]
-  #       python-version: ["3.8", "3.9", "3.10"]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.8", "3.9", "3.10"]
 
-  #   defaults: # Needed for conda
-  #     run:
-  #       shell: bash -l {0}
+    defaults: # Needed for conda
+      run:
+        shell: bash -l {0}
 
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #       with:
-  #         lfs: true
-  #         submodules: true
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          lfs: true
+          submodules: true
 
-  #     - uses: conda-incubator/setup-miniconda@v2
-  #       with:
-  #         auto-update-conda: true
-  #         python-version: ${{ matrix.python-version }}
-  #         mamba-version: "*"
-  #         channels: acellera,conda-forge,defaults
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          mamba-version: "*"
+          channels: acellera,conda-forge,defaults
 
-  #     - name: Lint with flake8
-  #       run: |
-  #         pip install flake8 coverage codecov pytest pytest-subtests
-  #         # stop the build if there are Python syntax errors or undefined names
-  #         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-  #         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-  #         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Lint with flake8
+        run: |
+          pip install flake8 coverage codecov pytest pytest-subtests
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-  #     - name: Install moleculekit conda deps. rdkit version is just set high for tests to pass
-  #       run: |
-  #         mamba install -y -q --file extra_requirements.txt python=${{ matrix.python-version }} -c acellera -c conda-forge
-  #         mamba install -y -q rdkit=2022.03.4 -c conda-forge
+      - name: Install moleculekit conda deps. rdkit version is just set high for tests to pass
+        run: |
+          mamba install -y -q --file extra_requirements.txt python=${{ matrix.python-version }} -c acellera -c conda-forge
+          mamba install -y -q rdkit=2022.03.4 -c conda-forge
 
-  #     - name: Install moleculekit
-  #       run: |
-  #         pip install "numpy>=1.18.5" "Cython>=0.29.21"
-  #         pip install .
-  #         pip install "versioneer==0.26"
-  #         python setup.py build_ext --inplace
+      - name: Install moleculekit
+        run: |
+          pip install "numpy>=1.18.5" "Cython>=0.29.21"
+          pip install .
+          pip install "versioneer==0.26"
+          python setup.py build_ext --inplace
 
-  #     - name: Test
-  #       run: |
-  #         coverage run -m pytest ./moleculekit
-  #         codecov
+      - name: Test
+        run: |
+          coverage run -m pytest ./moleculekit
+          codecov
 
-  # makedocs:
-  #   if: startsWith(github.event.ref, 'refs/tags/')
-  #   needs: test
-  #   runs-on: ${{ matrix.os }}
-  #   defaults:
-  #     run:
-  #       shell: bash -l {0}
+  makedocs:
+    if: startsWith(github.event.ref, 'refs/tags/')
+    needs: test
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
 
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       os: ["ubuntu-latest"]
-  #       python-version: ["3.9"]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.9"]
 
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #       with:
-  #         lfs: true
-  #         submodules: true
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          lfs: true
+          submodules: true
 
-  #     - uses: conda-incubator/setup-miniconda@v2
-  #       with:
-  #         auto-update-conda: true
-  #         python-version: ${{ matrix.python-version }}
-  #         mamba-version: "*"
-  #         channels: acellera,conda-forge,defaults
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          mamba-version: "*"
+          channels: acellera,conda-forge,defaults
 
-  #     - name: Install conda deps
-  #       run: |
-  #         mamba install -y -q --file extra_requirements.txt nbconvert sphinx python=${{ matrix.python-version }} -c acellera -c conda-forge
+      - name: Install conda deps
+        run: |
+          mamba install -y -q --file extra_requirements.txt nbconvert sphinx python=${{ matrix.python-version }} -c acellera -c conda-forge
 
-  #     - name: Generate rst docs
-  #       run: |
-  #         cd doc; make rst
+      - name: Generate rst docs
+        run: |
+          cd doc; make rst
 
-  #     - name: Publish to documentation server
-  #       uses: burnett01/rsync-deployments@5.2
-  #       with:
-  #         switches: -avzr --delete
-  #         path: doc/source/
-  #         remote_path: /home/docs/rst_docs/moleculekit/
-  #         remote_host: ${{ secrets.DOCS_SSH_HOST }}
-  #         remote_user: ${{ secrets.DOCS_SSH_USER }}
-  #         remote_key: ${{ secrets.DOCS_SSH_KEY }}
+      - name: Publish to documentation server
+        uses: burnett01/rsync-deployments@5.2
+        with:
+          switches: -avzr --delete
+          path: doc/source/
+          remote_path: /home/docs/rst_docs/moleculekit/
+          remote_host: ${{ secrets.DOCS_SSH_HOST }}
+          remote_user: ${{ secrets.DOCS_SSH_USER }}
+          remote_key: ${{ secrets.DOCS_SSH_KEY }}
 
-  # deploypypi:
-  #   if: startsWith(github.event.ref, 'refs/tags/')
-  #   needs: test
-  #   runs-on: ${{ matrix.os }}
+  deploypypi:
+    if: startsWith(github.event.ref, 'refs/tags/')
+    needs: test
+    runs-on: ${{ matrix.os }}
 
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       os: ["ubuntu-latest"]
-  #       python-version: ["3.9"]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.9"]
 
-  #   steps:
-  #     - uses: actions/checkout@v1
+    steps:
+      - uses: actions/checkout@v1
 
-  #     - uses: conda-incubator/setup-miniconda@v2
-  #       with:
-  #         activate-environment: deploy
-  #         python-version: ${{ matrix.python-version }}
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: deploy
+          python-version: ${{ matrix.python-version }}
 
-  #     - name: Build PyPI 📦
-  #       run: |
-  #         pip install numpy>=1.18.5 Cython>=0.29.21 build
-  #         python -m build --sdist --outdir dist/ .
+      - name: Build PyPI 📦
+        run: |
+          pip install numpy>=1.18.5 Cython>=0.29.21 build
+          python -m build --sdist --outdir dist/ .
 
-  #     - name: Publish distribution 📦 to PyPI
-  #       uses: pypa/gh-action-pypi-publish@master
-  #       with:
-  #         password: ${{ secrets.PYPI_API_TOKEN }}
-  #         skip_existing: true
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          skip_existing: true
 
   deploy:
-    # if: startsWith(github.event.ref, 'refs/tags/')
-    # needs: test
+    if: startsWith(github.event.ref, 'refs/tags/')
+    needs: test
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
 
@@ -145,9 +145,9 @@ jobs:
           - os: "macos-latest"
             python-version: "3.10"
             container:
-          - os: "windows-latest"
-            python-version: "3.10"
-            container:
+          # - os: "windows-latest"
+          #   python-version: "3.10"
+          #   container:
 
     steps:
       - uses: actions/checkout@v1
@@ -166,7 +166,7 @@ jobs:
           python package/moleculekit/insert_placeholder_values.py
           conda build --python ${{ matrix.python-version }} package/moleculekit/ --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload -c acellera -c conda-forge
 
-      # - name: Upload to conda
-      #   shell: bash -l {0}
-      #   run: |
-      #     anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ./pkg/*/moleculekit-*.tar.bz2
+      - name: Upload to conda
+        shell: bash -l {0}
+        run: |
+          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ./pkg/*/moleculekit-*.tar.bz2
