@@ -6,7 +6,7 @@ try:
     __version__ = _version.get_versions()["version"]
 except Exception:
     print("Could not get version. Defaulting to version 0")
-    version = "0"
+    __version__ = "0"
 
 pyproject = toml.load("pyproject.toml")
 deps = pyproject["project"]["dependencies"]
