@@ -1,8 +1,8 @@
-include moleculekit/_version.py
-include setup.py
-include setup.cfg
-include pyproject.toml
-include moleculekit/share
+include LICENSE
+include moleculekit/logging.ini
+include moleculekit/vmd_wrapper
+
+graft moleculekit/share/
 
 recursive-include moleculekit *.pyx *.pxd
 recursive-include moleculekit/tmalign/include *.h
