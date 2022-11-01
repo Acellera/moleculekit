@@ -187,10 +187,16 @@ def get_reduced_distances(
 
 
 def pp_calcMinDistances(
-    mol, sel1, sel2, periodic, metric="distances", threshold=8, gap=1, truncate=None
+    mol, sel1, sel2, periodic, metric="distances", threshold=8, truncate=None
 ):
     return get_reduced_distances(
-        mol, sel1, sel2, periodic, metric, threshold, gap, truncate
+        mol=mol,
+        sel1=sel1,
+        sel2=sel2,
+        periodic=periodic,
+        metric=metric,
+        threshold=threshold,
+        truncate=truncate,
     )
 
 
