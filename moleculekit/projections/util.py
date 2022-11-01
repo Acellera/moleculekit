@@ -78,10 +78,19 @@ def pp_calcDistances(
     return results
 
 
-def pp_calcMinDistances(
-    mol, sel1, sel2, periodic, metric="distances", threshold=8, gap=1, truncate=None
+def get_reduced_distances(
+    mol,
+    sel1,
+    sel2,
+    periodic,
+    metric="distances",
+    threshold=8,
+    truncate=None,
+    reduction1="closest",
+    reduction2="closest",
 ):
-    from moleculekit.distance_utils import mindist_trajectory
+    from moleculekit.distance_utils import dist_trajectory_reduction
+    from moleculekit.periodictable import periodictable
 
     # Converting non-grouped boolean atomselection to group-style atomselections
     if np.ndim(sel1) != 2:
@@ -110,16 +119,6 @@ def pp_calcMinDistances(
             "Please ensure they both have the same number of frames"
         )
 
-    # Converting from 2D boolean atomselect array to 2D int array where each row starts with the indexes of the boolean
-    groups1 = np.ones((sel1.shape[0], mol.numAtoms), dtype=np.int32) * -1
-    groups2 = np.ones((sel2.shape[0], mol.numAtoms), dtype=np.int32) * -1
-    for i in range(sel1.shape[0]):
-        idx = np.where(sel1[i, :])[0]
-        groups1[i, 0 : len(idx)] = idx
-    for i in range(sel2.shape[0]):
-        idx = np.where(sel2[i, :])[0]
-        groups2[i, 0 : len(idx)] = idx
-
     selfdist = np.array_equal(sel1, sel2)
 
     # Digitize chains to not do PBC calculations of the same chain
@@ -134,7 +133,9 @@ def pp_calcMinDistances(
         for i in range(sel2.shape[0]):
             digitized_chains[sel2[i, :]] = 2
 
-    # Running the actual calculations
+    groups1 = [np.where(sel1[i, :])[0].tolist() for i in range(sel1.shape[0])]
+    groups2 = [np.where(sel2[i, :])[0].tolist() for i in range(sel2.shape[0])]
+
     mindist = np.zeros(
         (mol.numFrames, len(groups1) * len(groups2)), dtype=np.float32
     )  # Preparing the return array
@@ -146,14 +147,27 @@ def pp_calcMinDistances(
 
     # import time
     # t = time.time()
-    mindist_trajectory(
+    reduction_map = {"closest": 0, "com": 1}
+
+    digitized_chains1 = np.array(
+        [digitized_chains[gg[0]] for gg in groups1], dtype=np.uint32
+    )
+    digitized_chains2 = np.array(
+        [digitized_chains[gg[0]] for gg in groups2], dtype=np.uint32
+    )
+    masses = np.array([periodictable[el].mass for el in mol.element], dtype=np.float32)
+    dist_trajectory_reduction(
         coords,
         box,
         groups1,
         groups2,
-        digitized_chains,
+        digitized_chains1,
+        digitized_chains2,
         selfdist,
         periodic is not None,
+        masses,
+        reduction_map[reduction1.lower()],
+        reduction_map[reduction2.lower()],
         mindist,
     )
     # print(time.time() - t)
@@ -170,6 +184,14 @@ def pp_calcMinDistances(
             "The metric you asked for is not supported. Check spelling and documentation"
         )
     return mindist
+
+
+def pp_calcMinDistances(
+    mol, sel1, sel2, periodic, metric="distances", threshold=8, gap=1, truncate=None
+):
+    return get_reduced_distances(
+        mol, sel1, sel2, periodic, metric, threshold, gap, truncate, reduction="min"
+    )
 
 
 def _findDiffChain(mol, sel1, sel2, i, others):

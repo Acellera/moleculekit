@@ -5,7 +5,6 @@
 #
 
 from moleculekit.projections.projection import Projection
-from moleculekit.projections.util import pp_calcDistances, pp_calcMinDistances
 from moleculekit.util import ensurelist
 import numpy as np
 import logging
@@ -30,7 +29,7 @@ class MetricDistance(Projection):
         periodic distances between different chains. If set to "selections" it will calculate periodic distances between
         the two selections. If set to None it will not calculate any periodic distances.
     groupsel1 : ['all','residue'], optional
-        Group all atoms in `sel1` to the single minimum distance. Alternatively can calculate the minimum distance of a
+        Group all atoms in `sel1` to the single closest/COM distance. Alternatively can calculate the closest/COM distance of a
         residue containing the atoms in sel1.
     groupsel2 : ['all','residue'], optional
         Same as groupsel1 but for `sel2`
@@ -40,12 +39,36 @@ class MetricDistance(Projection):
         The threshold under which a distance is considered in contact. Units in Angstrom.
     truncate : float, optional
         Set all distances larger than `truncate` to `truncate`. Units in Angstrom.
-    update :
-        Not functional yet
+    groupreduce1 : ['closest', 'com'], optional
+        The reduction to apply on group 1 if `groupsel1` is used. `closest` will calculate the closest distance of
+        group 1 to selection 2. `com` will calculate the distance of the center of mass of group 1 to selection 2.
+    groupreduce2 : ['closest', 'com'], optional
+        Same as `groupreduce1` but for group 2 if `groupsel2` is used.
 
     Returns
     -------
     proj : MetricDistance object
+
+    Examples
+    --------
+    Calculate periodic distances between all protein CA atoms and all atoms of a ligand called MOL
+    >>> metr = MetricDistance("protein and name CA", "resname MOL", periodic="selections")
+    >>> data = metr.project(mol)
+
+    Calculate the single periodic distance between the closest atom of the protein to the closest atom of the ligand
+    >>> MetricDistance("protein", "resname MOL", "selections", groupsel1="all", groupsel2="all")
+
+    Calculate the periodic distances between the closest atom of each protein residue to the single closest ligand atom
+    >>> MetricDistance("protein", "resname MOL", "selections", groupsel1="residue", groupsel2="all")
+
+    Calculate the periodic distance between the COM of the protein to the COM of the ligand
+    >>> MetricDistance("protein", "resname MOL", "selections", groupsel1="all", groupsel2="all", groupreduce1="com", groupreduce2="com")
+
+    Calculate the non-periodic distance between a ligand atom and a protein atom
+    >>> MetricDistance("protein and name CA and resid 10", "resname MOL and name C7", periodic=None)
+
+    Calculate the distance of two nucleic chains
+    >>> MetricDistance("nucleic and chain A", "nucleic and chain B", periodic="chains")
     """
 
     def __init__(
@@ -57,15 +80,11 @@ class MetricDistance(Projection):
         groupsel2=None,
         metric="distances",
         threshold=8,
-        pbc=None,
         truncate=None,
+        groupreduce1="closest",
+        groupreduce2="closest",
     ):
         super().__init__()
-
-        if pbc is not None:
-            raise DeprecationWarning(
-                "The pbc option in MetricDistance is deprecated. Please use the `periodic` option to specify which periodic distances should be calculated."
-            )
 
         self.sel1 = sel1
         self.sel2 = sel2
@@ -80,6 +99,8 @@ class MetricDistance(Projection):
         self.metric = metric
         self.threshold = threshold
         self.truncate = truncate
+        self.groupreduce1 = groupreduce1
+        self.groupreduce2 = groupreduce2
 
     def _checkChains(self, mol, sel1, sel2):
         if np.array_equal(sel1, sel2):
@@ -112,6 +133,11 @@ class MetricDistance(Projection):
         data : np.ndarray
             An array containing the projected data.
         """
+        from moleculekit.projections.util import (
+            pp_calcDistances,
+            get_reduced_distances,
+        )
+
         getMolProp = lambda prop: self._getMolProp(mol, prop)
         sel1 = getMolProp("sel1")
         sel2 = getMolProp("sel2")
@@ -129,7 +155,7 @@ class MetricDistance(Projection):
                 truncate=self.truncate,
             )
         else:  # minimum distances by groups
-            metric = pp_calcMinDistances(
+            metric = get_reduced_distances(
                 mol,
                 sel1,
                 sel2,
@@ -137,6 +163,8 @@ class MetricDistance(Projection):
                 self.metric,
                 self.threshold,
                 truncate=self.truncate,
+                reduction1=self.groupreduce1,
+                reduction2=self.groupreduce2,
             )
 
         return metric
@@ -200,9 +228,8 @@ class MetricDistance(Projection):
 
         newsel = np.zeros((len(gg), mol.numAtoms), dtype=bool)
         for i, res in enumerate(sorted(gg)):
-            newsel[
-                i, idx[gg[res]]
-            ] = True  # Setting the selected indexes to True which correspond to the same residue
+            # Setting the selected indexes to True which correspond to the same residue
+            newsel[i, idx[gg[res]]] = True
         return newsel
 
     def getMapping(self, mol):
@@ -281,7 +308,6 @@ class MetricSelfDistance(MetricDistance):
         metric="distances",
         threshold=8,
         periodic=None,
-        pbc=None,
         truncate=None,
     ):
         """Creates a MetricSelfDistance object
@@ -309,10 +335,6 @@ class MetricSelfDistance(MetricDistance):
         -------
         proj : MetricDistance object
         """
-        if pbc is not None:
-            raise DeprecationWarning(
-                "The `pbc` option is deprecated please use the `periodic` option as described in MetricDistance."
-            )
 
         super().__init__(
             sel1=sel,
@@ -836,6 +858,76 @@ class _TestMetricDistance(unittest.TestCase):
         )
         data3 = metr.project(mol_tmp)
         assert not np.allclose(data1, data3)
+
+    def test_com_distances(self):
+        from moleculekit.molecule import Molecule
+        from moleculekit.periodictable import periodictable
+
+        mol = Molecule("3ptb")
+
+        sel1 = "protein"
+        sel2 = "resname BEN"
+
+        mol1 = mol.copy()
+        mol1.filter(sel1)
+        masses = np.array(
+            [periodictable[el].mass for el in mol1.element], dtype=np.float32
+        )
+        com1 = np.sum(mol1.coords[:, :, 0] * masses[:, None], axis=0) / masses.sum()
+
+        mol2 = mol.copy()
+        mol2.filter(sel2)
+        masses = np.array(
+            [periodictable[el].mass for el in mol2.element], dtype=np.float32
+        )
+        com2 = np.sum(mol2.coords[:, :, 0] * masses[:, None], axis=0) / masses.sum()
+
+        dist = MetricDistance(
+            sel1,
+            sel2,
+            None,
+            groupsel1="all",
+            groupsel2="all",
+            groupreduce1="com",
+            groupreduce2="com",
+        ).project(mol)
+
+        assert (
+            np.abs(np.linalg.norm(com1 - com2) - dist) < 1e-2
+        ), f"{np.linalg.norm(com1 - com2)}, {dist}"
+
+        dist = MetricDistance(
+            sel1,
+            sel2,
+            None,
+            groupsel1="all",
+            groupsel2="all",
+            groupreduce1="com",
+            groupreduce2="closest",
+        ).project(mol)
+        assert np.abs(dist[0][0] - 8.978174) < 1e-5
+
+        dist = MetricDistance(
+            sel1,
+            sel2,
+            None,
+            groupsel1="all",
+            groupsel2="all",
+            groupreduce1="closest",
+            groupreduce2="com",
+        ).project(mol)
+        assert np.abs(dist[0][0] - 3.8286476) < 1e-5
+
+        dist = MetricDistance(
+            sel1,
+            sel2,
+            None,
+            groupsel1="all",
+            groupsel2="all",
+            groupreduce1="closest",
+            groupreduce2="closest",
+        ).project(mol)
+        assert np.abs(dist[0][0] - 2.8153415) < 1e-5
 
 
 if __name__ == "__main__":
