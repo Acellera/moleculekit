@@ -863,6 +863,51 @@ class _TestMetricDistance(unittest.TestCase):
         from moleculekit.molecule import Molecule
         from moleculekit.periodictable import periodictable
 
+        mol = Molecule().empty(4)
+        mol.coords = np.array(
+            [
+                [0, 0, 0],
+                [-1, 0, 0],
+                [1, 0, 0],
+                [0, 1, 0],
+            ],
+            dtype=np.float32,
+        )[:, :, None]
+        mol.element[:] = "H"
+        mol.resid[:] = [0, 1, 1, 0]
+
+        fixargs = {
+            "periodic": None,
+            "groupsel1": "all",
+            "groupsel2": "all",
+            "groupreduce1": "com",
+            "groupreduce2": "com",
+        }
+
+        dist = MetricDistance("index 0", "index 1", **fixargs).project(mol)
+        assert np.abs(dist[0][0] - 1) < 1e-5
+
+        dist = MetricDistance("index 0 1", "index 2", **fixargs).project(mol)
+        assert np.abs(dist[0][0] - 1.5) < 1e-5
+
+        dist = MetricDistance("index 0 1 2", "index 3", **fixargs).project(mol)
+        assert np.abs(dist[0][0] - 1) < 1e-5
+
+        fixargs["groupsel1"] = "residue"
+        dist = MetricDistance("index 0 1 2", "index 3", **fixargs).project(mol)
+        assert np.allclose(dist, [[1, 1]])
+
+        fixargs["groupsel1"] = "all"
+        fixargs["groupreduce1"] = "closest"
+        dist = MetricDistance("index 0 1 2", "index 3", **fixargs).project(mol)
+        assert np.allclose(dist, [[1]])
+
+        fixargs["groupsel1"] = "residue"
+        fixargs["groupreduce1"] = "closest"
+        dist = MetricDistance("index 0 1 2", "index 3", **fixargs).project(mol)
+        assert np.allclose(dist, [[1, 1.4142135]])
+
+        # Real test
         mol = Molecule("3ptb")
 
         sel1 = "protein"
