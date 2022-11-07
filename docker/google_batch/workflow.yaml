@@ -10,18 +10,18 @@ main:
           - batchApiUrl: ${"https://" + batchApi + "/projects/" + projectId + "/locations/" + region + "/jobs"}
           - imageUri: ${region + "-docker.pkg.dev/" + projectId + "/containers/moleculekit-service:v1"}
           - jobId: ${"job-moleculekit-" + string(int(sys.now()))}
-          - bucket: ${projectId + "-" + jobId}
-    - createBucket:
-        call: googleapis.storage.v1.buckets.insert
-        args:
-          query:
-            project: ${projectId}
-          body:
-            name: ${bucket}
-    - logCreateBucket:
-        call: sys.log
-        args:
-          data: ${"Created bucket " + bucket}
+          # - bucket: ${projectId + "-" + jobId}
+    # - createBucket:
+    #     call: googleapis.storage.v1.buckets.insert
+    #     args:
+    #       query:
+    #         project: ${projectId}
+    #       body:
+    #         name: ${bucket}
+    # - logCreateBucket:
+    #     call: sys.log
+    #     args:
+    #       data: ${"Created bucket " + bucket}
     - logCreateBatchJob:
         call: sys.log
         args:
@@ -39,18 +39,20 @@ main:
           body:
             taskGroups:
               taskSpec:
+                computeResource:
+                  cpuMilli: 1000
+                  memoryMib: 1000
                 runnables:
                   - container:
                       imageUri: ${imageUri}
                       entrypoint: /opt/conda/bin/python
                       commands:
-                        - "-c"
-                        - "from moleculekit.molecule import Molecule; print(Molecule('/workdir/3ptb.pdb'))"
+                        - "/workdir/test/myscript.py"
                       volumes:
                         - "/mnt/disks/test-moleculekit-1:/workdir"
-                    environment:
-                      variables:
-                        BUCKET: ${bucket}
+                    # environment:
+                    #   variables:
+                    #     BUCKET: ${bucket}
                 volumes:
                   - gcs:
                       remotePath: test-moleculekit-1
@@ -76,40 +78,40 @@ main:
     - checkState:
         switch:
           - condition: ${getJobResult.body.status.state == "SUCCEEDED"}
-            next: returnResult
+            next: logDeleteBatchJob
           - condition: ${getJobResult.body.status.state == "FAILED"}
-            next: deleteBucket
+            next: logDeleteBatchJob
         next: sleep
     - sleep:
         call: sys.sleep
         args:
           seconds: 10
         next: getJob
-    - deleteBucket:
-        call: googleapis.storage.v1.buckets.delete
-        args:
-          bucket: ${bucket}
-    - logDeleteBucket:
-        call: sys.log
-        args:
-          data: ${"Deleted bucket " + bucket}
-        next: failExecution
-    # You can delete the batch job or keep it for debugging
-    # - logDeleteBatchJob:
+    # - deleteBucket:
+    #     call: googleapis.storage.v1.buckets.delete
+    #     args:
+    #       bucket: ${bucket}
+    # - logDeleteBucket:
     #     call: sys.log
     #     args:
-    #       data: ${"Deleting the batch job " + jobId}
-    # - deleteBatchJob:
-    #     call: http.delete
-    #     args:
-    #       url: ${batchApiUrl + "/" + jobId}
-    #       auth:
-    #         type: OAuth2
-    #     result: deleteBatchJob
+    #       data: ${"Deleted bucket " + bucket}
+    #     next: failExecution
+    # You can delete the batch job or keep it for debugging
+    - logDeleteBatchJob:
+        call: sys.log
+        args:
+          data: ${"Deleting the batch job " + jobId}
+    - deleteBatchJob:
+        call: http.delete
+        args:
+          url: ${batchApiUrl + "/" + jobId}
+          auth:
+            type: OAuth2
+        result: deleteBatchJob
     - returnResult:
         return:
           jobId: ${jobId}
-          bucket: ${bucket}
+          # bucket: ${bucket}
     - failExecution:
         raise:
           message: ${"The underlying batch job " + jobId + " failed"}
