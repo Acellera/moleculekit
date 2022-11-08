@@ -21,9 +21,9 @@ def create_container_job(
     job_name: str,
     container_name: str,
     bucket_name: str,
-    runscript: str,
     inputdir: str,
-    outputdir: str,
+    task_count: int,
+    parallelism: int,
 ) -> batch_v1.Job:
     # Define what will be done as part of the job.
     runnable = batch_v1.Runnable()
@@ -31,8 +31,11 @@ def create_container_job(
     runnable.container.image_uri = (
         f"{region}-docker.pkg.dev/{project_id}/containers/{container_name}:v1"
     )
-    runnable.container.entrypoint = "/opt/conda/bin/python"
-    runnable.container.commands = [f"/workdir/{runscript}", inputdir, outputdir]
+    runnable.container.entrypoint = "/bin/bash"
+    cmds = ["/scripts/execute.sh"]
+    if inputdir is not None and len(inputdir):
+        cmds.append(inputdir)
+    runnable.container.commands = cmds
     runnable.container.volumes = [f"/mnt/disks/{bucket_name}:/workdir"]
 
     # Jobs can be divided into tasks. In this case, we have only one task.
@@ -59,8 +62,8 @@ def create_container_job(
     # Tasks are grouped inside a job using TaskGroups.
     # Currently, it's possible to have only one task group.
     group = batch_v1.TaskGroup()
-    group.task_count = 3
-    group.parallelism = 2
+    group.task_count = task_count
+    group.parallelism = parallelism
     group.task_spec = task
 
     # Policies are used to define on what kind of virtual machines the tasks will run on.
@@ -104,14 +107,16 @@ def create_bucket(storage_client, bucket_name):
 def upload_to_bucket(bucket, source, dest):
     if os.path.isdir(source):
         for ff in glob(os.path.join(source, "**", "*"), recursive=True):
+            if os.path.isdir(ff):
+                continue
             relname = os.path.relpath(ff, source)
-            target = f"{dest}/{relname}"
+            target = f"{dest}{relname}"
             print(f"Uploading {ff} to {target}")
             blob = bucket.blob(target)
             blob.upload_from_filename(ff)
     else:
         basename = os.path.basename(source)
-        target = f"{dest}/{basename}"
+        target = f"{dest}{basename}"
         print(f"Uploading {source} to {target}")
         blob = bucket.blob(target)
         blob.upload_from_filename(source)
@@ -142,7 +147,7 @@ def _get_files_recursive(bucket, source, files):
 def download_from_bucket(bucket, source, target):
     directory_mode = False
 
-    if source.endswith("/"):
+    if len(source) == 0 or source.endswith("/"):
         directory_mode = True
         files = _get_files_recursive(bucket, source, [])
     else:
@@ -159,58 +164,6 @@ def download_from_bucket(bucket, source, target):
         _download(bucket, ff, dest)
 
 
-def inprogress(job_name):
-    get_request = batch_v1.GetJobRequest(name=job_name)
-    job = batch_client.get_job(request=get_request)
-    if job.status.state == JobStatus.State.SUCCEEDED:
-        print("Job succeeded")
-        return 0
-    elif job.status.state == JobStatus.State.FAILED:
-        print("Job failed")
-        return 0
-    elif job.status.state in (
-        JobStatus.State.QUEUED,
-        JobStatus.State.RUNNING,
-        JobStatus.State.SCHEDULED,
-    ):
-        print(f"Job status: {str(job.status.state)}")
-    else:
-        print(f"Unknown job status: {str(job.status.state)}")
-    return 1
-
-
-def wait(job_name, sleeptime=5, reporttime=None, reportcallback=None):
-    import sys
-
-    if reporttime is not None:
-        if reporttime > sleeptime:
-            from math import round
-
-            reportfrequency = round(reporttime / sleeptime)
-        else:
-            reportfrequency = 1
-            sleeptime = reporttime
-
-    i = 1
-    while True:
-        inprog = inprogress(job_name)
-        if reporttime is not None:
-            if i == reportfrequency:
-                if reportcallback is not None:
-                    reportcallback(inprog)
-                else:
-                    logger.info(f"{inprog} jobs are pending completion")
-                i = 1
-            else:
-                i += 1
-
-        if inprog == 0:
-            break
-
-        sys.stdout.flush()
-        time.sleep(sleeptime)
-
-
 class GoogleBatchSession:
     def __init__(self, credential_file, project, region) -> None:
         self.project = project
@@ -222,17 +175,17 @@ class GoogleBatchSession:
         )
 
     def create_container_job2(
-        self, bucket_name, job_name_prefix, runscript, inputdir, outputdir
+        self, container, bucket_name, job_name_prefix, inputdir, task_count, parallelism
     ):
         create_request = create_container_job(
             self.project,
             self.region,
             job_name_prefix,
-            "moleculekit-service",
+            container,
             bucket_name,
-            runscript,
             inputdir,
-            outputdir,
+            task_count,
+            parallelism,
         )
         job = self.batch_client.create_job(create_request)
         return job.name
@@ -265,9 +218,18 @@ class GoogleBatchJob(ProtocolInterface):
 
         self._job_name = None
         self._job_name_prefix = job_name_prefix
+        self._arg(
+            "container", "string", "Container in which to run", None, val.String()
+        )
         self._arg("inputpath", "string", "Input path", None, val.String())
         self._arg("remotepath", "string", "Remote path", None, val.String())
-        self._arg("runscript", "string", "Run script", None, val.String())
+        self._arg(
+            "parallelism",
+            "int",
+            "Number of jobs to run in parallel",
+            None,
+            val.Number(int, "POS"),
+        )
 
         self._bucket = self._session.get_bucket(bucket_name)
         self._bucket_name = bucket_name
@@ -295,17 +257,32 @@ class GoogleBatchJob(ProtocolInterface):
         return status
 
     def submit(self):
+        if self.container is None:
+            raise RuntimeError("Please specify a container")
+        if self.inputpath is None:
+            raise RuntimeError("Please specify a inputpath")
+        if self.remotepath is None:
+            raise RuntimeError("Please specify a remotepath")
+        if len(self.remotepath) and not self.remotepath.endswith("/"):
+            raise RuntimeError("Remotepath must end with /")
+
+        folders = glob(os.path.join(self.inputpath, "*", ""))
+        for ff in folders:
+            if not os.path.exists(os.path.join(ff, "run.sh")):
+                raise RuntimeError(f"No run.sh file exists in {ff}")
+
         upload_to_bucket(self._bucket, self.inputpath, self.remotepath)
         self._job_name = self._session.create_container_job2(
+            self.container,
             self._bucket_name,
             self._job_name_prefix,
-            self.runscript,
             self.remotepath,
-            self.remotepath + "/out",
+            len(folders),
+            self.parallelism,
         )
 
     def retrieve(self, path):
-        remote = self.remotepath + "/out/"
+        remote = self.remotepath
         download_from_bucket(self._bucket, remote, path)
         # Cleaning up job
         try:
@@ -320,7 +297,6 @@ class GoogleBatchJob(ProtocolInterface):
         on_status=(JobStatus.State.SUCCEEDED, JobStatus.State.FAILED),
         seconds=10,
         _logger=True,
-        _return_dataset=True,
     ):
         """Blocks execution until the job has reached the specific status or any of a list of statuses.
 
@@ -347,24 +323,14 @@ class GoogleBatchJob(ProtocolInterface):
             time.sleep(seconds)
         logger.info(f"Job status {str(status)}")
 
-        # if _return_dataset:
-        #     try:
-        #         result = self._datacenter.get_datasets(
-        #             remotepath=f"{self._execid}/output", _logger=False
-        #         )[0]
-        #         return Dataset(
-        #             datasetid=result["id"], _session=self._session, _props=result
-        #         )
-        #     except Exception:
-        #         return None
-
 
 if __name__ == "__main__":
     session = GoogleBatchSession(credential_file, project, "us-central1")
-    job = GoogleBatchJob(session, "testbucket-moleculekit-1")
-    job.inputpath = "./test/"
-    job.remotepath = "test2"
-    job.runscript = "test2/myscript.py"
+    job = GoogleBatchJob(session, "testbucket-moleculekit-2")
+    job.container = "moleculekit-service"
+    job.inputpath = "./test2/"
+    job.remotepath = ""
+    job.parallelism = 2
     job.submit()
     job.wait()
     job.retrieve("./output/")
