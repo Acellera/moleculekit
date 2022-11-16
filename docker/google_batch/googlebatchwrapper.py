@@ -7,6 +7,7 @@ from glob import glob
 import uuid
 from moleculekit.util import ensurelist
 from protocolinterface import ProtocolInterface, val
+from tqdm import tqdm
 import logging
 import time
 
@@ -24,6 +25,10 @@ def create_container_job(
     inputdir: str,
     task_count: int,
     parallelism: int,
+    machine_type: str,
+    accelerator_type: str,
+    accelerator_count: int,
+    max_run_duration: str,
 ) -> batch_v1.Job:
     # Define what will be done as part of the job.
     runnable = batch_v1.Runnable()
@@ -37,6 +42,12 @@ def create_container_job(
         cmds.append(inputdir)
     runnable.container.commands = cmds
     runnable.container.volumes = [f"/mnt/disks/{bucket_name}:/workdir"]
+    if accelerator_type is not None:
+        runnable.container.volumes += [
+            "/var/lib/nvidia/lib64:/usr/local/nvidia/lib64",
+            "/var/lib/nvidia/bin:/usr/local/nvidia/bin",
+        ]
+        runnable.container.options = "--privileged"
 
     # Jobs can be divided into tasks. In this case, we have only one task.
     task = batch_v1.TaskSpec()
@@ -56,7 +67,7 @@ def create_container_job(
     task.compute_resource = resources
 
     task.max_retry_count = 2
-    task.max_run_duration = "3600s"
+    task.max_run_duration = max_run_duration
     task.volumes = [vol]
 
     # Tasks are grouped inside a job using TaskGroups.
@@ -70,9 +81,16 @@ def create_container_job(
     # In this case, we tell the system to use "e2-standard-4" machine type.
     # Read more about machine types here: https://cloud.google.com/compute/docs/machine-types
     policy = batch_v1.AllocationPolicy.InstancePolicy()
-    policy.machine_type = "e2-standard-4"
+    policy.machine_type = machine_type
+    if accelerator_type is not None:
+        accelerator = batch_v1.AllocationPolicy.Accelerator()
+        accelerator.type_ = accelerator_type
+        accelerator.count = accelerator_count
+        policy.accelerators = [accelerator]
     instances = batch_v1.AllocationPolicy.InstancePolicyOrTemplate()
     instances.policy = policy
+    if accelerator_type is not None:
+        instances.install_gpu_drivers = True
     allocation_policy = batch_v1.AllocationPolicy()
     allocation_policy.instances = [instances]
 
@@ -106,12 +124,14 @@ def create_bucket(storage_client, bucket_name):
 
 def upload_to_bucket(bucket, source, dest):
     if os.path.isdir(source):
+        files = []
         for ff in glob(os.path.join(source, "**", "*"), recursive=True):
-            if os.path.isdir(ff):
-                continue
+            if not os.path.isdir(ff):
+                files.append(ff)
+
+        for ff in tqdm(files, desc=f"Uploading files to {dest}"):
             relname = os.path.relpath(ff, source)
             target = f"{dest}{relname}"
-            print(f"Uploading {ff} to {target}")
             blob = bucket.blob(target)
             blob.upload_from_filename(ff)
     else:
@@ -153,8 +173,7 @@ def download_from_bucket(bucket, source, target):
     else:
         files = [source]
 
-    logger.info(f"Downloading {files}")
-    for ff in files:
+    for ff in tqdm(files, desc="Downloading files"):
         dest = target
         relname = os.path.relpath(ff, source)
         if directory_mode or os.path.isdir(target):
@@ -175,7 +194,17 @@ class GoogleBatchSession:
         )
 
     def create_container_job2(
-        self, container, bucket_name, job_name_prefix, inputdir, task_count, parallelism
+        self,
+        container,
+        bucket_name,
+        job_name_prefix,
+        inputdir,
+        task_count,
+        parallelism,
+        machine_type,
+        accelerator_type,
+        accelerator_count,
+        max_run_duration,
     ):
         create_request = create_container_job(
             self.project,
@@ -186,6 +215,10 @@ class GoogleBatchSession:
             inputdir,
             task_count,
             parallelism,
+            machine_type,
+            accelerator_type,
+            accelerator_count,
+            max_run_duration,
         )
         job = self.batch_client.create_job(create_request)
         return job.name
@@ -230,6 +263,34 @@ class GoogleBatchJob(ProtocolInterface):
             None,
             val.Number(int, "POS"),
         )
+        self._arg(
+            "machine_type",
+            "string",
+            "GCP machine type (i.e. e2-standard-4, a2-highgpu-1g)",
+            None,
+            val.String(),
+        )
+        self._arg(
+            "accelerator_type",
+            "string",
+            "Accelerator type (i.e. nvidia-tesla-k80, nvidia-tesla-a100)",
+            None,
+            val.String(),
+        )
+        self._arg(
+            "accelerator_count",
+            "int",
+            "Number of accelerators to attach to the compute nodes",
+            1,
+            val.Number(int, "POS"),
+        )
+        self._arg(
+            "max_run_duration",
+            "string",
+            "Maximum run duration of a job",
+            "3600s",
+            val.String(),
+        )
 
         self._bucket = self._session.get_bucket(bucket_name)
         self._bucket_name = bucket_name
@@ -265,6 +326,8 @@ class GoogleBatchJob(ProtocolInterface):
             raise RuntimeError("Please specify a remotepath")
         if len(self.remotepath) and not self.remotepath.endswith("/"):
             raise RuntimeError("Remotepath must end with /")
+        if self.machine_type is None:
+            raise RuntimeError("Please specify the machine type to run on")
 
         folders = glob(os.path.join(self.inputpath, "*", ""))
         for ff in folders:
@@ -279,6 +342,10 @@ class GoogleBatchJob(ProtocolInterface):
             self.remotepath,
             len(folders),
             self.parallelism,
+            self.machine_type,
+            self.accelerator_type,
+            self.accelerator_count,
+            self.max_run_duration,
         )
 
     def retrieve(self, path):
@@ -331,6 +398,22 @@ if __name__ == "__main__":
     job.inputpath = "./test2/"
     job.remotepath = ""
     job.parallelism = 2
+    job.machine_type = "e2-standard-4"
     job.submit()
     job.wait()
     job.retrieve("./output/")
+
+    session = GoogleBatchSession(credential_file, project, "us-central1")
+    job = GoogleBatchJob(session, "testbucket-moleculekit-3")
+    job.container = "acemd-service"
+    job.inputpath = "./test3/"
+    job.remotepath = ""
+    job.parallelism = 2
+    job.machine_type = "n1-standard-2"
+    job.accelerator_type = "nvidia-tesla-k80"  # gcloud compute accelerator-types list
+    job.accelerator_count = 1
+    job.submit()
+    job.wait()
+    job.retrieve("./output/")
+
+    # TODO: Delete bucket after retrieving job
