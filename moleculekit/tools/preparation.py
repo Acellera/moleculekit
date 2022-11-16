@@ -601,7 +601,7 @@ def systemPrepare(
     verbose : bool
         verbosity
     return_details : bool
-        whether to return just the prepared Molecule (False, default) or a molecule *and* a ResidueInfo
+        whether to return just the prepared Molecule (False, default) or a molecule *and* a pandas DataFrame
         object including computed properties
     hydrophobic_thickness : float
         the thickness of the membrane in which the protein is embedded, or None if globular protein.
