@@ -392,28 +392,28 @@ class GoogleBatchJob(ProtocolInterface):
 
 
 if __name__ == "__main__":
-    session = GoogleBatchSession(credential_file, project, "us-central1")
-    job = GoogleBatchJob(session, "testbucket-moleculekit-2")
-    job.container = "moleculekit-service"
-    job.inputpath = "./test2/"
-    job.remotepath = ""
-    job.parallelism = 2
-    job.machine_type = "e2-standard-4"
-    job.submit()
-    job.wait()
-    job.retrieve("./output/")
+    # session = GoogleBatchSession(credential_file, project, "us-central1")
+    # job = GoogleBatchJob(session, "testbucket-moleculekit-2")
+    # job.container = "moleculekit-service"
+    # job.inputpath = "./test2/"
+    # job.remotepath = ""
+    # job.parallelism = 2
+    # job.machine_type = "e2-standard-4"
+    # job.submit()
+    # job.wait()
+    # job.retrieve("./output/")
 
-    session = GoogleBatchSession(credential_file, project, "us-central1")
-    job = GoogleBatchJob(session, "testbucket-moleculekit-3")
-    job.container = "acemd-service"
-    job.inputpath = "./test3/"
-    job.remotepath = ""
-    job.parallelism = 2
-    job.machine_type = "n1-standard-2"
-    job.accelerator_type = "nvidia-tesla-k80"  # gcloud compute accelerator-types list
-    job.accelerator_count = 1
-    job.submit()
-    job.wait()
-    job.retrieve("./output/")
+    # session = GoogleBatchSession(credential_file, project, "us-central1")
+    # job = GoogleBatchJob(session, "testbucket-moleculekit-3")
+    # job.container = "acemd-service"
+    # job.inputpath = "./test3/"
+    # job.remotepath = ""
+    # job.parallelism = 2
+    # job.machine_type = "n1-standard-2"
+    # job.accelerator_type = "nvidia-tesla-k80"  # gcloud compute accelerator-types list
+    # job.accelerator_count = 1
+    # job.submit()
+    # job.wait()
+    # job.retrieve("./output/")
 
     # TODO: Delete bucket after retrieving job
