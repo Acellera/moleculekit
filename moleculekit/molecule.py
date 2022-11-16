@@ -930,14 +930,29 @@ class Molecule(object):
         self.bonds = np.delete(self.bonds, idx, axis=0)
         self.bondtype = np.delete(self.bondtype, idx)
 
-    def _guessBonds(self):
+    def _guessBonds(self, rdkit=False):
         """Tries to guess the bonds in the Molecule
 
         Can fail badly when non-bonded atoms are very close together. Use with extreme caution.
         """
-        from moleculekit.bondguesser import guess_bonds
+        from moleculekit.bondguesser import guess_bonds, guess_bonds_rdkit
 
-        return guess_bonds(self)
+        if rdkit:
+            return guess_bonds_rdkit(self)
+        else:
+            return guess_bonds(self)
+
+    def guessBonds(self, rdkit=False):
+        if rdkit:
+            bonds, bondtypes = self._guessBonds(rdkit)
+            self.bonds = np.array(bonds, dtype=self._dtypes["bonds"])
+            self.bondtype = np.array(bondtypes, dtype=self._dtypes["bondtype"])
+        else:
+            bonds = self._guessBonds(rdkit=False)
+            self.bonds = np.array(bonds, dtype=self._dtypes["bonds"])
+            self.bondtype = np.array(
+                ["un"] * self.bonds.shape[0], dtype=self._dtypes["bondtype"]
+            )
 
     def moveBy(self, vector, sel=None):
         """Move a selection of atoms by a given vector

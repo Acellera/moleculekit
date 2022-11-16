@@ -148,6 +148,52 @@ def guess_bonds(mol):
     return bonds
 
 
+def guess_bonds_rdkit(mol):
+    from rdkit import Chem
+    import tempfile
+    import os
+
+    btypemap = {"SINGLE": "1", "DOUBLE": "2", "TRIPLE": "3", "AROMATIC": "ar"}
+
+    def _uq_id(name, resname, resid, insertion, chain):
+        return f"{name.strip()}|{resname.strip()}|{resid}|{insertion.strip()}|{chain.strip()}"
+
+    def _uq_mol_id(mol, i):
+        return _uq_id(
+            mol.name[i], mol.resname[i], mol.resid[i], mol.insertion[i], mol.chain[i]
+        )
+
+    def _uq_rmol_id(atm):
+        return _uq_id(
+            atm.GetName(),
+            atm.GetResidueName(),
+            atm.GetResidueNumber(),
+            atm.GetInsertionCode(),
+            atm.GetChainId(),
+        )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pdbf = os.path.join(tmpdir, "mol.pdb")
+        mol.write(pdbf)
+
+        idxmap = {_uq_mol_id(mol, i): i for i in range(mol.numAtoms)}
+
+        rmol = Chem.MolFromPDBFile(pdbf, removeHs=False, sanitize=False)
+
+        bonds = []
+        bondtypes = []
+        for bb in rmol.GetBonds():
+            a_atm = bb.GetBeginAtom().GetPDBResidueInfo()
+            b_atm = bb.GetEndAtom().GetPDBResidueInfo()
+            a_idx = idxmap[_uq_rmol_id(a_atm)]
+            b_idx = idxmap[_uq_rmol_id(b_atm)]
+            bondtype = btypemap[str(bb.GetBondType())]
+            bonds.append(sorted([a_idx, b_idx]))
+            bondtypes.append(bondtype)
+
+    return bonds, bondtypes
+
+
 def bond_grid_search(
     coords,
     grid_cutoff,
