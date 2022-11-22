@@ -29,6 +29,7 @@ def create_container_job(
     accelerator_type: str,
     accelerator_count: int,
     max_run_duration: str,
+    provisioning_model: str,
 ) -> batch_v1.Job:
     # Define what will be done as part of the job.
     runnable = batch_v1.Runnable()
@@ -87,6 +88,15 @@ def create_container_job(
         accelerator.type_ = accelerator_type
         accelerator.count = accelerator_count
         policy.accelerators = [accelerator]
+    if provisioning_model:
+        mapping = {
+            "unspecified": batch_v1.AllocationPolicy.ProvisioningModel.PROVISIONING_MODEL_UNSPECIFIED,
+            "standard": batch_v1.AllocationPolicy.ProvisioningModel.STANDARD,
+            "spot": batch_v1.AllocationPolicy.ProvisioningModel.SPOT,
+            "preemptible": batch_v1.AllocationPolicy.ProvisioningModel.PREEMPTIBLE,
+        }
+        policy.provisioning_model = mapping[provisioning_model]
+
     instances = batch_v1.AllocationPolicy.InstancePolicyOrTemplate()
     instances.policy = policy
     if accelerator_type is not None:
@@ -205,6 +215,7 @@ class GoogleBatchSession:
         accelerator_type,
         accelerator_count,
         max_run_duration,
+        provisioning_model,
     ):
         create_request = create_container_job(
             self.project,
@@ -219,6 +230,7 @@ class GoogleBatchSession:
             accelerator_type,
             accelerator_count,
             max_run_duration,
+            provisioning_model,
         )
         job = self.batch_client.create_job(create_request)
         return job.name
@@ -300,6 +312,13 @@ class GoogleBatchJob(ProtocolInterface):
             "3600s",
             val.String(),
         )
+        self._arg(
+            "provisioning_model",
+            "string",
+            "The VM provisioning model: ['standard', 'spot', 'unspecified', 'preemptible']. Default: 'standard'",
+            "standard",
+            val.String(),
+        )
 
         self._bucket = self._session.create_bucket(bucket_name)
         self._bucket_name = bucket_name
@@ -355,6 +374,7 @@ class GoogleBatchJob(ProtocolInterface):
             self.accelerator_type,
             self.accelerator_count,
             self.max_run_duration,
+            self.provisioning_model,
         )
 
     def retrieve(self, path):
@@ -420,6 +440,7 @@ if __name__ == "__main__":
     # job.machine_type = "n1-standard-2"
     # job.accelerator_type = "nvidia-tesla-k80"  # gcloud compute accelerator-types list
     # job.accelerator_count = 1
+    # job.provisioning_model = "spot"  # Spot pricing
     # job.submit()
     # job.wait()
     # job.retrieve("./output/")
