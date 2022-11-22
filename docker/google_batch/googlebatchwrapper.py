@@ -228,15 +228,24 @@ class GoogleBatchSession:
         job = self.batch_client.get_job(request=get_request)
         return job.status.state
 
-    def get_bucket(self, bucket_name):
+    def create_bucket(self, bucket_name):
         buckets = self.storage_client.list_buckets()
         bucket_names = [b.name for b in buckets]
-        if bucket_name not in bucket_names:
-            bucket = self.storage_client.create_bucket(bucket_name)
-        else:
-            bucket = self.storage_client.bucket(bucket_name)
+        if bucket_name in bucket_names:
+            raise RuntimeError(
+                f"Bucket {bucket_name} already exists. Please provide different bucket name or delete the bucket with session.delete_bucket('{bucket_name}')"
+            )
 
+        bucket = self.storage_client.create_bucket(bucket_name)
         return bucket
+
+    def delete_bucket(self, bucket_name):
+        blobs = self.storage_client.list_blobs(bucket_name)
+        for blob in tqdm(blobs, desc="Deleting bucket files"):
+            blob.delete()
+        # Now that all the files have been deleted, we can delete our empty bucket
+        bucket = self.storage_client.get_bucket(bucket_name)
+        bucket.delete()
 
 
 class GoogleBatchJob(ProtocolInterface):
@@ -255,7 +264,7 @@ class GoogleBatchJob(ProtocolInterface):
             "container", "string", "Container in which to run", None, val.String()
         )
         self._arg("inputpath", "string", "Input path", None, val.String())
-        self._arg("remotepath", "string", "Remote path", None, val.String())
+        self._arg("remotepath", "string", "Remote path", "", val.String())
         self._arg(
             "parallelism",
             "int",
@@ -292,7 +301,7 @@ class GoogleBatchJob(ProtocolInterface):
             val.String(),
         )
 
-        self._bucket = self._session.get_bucket(bucket_name)
+        self._bucket = self._session.create_bucket(bucket_name)
         self._bucket_name = bucket_name
 
     def get_status(self, _logger=True):
@@ -351,6 +360,7 @@ class GoogleBatchJob(ProtocolInterface):
     def retrieve(self, path):
         remote = self.remotepath
         download_from_bucket(self._bucket, remote, path)
+        self._session.delete_bucket(self._bucket_name)
         # Cleaning up job
         try:
             request = batch_v1.DeleteJobRequest(name=self._job_name)
@@ -396,7 +406,6 @@ if __name__ == "__main__":
     # job = GoogleBatchJob(session, "testbucket-moleculekit-2")
     # job.container = "moleculekit-service"
     # job.inputpath = "./test2/"
-    # job.remotepath = ""
     # job.parallelism = 2
     # job.machine_type = "e2-standard-4"
     # job.submit()
@@ -407,7 +416,6 @@ if __name__ == "__main__":
     # job = GoogleBatchJob(session, "testbucket-moleculekit-3")
     # job.container = "acemd-service"
     # job.inputpath = "./test3/"
-    # job.remotepath = ""
     # job.parallelism = 2
     # job.machine_type = "n1-standard-2"
     # job.accelerator_type = "nvidia-tesla-k80"  # gcloud compute accelerator-types list
@@ -416,5 +424,4 @@ if __name__ == "__main__":
     # job.wait()
     # job.retrieve("./output/")
 
-    # TODO: Delete bucket after retrieving job
     pass
