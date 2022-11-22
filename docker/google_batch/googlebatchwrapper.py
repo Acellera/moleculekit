@@ -315,8 +315,8 @@ class GoogleBatchJob(ProtocolInterface):
         self._arg(
             "provisioning_model",
             "string",
-            "The VM provisioning model: ['standard', 'spot', 'unspecified', 'preemptible']. Default: 'standard'",
-            "standard",
+            "The VM provisioning model: ['standard', 'spot', 'unspecified', 'preemptible']. Default: 'spot'",
+            "spot",
             val.String(),
         )
 
@@ -428,6 +428,7 @@ if __name__ == "__main__":
     # job.inputpath = "./test2/"
     # job.parallelism = 2
     # job.machine_type = "e2-standard-4"
+    # job.provisioning_model = "standard"  # Standard VM provision
     # job.submit()
     # job.wait()
     # job.retrieve("./output/")
