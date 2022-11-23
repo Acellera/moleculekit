@@ -1694,7 +1694,7 @@ def BINCOORread(filename, frame=None, topoloc=None):
     return MolFactory.construct(None, Trajectory(coords=coords), filename, frame)
 
 
-def MDTRAJread(filename, frame=None, topoloc=None):
+def MDTRAJread(filename, frame=None, topoloc=None, validateElements=True):
     try:
         import mdtraj as md
     except ImportError:
@@ -1724,10 +1724,12 @@ def MDTRAJread(filename, frame=None, topoloc=None):
     traj = Trajectory(
         coords=coords.copy(), box=box, boxangles=boxangles, step=step, time=time
     )  # Copying coords needed to fix MDtraj stride
-    return MolFactory.construct(None, traj, filename, frame)
+    return MolFactory.construct(
+        None, traj, filename, frame, validateElements=validateElements
+    )
 
 
-def MDTRAJTOPOread(filename, frame=None, topoloc=None):
+def MDTRAJTOPOread(filename, frame=None, topoloc=None, validateElements=True):
     translate = {
         "serial": "serial",
         "name": "name",
@@ -1755,8 +1757,14 @@ def MDTRAJTOPOread(filename, frame=None, topoloc=None):
         topo.__dict__[translate[k]] = table[k].tolist()
 
     coords = np.array(mdstruct.xyz.swapaxes(0, 1).swapaxes(1, 2) * 10, dtype=np.float32)
-    topo.bonds = bonds
-    return MolFactory.construct(topo, Trajectory(coords=coords), filename, frame)
+    topo.bonds = bonds[:, :2]
+    return MolFactory.construct(
+        topo,
+        Trajectory(coords=coords),
+        filename,
+        frame,
+        validateElements=validateElements,
+    )
 
 
 def _guess_element_from_name(name):
