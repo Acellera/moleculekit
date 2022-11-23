@@ -29,6 +29,13 @@ class MetricCoordinate(Projection):
     centersel : str, optional
         Atom selection string around which to wrap the simulation.
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+    metric : str
+        Can be ["all", "com", "centroid"]
+    groupsel : ['all', 'residue'], optional
+        Group all atoms in `atomsel` to a single ('all' atoms in group) or multiple groups per residue ('residue').
+    groupreduce : ['centroid', 'com'], optional
+        The reduction to apply on `groupsel` if it is used. `centroid` will calculate the centroid coordinate of each group.
+        `com` will calculate the coordinate of the center of mass of each group.
     pbc : bool
         Enable or disable coordinate wrapping based on periodic boundary conditions.
 
@@ -44,6 +51,8 @@ class MetricCoordinate(Projection):
         trajalnsel=None,
         refalnsel=None,
         centersel="protein",
+        groupsel=None,
+        groupreduce="com",
         pbc=True,
     ):
         super().__init__()
@@ -56,6 +65,8 @@ class MetricCoordinate(Projection):
         self._atomsel = atomsel
         self._pbc = pbc
         self._refmol = refmol
+        self._groupsel = groupsel
+        self._groupreduce = groupreduce
 
         if self._refmol is not None:
             if self._trajalnsel is None:
@@ -96,6 +107,8 @@ class MetricCoordinate(Projection):
         data : np.ndarray
             An array containing the projected data.
         """
+        from moleculekit.periodictable import periodictable
+
         getMolProp = lambda prop: self._getMolProp(mol, prop)
 
         mol = mol.copy()
@@ -112,9 +125,40 @@ class MetricCoordinate(Projection):
                     trajalnsel, refmol=self._refmol, refsel=getMolProp("refalnsel")
                 )
 
-        coords = np.transpose(
-            mol.coords[getMolProp("atomsel")], axes=(2, 1, 0)
-        ).reshape(mol.numFrames, -1)
+        atomsel = getMolProp("atomsel")
+        coords = mol.coords[atomsel]
+        resids = mol.resid[atomsel]
+        elem = mol.element[atomsel]
+
+        if self._groupsel is not None:
+            if self._groupsel == "all":
+                groups = [range(coords.shape[0])]
+            elif self._groupsel == "residue":
+                groups = [np.where(resids == uq)[0] for uq in np.unique(resids)]
+            else:
+                raise RuntimeError(
+                    "Invalid groupsel option. Can only be 'all' or 'residue'"
+                )
+
+            masses = np.array([periodictable[el].mass for el in elem], dtype=np.float32)
+            masses = masses.reshape(-1, 1, 1)
+            groupcoords = []
+            for group in groups:
+                if self._groupreduce == "centroid":
+                    gcoords = coords[group].mean(axis=0)
+                elif self._groupreduce == "com":
+                    g_mass = masses[group]
+                    total_mass = np.sum(g_mass[:, 0, 0])
+                    gcoords = np.sum(coords[group] * g_mass, axis=0) / total_mass
+                else:
+                    raise RuntimeError(
+                        "Invalid groupreduce option. Can onlye be 'centroid' or 'com'"
+                    )
+                groupcoords.append(gcoords[None, :, :])
+            coords = np.hstack(groupcoords)
+
+        coords = np.transpose(coords, axes=(2, 1, 0)).reshape(mol.numFrames, -1)
+
         return coords
 
     def getMapping(self, mol):
@@ -236,6 +280,79 @@ class _TestMetricCoordinate(unittest.TestCase):
         assert np.all(
             np.abs(data[-1, -20:] - lastcoors) < 0.001
         ), "Coordinates calculation is broken"
+
+    def test_com_coordinates(self):
+        from moleculekit.molecule import Molecule
+        from moleculekit.periodictable import periodictable
+
+        mol = Molecule().empty(4)
+        mol.coords = np.array(
+            [
+                [0, 0, 0],
+                [-1, 0, 0],
+                [1, 0, 0],
+                [0, 1, 0],
+            ],
+            dtype=np.float32,
+        )[:, :, None]
+        mol.element[:] = "H"
+        mol.resid[:] = [0, 1, 1, 0]
+
+        fixargs = {"pbc": False, "atomsel": "all", "centersel": "all"}
+
+        proj = MetricCoordinate(
+            groupsel="all", groupreduce="centroid", **fixargs
+        ).project(mol)
+        assert np.array_equal(proj, [[0, 0.25, 0]])
+
+        proj = MetricCoordinate(groupsel="all", groupreduce="com", **fixargs).project(
+            mol
+        )
+        assert np.array_equal(proj, [[0, 0.25, 0]])
+
+        proj = MetricCoordinate(
+            groupsel="residue", groupreduce="centroid", **fixargs
+        ).project(mol)
+        assert np.array_equal(proj, [[0, 0.5, 0, 0, 0, 0]])
+
+        proj = MetricCoordinate(
+            groupsel="residue", groupreduce="com", **fixargs
+        ).project(mol)
+        assert np.array_equal(proj, [[0, 0.5, 0, 0, 0, 0]])
+
+        ref = self.mol.copy()
+        ref.coords = np.atleast_3d(ref.coords[:, :, 0])
+
+        fixargs = {
+            "pbc": False,
+            "atomsel": "protein and name CA",
+            "centersel": "protein and name CA",
+        }
+        proj = MetricCoordinate(
+            groupsel="all", groupreduce="centroid", **fixargs
+        ).project(self.mol)
+        sel = self.mol.atomselect(fixargs["atomsel"])
+        refproj = self.mol.coords[sel].mean(axis=0)
+
+        assert np.array_equal(proj, refproj.T)
+
+        proj = MetricCoordinate(groupsel="all", groupreduce="com", **fixargs).project(
+            self.mol
+        )
+        sel = self.mol.atomselect(fixargs["atomsel"])
+        masses = np.array(
+            [periodictable[el].mass for el in self.mol.element[sel]], dtype=np.float32
+        )
+        coords = self.mol.coords[sel]
+
+        com = coords * masses.reshape(-1, 1, 1)
+        com = com.sum(axis=0) / masses.sum()
+        assert np.array_equal(proj, com.T)
+
+        proj = MetricCoordinate(
+            groupsel="residue", groupreduce="com", **fixargs
+        ).project(self.mol)
+        assert proj.shape == (200, 831)
 
 
 if __name__ == "__main__":
