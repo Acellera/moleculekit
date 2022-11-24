@@ -142,6 +142,7 @@ class MetricCoordinate(Projection):
 
             masses = np.array([periodictable[el].mass for el in elem], dtype=np.float32)
             masses = masses.reshape(-1, 1, 1)
+
             groupcoords = []
             for group in groups:
                 if self._groupreduce == "centroid":
@@ -155,7 +156,7 @@ class MetricCoordinate(Projection):
                         "Invalid groupreduce option. Can onlye be 'centroid' or 'com'"
                     )
                 groupcoords.append(gcoords[None, :, :])
-            coords = np.hstack(groupcoords)
+            coords = np.vstack(groupcoords)
 
         coords = np.transpose(coords, axes=(2, 1, 0)).reshape(mol.numFrames, -1)
 
@@ -174,21 +175,36 @@ class MetricCoordinate(Projection):
         map : :class:`DataFrame <pandas.core.frame.DataFrame>` object
             A DataFrame containing the descriptions of each dimension
         """
+        from pandas import DataFrame
+
         getMolProp = lambda prop: self._getMolProp(mol, prop)
 
         atomidx = np.where(getMolProp("atomsel"))[0]
-        from pandas import DataFrame
+        resids = mol.resid[atomidx]
+
+        groups = []
+        if self._groupsel == "all":
+            groups = [atomidx]
+        elif self._groupsel == "residue":
+            groups = [atomidx[resids == uq] for uq in np.unique(resids)]
 
         types = []
         indexes = []
         description = []
-        for xyz in ("X", "Y", "Z"):
-            for i in atomidx:
-                types += ["coordinate"]
-                indexes += [i]
-                description += [
-                    f"{xyz} coordinate of {mol.resname[i]} {mol.resid[i]} {mol.name[i]}"
-                ]
+        if self._groupsel is None:
+            for xyz in ("X", "Y", "Z"):
+                for i in atomidx:
+                    types += ["coordinate"]
+                    indexes += [i]
+                    description += [
+                        f"{xyz} coordinate of {mol.resname[i]} {mol.resid[i]} {mol.name[i]}"
+                    ]
+        else:
+            for xyz in ("X", "Y", "Z"):
+                for group in groups:
+                    types += ["coordinate"]
+                    indexes += [group]
+                    description += [f"{xyz} {self._groupreduce} coordinate of group"]
         return DataFrame(
             {"type": types, "atomIndexes": indexes, "description": description}
         )
@@ -313,12 +329,12 @@ class _TestMetricCoordinate(unittest.TestCase):
         proj = MetricCoordinate(
             groupsel="residue", groupreduce="centroid", **fixargs
         ).project(mol)
-        assert np.array_equal(proj, [[0, 0.5, 0, 0, 0, 0]])
+        assert np.array_equal(proj, [[0, 0, 0.5, 0, 0, 0]])
 
         proj = MetricCoordinate(
             groupsel="residue", groupreduce="com", **fixargs
         ).project(mol)
-        assert np.array_equal(proj, [[0, 0.5, 0, 0, 0, 0]])
+        assert np.array_equal(proj, [[0, 0, 0.5, 0, 0, 0]])
 
         ref = self.mol.copy()
         ref.coords = np.atleast_3d(ref.coords[:, :, 0])
