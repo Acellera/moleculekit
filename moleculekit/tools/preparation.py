@@ -93,7 +93,7 @@ def _generate_nonstandard_residues_ff(
     _molkit_ff=True,
     outdir=None,
     ignore_ns_errors=False,
-    residue_smiles=None,
+    residue_sdf=None,
 ):
     import tempfile
     from moleculekit.tools.preparation_customres import _get_custom_ff
@@ -104,6 +104,7 @@ def _generate_nonstandard_residues_ff(
         _mol_to_xml_def,
         _prepare_for_parameterize,
     )
+    from moleculekit.tools.graphalignment import makeMolGraph, compareGraphs
 
     uqprot_resn = np.unique(mol.get("resname", sel="protein"))
     not_in_ff = []
@@ -127,29 +128,31 @@ def _generate_nonstandard_residues_ff(
         for res in not_in_ff:
             try:
                 logger.info(f"Attempting to template non-canonical residue {res}...")
-                # This removes the non-canonical hydrogens from the original mol object
-                mol.remove((mol.resname == res) & (mol.element == "H"), _logger=False)
+                
                 molc = mol.copy()
+                molc.filter(f"resname {res}", _logger=False)
 
-                # Hacky way of getting the first molecule, if there are copies
-                molresn = molc.resname == res
-                firstname = molc.name[molresn][0]
-                lastname = molc.name[molresn][-1]
-                start = np.where(molresn & (molc.name == firstname))[0][0]
-                end = np.where(molresn & (molc.name == lastname))[0][0]
-                # Remove all other stuff
-                molc.filter(f"index {start} to {end}", _logger=False)
+                tmol = Molecule(residue_sdf[res])
 
-                if len(np.unique(molc.name)) != molc.numAtoms:
-                    raise RuntimeError(
-                        f"Residue {res} contains duplicate atom names. Please rename the atoms to have unique names."
-                    )
+                fields = ("element",)
+                g1 = makeMolGraph(tmol, "all", fields)
+                g2 = makeMolGraph(molc, "all", fields)
+                _, _, matching = compareGraphs(
+                    g1, g2, fields=fields, tolerance=0.5, returnmatching=True
+                )
+                for pp in matching:  # Rename atoms in reference molecule
+                    tmol.name[pp[0]] = molc.name[pp[1]]
 
-                smiles = None
-                if residue_smiles is not None and res in residue_smiles:
-                    smiles = residue_smiles[res]
-
-                tmol = _template_residue_from_smiles(molc, res, smiles=smiles)
+                # Rename non-matched hydrogens to X_H to rename later
+                matched = [pp[0] for pp in matching]
+                for i in np.where(tmol.element == "H")[0]:
+                    if i in matched:
+                        continue
+                    tmol.name[i] = "X_H"
+                              
+                #templating method
+                #tmol = _template_residue_from_smiles(molc, res, smiles=smiles)
+                
                 cres = _process_custom_residue(tmol, res)
 
                 _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
@@ -531,7 +534,7 @@ def systemPrepare(
     _logger_level="ERROR",
     _molkit_ff=True,
     outdir=None,
-    residue_smiles=None,
+    residue_sdf=None,
 ):
     """Prepare molecular systems through protonation and h-bond optimization.
 
@@ -629,7 +632,9 @@ def systemPrepare(
         If True it will ignore errors on non-canonical residues leaving them unprotonated.
     outdir : str
         A path where to save custom residue cif files used for building
-
+    residue_sdf : dict or None
+        A dictionary mapping each non-cannonical residue name to an SDF with defined bond orders and hydrogens.
+        {'NAG':'/path/to/sdf.sdf', 'SUG':'/path/to/sdf2.sdf'}
     Returns
     -------
     mol_out : moleculekit.molecule.Molecule
@@ -713,7 +718,7 @@ def systemPrepare(
         _molkit_ff,
         outdir,
         ignore_ns_errors=ignore_ns_errors,
-        residue_smiles=residue_smiles,
+        residue_sdf=residue_sdf,
     )
 
     nonpept = None
