@@ -270,10 +270,11 @@ class MolFactory(object):
 
         from moleculekit.periodictable import periodictable
 
+        virtual_sites = ["Vs"]
+
         misnamed_element_map = {"So": "Na"}  # Map badly guessed elements
-        issued_warnings = (
-            []
-        )  # Don't issue multiplt times the same warning for the same element renaming
+        # Don't issue multiple times the same warning for the same element renaming
+        issued_warnings = []
 
         for i in range(mol.numAtoms):
             el = mol.element[i].capitalize()  # Standardize capitalization of elements
@@ -288,7 +289,13 @@ class MolFactory(object):
                 el = misnamed_element_map[el]
 
             # If it's still not in the periodic table of elements throw error
-            if el not in periodictable:
+            if el in virtual_sites:
+                if el not in issued_warnings:
+                    logger.info(
+                        f"Read element {el} which might correspond to a virtual site atom"
+                    )
+                    issued_warnings.append(el)
+            elif el not in periodictable:
                 raise RuntimeError(
                     f"Element {el} was read in file {filename} but was not found in the periodictable. "
                     "To disable this check, pass `validateElements=False` to the Molecule constructor or read method."
