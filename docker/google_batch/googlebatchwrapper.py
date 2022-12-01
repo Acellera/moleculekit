@@ -30,6 +30,8 @@ def create_container_job(
     accelerator_count: int,
     max_run_duration: str,
     provisioning_model: str,
+    cpu_milli: int,
+    memory_mib: int,
 ) -> batch_v1.Job:
     # Define what will be done as part of the job.
     runnable = batch_v1.Runnable()
@@ -63,8 +65,8 @@ def create_container_job(
 
     # We can specify what resources are requested by each task.
     resources = batch_v1.ComputeResource()
-    resources.cpu_milli = 1000  # in milliseconds per cpu-second. This means the task requires 2 whole CPUs.
-    resources.memory_mib = 1000  # in MiB
+    resources.cpu_milli = cpu_milli  # in milliseconds per cpu-second. This means the task requires 2 whole CPUs.
+    resources.memory_mib = memory_mib  # in MiB
     task.compute_resource = resources
 
     task.max_retry_count = 2
@@ -139,7 +141,7 @@ def upload_to_bucket(bucket, source, dest):
             if not os.path.isdir(ff):
                 files.append(ff)
 
-        for ff in tqdm(files, desc=f"Uploading files to {dest}"):
+        for ff in tqdm(files, desc=f"Uploading files to {bucket}/{dest}"):
             relname = os.path.relpath(ff, source)
             target = f"{dest}{relname}"
             blob = bucket.blob(target)
@@ -216,6 +218,8 @@ class GoogleBatchSession:
         accelerator_count,
         max_run_duration,
         provisioning_model,
+        cpu_milli,
+        memory_mib,
     ):
         create_request = create_container_job(
             self.project,
@@ -231,6 +235,8 @@ class GoogleBatchSession:
             accelerator_count,
             max_run_duration,
             provisioning_model,
+            cpu_milli,
+            memory_mib,
         )
         job = self.batch_client.create_job(create_request)
         return job.name
@@ -244,9 +250,10 @@ class GoogleBatchSession:
         buckets = self.storage_client.list_buckets()
         bucket_names = [b.name for b in buckets]
         if bucket_name in bucket_names:
-            raise RuntimeError(
+            logger.warning(
                 f"Bucket {bucket_name} already exists. Please provide different bucket name or delete the bucket with session.delete_bucket('{bucket_name}')"
             )
+            return self.storage_client.get_bucket(bucket_name)
 
         bucket = self.storage_client.create_bucket(bucket_name)
         return bucket
@@ -266,17 +273,32 @@ class GoogleBatchJob(ProtocolInterface):
         session: GoogleBatchSession,
         bucket_name: str,
         job_name_prefix: str = "job",
+        job_name: str = None,
     ) -> None:
         super().__init__()
         self._session = session
 
-        self._job_name = None
+        self._job_name = job_name
         self._job_name_prefix = job_name_prefix
         self._arg(
             "container", "string", "Container in which to run", None, val.String()
         )
         self._arg("inputpath", "string", "Input path", None, val.String())
         self._arg("remotepath", "string", "Remote path", "", val.String())
+        self._arg(
+            "ncpu",
+            "int",
+            "Number of cpus on each VM",
+            1,
+            val.Number(int, "POS"),
+        )
+        self._arg(
+            "memory",
+            "int",
+            "Memory (RAM) on each VM in Gigabytes",
+            4,
+            val.Number(int, "POS"),
+        )
         self._arg(
             "parallelism",
             "int",
@@ -375,19 +397,25 @@ class GoogleBatchJob(ProtocolInterface):
             self.accelerator_count,
             self.max_run_duration,
             self.provisioning_model,
+            self.ncpu * 1000,
+            self.memory * 1000,
         )
+        logger.info(f"Submitted job with name: {self._job_name}")
 
     def retrieve(self, path):
         remote = self.remotepath
         download_from_bucket(self._bucket, remote, path)
-        self._session.delete_bucket(self._bucket_name)
-        # Cleaning up job
-        try:
-            request = batch_v1.DeleteJobRequest(name=self._job_name)
-            operation = self._session.batch_client.delete_job(request)
-            # response = operation.result() # makes it wait until deletion
-        except Exception:
-            pass
+
+        status = self.get_status(_logger=False)
+        if status in (JobStatus.State.SUCCEEDED, JobStatus.State.FAILED):
+            # Cleaning up job
+            self._session.delete_bucket(self._bucket_name)
+            try:
+                request = batch_v1.DeleteJobRequest(name=self._job_name)
+                operation = self._session.batch_client.delete_job(request)
+                # response = operation.result() # makes it wait until deletion
+            except Exception:
+                pass
 
     def wait(
         self,
@@ -419,6 +447,9 @@ class GoogleBatchJob(ProtocolInterface):
                 )
             time.sleep(seconds)
         logger.info(f"Job status {str(status)}")
+
+    def cancel(self):
+        raise NotImplementedError("Job cancelling has not been implemented yet")
 
 
 if __name__ == "__main__":
