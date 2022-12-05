@@ -121,7 +121,6 @@ class MetricSasa(Projection):
         getMolProp = lambda prop: self._getMolProp(mol, prop)
         radii = getMolProp("radii")
         atom_mapping = getMolProp("atom_mapping")
-        sel = getMolProp("sel")
         filtersel = getMolProp("filtersel")
         tokeep = getMolProp("tokeep")
         tokeep = np.unique(atom_mapping[tokeep])
@@ -208,13 +207,8 @@ class _TestMetricSasa(unittest.TestCase):
 
         metr = MetricSasa(mode="atom")
         sasaA = metr.project(self.mol.copy())
-        sasaA_ref = (
-            np.load(
-                path.join(
-                    home(dataDir="test-projections"), "metricsasa", "sasa_atom.npy"
-                )
-            )
-            * 100
+        sasaA_ref = np.load(
+            path.join(home(dataDir="test-projections"), "metricsasa", "sasa_atom.npy")
         )
         assert np.allclose(sasaA, sasaA_ref, atol=7e-4)
 
@@ -224,13 +218,10 @@ class _TestMetricSasa(unittest.TestCase):
 
         metr = MetricSasa(mode="residue")
         sasaR = metr.project(self.mol.copy())
-        sasaR_ref = (
-            np.load(
-                path.join(
-                    home(dataDir="test-projections"), "metricsasa", "sasa_residue.npy"
-                )
+        sasaR_ref = np.load(
+            path.join(
+                home(dataDir="test-projections"), "metricsasa", "sasa_residue.npy"
             )
-            * 100
         )
         assert np.allclose(sasaR, sasaR_ref, atol=3e-3)
 
@@ -249,13 +240,8 @@ class _TestMetricSasa(unittest.TestCase):
         from os import path
         from moleculekit.home import home
 
-        sasaR_ref = (
-            np.load(
-                path.join(
-                    home(dataDir="test-projections"), "metricsasa", "sasa_atom.npy"
-                )
-            )
-            * 100
+        sasaR_ref = np.load(
+            path.join(home(dataDir="test-projections"), "metricsasa", "sasa_atom.npy")
         )
 
         metr = MetricSasa(
