@@ -616,14 +616,14 @@ class _TestInteractions(unittest.TestCase):
 
         assert len(pipis) == 1
 
-        ref_rings = np.array([[0, 2], [0, 4], [2, 4]])
+        ref_rings = np.array([[0, 2], [0, 3], [2, 3]])
         assert np.array_equal(pipis[0], ref_rings)
 
         ref_distang = np.array(
             [
-                [5.33927107, 80.63793945],
-                [5.23078251, 84.52985382],
-                [5.16490269, 80.88533020],
+                [5.339271068572998, 81.60645294189453],
+                [5.230782508850098, 84.51882934570312],
+                [5.164902687072754, 80.55224609375],
             ]
         )
         assert np.allclose(distang[0], ref_distang), f"\n{distang[0]}\n{ref_distang}"
@@ -644,12 +644,11 @@ class _TestInteractions(unittest.TestCase):
 
         ref_rings = np.array([[72, 2], [73, 1], [74, 1]])
         assert np.array_equal(pipis[0], ref_rings)
-
         ref_distang = np.array(
             [
-                [4.1462903, 22.34738922],
-                [3.52108073, 11.22733593],
-                [4.05929375, 4.60079527],
+                [4.146290302276611, 15.108987808227539],
+                [4.059301853179932, 18.3873348236084],
+                [3.521082639694214, 5.454310894012451],
             ]
         )
         assert np.allclose(distang[0], ref_distang)
@@ -709,9 +708,9 @@ class _TestInteractions(unittest.TestCase):
         assert np.array_equal(ref_atms, catpi[0]), f"{ref_atms}, {catpi[0]}"
         ref_distang = np.array(
             [
-                [4.10110903, 63.69768524],
-                [4.70270395, 60.51351929],
-                [4.12248421, 82.81176758],
+                [4.101108551025391, 63.772621154785156],
+                [4.702703952789307, 60.34859848022461],
+                [4.122482776641846, 82.81182098388672],
             ]
         )
         assert np.allclose(ref_distang, distang), distang
@@ -742,7 +741,7 @@ class _TestInteractions(unittest.TestCase):
 
         ref_atms = np.array([[11, 3494]])
         assert np.array_equal(ref_atms, catpi[0]), f"{ref_atms}, {catpi[0]}"
-        ref_distang = np.array([[4.74848127, 74.07044983]])
+        ref_distang = np.array([[4.74848127, 74.48719787597656]])
         assert np.allclose(ref_distang, distang), distang
 
     def test_sigma_holes(self):
@@ -766,7 +765,8 @@ class _TestInteractions(unittest.TestCase):
 
         ref_atms = np.array([[29, 3702]])
         assert np.array_equal(ref_atms, sh[0]), f"{ref_atms}, {sh[0]}"
-        ref_distang = np.array([[4.26179695, 66.55052185]])
+
+        ref_distang = np.array([[4.26179695, 66.73172760009766]])
         assert np.allclose(ref_distang, distang)
 
     def test_water_bridge(self):
