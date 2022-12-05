@@ -226,6 +226,21 @@ def traverse_ast(mol, analysis, node):
             mask[source] = False
         return mask
 
+    if operation == "backbonetype":
+        bbtype = node[1]
+        if bbtype == "proteinback":
+            return analysis["protein_bb"]
+        elif bbtype == "nucleicback":
+            return analysis["nucleic_bb"]
+        elif bbtype == "normal":
+            return ~(
+                analysis["protein_bb"] | analysis["nucleic_bb"] | (mol.element == "H")
+            )
+        else:
+            raise RuntimeError(
+                "backbonetype accepts only one of the following values: (proteinback, nucleicback, normal)"
+            )
+
     raise RuntimeError(f"Invalid operation {operation}")
 
 
@@ -330,6 +345,10 @@ class _TestAtomSelect(unittest.TestCase):
             "occupancy = 0",
             "occupancy == 0",
             "(occupancy 1) and same beta as exwithin 3 of (occupancy 0)",
+            "backbonetype proteinback",
+            "backbonetype nucleicback",
+            "backbonetype normal",
+            "backbonetype proteinback and residue 15 to 20",
         ]
 
         pdbids = [

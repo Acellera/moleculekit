@@ -48,6 +48,10 @@ reserved += [
     "as",
     "not",
     "to",
+    "backbonetype",
+    "proteinback",
+    "nucleicback",
+    "normal",
 ]
 # functions
 reserved += ["abs", "sqr", "sqrt"]
@@ -205,6 +209,15 @@ def p_expression_unary_not(p):
     expression : NOT expression %prec UNOT
     """
     p[0] = ("logop", "not", p[2])
+
+
+def p_expression_backbonetype(p):
+    """
+    expression : BACKBONETYPE PROTEINBACK
+               | BACKBONETYPE NUCLEICBACK
+               | BACKBONETYPE NORMAL
+    """
+    p[0] = ("backbonetype", p[2])
 
 
 def p_expression_sameas(p):
@@ -569,6 +582,7 @@ class _TestLanguareParser(unittest.TestCase):
             "occupancy = 1",
             "occupancy == 1",
             "(occupancy 1) and same beta as exwithin 3 of (occupancy 0)",
+            "backbonetype proteinback or backbonetype nucleicback or backbonetype normal",
         ]
 
         for sel in selections:
