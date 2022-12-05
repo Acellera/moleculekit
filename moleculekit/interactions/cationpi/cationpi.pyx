@@ -142,9 +142,10 @@ def calculate(
                     continue
 
                 # Calculate the plane normal
+                # TODO: This is very bad for non-planar rings. I should calculate the average normal
                 for i in range(3):
-                    tmp1[i] = coords[rings_atoms[r_start_idx], i, f] - coords[rings_atoms[r_start_idx+4], i, f]
-                    tmp2[i] = coords[rings_atoms[r_start_idx], i, f] - coords[rings_atoms[r_start_idx+2], i, f]
+                    tmp1[i] = coords[rings_atoms[r_start_idx], i, f] - coords[rings_atoms[r_start_idx+2], i, f]
+                    tmp2[i] = coords[rings_atoms[r_start_idx+1], i, f] - coords[rings_atoms[r_start_idx+2], i, f]
                 _cross_product(tmp1, tmp2, ring_normal)
 
                 # Calculate ring-cation vector

@@ -708,9 +708,9 @@ class _TestInteractions(unittest.TestCase):
         assert np.array_equal(ref_atms, catpi[0]), f"{ref_atms}, {catpi[0]}"
         ref_distang = np.array(
             [
-                [4.101108551025391, 63.772621154785156],
-                [4.702703952789307, 60.34859848022461],
-                [4.122482776641846, 82.81182098388672],
+                [4.101108551025391, 63.75471115112305],
+                [4.702703952789307, 60.362159729003906],
+                [4.122482776641846, 82.87332153320312],
             ]
         )
         assert np.allclose(ref_distang, distang), distang
@@ -741,7 +741,7 @@ class _TestInteractions(unittest.TestCase):
 
         ref_atms = np.array([[11, 3494]])
         assert np.array_equal(ref_atms, catpi[0]), f"{ref_atms}, {catpi[0]}"
-        ref_distang = np.array([[4.74848127, 74.48719787597656]])
+        ref_distang = np.array([[4.74848127, 74.56939697265625]])
         assert np.allclose(ref_distang, distang), distang
 
     def test_sigma_holes(self):
