@@ -111,7 +111,8 @@ def get_protein_rings(mol):
     cycles = nx.cycle_basis(graph)
 
     original_idx = np.where(arom_res_atoms)[0]
-    cycles = [tuple(original_idx[cc]) for cc in cycles]
+    cycles = [tuple(sorted(original_idx[cc])) for cc in cycles]
+    cycles = sorted(cycles, key=lambda x: x[0])
 
     return cycles
 
@@ -128,7 +129,8 @@ def get_nucleic_rings(mol):
     graph.add_edges_from(bonds)
     cycles = nx.cycle_basis(graph)
 
-    cycles = [tuple(original_idx[cc]) for cc in cycles]
+    cycles = [tuple(sorted(original_idx[cc])) for cc in cycles]
+    cycles = sorted(cycles, key=lambda x: x[0])
 
     return cycles
 
@@ -185,7 +187,8 @@ def get_ligand_rings(sm, start_idx=0):
         aromatics = sum([sm._mol.GetAtomWithIdx(idx).GetIsAromatic() for idx in ring])
         if aromatics != len(ring):
             continue
-        ligandAtomAromaticRings.append(tuple([r + start_idx for r in ring]))
+        ligandAtomAromaticRings.append(tuple(sorted([r + start_idx for r in ring])))
+    ligandAtomAromaticRings = sorted(ligandAtomAromaticRings, key=lambda x: x[0])
     return ligandAtomAromaticRings
 
 
