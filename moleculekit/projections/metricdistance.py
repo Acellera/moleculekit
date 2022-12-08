@@ -44,6 +44,9 @@ class MetricDistance(Projection):
         group 1 to selection 2. `com` will calculate the distance of the center of mass of group 1 to selection 2.
     groupreduce2 : ['closest', 'com'], optional
         Same as `groupreduce1` but for group 2 if `groupsel2` is used.
+    pairs : bool
+        If set to True it will match atoms in sel1 to atoms in sel2 in their given order and only calculate
+        distances of those pairs of atoms instead of all-against-all distances
 
     Returns
     -------
@@ -83,6 +86,7 @@ class MetricDistance(Projection):
         truncate=None,
         groupreduce1="closest",
         groupreduce2="closest",
+        pairs=False,
     ):
         super().__init__()
 
@@ -101,6 +105,7 @@ class MetricDistance(Projection):
         self.truncate = truncate
         self.groupreduce1 = groupreduce1
         self.groupreduce2 = groupreduce2
+        self.pairs = pairs
 
     def _checkChains(self, mol, sel1, sel2):
         if np.array_equal(sel1, sel2):
@@ -133,10 +138,7 @@ class MetricDistance(Projection):
         data : np.ndarray
             An array containing the projected data.
         """
-        from moleculekit.projections.util import (
-            pp_calcDistances,
-            get_reduced_distances,
-        )
+        from moleculekit.projections.util import pp_calcDistances, get_reduced_distances
 
         getMolProp = lambda prop: self._getMolProp(mol, prop)
         sel1 = getMolProp("sel1")
@@ -145,6 +147,8 @@ class MetricDistance(Projection):
             self._checkChains(mol, sel1, sel2)
 
         if np.ndim(sel1) == 1 and np.ndim(sel2) == 1:  # normal distances
+            if self.pairs:
+                raise RuntimeError("Pairs calculation not implemented without groups")
             metric = pp_calcDistances(
                 mol,
                 sel1,
@@ -165,6 +169,7 @@ class MetricDistance(Projection):
                 truncate=self.truncate,
                 reduction1=self.groupreduce1,
                 reduction2=self.groupreduce2,
+                pairs=self.pairs,
             )
 
         return metric
@@ -287,11 +292,20 @@ class MetricDistance(Projection):
             lig_labels = [
                 f"{mol.resname[i]} {mol.resid[i]} {mol.name[i]}" for i in ligatoms
             ]
-            for i in range(numatoms1):
-                atm1 = protatoms[i]
-                for j in range(numatoms2):
-                    atm2 = ligatoms[j]
-                    desc = f"{self.metric[:-1]} between {prot_labels[i]} and {lig_labels[j]}"
+            if not self.pairs:
+                for i in range(numatoms1):
+                    atm1 = protatoms[i]
+                    for j in range(numatoms2):
+                        atm2 = ligatoms[j]
+                        desc = f"{self.metric[:-1]} between {prot_labels[i]} and {lig_labels[j]}"
+                        types += [self.metric[:-1]]
+                        indexes += [[atm1, atm2]]
+                        description += [desc]
+            else:
+                for i in range(numatoms1):
+                    atm1 = protatoms[i]
+                    atm2 = ligatoms[i]
+                    desc = f"{self.metric[:-1]} between {prot_labels[i]} and {lig_labels[i]}"
                     types += [self.metric[:-1]]
                     indexes += [[atm1, atm2]]
                     description += [desc]
@@ -973,6 +987,33 @@ class _TestMetricDistance(unittest.TestCase):
             groupreduce2="closest",
         ).project(mol)
         assert np.abs(dist[0][0] - 2.8153415) < 1e-5
+
+    def test_pair_distances(self):
+        from moleculekit.molecule import Molecule
+
+        sel1 = np.array([0, 1, 2]).reshape(-1, 1)
+        sel2 = np.array([1, 2, 3]).reshape(-1, 1)
+        mol = Molecule("3ptb")
+        res = MetricDistance(sel1, sel2, None, pairs=True).project(mol)
+        ref = np.linalg.norm(
+            mol.coords[sel1.flatten(), :, 0] - mol.coords[sel2.flatten(), :, 0], axis=1
+        )
+        assert np.allclose(res, ref)
+        mmp = MetricDistance(sel1, sel2, None, pairs=True).getMapping(mol)
+        assert mmp.shape == (3, 3)
+
+        res = MetricDistance(
+            "residue 1 2",
+            "residue 3 4",
+            None,
+            pairs=True,
+            groupsel1="residue",
+            groupsel2="residue",
+        ).project(mol)
+        res1 = MetricDistance("residue 1", "residue 3", None).project(mol)
+        res2 = MetricDistance("residue 2", "residue 4", None).project(mol)
+
+        assert np.allclose(res, [[res1.min(), res2.min()]])
 
 
 if __name__ == "__main__":
