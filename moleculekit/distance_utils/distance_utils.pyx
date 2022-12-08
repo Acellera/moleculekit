@@ -88,56 +88,6 @@ def dist_trajectory(
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-def mindist_trajectory(
-        FLOAT32_t[:,:,:] coords,
-        FLOAT32_t[:,:] box,
-        INT32_t[:,:] groups1,
-        INT32_t[:,:] groups2,
-        UINT32_t[:] digitized_chains,
-        bool selfdist,
-        bool pbc,
-        FLOAT32_t[:,:] results,
-    ):
-    cdef int f, g1, g2, i, j, g1atm, g2atm, g2start, idx
-    cdef int n_atoms = coords.shape[0]
-    cdef int n_frames = coords.shape[2]
-    cdef int n_groups1 = groups1.shape[0]
-    cdef int n_groups2 = groups2.shape[0]
-    cdef FLOAT32_t dist2, mindist
-
-    for f in range(n_frames):
-        idx = 0
-        for g1 in range(n_groups1):
-            g2start = 0
-            if selfdist:
-                g2start = g1 + 1
-
-            for g2 in range(g2start, n_groups2):
-                mindist = -1
-
-                for i in range(n_atoms):
-                    g1atm = groups1[g1, i]
-                    if g1atm == -1:
-                        break
-
-                    for j in range(n_atoms):
-                        g2atm = groups2[g2, j]
-                        if g2atm == -1:
-                            break
-
-                        dist2 = _dist(coords, box, digitized_chains, g1atm, g2atm, f, pbc)
-
-                        if dist2 < mindist or mindist < 0:
-                            mindist = dist2
-
-                results[f, idx] = sqrt(mindist)
-                idx += 1
-
-    return results
-
-
-@cython.boundscheck(False) # turn off bounds-checking for entire function
-@cython.wraparound(False)  # turn off negative index wrapping for entire function
 cdef FLOAT32_t _calc_com(
         FLOAT32_t[:,:,:] coords,
         int f,
@@ -258,5 +208,74 @@ def dist_trajectory_reduction(
 
                 results[f, idx] = sqrt(mindist)
                 idx += 1
+
+    return results
+
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+def dist_trajectory_reduction_pairs(
+        FLOAT32_t[:,:,:] coords,
+        FLOAT32_t[:,:] box,
+        vector[vector[int]] &groups1,
+        vector[vector[int]] &groups2,
+        UINT32_t[:] digitized_chains1,
+        UINT32_t[:] digitized_chains2,
+        bool pbc,
+        FLOAT32_t[:] masses,
+        int reduction1,
+        int reduction2,
+        FLOAT32_t[:,:] results,
+    ):
+    # Iterates over group pairs instead of doing all-vs-all groups
+    cdef int f, g1, g2, i, j, k, g1atm, g2atm, g2start, idx
+    cdef int n_atoms = coords.shape[0]
+    cdef int n_frames = coords.shape[2]
+    cdef int n_groups = groups1.size()
+    cdef FLOAT32_t[:,:] com = np.zeros((2, 3), dtype=FLOAT32)
+    cdef FLOAT32_t dist2, mindist
+    cdef FLOAT32_t[:] curr_box
+    cdef UINT32_t chain1, chain2
+    cdef bool diff_chain
+    cdef FLOAT32_t[:] coor1, coor2
+    cdef vector[int] group1, group2
+    cdef vector[int] trash
+    trash.push_back(0)
+
+    for f in range(n_frames):
+        idx = 0
+        curr_box = box[:, f]
+
+        for g in range(n_groups):
+            group1 = groups1[g]
+            group2 = groups2[g]
+
+            if reduction1 == 1: # COM
+                _calc_com(coords, f, group1, masses, com, 0)
+                group1 = trash # Assign this so it loops once over the "group"
+            if reduction2 == 1: # COM
+                _calc_com(coords, f, group2, masses, com, 1)
+                group2 = trash  # Assign this so it loops once over the "group"
+
+            mindist = -1
+            diff_chain = digitized_chains1[g1] != digitized_chains2[g2]
+
+            for g1atm in group1:
+                coor1 = coords[g1atm, :, f]
+                if reduction1 == 1:
+                    coor1 = com[0, :]
+
+                for g2atm in group2:
+                    coor2 = coords[g2atm, :, f]
+                    if reduction2 == 1:
+                        coor2 = com[1, :]
+
+                    dist2 = _dist2(coor1, coor2, curr_box, diff_chain, pbc)
+
+                    if dist2 < mindist or mindist < 0:
+                        mindist = dist2
+
+            results[f, idx] = sqrt(mindist)
+            idx += 1
 
     return results

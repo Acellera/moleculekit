@@ -88,8 +88,12 @@ def get_reduced_distances(
     truncate=None,
     reduction1="closest",
     reduction2="closest",
+    pairs=False,
 ):
-    from moleculekit.distance_utils import dist_trajectory_reduction
+    from moleculekit.distance_utils import (
+        dist_trajectory_reduction,
+        dist_trajectory_reduction_pairs,
+    )
     from moleculekit.periodictable import periodictable
 
     # Converting non-grouped boolean atomselection to group-style atomselections
@@ -136,14 +140,25 @@ def get_reduced_distances(
     groups1 = [np.where(sel1[i, :])[0].tolist() for i in range(sel1.shape[0])]
     groups2 = [np.where(sel2[i, :])[0].tolist() for i in range(sel2.shape[0])]
 
-    mindist = np.zeros(
-        (mol.numFrames, len(groups1) * len(groups2)), dtype=np.float32
-    )  # Preparing the return array
+    if pairs and len(groups1) != len(groups2):
+        raise RuntimeError(
+            "If `pairs=True` mode is used, the number of groups in sel1 should match the number of groups in sel2."
+        )
+
     if selfdist:
         mindist = np.zeros(
             (mol.numFrames, int((len(groups1) * (len(groups2) - 1)) / 2)),
             dtype=np.float32,
         )
+    else:
+        if not pairs:
+            mindist = np.zeros(
+                (mol.numFrames, len(groups1) * len(groups2)), dtype=np.float32
+            )  # Preparing the return array
+        else:
+            mindist = np.zeros(
+                (mol.numFrames, len(groups1)), dtype=np.float32
+            )  # Preparing the return array
 
     # import time
     # t = time.time()
@@ -156,20 +171,35 @@ def get_reduced_distances(
         [digitized_chains[gg[0]] for gg in groups2], dtype=np.uint32
     )
     masses = np.array([periodictable[el].mass for el in mol.element], dtype=np.float32)
-    dist_trajectory_reduction(
-        coords,
-        box,
-        groups1,
-        groups2,
-        digitized_chains1,
-        digitized_chains2,
-        selfdist,
-        periodic is not None,
-        masses,
-        reduction_map[reduction1.lower()],
-        reduction_map[reduction2.lower()],
-        mindist,
-    )
+    if not pairs:
+        dist_trajectory_reduction(
+            coords,
+            box,
+            groups1,
+            groups2,
+            digitized_chains1,
+            digitized_chains2,
+            selfdist,
+            periodic is not None,
+            masses,
+            reduction_map[reduction1.lower()],
+            reduction_map[reduction2.lower()],
+            mindist,
+        )
+    else:
+        dist_trajectory_reduction_pairs(
+            coords,
+            box,
+            groups1,
+            groups2,
+            digitized_chains1,
+            digitized_chains2,
+            periodic is not None,
+            masses,
+            reduction_map[reduction1.lower()],
+            reduction_map[reduction2.lower()],
+            mindist,
+        )
     # print(time.time() - t)
 
     if truncate is not None:
