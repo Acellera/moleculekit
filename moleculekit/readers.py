@@ -1156,9 +1156,9 @@ def PDBread(
 
     # Before stripping guess elements from atomname as the spaces are significant
     if "element" in parsedtopo:
-        idx, newelem = pdbGuessElementByName(
-            parsedtopo.element.astype(str), parsedtopo.name
-        )
+        if parsedtopo.element.dtype != object:
+            parsedtopo.element = parsedtopo.element.astype(object)
+        idx, newelem = pdbGuessElementByName(parsedtopo.element, parsedtopo.name)
         if len(idx):
             parsedtopo.iloc[idx, parsedtopo.columns.get_loc("element")] = newelem
 
