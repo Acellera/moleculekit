@@ -841,8 +841,8 @@ def pdbGuessElementByName(elements, names, onlymissing=True):
                         alternatives[(elem, altelem)].append(name)
                     else:
                         elem = name[0] + name[1].lower()
-
-        elem = elem.strip()
+        if elem is not None:
+            elem = elem.strip()
         if elem is not None and len(elem) != 0 and elem not in periodictable:
             logger.warning(
                 f'Element guessing failed for atom with name {name} as the guessed element "{elem}" was not found in '
@@ -1151,9 +1151,14 @@ def PDBread(
             keep_default_na=False,
         )
 
+    if len(parsedtopo) == 0:
+        raise RuntimeError(f"No atoms could be read from PDB file {filename}")
+
     # Before stripping guess elements from atomname as the spaces are significant
     if "element" in parsedtopo:
-        idx, newelem = pdbGuessElementByName(parsedtopo.element, parsedtopo.name)
+        idx, newelem = pdbGuessElementByName(
+            parsedtopo.element.astype(str), parsedtopo.name
+        )
         if len(idx):
             parsedtopo.iloc[idx, parsedtopo.columns.get_loc("element")] = newelem
 

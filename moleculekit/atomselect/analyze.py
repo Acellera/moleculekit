@@ -38,7 +38,6 @@ def _guessMass(name):
 
     if len(name):
         nn = name[0].upper()
-        nn2 = name[1].upper()
         if nn == "H":
             val = 1.008
         elif nn == "C":
@@ -54,12 +53,14 @@ def _guessMass(name):
         elif nn == "S":
             val = 32.06
 
-        if nn == "C" and nn2 == "L":
-            val = 35.453  # Chlorine
-        elif nn == "N" and nn2 == "A":
-            val = 22.98977  # Natrium
-        elif nn == "M" and nn2 == "G":
-            val = 24.3050  # Magnesium
+        if len(name) > 1:
+            nn2 = name[1].upper()
+            if nn == "C" and nn2 == "L":
+                val = 35.453  # Chlorine
+            elif nn == "N" and nn2 == "A":
+                val = 22.98977  # Natrium
+            elif nn == "M" and nn2 == "G":
+                val = 24.3050  # Magnesium
     return val
 
 
