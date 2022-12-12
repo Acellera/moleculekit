@@ -205,9 +205,13 @@ def align_to_opm(mol, molsel="all", maxalignments=3):
     with open(os.path.join(home(shareDir=""), "opm_sequences.json"), "r") as f:
         sequences = json.load(f)
 
+    macrotype = "protein"
+
     seqmol, molidx = mol.sequence(
         noseg=True, return_idx=True, sel=molsel, _logger=False
     )
+    seqmol = seqmol[macrotype]
+    molidx = molidx[macrotype]
 
     res = blast_search_opm(seqmol, sequences)
 
@@ -221,13 +225,15 @@ def align_to_opm(mol, molsel="all", maxalignments=3):
         ref, thickness = get_opm_pdb(pdbid, validateElements=False)
 
         seqref, refidx = mol.sequence(noseg=True, return_idx=True, _logger=False)
+        seqref = seqref[macrotype]
+        refidx = refidx[macrotype]
 
         alignedstructs = []
         for j, hsp in enumerate(rr["hsps"]):  # Iterate highest-scoring-pairs
             molidx_hsp = np.hstack(molidx[hsp["query_from"] : hsp["query_to"]])
             refidx_hsp = np.hstack(refidx[hsp["hit_from"] : hsp["hit_to"]])
-            molidx_sel = f"index {' '.join(map(str, molidx_hsp))}"
-            refidx_sel = f"index {' '.join(map(str, refidx_hsp))}"
+            molidx_sel = f"index {' '.join(map(str, molidx_hsp))} and name CA"
+            refidx_sel = f"index {' '.join(map(str, refidx_hsp))} and name CA"
             t0, rmsd, nali, aln, _ = molTMalign(mol, ref, molidx_sel, refidx_sel)
             alignedstructs.append(
                 {"aligned_mol": aln[0], "TM-Score": t0[0], "Common RMSD": rmsd[0]}
