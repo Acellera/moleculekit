@@ -199,14 +199,15 @@ def align_to_opm(mol, molsel="all", maxalignments=3):
 
     """
     from moleculekit.home import home
-    from moleculekit.tools.sequencestructuralalignment import _get_sequence
     from moleculekit.util import molTMalign
     import numpy as np
 
     with open(os.path.join(home(shareDir=""), "opm_sequences.json"), "r") as f:
         sequences = json.load(f)
 
-    seqmol, molidx, segment_type_mol = _get_sequence(mol, molsel)
+    seqmol, molidx = mol.sequence(
+        noseg=True, return_idx=True, sel=molsel, _logger=False
+    )
 
     res = blast_search_opm(seqmol, sequences)
 
@@ -218,7 +219,8 @@ def align_to_opm(mol, molsel="all", maxalignments=3):
             f"Sequence match with OPM {pdbid}. {len(rr['hsps'])} high-scoring pairs (HSPs)"
         )
         ref, thickness = get_opm_pdb(pdbid, validateElements=False)
-        seqref, refidx, segment_type_ref = _get_sequence(ref, "all")
+
+        seqref, refidx = mol.sequence(noseg=True, return_idx=True, _logger=False)
 
         alignedstructs = []
         for j, hsp in enumerate(rr["hsps"]):  # Iterate highest-scoring-pairs
