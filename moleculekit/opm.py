@@ -251,7 +251,7 @@ class _TestOPM(unittest.TestCase):
         assert res[0]["pdbid"] == "6DDE"
         assert res[0]["thickness"] == 31.4
         molaln = res[0]["hsps"][0]["aligned_mol"]
-        assert molaln.numAtoms == 8567
+        assert molaln.numAtoms == 8641
 
 
 if __name__ == "__main__":
