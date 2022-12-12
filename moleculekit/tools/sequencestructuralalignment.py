@@ -48,6 +48,74 @@ def _get_max_align_region(molaln, refaln, nalignfragment):
     return _list_starts, _list_finish
 
 
+def _align_by_sequence_alignment(
+    mol, molidx, ref, refidx, segment_type, alignments, maxalignments, nalignfragment
+):
+    numaln = len(alignments)
+
+    if numaln > maxalignments:
+        logger.warning(
+            f"{numaln} alignments found. Limiting to {maxalignments} as specified in the `maxalignments` argument."
+        )
+
+    def _find_common_atom(mol, ref, idxmol, idxref):
+        moln = mol.name[idxmol].tolist()
+        refn = ref.name[idxref].tolist()
+        prot_names = ["CA", "C", "O", "N"]
+        nucl_names = ["C3'", "C4'", "C1'", "P"]
+        names = prot_names if segment_type == "protein" else nucl_names
+        for name in names:
+            if name in moln and name in refn:
+                return idxmol[moln.index(name)], idxref[refn.index(name)]
+        raise RuntimeError(
+            f"Could not find any of {names} in both mol and ref residues"
+        )
+
+    alignedstructs = []
+    masks = []
+    for i in range(min(maxalignments, numaln)):
+        refaln = np.array(list(alignments[i][0]))
+        molaln = np.array(list(alignments[i][1]))
+
+        # By doing cumsum we calculate how many letters were before the current letter (i.e. residues before current)
+        residref = np.cumsum(refaln != "-") - 1  # Start them from 0
+        residmol = np.cumsum(molaln != "-") - 1  # Start them from 0
+
+        # Find the region of maximum alignment between the molecules
+        starts, ends = _get_max_align_region(molaln, refaln, nalignfragment)
+
+        _refidx = []
+        _molidx = []
+        startends = []
+        for ss, ff in zip(starts, ends):
+            for k, (rr, mr) in enumerate(zip(residref[ss:ff], residmol[ss:ff])):
+                mi, ri = _find_common_atom(mol, ref, molidx[mr], refidx[rr])
+                _refidx.append(ri)
+                _molidx.append(mi)
+                # The rest is just for pretty printing
+                if k == 0:
+                    start_resid = mol.resid[mi]
+                if k == ff - ss - 1:
+                    end_resid = mol.resid[mi]
+            startends.append(f"{start_resid}-{end_resid}")
+
+        molmask = np.zeros(mol.numAtoms, dtype=bool)
+        molmask[_molidx] = True
+        refmask = np.zeros(ref.numAtoms, dtype=bool)
+        refmask[_refidx] = True
+
+        logger.info(
+            f"Alignment #{i} was done on {len(_refidx)} residues: {' ,'.join(startends)}"
+        )
+
+        alignedmol = mol.copy()
+        alignedmol.align(sel=molmask, refmol=ref, refsel=refmask)
+        alignedstructs.append(alignedmol)
+        masks.append([molmask, refmask])
+
+    return alignedstructs, masks
+
+
 def sequenceStructureAlignment(
     mol,
     ref,
@@ -125,69 +193,12 @@ def sequenceStructureAlignment(
         alignments = pairwise2.align.globalds(seqref, seqmol, blosum62, -11.0, -1.0)
     elif segment_type == "nucleic":
         alignments = pairwise2.align.globalxx(seqref, seqmol)
-    numaln = len(alignments)
 
-    if numaln > maxalignments:
-        logger.warning(
-            f"{numaln} alignments found. Limiting to {maxalignments} as specified in the `maxalignments` argument."
-        )
-
-    def _find_common_atom(mol, ref, idxmol, idxref):
-        moln = mol.name[idxmol].tolist()
-        refn = ref.name[idxref].tolist()
-        prot_names = ["CA", "C", "O", "N"]
-        nucl_names = ["C3'", "C4'", "C1'", "P"]
-        names = prot_names if segment_type == "protein" else nucl_names
-        for name in names:
-            if name in moln and name in refn:
-                return idxmol[moln.index(name)], idxref[refn.index(name)]
-        raise RuntimeError(
-            f"Could not find any of {names} in both mol and ref residues"
-        )
-
-    alignedstructs = []
-    masks = []
-    for i in range(min(maxalignments, numaln)):
-        refaln = np.array(list(alignments[i][0]))
-        molaln = np.array(list(alignments[i][1]))
-
-        # By doing cumsum we calculate how many letters were before the current letter (i.e. residues before current)
-        residref = np.cumsum(refaln != "-") - 1  # Start them from 0
-        residmol = np.cumsum(molaln != "-") - 1  # Start them from 0
-
-        # Find the region of maximum alignment between the molecules
-        starts, ends = _get_max_align_region(molaln, refaln, nalignfragment)
-
-        _refidx = []
-        _molidx = []
-        startends = []
-        for ss, ff in zip(starts, ends):
-            for k, (rr, mr) in enumerate(zip(residref[ss:ff], residmol[ss:ff])):
-                mi, ri = _find_common_atom(mol, ref, molidx[mr], refidx[rr])
-                _refidx.append(ri)
-                _molidx.append(mi)
-                # The rest is just for pretty printing
-                if k == 0:
-                    start_resid = mol.resid[mi]
-                if k == ff - ss - 1:
-                    end_resid = mol.resid[mi]
-            startends.append(f"{start_resid}-{end_resid}")
-
-        molmask = np.zeros(mol.numAtoms, dtype=bool)
-        molmask[_molidx] = True
-        refmask = np.zeros(ref.numAtoms, dtype=bool)
-        refmask[_refidx] = True
-
-        logger.info(
-            f"Alignment #{i} was done on {len(_refidx)} residues: {' ,'.join(startends)}"
-        )
-
-        alignedmol = mol.copy()
-        alignedmol.align(sel=molmask, refmol=ref, refsel=refmask)
-        alignedstructs.append(alignedmol)
-        masks.append([molmask, refmask])
-
+    alignedstructs, masks = _align_by_sequence_alignment(
+        mol, molidx, ref, refidx, segment_type, alignments, maxalignments, nalignfragment
+    )
     return alignedstructs, masks
+
 
 
 class _TestSequenceStructuralAlignment(unittest.TestCase):

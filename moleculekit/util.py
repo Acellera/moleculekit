@@ -93,6 +93,10 @@ def rotationMatrix(axis, theta):
 
 
 def molTMscore(mol, ref, molsel="protein", refsel="protein"):
+    return molTMalign(mol, ref, molsel, refsel, return_alignments=False)
+
+
+def molTMalign(mol, ref, molsel="protein", refsel="protein", return_alignments=True):
     """Calculates the TMscore between two protein Molecules
 
     Parameters
@@ -105,42 +109,73 @@ def molTMscore(mol, ref, molsel="protein", refsel="protein"):
         Atomselect string for which atoms of `mol` to calculate TMScore
     refsel : str
         Atomselect string for which atoms of `ref` to calculate TMScore
+    return_alignments : bool
+        If True it will return the aligned structures of mol and the transformation matrices used to produce them
 
     Returns
     -------
     tmscore : numpy.ndarray
-        TM score (if normalized by length of ref)
+        TM score (if normalized by length of ref) for each frame in mol
     rmsd : numpy.ndarray
         RMSD only OF COMMON RESIDUES for all frames. This is not the same as a full protein RMSD!!!
     nali : numpy.ndarray
-        Number of aligned residues
+        Number of aligned residues for each frame in mol
+    alignments : list of Molecules
+        Each frame of `mol` aligned to `ref`
+    transformation : list of numpy.ndarray
+        Contains the transformation for each frame of mol to align to ref. The first element is the rotation
+        and the second is the translation. Look at examples on how to manually produce the aligned structure.
 
     Examples
     --------
-    tmscore, rmsd, nali = molTMscore(mol, ref)
+    >>> tmscore, rmsd, nali, alignments, transformation = molTMscore(mol, ref)
+
+    To manually generate the aligned structure for the first frame, first rotate, then translate
+    >>> mol.rotateBy(transformation[0][0])
+    >>> mol.moveBy(transformation[0][1])
     """
     from moleculekit.tmalign import tmalign
 
-    sel1 = mol.atomselect(molsel)
-    sel2 = ref.atomselect(refsel)
+    seqx = mol.sequence(noseg=True, sel=molsel)["protein"].encode("UTF-8")
+    seqy = ref.sequence(noseg=True, sel=refsel)["protein"].encode("UTF-8")
 
-    if mol.numAtoms == 0:
-        raise RuntimeError("No protein atoms in `mol`")
+    molc = mol.copy()
+    molc.filter(molsel, _logger=False)
+    ref = ref.copy()
+    ref.filter(refsel, _logger=False)
+
+    if molc.numAtoms == 0:
+        raise RuntimeError("No atoms in `molsel`")
     if ref.numAtoms == 0:
-        raise RuntimeError("No protein atoms in `ref`")
+        raise RuntimeError("No atoms in `refsel`")
 
-    seqx = mol.sequence(noseg=True)["protein"].encode("UTF-8")
-    seqy = ref.sequence(noseg=True)["protein"].encode("UTF-8")
     if len(seqx) == 0:
-        raise RuntimeError("No protein sequence found in `mol`")
+        raise RuntimeError(
+            f"No protein sequence found in `mol` for selection '{molsel}'"
+        )
     if len(seqy) == 0:
-        raise RuntimeError("No protein sequence found in `ref`")
+        raise RuntimeError(
+            f"No protein sequence found in `ref` for selection '{refsel}'"
+        )
 
     # Transpose to have fastest axis as last
-    coords1 = np.transpose(mol.coords[sel1, :, :].astype(np.float64), (2, 0, 1)).copy()
-    coords2 = ref.coords[sel2, :, ref.frame].astype(np.float64).copy()
-    TM1, rmsd, nali = tmalign(coords1, coords2, seqx, seqy)
-    return np.array(TM1), np.array(rmsd), np.array(nali)
+    coords1 = np.transpose(molc.coords.astype(np.float64), (2, 0, 1)).copy()
+    coords2 = ref.coords[:, :, ref.frame].astype(np.float64).copy()
+    TM1, rmsd, nali, t0, u0 = tmalign(coords1, coords2, seqx, seqy)
+
+    if return_alignments:
+        transformation = []
+        alignments = []
+        for i in range(len(u0)):
+            transformation.append((np.array(u0[i]).reshape(3, 3), np.array(t0[i])))
+            molt = mol.copy()
+            molt.rotateBy(transformation[-1][0])
+            molt.moveBy(transformation[-1][1])
+            alignments.append(molt)
+
+        return np.array(TM1), np.array(rmsd), np.array(nali), alignments, transformation
+    else:
+        return np.array(TM1), np.array(rmsd), np.array(nali)
 
 
 def molRMSD(mol, refmol, rmsdsel1, rmsdsel2):
@@ -451,64 +486,68 @@ def writeVoxels(arr, filename, vecMin, vecRes):
                     cont += 1
 
 
-def opm(pdb, keep=False, keepaltloc="A"):
-    """Download a molecule from the OPM.
+def _get_pdb_entities(pdbids):
+    import requests
 
-    Parameters
-    ----------
-    pdb: str
-        The 4-letter PDB code
-    keep: bool
-        If False, removes the DUM atoms. If True, it keeps them.
+    pdbids = ensurelist(pdbids)
 
-    Returns
-    -------
-    mol: Molecule
-        The oriented molecule
-
-    thickness: float or None
-        The bilayer thickness (both layers)
-
-    Examples
-    --------
-    >>> mol, thickness = opm("1z98")
-    >>> mol.numAtoms
-    7902
-    >>> thickness
-    28.2
-    >>> _, thickness = opm('4u15')
-    >>> thickness is None
-    True
-
+    pdbstring = '"' + '","'.join(pdbids) + '"'
+    query = f"""
+        {{
+            entries(entry_ids:[{pdbstring}]) {{
+                rcsb_id
+                rcsb_entry_container_identifiers {{
+                    polymer_entity_ids
+                }}
+            }}
+        }}
     """
-    import urllib.request
+    resp = requests.post("https://data.rcsb.org/graphql", json={"query": query})
+    entries = resp.json()["data"]["entries"]
+
+    results = {}
+    for entry in entries:
+        rcsb_id = entry["rcsb_id"].upper()
+        results[rcsb_id] = entry["rcsb_entry_container_identifiers"][
+            "polymer_entity_ids"
+        ]
+    missing = [pdbid for pdbid in pdbids if pdbid.upper() not in results]
+    return results, missing
+
+
+def _get_pdb_entity_sequences(entities):
+    import requests
     import re
-    from moleculekit.molecule import Molecule
 
-    response = urllib.request.urlopen(
-        f"https://storage.googleapis.com/opm-assets/pdb/{pdb.lower()}.pdb"
-    )
-    text = response.read()
-    tempfile = string_to_tempfile(text.decode("ascii"), "pdb")
+    if isinstance(entities, dict):
+        entity_list = []
+        for pdbid in entities:
+            for ent in entities[pdbid]:
+                entity_list.append(f"{pdbid}_{ent}")
+    else:
+        entity_list = ensurelist(entities)
 
-    mol = Molecule(tempfile, keepaltloc=keepaltloc)
-    if not keep:
-        mol.filter("not resname DUM")
+    entitystr = '"' + '","'.join(entity_list) + '"'
+    query = f"""
+        {{
+            polymer_entities(entity_ids:[{entitystr}]) {{
+                rcsb_id
+                entity_poly {{
+                    pdbx_seq_one_letter_code
+                }}
+            }}
+        }}
+    """
+    resp = requests.post("https://data.rcsb.org/graphql", json={"query": query})
+    data = resp.json()["data"]["polymer_entities"]
 
-    # Assuming the half-thickness is the last word in the matched line
-    # REMARK      1/2 of bilayer thickness:   14.1
-    tmp = open(tempfile)
-    pattern = re.compile("^REMARK.+thickness")
+    results = {}
+    for entry in data:
+        rcsb_id = entry["rcsb_id"].upper()
+        results[rcsb_id] = entry["entity_poly"]["pdbx_seq_one_letter_code"]
+        results[rcsb_id] = re.sub(r"\([A-Za-z0-9]+\)", "?", results[rcsb_id])
 
-    thickness = None
-    for line in tmp:
-        if re.match(pattern, line):
-            thickness = 2.0 * float(line.split()[-1])
-            break
-    tmp.close()
-    os.unlink(tempfile)
-
-    return mol, thickness
+    return results
 
 
 def guessAnglesAndDihedrals(bonds, cyclicdih=False):
@@ -833,6 +872,17 @@ def string_to_tempfile(content, ext):
     f.write(content.encode("ascii", "ignore"))
     f.close()
     return f.name
+
+
+def opm(pdbid, keep=False, keepaltloc="A", validateElements=True):
+    from moleculekit.opm import get_opm_pdb
+
+    logger.warning(
+        "Function opm() has been deprecated. Please use moleculekit.opm.get_opm_pdb instead."
+    )
+    get_opm_pdb(
+        pdbid, keep=keep, keepaltloc=keepaltloc, validateElements=validateElements
+    )
 
 
 if __name__ == "__main__":

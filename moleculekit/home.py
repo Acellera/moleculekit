@@ -44,7 +44,7 @@ def home(dataDir=None, shareDir=None):
 
     if dataDir:
         return os.path.join(homeDir, "test-data", dataDir)
-    elif shareDir:
+    elif shareDir is not None:
         sharedir = os.path.join(homeDir, "share")
         if not os.path.exists(sharedir):
             raise FileNotFoundError("Could not find moleculekit share directory.")
