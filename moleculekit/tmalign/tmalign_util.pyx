@@ -74,7 +74,11 @@ def tmalign(double[:,:,:] coords, double[:,:] ref_coords, string seqx, string se
     cdef char *secy = <char *> malloc((ylen + 1) * sizeof(char))
 
     cdef vector[double] TM1_all, rmsd_all
-    cdef vector[int] nali_all 
+    cdef vector[int] nali_all
+    cdef vector[vector[double]] translations 
+    cdef vector[vector[double]] rotations 
+    cdef vector[double] t0vec  # Temp variable to convert from double* to vector
+    cdef vector[double] u0vec  # Temp variable to convert from double** to flat vector
 
     for i in range(ref_coords.shape[0]):
         ref_coords_vec.push_back(&ref_coords[i, 0])
@@ -106,6 +110,16 @@ def tmalign(double[:,:,:] coords, double[:,:] ref_coords, string seqx, string se
         rmsd_all.push_back(rmsd0)
         nali_all.push_back(n_ali8)
 
+        # Converting from arrays to vectors to be able to pass the data back to python
+        t0vec.assign(t0, t0+3)
+        translations.push_back(t0vec)
+        t0vec.clear()
+        for i in range(3):
+            for j in range(3):
+                u0vec.push_back(u0[i][j])
+        rotations.push_back(u0vec)
+        u0vec.clear()
+
         # Done! Free memory
         seqM.clear()
         seqxA.clear()
@@ -116,4 +130,4 @@ def tmalign(double[:,:,:] coords, double[:,:] ref_coords, string seqx, string se
     free(secy)
     ref_coords_vec.clear()
 
-    return TM1_all, rmsd_all, nali_all
+    return TM1_all, rmsd_all, nali_all, translations, rotations
