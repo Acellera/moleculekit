@@ -136,6 +136,9 @@ def molTMalign(mol, ref, molsel="protein", refsel="protein", return_alignments=T
     """
     from moleculekit.tmalign import tmalign
 
+    seqx = mol.sequence(noseg=True, sel=molsel)["protein"].encode("UTF-8")
+    seqy = ref.sequence(noseg=True, sel=refsel)["protein"].encode("UTF-8")
+
     molc = mol.copy()
     molc.filter(molsel, _logger=False)
     ref = ref.copy()
@@ -146,12 +149,14 @@ def molTMalign(mol, ref, molsel="protein", refsel="protein", return_alignments=T
     if ref.numAtoms == 0:
         raise RuntimeError("No atoms in `refsel`")
 
-    seqx = molc.sequence(noseg=True)["protein"].encode("UTF-8")
-    seqy = ref.sequence(noseg=True)["protein"].encode("UTF-8")
     if len(seqx) == 0:
-        raise RuntimeError("No protein sequence found in `mol`")
+        raise RuntimeError(
+            f"No protein sequence found in `mol` for selection '{molsel}'"
+        )
     if len(seqy) == 0:
-        raise RuntimeError("No protein sequence found in `ref`")
+        raise RuntimeError(
+            f"No protein sequence found in `ref` for selection '{refsel}'"
+        )
 
     # Transpose to have fastest axis as last
     coords1 = np.transpose(molc.coords.astype(np.float64), (2, 0, 1)).copy()
