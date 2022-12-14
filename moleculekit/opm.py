@@ -199,7 +199,7 @@ def align_to_opm(mol, molsel="all", maxalignments=3):
 
     """
     from moleculekit.home import home
-    from moleculekit.util import molTMalign
+    from moleculekit.align import molTMalign
     import numpy as np
 
     with open(os.path.join(home(shareDir=""), "opm_sequences.json"), "r") as f:
@@ -235,8 +235,10 @@ def align_to_opm(mol, molsel="all", maxalignments=3):
             molidx_sel = f"index {' '.join(map(str, molidx_hsp))} and name CA"
             refidx_sel = f"index {' '.join(map(str, refidx_hsp))} and name CA"
             t0, rmsd, nali, aln, _ = molTMalign(mol, ref, molidx_sel, refidx_sel)
+            molc = mol.copy()
+            molc.coords = aln[0].copy()
             alignedstructs.append(
-                {"aligned_mol": aln[0], "TM-Score": t0[0], "Common RMSD": rmsd[0]}
+                {"aligned_mol": molc, "TM-Score": t0[0], "Common RMSD": rmsd[0]}
             )
             logger.info(
                 f"   HSP {j} length {hsp['align_len']}, e-value {hsp['evalue']}, TM-score {t0[0]:.2f}, RMSD {rmsd[0]:.2f}, res_aligned {nali[0]}"

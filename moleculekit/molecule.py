@@ -609,7 +609,16 @@ class Molecule(object):
         else:
             self.__dict__[field][s] = value
 
-    def align(self, sel, refmol=None, refsel=None, frames=None, matchingframes=False):
+    def align(
+        self,
+        sel,
+        refmol=None,
+        refsel=None,
+        frames=None,
+        matchingframes=False,
+        mode="index",
+        _logger=True,
+    ):
         """Align conformations.
 
         Align a given set of frames of this molecule to either the current active frame of this molecule (mol.frame)
@@ -632,6 +641,13 @@ class Molecule(object):
         matchingframes : bool
             If set to True it will align the selected frames of this molecule to the corresponding frames of the refmol.
             This requires both molecules to have the same number of frames.
+        mode : str
+            Options are ('index', 'structure'). Setting to 'index' will align two structures on the atoms selected
+            in `sel` and `refsel` in increasing order of their indices. Meaning that if `sel` is `name CA and resid 5 3`
+            and `refsel` is `name CA and resid 7 8`, assuming that resid 3 comes before 5, it will align the CA or resid 3
+            to resid 7 in `refmol` and 5 to 8 instead of 5-7, 3-8 as one might expect from the atomselection strings.
+            Setting `mode` to 'structure' will perform pure structural alignment regardless of atom order using the TM-Align
+            method.
 
         Examples
         --------
@@ -639,7 +655,7 @@ class Molecule(object):
         >>> mol.align('protein')
         >>> mol.align('name CA', refmol=Molecule('3PTB'))
         """
-        from moleculekit.align import _pp_align
+        from moleculekit.align import _pp_align, molTMalign
 
         if refmol is None:
             refmol = self
@@ -659,21 +675,38 @@ class Molecule(object):
                 "This molecule and the reference molecule need the same number or frames to use the matchinframes option."
             )
 
-        sel = self.atomselect(sel, indexes=True)
-        refsel = refmol.atomselect(refsel, indexes=True)
-        if sel.size != refsel.size:
-            raise RuntimeError(
-                "Cannot align molecules. The two selections produced different number of atoms"
+        if mode == "index":
+            sel = self.atomselect(sel, indexes=True)
+            refsel = refmol.atomselect(refsel, indexes=True)
+            if sel.size != refsel.size:
+                raise RuntimeError(
+                    "Cannot align molecules. The two selections produced different number of atoms. Either fix the selections or use a different alignment `mode` option (i.e. structure)"
+                )
+            self.coords = _pp_align(
+                self.coords,
+                refmol.coords,
+                np.array(sel, dtype=np.int64),
+                np.array(refsel, dtype=np.int64),
+                frames,
+                refmol.frame,
+                matchingframes,
             )
-        self.coords = _pp_align(
-            self.coords,
-            refmol.coords,
-            np.array(sel, dtype=np.int64),
-            np.array(refsel, dtype=np.int64),
-            frames,
-            refmol.frame,
-            matchingframes,
-        )
+        elif mode == "structure":
+            TM1, rmsd, nali, coords, trans = molTMalign(
+                self,
+                refmol,
+                sel,
+                refsel,
+                frames=frames,
+                matchingframes=matchingframes,
+            )
+            if _logger:
+                logger.info(
+                    f"Structural alignement gave TM-Scores of {TM1} and local RMSDs of {rmsd}"
+                )
+            self.coords = coords
+        else:
+            raise RuntimeError("`mode` option should be 'index' or 'structure'")
 
     def alignBySequence(
         self,
@@ -954,7 +987,7 @@ class Molecule(object):
                 ["un"] * self.bonds.shape[0], dtype=self._dtypes["bondtype"]
             )
 
-    def moveBy(self, vector, sel=None):
+    def translateBy(self, vector, sel=None):
         """Move a selection of atoms by a given vector
 
         Parameters
@@ -977,6 +1010,9 @@ class Molecule(object):
 
         s = self.atomselect(sel)
         self.coords[s, :, self.frame] += vector
+
+    def moveBy(self, vector, sel=None):
+        self.translateBy(vector, sel)
 
     def rotateBy(self, M, center=(0, 0, 0), sel="all"):
         """Rotate a selection of atoms by a given rotation matrix around a center

@@ -4,6 +4,7 @@
 # No redistribution in whole or part
 #
 import numpy as np
+import unittest
 
 
 def _pp_measure_fit(P, Q):
@@ -42,11 +43,8 @@ def _pp_align(coords, refcoords, sel, refsel, frames, refframe, matchingframes):
             Q = refcoords[refsel, :, refframe]
         all1 = coords[:, :, f]
 
-        centroidP = np.zeros(3, dtype=P.dtype)
-        centroidQ = np.zeros(3, dtype=Q.dtype)
-        for i in range(3):
-            centroidP[i] = np.mean(P[:, i])
-            centroidQ[i] = np.mean(Q[:, i])
+        centroidP = P.mean(axis=0)
+        centroidQ = Q.mean(axis=0)
 
         rot, _ = _pp_measure_fit(P - centroidP, Q - centroidQ)
 
@@ -57,3 +55,180 @@ def _pp_align(coords, refcoords, sel, refsel, frames, refframe, matchingframes):
         all1 = all1 + centroidQ
         newcoords[:, :, f] = all1
     return newcoords
+
+
+def molTMscore(mol, ref, molsel="protein", refsel="protein"):
+    return molTMalign(mol, ref, molsel, refsel, return_alignments=False)
+
+
+def molTMalign(
+    mol,
+    ref,
+    molsel="protein",
+    refsel="protein",
+    return_alignments=True,
+    frames=None,
+    matchingframes=False,
+):
+    """Calculates the TMscore between two protein Molecules
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
+        A Molecule containing a single or multiple frames
+    ref : :class:`Molecule <moleculekit.molecule.Molecule>` object
+        A reference Molecule containing a single frame. Will automatically keep only ref.frame.
+    molsel : str
+        Atomselect string for which atoms of `mol` to calculate TMScore
+    refsel : str
+        Atomselect string for which atoms of `ref` to calculate TMScore
+    return_alignments : bool
+        If True it will return the aligned structures of mol and the transformation matrices used to produce them
+    frames : list
+        A list of frames of mol to align to ref. If None it will align all frames.
+    matchingframes : bool
+        If set to True it will align the selected frames of this molecule to the corresponding frames of the refmol.
+        This requires both molecules to have the same number of frames.
+
+    Returns
+    -------
+    tmscore : numpy.ndarray
+        TM score (if normalized by length of ref) for each frame in mol
+    rmsd : numpy.ndarray
+        RMSD only OF COMMON RESIDUES for all frames. This is not the same as a full protein RMSD!!!
+    nali : numpy.ndarray
+        Number of aligned residues for each frame in mol
+    alignments : list of Molecules
+        Each frame of `mol` aligned to `ref`
+    transformation : list of numpy.ndarray
+        Contains the transformation for each frame of mol to align to ref. The first element is the rotation
+        and the second is the translation. Look at examples on how to manually produce the aligned structure.
+
+    Examples
+    --------
+    >>> tmscore, rmsd, nali, alignments, transformation = molTMalign(mol, ref)
+
+    To manually generate the aligned structure for the first frame, first rotate, then translate
+    >>> mol.rotateBy(transformation[0][0])
+    >>> mol.moveBy(transformation[0][1])
+    """
+    from moleculekit.tmalign import tmalign
+
+    if matchingframes and mol.numFrames != ref.numFrames:
+        raise RuntimeError(
+            "This molecule and the reference molecule need the same number or frames to use the matchinframes option."
+        )
+    if frames is None:
+        frames = range(mol.numFrames)
+
+    molsel = mol.atomselect(molsel)
+    refsel = ref.atomselect(refsel)
+
+    if molsel.sum() == 0:
+        raise RuntimeError("No atoms in `molsel`")
+    if refsel.sum() == 0:
+        raise RuntimeError("No atoms in `refsel`")
+
+    seqx = mol.sequence(noseg=True, sel=molsel, _logger=False)["protein"].encode(
+        "UTF-8"
+    )
+    seqy = ref.sequence(noseg=True, sel=refsel, _logger=False)["protein"].encode(
+        "UTF-8"
+    )
+
+    if len(seqx) == 0:
+        raise RuntimeError(
+            f"No protein sequence found in `mol` for selection '{molsel}'"
+        )
+    if len(seqy) == 0:
+        raise RuntimeError(
+            f"No protein sequence found in `ref` for selection '{refsel}'"
+        )
+
+    # Transpose to have fastest axis as last
+    if matchingframes:
+        TM1 = []
+        rmsd = []
+        nali = []
+        t0 = []
+        u0 = []
+        for f in frames:
+            coords1 = np.transpose(
+                mol.coords[molsel, :, f].astype(np.float64), (2, 0, 1)
+            ).copy()
+            coords2 = ref.coords[refsel, :, f].astype(np.float64).copy()
+            res = tmalign(coords1, coords2, seqx, seqy)
+            TM1.append(res[0][0])
+            rmsd.append(res[1][0])
+            nali.append(res[2][0])
+            t0.append(res[3][0])
+            u0.append(res[4][0])
+    else:
+        coords1 = np.transpose(
+            mol.coords[molsel][:, :, frames].astype(np.float64), (2, 0, 1)
+        ).copy()
+        coords2 = ref.coords[refsel, :, ref.frame].astype(np.float64).copy()
+        TM1, rmsd, nali, t0, u0 = tmalign(coords1, coords2, seqx, seqy)
+
+    if return_alignments:
+        transformation = []
+        coords = []
+        for i in range(len(u0)):
+            rot = np.array(u0[i]).reshape(3, 3)
+            trans = np.array(t0[i])
+            transformation.append((rot, trans))
+            newcoords = np.dot(mol.coords[:, :, i], np.transpose(rot)) + trans
+            coords.append(newcoords[:, :, None])
+        coords = np.concatenate(coords, axis=2).astype(np.float32).copy()
+
+        return np.array(TM1), np.array(rmsd), np.array(nali), coords, transformation
+    else:
+        return np.array(TM1), np.array(rmsd), np.array(nali)
+
+
+class _TestAlign(unittest.TestCase):
+    def test_tmscore(self):
+        from moleculekit.molecule import Molecule
+        from moleculekit.home import home
+        import os
+
+        expectedTMscore = np.array(
+            [
+                0.21418523758241995,
+                0.23673770143317904,
+                0.23433833284964856,
+                0.21362964335736384,
+                0.2093516362636725,
+                0.2091586174519859,
+                0.2701289508300192,
+                0.2267523806405569,
+                0.21230792537194731,
+                0.23720109756991442,
+            ]
+        )
+        expectedRMSD = np.array(
+            [
+                3.70322128077056,
+                3.4363702744873135,
+                3.18819300389854,
+                3.844558765275783,
+                3.5305388236937127,
+                3.5571699112057917,
+                2.9377762912738348,
+                2.979786917608776,
+                2.707924279670757,
+                2.6305131814498712,
+            ]
+        )
+
+        mol = Molecule(os.path.join(home(dataDir="tmscore"), "filtered.pdb"))
+        mol.read(os.path.join(home(dataDir="tmscore"), "traj.xtc"))
+        ref = Molecule(os.path.join(home(dataDir="tmscore"), "ntl9_2hbb.pdb"))
+        tmscore, rmsd, _ = molTMscore(
+            mol, ref, "protein and name CA", "protein and name CA"
+        )
+        self.assertTrue(np.allclose(tmscore, expectedTMscore))
+        self.assertTrue(np.allclose(rmsd, expectedRMSD))
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

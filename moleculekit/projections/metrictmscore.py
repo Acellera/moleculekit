@@ -58,7 +58,7 @@ class MetricTMscore(Projection):
         data : np.ndarray
             An array containing the projected data.
         """
-        from moleculekit.util import molTMscore
+        from moleculekit.align import molTMscore
 
         mol = mol.copy()
         trajtmsel = self._getMolProp(mol, "trajtmsel")
