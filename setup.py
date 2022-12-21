@@ -42,6 +42,7 @@ extentions.append(
             numpy.get_include(),
         ],
         language="c++",
+        extra_compile_args=["-std=c++17"]
         # extra_compile_args=compiler_args,
     )
 )

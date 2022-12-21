@@ -21,15 +21,18 @@ __asm__(".symver memcpy,memcpy@GLIBC_2.2.5");
 #include "xtc.h"
 #include <stdint.h>
 #include <string.h>
-//#include "rpc/types.h"
-//#include "rpc/xdr.h"
-//#include <linux/limits.h>
+#include <iostream>
+#include <filesystem>
+// #include "rpc/types.h"
+// #include "rpc/xdr.h"
+// #include <linux/limits.h>
+
+namespace fs = std::filesystem;
 
 #ifndef PATH_MAX
 #define PATH_MAX 2048
 #endif
 
-#include <libgen.h>
 #include <sys/stat.h>
 
 static void *condfree(void *p)
@@ -81,11 +84,9 @@ int xtc_natoms(char *filename)
 int xtc_nframes(char *filename)
 {
 	char index_file[PATH_MAX + 1];
-	char *f1 = strdup(filename);
-	char *f2 = strdup(filename);
-	sprintf(index_file, "%s/.%s", dirname(f1), basename(f2));
-	free(f1);
-	free(f2);
+
+	const fs::path filepath = filename;
+	sprintf(index_file, "%s/.%s", filepath.filename().string().c_str(), filepath.parent_path().string().c_str());
 
 	struct stat st_index_file, st_traj_file;
 	if ((stat(index_file, &st_index_file) == 0) && (stat(filename, &st_traj_file) == 0))
@@ -271,11 +272,8 @@ struct XTC_frame *xtc_read(char *filename, int *natoms, int *nframes, double *dt
 
 	char *f1, *f2;
 
-	f1 = strdup(filename);
-	f2 = strdup(filename);
-	sprintf(index_file, "%s/.%s", dirname(f1), basename(f2));
-	free(f1);
-	free(f2);
+	const fs::path filepath = filename;
+	sprintf(index_file, "%s/.%s", filepath.filename().string().c_str(), filepath.parent_path().string().c_str());
 
 	if (exdrOK != read_xtc_natoms(filename, natoms))
 	{
@@ -423,12 +421,10 @@ int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, 
 
 	// Invalidate any index file
 	char index_file[PATH_MAX + 1];
-	f1 = strdup(filename);
-	f2 = strdup(filename);
-	sprintf(index_file, "%s/.%s", dirname(f1), basename(f2));
+
+	const fs::path filepath = filename;
+	sprintf(index_file, "%s/.%s", filepath.filename().string().c_str(), filepath.parent_path().string().c_str());
 	remove(index_file);
-	free(f1);
-	free(f2);
 
 	xd = xdrfile_open(filename, "a");
 	//}
@@ -499,11 +495,8 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 		return;
 	}
 
-	char *f1 = strdup(filename);
-	char *f2 = strdup(filename);
-	sprintf(index_file, "%s/.%s", dirname(f1), basename(f2));
-	free(f1);
-	free(f2);
+	const fs::path filepath = filename;
+	sprintf(index_file, "%s/.%s", filepath.filename().string().c_str(), filepath.parent_path().string().c_str());
 
 	if (getenv("DEBUG"))
 	{
