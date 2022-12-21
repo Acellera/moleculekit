@@ -188,7 +188,9 @@ int xtc_nframes(char *filename)
 	{
 		// Always try to make the index file globally readable
 		// so bob can read alice's indices
+#ifndef _WIN32
 		chmod(index_file, 0644);
+#endif
 	}
 
 	return nframes;
@@ -399,7 +401,9 @@ struct XTC_frame *xtc_read(char *filename, int *natoms, int *nframes, double *dt
 	{
 		// Always try to make the index file globally readable
 		// so bob can read alice's indices
+#ifndef _WIN32
 		chmod(index_file, 0644);
+#endif
 	}
 
 	return frames;
