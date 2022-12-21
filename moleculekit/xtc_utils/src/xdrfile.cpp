@@ -179,13 +179,13 @@ xdrfile_open(const char *path, const char *mode)
 		return NULL;
 	if((xfp->fp=fopen(path,newmode))==NULL)
     {
-		xfp=condfree(xfp);
+		xfp=(XDRFILE *)condfree(xfp);
 		return NULL;
 	}
 	if((xfp->xdr=(XDR *)malloc(sizeof(XDR)))==NULL) 
     {
 		fclose(xfp->fp);
-		xfp=condfree(xfp);
+		xfp=(XDRFILE *)condfree(xfp);
 		return NULL;
 	}
 	xfp->mode=*mode;
@@ -204,14 +204,14 @@ xdrfile_close(XDRFILE *xfp)
 		/* flush and destroy XDR stream */
 		if(xfp->xdr)
 			xdr_destroy((XDR *)(xfp->xdr));
-		xfp->xdr=condfree(xfp->xdr);
+		xfp->xdr=(XDR *)condfree(xfp->xdr);
 		/* close the file */
 		ret=fclose(xfp->fp);
 		if(xfp->buf1size)
-			xfp->buf1=condfree(xfp->buf1);
+			xfp->buf1=(int *)condfree(xfp->buf1);
 		if(xfp->buf2size)
-			xfp->buf2=condfree(xfp->buf2);
-		xfp=condfree(xfp);
+			xfp->buf2=(int *)condfree(xfp->buf2);
+		xfp=(XDRFILE *)condfree(xfp);
 	}
 	return ret; /* return 0 if ok */
 }
@@ -1947,13 +1947,13 @@ F77_FUNC(xdrrstring,XDRRSTRING)(int *fid, char *str, int *ret, int len)
 	}
 	if (ftocstr(cstr, len+1, str, len)) {
 		*ret = 0;
-		cstr=condfree(cstr);
+		cstr=(char *)condfree(cstr);
 		return;
 	}
   
 	*ret = xdrfile_read_string(cstr, len+1,f77xdr[*fid]);
 	ctofstr( str, len , cstr);
-	cstr=condfree(cstr);
+	cstr=(char *)condfree(cstr);
 }
 
 void
@@ -1967,13 +1967,13 @@ F77_FUNC(xdrwstring,XDRWSTRING)(int *fid, char *str, int *ret, int len)
 	}
 	if (ftocstr(cstr, len+1, str, len)) {
 		*ret = 0;
-		cstr=condfree(cstr);
+		cstr=(char *)condfree(cstr);
 		return;
 	}
   
 	*ret = xdrfile_write_string(cstr, f77xdr[*fid]);
 	ctofstr( str, len , cstr);
-	cstr=condfree(cstr);
+	cstr=(char *)condfree(cstr);
 }
 
 void
@@ -2117,7 +2117,7 @@ typedef int (*xdrproc_t) (XDR *, void *,...);
 	(*(xdrs)->x_ops->x_putbytes)(xdrs, addr, len)
 
 #define BYTES_PER_XDR_UNIT 4 
-static __thread char xdr_zero[BYTES_PER_XDR_UNIT] = {0, 0, 0, 0};
+thread_local char xdr_zero[BYTES_PER_XDR_UNIT] = {0, 0, 0, 0};
 
 static int32_t
 xdr_swapbytes(int32_t x)
@@ -2397,7 +2397,7 @@ xdr_string (XDR *xdrs, char **cpp, unsigned int maxsize)
 			return xdr_opaque (xdrs, sp, size);
 
 		case XDR_FREE:
-			sp=condfree (sp);
+			sp=(char *)condfree (sp);
 			*cpp = NULL;
 			return 1;
 		}
@@ -2535,7 +2535,7 @@ static void xdrstdio_destroy (XDR *);
 /*
  * Ops vector for stdio type XDR
  */
-static const struct xdr_ops xdrstdio_ops =
+static const struct XDR::xdr_ops xdrstdio_ops =
 	{
 		xdrstdio_getlong,		/* deserialize a long int */
 		xdrstdio_putlong,		/* serialize a long int */
@@ -2556,7 +2556,7 @@ xdrstdio_create (XDR *xdrs, FILE *file, enum xdr_op op)
 {
 	xdrs->x_op = op;
 
-	xdrs->x_ops = (struct xdr_ops *) &xdrstdio_ops;
+	xdrs->x_ops = (struct XDR::xdr_ops *) &xdrstdio_ops;
 	xdrs->x_private = (char *) file;
 }
 
