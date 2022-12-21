@@ -21,13 +21,10 @@ __asm__(".symver memcpy,memcpy@GLIBC_2.2.5");
 #include "xtc.h"
 #include <stdint.h>
 #include <string.h>
-#include <iostream>
-#include <filesystem>
+#include <string>
 // #include "rpc/types.h"
 // #include "rpc/xdr.h"
 // #include <linux/limits.h>
-
-namespace fs = std::filesystem;
 
 #ifndef PATH_MAX
 #define PATH_MAX 2048
@@ -70,6 +67,15 @@ struct {
 } XTC_frame;
 */
 
+void *get_index_file(char *filename, char *index_file)
+{
+	std::string str(filename);
+	std::size_t found = str.find_last_of("/\\");
+	std::string dirname = str.substr(0, found);
+	std::string fname = str.substr(found + 1);
+	sprintf(index_file, "%s/.%s", dirname.c_str(), fname.c_str());
+}
+
 int xtc_natoms(char *filename)
 {
 	int natoms = 0;
@@ -84,9 +90,7 @@ int xtc_natoms(char *filename)
 int xtc_nframes(char *filename)
 {
 	char index_file[PATH_MAX + 1];
-
-	const fs::path filepath = filename;
-	sprintf(index_file, "%s/.%s", filepath.filename().string().c_str(), filepath.parent_path().string().c_str());
+	get_index_file(filename, index_file);
 
 	struct stat st_index_file, st_traj_file;
 	if ((stat(index_file, &st_index_file) == 0) && (stat(filename, &st_traj_file) == 0))
@@ -272,8 +276,7 @@ struct XTC_frame *xtc_read(char *filename, int *natoms, int *nframes, double *dt
 
 	char *f1, *f2;
 
-	const fs::path filepath = filename;
-	sprintf(index_file, "%s/.%s", filepath.filename().string().c_str(), filepath.parent_path().string().c_str());
+	get_index_file(filename, index_file);
 
 	if (exdrOK != read_xtc_natoms(filename, natoms))
 	{
@@ -422,8 +425,7 @@ int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, 
 	// Invalidate any index file
 	char index_file[PATH_MAX + 1];
 
-	const fs::path filepath = filename;
-	sprintf(index_file, "%s/.%s", filepath.filename().string().c_str(), filepath.parent_path().string().c_str());
+	get_index_file(filename, index_file);
 	remove(index_file);
 
 	xd = xdrfile_open(filename, "a");
@@ -495,8 +497,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 		return;
 	}
 
-	const fs::path filepath = filename;
-	sprintf(index_file, "%s/.%s", filepath.filename().string().c_str(), filepath.parent_path().string().c_str());
+	get_index_file(filename, index_file);
 
 	if (getenv("DEBUG"))
 	{
