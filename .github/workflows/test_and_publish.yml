@@ -167,7 +167,7 @@ jobs:
           python package/moleculekit/insert_placeholder_values.py
           conda build --python ${{ matrix.python-version }} package/moleculekit/ --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload -c acellera -c conda-forge
 
-      - name: Upload to conda
-        shell: bash -l {0}
-        run: |
-          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ./pkg/*/moleculekit-*.tar.bz2
+      # - name: Upload to conda
+      #   shell: bash -l {0}
+      #   run: |
+      #     anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ./pkg/*/moleculekit-*.tar.bz2
