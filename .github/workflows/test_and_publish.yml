@@ -165,6 +165,8 @@ jobs:
           conda install anaconda-client conda-build python=${{ matrix.python-version }} toml
           pip install versioneer==0.26
           python package/moleculekit/insert_placeholder_values.py
+          pip install .
+          python setup.py install
           conda build --python ${{ matrix.python-version }} package/moleculekit/ --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload -c acellera -c conda-forge
 
       # - name: Upload to conda
