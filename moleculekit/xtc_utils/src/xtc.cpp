@@ -10,7 +10,6 @@ __asm__(".symver memcpy,memcpy@GLIBC_2.2.5");
  * No redistribution in whole or in part
  */
 
-#include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include <string.h>
@@ -100,7 +99,7 @@ int xtc_nframes(char *filename)
 		}
 		else
 		{
-			unlink(index_file);
+			remove(index_file);
 		}
 	}
 
@@ -427,7 +426,7 @@ int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, 
 	f1 = strdup(filename);
 	f2 = strdup(filename);
 	sprintf(index_file, "%s/.%s", dirname(f1), basename(f2));
-	unlink(index_file);
+	remove(index_file);
 	free(f1);
 	free(f2);
 
@@ -517,7 +516,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 		{
 			if (0 == st.st_size)
 			{ // The index file exists  but is zero length. Delete it
-				unlink(index_file);
+				remove(index_file);
 			}
 		}
 	}
@@ -593,7 +592,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 			fclose(indexfn);
 			fprintf(stderr, "xtc_read_frame(): Could not read index [%d] of index file (index path) ret=%d errno=%d\n", frame, ret, errno);
 			// Maybe the index is corrupted? remove it, to be safe
-			unlink(index_file);
+			remove(index_file);
 			return;
 		}
 		fclose(indexfn);
