@@ -67,7 +67,7 @@ struct {
 } XTC_frame;
 */
 
-void *get_index_file(char *filename, char *index_file)
+void get_index_file(char *filename, char *index_file)
 {
 	std::string str(filename);
 	std::size_t found = str.find_last_of("/\\");
@@ -276,8 +276,6 @@ struct XTC_frame *xtc_read(char *filename, int *natoms, int *nframes, double *dt
 	char index_file[PATH_MAX + 1];
 	int writing_index = 0;
 
-	char *f1, *f2;
-
 	get_index_file(filename, index_file);
 
 	if (exdrOK != read_xtc_natoms(filename, natoms))
@@ -418,8 +416,6 @@ int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, 
 	matrix b;
 	float prec = 1000;
 	int nf3 = nframes * 3;
-
-	char *f1, *f2;
 
 	// if( step <=0 ) {
 	//	xd = xdrfile_open( filename, "w" );
