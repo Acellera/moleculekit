@@ -271,6 +271,7 @@ class _TestAtomSelect(unittest.TestCase):
         from moleculekit.home import home
         import pickle
         import time
+        import sys
         import os
 
         selections = [
@@ -373,7 +374,7 @@ class _TestAtomSelect(unittest.TestCase):
 
         reffile = os.path.join(home(dataDir="test-atomselect"), "selections.pickle")
         write_reffile = False
-        time_comp = True
+        time_comp = sys.platform.startswith("linux")
         if not write_reffile:
             with open(reffile, "rb") as f:
                 ref = pickle.load(f)
@@ -415,11 +416,11 @@ class _TestAtomSelect(unittest.TestCase):
                         if time_comp:
                             if "within" in sel and t > atomsel_time_threshold_within:
                                 raise RuntimeError(
-                                    f"Atom selection took longer than expected {t:.2f} > {atomsel_time_threshold_within:.2f}"
+                                    f"Atom selection took longer than expected {t:.2f} > {atomsel_time_threshold_within:.2f} for sel {sel}"
                                 )
                             elif "within" not in sel and t > atomsel_time_threshold:
                                 raise RuntimeError(
-                                    f"Atom selection took longer than expected {t:.2f} > {atomsel_time_threshold:.2f}"
+                                    f"Atom selection took longer than expected {t:.2f} > {atomsel_time_threshold:.2f} for sel {sel}"
                                 )
 
                         if write_reffile:

@@ -6,6 +6,7 @@
 import numpy as np
 import logging
 import unittest
+import sys
 
 
 logger = logging.getLogger(__name__)
@@ -471,6 +472,7 @@ class _TestAtomTyper(unittest.TestCase):
 
         assert mol_equal(mol2, ref, exceptFields=("coords",))
 
+    @unittest.skipIf(sys.platform.startswith("win"), "Windows OBabel fails at atom typing")
     def test_obabel_atomtyping(self):
         from moleculekit.home import home
         from moleculekit.molecule import Molecule
