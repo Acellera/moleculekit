@@ -257,7 +257,7 @@ class _TestMetricSasa(unittest.TestCase):
         )  # Get just the SASA of the 20th atom, remove all else
         sasaR = metr.project(self.mol.copy())
         assert not np.allclose(
-            sasaR, sasaR_ref[:, [20]], atol=1e-2
+            sasaR, sasaR_ref[:, [20]], atol=3e-3
         ), "SASA filtering gave same results as without filtering. Bad."
 
     def test_mappings(self):
