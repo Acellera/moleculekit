@@ -129,7 +129,7 @@ jobs:
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip_existing: true
 
-  deploy:
+  deploy_linux:
     if: startsWith(github.event.ref, 'refs/tags/')
     needs: test
     runs-on: ${{ matrix.os }}
@@ -141,11 +141,41 @@ jobs:
         os: ["ubuntu-latest"]
         python-version: ["3.8", "3.9", "3.10"]
         container: ["quay.io/pypa/manylinux2014_x86_64"]
-        include:
-          - os: "macos-latest"
-            container:
-          - os: "windows-latest"
-            container:
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: "latest"
+          activate-environment: ../deploy-env
+          python-version: ${{ matrix.python-version }}
+
+      - name: Build moleculekit package
+        shell: bash -l {0}
+        run: |
+          git config --global --add safe.directory '*'
+          conda install anaconda-client conda-build python=${{ matrix.python-version }} toml
+          pip install versioneer==0.26
+          python package/moleculekit/insert_placeholder_values.py
+          conda build --python ${{ matrix.python-version }} package/moleculekit/ --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload -c acellera -c conda-forge
+
+      - name: Upload to conda
+        shell: bash -l {0}
+        run: |
+          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ./pkg/*/moleculekit-*.tar.bz2
+
+  deploy_osx_win:
+    if: startsWith(github.event.ref, 'refs/tags/')
+    needs: test
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["macos-latest", "windows-latest"]
+        python-version: ["3.8", "3.9", "3.10"]
 
     steps:
       - uses: actions/checkout@v1
