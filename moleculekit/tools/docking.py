@@ -14,9 +14,20 @@ from moleculekit.molecule import Molecule
 from glob import glob
 import logging
 import platform
-import sys
 
 logger = logging.getLogger(__name__)
+
+# The below is used for testing only
+try:
+    _suffix = "" if platform.system() != "Windows" else ".exe"
+    _vinaexe = f"{platform.system()}-vina{_suffix}"
+    _vinaexe = shutil.which(_vinaexe, mode=os.X_OK)
+    if not _vinaexe:
+        raise RuntimeError("Could not find vina, or no execute permissions are given")
+except Exception:
+    _VINA_EXISTS = False
+else:
+    _VINA_EXISTS = True
 
 
 def dock(
@@ -231,7 +242,7 @@ def _parseScoring(outf):
 
 
 class _TestDocking(unittest.TestCase):
-    @unittest.skipUnless(sys.platform.startswith("linux"), "No vina on OSX yet")
+    @unittest.skipUnless(_VINA_EXISTS, "No vina executable found")
     def test_docking(self):
         from moleculekit.home import home
         from moleculekit.molecule import Molecule

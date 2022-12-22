@@ -26,14 +26,13 @@ extentions = [
     )
     for ext in extentions
 ]
-compiler_args = ["-Wno-unused-function", "-Wno-unreachable-code", "-Wno-sign-compare"]
 extentions.append(
     Extension(
         "moleculekit.xtc",
         sources=[
-            "moleculekit/xtc_utils/src/xdrfile_xtc.c",
-            "moleculekit/xtc_utils/src/xdrfile.c",
-            "moleculekit/xtc_utils/src/xtc.c",
+            "moleculekit/xtc_utils/src/xdrfile_xtc.cpp",
+            "moleculekit/xtc_utils/src/xdrfile.cpp",
+            "moleculekit/xtc_utils/src/xtc.cpp",
             "moleculekit/xtc_utils/xtc.pyx",
         ],
         include_dirs=[
@@ -41,7 +40,7 @@ extentions.append(
             "moleculekit/xtc_utils/",
             numpy.get_include(),
         ],
-        extra_compile_args=compiler_args,
+        language="c++",
     )
 )
 compiler_args = ["-w"]

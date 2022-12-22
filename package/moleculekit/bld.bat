@@ -1,2 +1,2 @@
-"%PYTHON%" setup.py install
+pip install .
 if errorlevel 1 exit 1

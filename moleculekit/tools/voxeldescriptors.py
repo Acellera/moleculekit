@@ -5,8 +5,8 @@
 #
 from moleculekit.util import boundingBox
 import numpy as np
-import moleculekit.home
 import os
+import sys
 import unittest
 from functools import lru_cache
 import logging
@@ -515,6 +515,7 @@ class _TestVoxel(unittest.TestCase):
         assert np.array_equal(centers, refcenters)
         assert np.array_equal(nvoxels, refnvoxels)
 
+    @unittest.skipIf(sys.platform.startswith("win"), "Windows OBabel fails at atom typing")
     def test_featC(self):
         features, centers, nvoxels = getVoxelDescriptors(
             self.mol, method="C", version=2
@@ -526,6 +527,7 @@ class _TestVoxel(unittest.TestCase):
         assert np.array_equal(centers, refcenters)
         assert np.array_equal(nvoxels, refnvoxels)
 
+    @unittest.skipIf(sys.platform.startswith("win"), "Windows OBabel fails at atom typing")
     def test_channels_with_metals(self):
         from moleculekit.home import home
         from moleculekit.molecule import Molecule, mol_equal

@@ -10,7 +10,6 @@ __asm__(".symver memcpy,memcpy@GLIBC_2.2.5");
  * No redistribution in whole or in part
  */
 
-#include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include <string.h>
@@ -22,15 +21,15 @@ __asm__(".symver memcpy,memcpy@GLIBC_2.2.5");
 #include "xtc.h"
 #include <stdint.h>
 #include <string.h>
-//#include "rpc/types.h"
-//#include "rpc/xdr.h"
-//#include <linux/limits.h>
+#include <string>
+// #include "rpc/types.h"
+// #include "rpc/xdr.h"
+// #include <linux/limits.h>
 
 #ifndef PATH_MAX
 #define PATH_MAX 2048
 #endif
 
-#include <libgen.h>
 #include <sys/stat.h>
 
 static void *condfree(void *p)
@@ -68,6 +67,15 @@ struct {
 } XTC_frame;
 */
 
+void get_index_file(char *filename, char *index_file)
+{
+	std::string str(filename);
+	std::size_t found = str.find_last_of("/\\");
+	std::string dirname = str.substr(0, found);
+	std::string fname = str.substr(found + 1);
+	sprintf(index_file, "%s/.%s", dirname.c_str(), fname.c_str());
+}
+
 int xtc_natoms(char *filename)
 {
 	int natoms = 0;
@@ -82,11 +90,7 @@ int xtc_natoms(char *filename)
 int xtc_nframes(char *filename)
 {
 	char index_file[PATH_MAX + 1];
-	char *f1 = strdup(filename);
-	char *f2 = strdup(filename);
-	sprintf(index_file, "%s/.%s", dirname(f1), basename(f2));
-	free(f1);
-	free(f2);
+	get_index_file(filename, index_file);
 
 	struct stat st_index_file, st_traj_file;
 	if ((stat(index_file, &st_index_file) == 0) && (stat(filename, &st_traj_file) == 0))
@@ -100,7 +104,7 @@ int xtc_nframes(char *filename)
 		}
 		else
 		{
-			unlink(index_file);
+			remove(index_file);
 		}
 	}
 
@@ -184,7 +188,9 @@ int xtc_nframes(char *filename)
 	{
 		// Always try to make the index file globally readable
 		// so bob can read alice's indices
+#ifndef _WIN32
 		chmod(index_file, 0644);
+#endif
 	}
 
 	return nframes;
@@ -270,13 +276,7 @@ struct XTC_frame *xtc_read(char *filename, int *natoms, int *nframes, double *dt
 	char index_file[PATH_MAX + 1];
 	int writing_index = 0;
 
-	char *f1, *f2;
-
-	f1 = strdup(filename);
-	f2 = strdup(filename);
-	sprintf(index_file, "%s/.%s", dirname(f1), basename(f2));
-	free(f1);
-	free(f2);
+	get_index_file(filename, index_file);
 
 	if (exdrOK != read_xtc_natoms(filename, natoms))
 	{
@@ -399,7 +399,9 @@ struct XTC_frame *xtc_read(char *filename, int *natoms, int *nframes, double *dt
 	{
 		// Always try to make the index file globally readable
 		// so bob can read alice's indices
+#ifndef _WIN32
 		chmod(index_file, 0644);
+#endif
 	}
 
 	return frames;
@@ -415,8 +417,6 @@ int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, 
 	float prec = 1000;
 	int nf3 = nframes * 3;
 
-	char *f1, *f2;
-
 	// if( step <=0 ) {
 	//	xd = xdrfile_open( filename, "w" );
 	// }
@@ -424,12 +424,9 @@ int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, 
 
 	// Invalidate any index file
 	char index_file[PATH_MAX + 1];
-	f1 = strdup(filename);
-	f2 = strdup(filename);
-	sprintf(index_file, "%s/.%s", dirname(f1), basename(f2));
-	unlink(index_file);
-	free(f1);
-	free(f2);
+
+	get_index_file(filename, index_file);
+	remove(index_file);
 
 	xd = xdrfile_open(filename, "a");
 	//}
@@ -500,11 +497,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 		return;
 	}
 
-	char *f1 = strdup(filename);
-	char *f2 = strdup(filename);
-	sprintf(index_file, "%s/.%s", dirname(f1), basename(f2));
-	free(f1);
-	free(f2);
+	get_index_file(filename, index_file);
 
 	if (getenv("DEBUG"))
 	{
@@ -517,7 +510,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 		{
 			if (0 == st.st_size)
 			{ // The index file exists  but is zero length. Delete it
-				unlink(index_file);
+				remove(index_file);
 			}
 		}
 	}
@@ -593,7 +586,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 			fclose(indexfn);
 			fprintf(stderr, "xtc_read_frame(): Could not read index [%d] of index file (index path) ret=%d errno=%d\n", frame, ret, errno);
 			// Maybe the index is corrupted? remove it, to be safe
-			unlink(index_file);
+			remove(index_file);
 			return;
 		}
 		fclose(indexfn);

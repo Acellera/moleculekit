@@ -258,7 +258,7 @@ def dist_trajectory_reduction_pairs(
                 group2 = trash  # Assign this so it loops once over the "group"
 
             mindist = -1
-            diff_chain = digitized_chains1[g1] != digitized_chains2[g2]
+            diff_chain = digitized_chains1[g] != digitized_chains2[g]
 
             for g1atm in group1:
                 coor1 = coords[g1atm, :, f]
