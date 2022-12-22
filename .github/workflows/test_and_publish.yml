@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-latest"]
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
         python-version: ["3.8", "3.9", "3.10"]
 
     defaults: # Needed for conda
@@ -21,14 +21,6 @@ jobs:
         with:
           lfs: true
           submodules: true
-
-      - name: clang version
-        run: |
-          clang --version
-
-      - name: clang++ version
-        run: |
-          clang++ --version
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
