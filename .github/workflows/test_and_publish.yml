@@ -143,10 +143,8 @@ jobs:
         container: ["quay.io/pypa/manylinux2014_x86_64"]
         include:
           - os: "macos-latest"
-            python-version: ["3.8", "3.9", "3.10"]
             container:
           - os: "windows-latest"
-            python-version: ["3.8", "3.9", "3.10"]
             container:
 
     steps:
