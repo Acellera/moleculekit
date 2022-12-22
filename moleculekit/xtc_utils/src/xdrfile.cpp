@@ -2117,7 +2117,14 @@ typedef int (*xdrproc_t) (XDR *, void *,...);
 	(*(xdrs)->x_ops->x_putbytes)(xdrs, addr, len)
 
 #define BYTES_PER_XDR_UNIT 4 
+
+// Apple clang does not support thread_local
+#ifdef __APPLE__
+static __thread char xdr_zero[BYTES_PER_XDR_UNIT] = {0, 0, 0, 0};
+#else
 thread_local char xdr_zero[BYTES_PER_XDR_UNIT] = {0, 0, 0, 0};
+#endif
+
 
 static int32_t
 xdr_swapbytes(int32_t x)
