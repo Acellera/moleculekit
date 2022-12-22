@@ -210,7 +210,7 @@ class _TestMetricSasa(unittest.TestCase):
         sasaA_ref = np.load(
             path.join(home(dataDir="test-projections"), "metricsasa", "sasa_atom.npy")
         )
-        assert np.allclose(sasaA, sasaA_ref, atol=7e-4)
+        assert np.allclose(sasaA, sasaA_ref, atol=1e-2)
 
     def test_sasa_residue(self):
         from os import path
@@ -223,7 +223,7 @@ class _TestMetricSasa(unittest.TestCase):
                 home(dataDir="test-projections"), "metricsasa", "sasa_residue.npy"
             )
         )
-        assert np.allclose(sasaR, sasaR_ref, atol=3e-3)
+        assert np.allclose(sasaR, sasaR_ref, atol=1e-2)
 
     def test_set_diff_error(self):
         try:
@@ -249,7 +249,7 @@ class _TestMetricSasa(unittest.TestCase):
         )  # Get just the SASA of the 20th atom
         sasaR = metr.project(self.mol.copy())
         assert np.allclose(
-            sasaR, sasaR_ref[:, [20]], atol=3e-3
+            sasaR, sasaR_ref[:, [20]], atol=1e-2
         ), "SASA atom selection failed to give same results as without selection"
 
         metr = MetricSasa(
@@ -257,7 +257,7 @@ class _TestMetricSasa(unittest.TestCase):
         )  # Get just the SASA of the 20th atom, remove all else
         sasaR = metr.project(self.mol.copy())
         assert not np.allclose(
-            sasaR, sasaR_ref[:, [20]], atol=3e-3
+            sasaR, sasaR_ref[:, [20]], atol=1e-2
         ), "SASA filtering gave same results as without filtering. Bad."
 
     def test_mappings(self):
