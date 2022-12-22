@@ -2001,14 +2001,16 @@ double TMscore8_search(double **r1, double **r2, double **xtm, double **ytm,
     int i, m;
     double score_max, score, rmsd;
     const int kmax = Lali;
-    int k_ali[kmax], ka, k;
+    int ka, k;
+    int *k_ali = new int[kmax];
+    int *i_ali = new int[kmax];
     double t[3];
     double u[3][3];
     double d;
 
     // iterative parameters
     int n_it = 20;         // maximum number of iterations
-    int n_init_max = 6;    // maximum number of different fragment length
+    const int n_init_max = 6;    // maximum number of different fragment length
     int L_ini[n_init_max]; // fragment lengths, Lali, Lali/2, Lali/4 ... 4
     int L_ini_min = 4;
     if (Lali < L_ini_min)
@@ -2033,7 +2035,7 @@ double TMscore8_search(double **r1, double **r2, double **xtm, double **ytm,
 
     score_max = -1;
     // find the maximum score starting from local structures superposition
-    int i_ali[kmax], n_cut;
+    int n_cut;
     int L_frag; // fragment length
     int iL_max; // maximum starting postion for the fragment
 
@@ -2148,6 +2150,8 @@ double TMscore8_search(double **r1, double **r2, double **xtm, double **ytm,
         } // while(1)
         // end of one fragment
     } // for(i_init
+    delete [] i_ali;
+    delete [] k_ali;
     return score_max;
 }
 
@@ -2159,14 +2163,16 @@ double TMscore8_search_standard(double **r1, double **r2,
     int i, m;
     double score_max, score, rmsd;
     const int kmax = Lali;
-    int k_ali[kmax], ka, k;
+    int ka, k;
+    int *k_ali = new int[kmax];
+    int *i_ali = new int[kmax];
     double t[3];
     double u[3][3];
     double d;
 
     // iterative parameters
     int n_it = 20;         // maximum number of iterations
-    int n_init_max = 6;    // maximum number of different fragment length
+    const int n_init_max = 6;    // maximum number of different fragment length
     int L_ini[n_init_max]; // fragment lengths, Lali, Lali/2, Lali/4 ... 4
     int L_ini_min = 4;
     if (Lali < L_ini_min)
@@ -2191,7 +2197,7 @@ double TMscore8_search_standard(double **r1, double **r2,
 
     score_max = -1;
     // find the maximum score starting from local structures superposition
-    int i_ali[kmax], n_cut;
+    int n_cut;
     int L_frag; // fragment length
     int iL_max; // maximum starting postion for the fragment
 
@@ -2306,6 +2312,8 @@ double TMscore8_search_standard(double **r1, double **r2,
         } // while(1)
         // end of one fragment
     } // for(i_init
+    delete [] i_ali;
+    delete [] k_ali;
     return score_max;
 }
 
@@ -2427,7 +2435,7 @@ double get_score_fast(double **r1, double **r2, double **xtm, double **ytm,
     // evaluate score
     double di;
     const int len = k;
-    double dis[len];
+    std::vector<double> dis(len);
     double d00 = d0_search;
     double d002 = d00 * d00;
     double d02 = d0 * d0;
