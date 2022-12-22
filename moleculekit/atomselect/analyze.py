@@ -67,7 +67,6 @@ def _guessMass(name):
 def analyze(mol: Molecule, bonds, _profile=False):
     from moleculekit.atomselect_utils import analyze_molecule
     from moleculekit.molecule import calculateUniqueBonds
-    from moleculekit.atomselect.analyze import find_backbone
     from moleculekit.periodictable import periodictable
     import numpy as np
 
