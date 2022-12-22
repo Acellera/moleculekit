@@ -26,7 +26,6 @@ extentions = [
     )
     for ext in extentions
 ]
-# compiler_args = ["-Wno-unused-function", "-Wno-unreachable-code", "-Wno-sign-compare"]
 extentions.append(
     Extension(
         "moleculekit.xtc",
@@ -42,7 +41,6 @@ extentions.append(
             numpy.get_include(),
         ],
         language="c++",
-        # extra_compile_args=compiler_args,
     )
 )
 compiler_args = ["-w"]
