@@ -2,13 +2,13 @@ include LICENSE
 include moleculekit/logging.ini
 include moleculekit/vmd_wrapper
 
-graft moleculekit/share/
+graft moleculekit/share
 
 recursive-include moleculekit *.pyx *.pxd
 recursive-include moleculekit/tmalign/include *.h
 recursive-include moleculekit/tmalign/src *.cpp
 recursive-include moleculekit/xtc_utils/include *.h
-recursive-include moleculekit/xtc_utils/src *.c
+recursive-include moleculekit/xtc_utils/src *.cpp
 
 prune moleculekit/test-data
 prune moleculekit/tests
