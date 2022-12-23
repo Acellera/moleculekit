@@ -181,16 +181,17 @@ jobs:
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          miniconda-version: "latest"
-          activate-environment: ../deploy-env
+          auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          mamba-version: "*"
+          channels: acellera,conda-forge,defaults
 
       - name: Build moleculekit package
         shell: bash -l {0}
         run: |
           git config --global --add safe.directory '*'
           conda install anaconda-client conda-build python=${{ matrix.python-version }} toml
-          pip install versioneer[toml]==0.26
+          pip install versioneer==0.26
           python package/moleculekit/insert_placeholder_values.py
           conda build --python ${{ matrix.python-version }} package/moleculekit/ --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload -c acellera -c conda-forge
 
