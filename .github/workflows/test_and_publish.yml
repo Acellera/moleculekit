@@ -181,10 +181,9 @@ jobs:
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          auto-update-conda: true
+          miniconda-version: "latest"
+          activate-environment: ../deploy-env
           python-version: ${{ matrix.python-version }}
-          mamba-version: "*"
-          channels: acellera,conda-forge,defaults
 
       - name: Build moleculekit package
         shell: bash -l {0}
