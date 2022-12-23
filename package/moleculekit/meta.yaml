@@ -6,7 +6,8 @@ source:
    path: ../..
 
 build:
-  number: 0
+  script:
+    - "{{ PYTHON }} -m pip install . -vvv"
 
 requirements:
   build:
