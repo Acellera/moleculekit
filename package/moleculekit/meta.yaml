@@ -11,6 +11,8 @@ build:
 
 requirements:
   host:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
     - python
     - cython
     - versioneer==0.26

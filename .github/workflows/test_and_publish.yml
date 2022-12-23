@@ -185,9 +185,9 @@ jobs:
           activate-environment: ../deploy-env
           python-version: ${{ matrix.python-version }}
 
-      - name: Disgusting hack to solve issues with Windows conda-build. Installing the package before somehow changes the whole procedure to work.
-        shell: bash -l {0}
-        run: pip install .
+      # - name: Disgusting hack to solve issues with Windows conda-build. Installing the package before somehow changes the whole procedure to work.
+      #   shell: bash -l {0}
+      #   run: pip install .
 
       - name: Build moleculekit package
         shell: bash -l {0}
