@@ -10,16 +10,10 @@ build:
     - "{{ PYTHON }} -m pip install . -vvv"
 
 requirements:
-  build:
-    - setuptools
-    - numpy>=1.18.5
-    - Cython>=0.29.21
-    - toml
-    - versioneer[toml]==0.26
   host:
     - python
     - cython
-    - versioneer[toml]==0.26
+    - versioneer==0.26
 DEPENDENCY_PLACEHOLDER
   run:
     - python
