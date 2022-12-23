@@ -166,15 +166,15 @@ jobs:
   #         anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ./pkg/*/moleculekit-*.tar.bz2
 
   deploy_osx_win:
-    if: startsWith(github.event.ref, 'refs/tags/')
-    needs: test
+    # if: startsWith(github.event.ref, 'refs/tags/')
+    # needs: test
     runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-latest", "windows-latest"]
-        python-version: ["3.8", "3.9", "3.10"]
+        os: ["windows-latest"]
+        python-version: ["3.10"]
 
     steps:
       - uses: actions/checkout@v1
