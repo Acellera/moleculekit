@@ -129,36 +129,36 @@ jobs:
   #         password: ${{ secrets.PYPI_API_TOKEN }}
   #         skip_existing: true
 
-  # deploy_linux:
-  #   if: startsWith(github.event.ref, 'refs/tags/')
-  #   needs: test
-  #   runs-on: ${{ matrix.os }}
-  #   container: ${{ matrix.container }}
+  deploy_linux:
+    # if: startsWith(github.event.ref, 'refs/tags/')
+    # needs: test
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
 
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       os: ["ubuntu-latest"]
-  #       python-version: ["3.8", "3.9", "3.10"]
-  #       container: ["quay.io/pypa/manylinux2014_x86_64"]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.10"]
+        container: ["quay.io/pypa/manylinux2014_x86_64"]
 
-  #   steps:
-  #     - uses: actions/checkout@v1
+    steps:
+      - uses: actions/checkout@v1
 
-  #     - uses: conda-incubator/setup-miniconda@v2
-  #       with:
-  #         miniconda-version: "latest"
-  #         activate-environment: ../deploy-env
-  #         python-version: ${{ matrix.python-version }}
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: "latest"
+          activate-environment: ../deploy-env
+          python-version: ${{ matrix.python-version }}
 
-  #     - name: Build moleculekit package
-  #       shell: bash -l {0}
-  #       run: |
-  #         git config --global --add safe.directory '*'
-  #         conda install anaconda-client conda-build python=${{ matrix.python-version }} toml
-  #         pip install versioneer==0.26
-  #         python package/moleculekit/insert_placeholder_values.py
-  #         conda build --python ${{ matrix.python-version }} package/moleculekit/ --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload -c acellera -c conda-forge
+      - name: Build moleculekit package
+        shell: bash -l {0}
+        run: |
+          git config --global --add safe.directory '*'
+          conda install anaconda-client conda-build python=${{ matrix.python-version }} toml
+          pip install versioneer==0.26
+          python package/moleculekit/insert_placeholder_values.py
+          conda build --python ${{ matrix.python-version }} package/moleculekit/ --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload -c acellera -c conda-forge
 
   #     - name: Upload to conda
   #       shell: bash -l {0}
@@ -173,7 +173,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["windows-latest"]
+        os: ["macos-latest", "windows-latest"]
         python-version: ["3.10"]
 
     steps:
@@ -184,6 +184,10 @@ jobs:
           miniconda-version: "latest"
           activate-environment: ../deploy-env
           python-version: ${{ matrix.python-version }}
+
+      - name: Disgusting hack to solve issues with Windows conda-build not generating cython cpp files for some stupid reason. This command will do it as a side-effect.
+        shell: bash -l {0}
+        run: pip install .
 
       - name: Build moleculekit package
         shell: bash -l {0}
