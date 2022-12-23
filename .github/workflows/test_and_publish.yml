@@ -185,36 +185,16 @@ jobs:
           activate-environment: ../deploy-env
           python-version: ${{ matrix.python-version }}
 
+      - name: Disgusting hack to solve issues with Windows conda-build. Installing the package before somehow changes the whole procedure to work.
+        shell: bash -l {0}
+        run: pip install .
+
       - name: Build moleculekit package
         shell: bash -l {0}
         run: |
           git config --global --add safe.directory '*'
           conda install anaconda-client conda-build python=${{ matrix.python-version }} toml
           pip install versioneer==0.26
-
-      - name: conda info
-        shell: bash -l {0}
-        run: conda info
-
-      - name: conda config
-        shell: bash -l {0}
-        run: conda config --show-sources
-
-      - name: conda list
-        shell: bash -l {0}
-        run: conda list --show-channel-urls
-
-      # - name: Disgusting hack to solve issues with Windows conda-build searching for cython cpp files in the git directory while building (why???). This command will produce them as a side-effect.
-      #   shell: bash -l {0}
-      #   run: pip install .
-
-      - name: Build moleculekit package
-        shell: bash -l {0}
-        run: |
-          git config --global --add safe.directory '*'
-          conda install anaconda-client conda-build python=${{ matrix.python-version }} toml
-          pip install versioneer==0.26 cython
-          cython moleculekit/interactions/hbonds/hbonds.pyx --cplus
           python package/moleculekit/insert_placeholder_values.py
           conda build --python ${{ matrix.python-version }} package/moleculekit/ --output-folder ./pkg/ --no-include-recipe --no-anaconda-upload -c acellera -c conda-forge
 
