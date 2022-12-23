@@ -6,10 +6,13 @@ source:
    path: ../..
 
 build:
-  number: 0
+  script:
+    - "{{ PYTHON }} -m pip install . -vvv"
 
 requirements:
   host:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
     - python
     - cython
     - versioneer==0.26
