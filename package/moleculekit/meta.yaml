@@ -9,10 +9,16 @@ build:
   number: 0
 
 requirements:
+  build:
+    - setuptools
+    - numpy>=1.18.5
+    - Cython>=0.29.21
+    - toml
+    - versioneer[toml]==0.26
   host:
     - python
     - cython
-    - versioneer==0.26
+    - versioneer[toml]==0.26
 DEPENDENCY_PLACEHOLDER
   run:
     - python
