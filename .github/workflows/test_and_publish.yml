@@ -185,10 +185,6 @@ jobs:
           activate-environment: ../deploy-env
           python-version: ${{ matrix.python-version }}
 
-      - name: Install moleculekit
-        run: |
-          pip install .
-
       - name: Build moleculekit package
         shell: bash -l {0}
         run: |
