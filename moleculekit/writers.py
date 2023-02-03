@@ -448,6 +448,23 @@ def XSCwrite(mol, filename, frames=None):
         )
 
 
+def _uniquify_atomnames(orig_names, resnames):
+    # Guarantee unique atom names for each unique residue
+    seen_names = {}
+    atomnames = []
+    for i in range(len(orig_names)):
+        if resnames[i] not in seen_names:
+            seen_names[resnames[i]] = {}
+        name = orig_names[i]
+        if name not in seen_names[resnames[i]]:
+            seen_names[resnames[i]][name] = 0
+            atomnames.append(name)
+        else:
+            seen_names[resnames[i]][name] += 1
+            atomnames.append(f"{name}{seen_names[resnames[i]][name]}")
+    return atomnames
+
+
 def MOL2write(mol, filename, explicitbonds=None):
     uqresname = np.unique(mol.resname)
     if len(uqresname) == 1 and uqresname[0] != "":
@@ -504,18 +521,7 @@ def MOL2write(mol, filename, explicitbonds=None):
             resnames.append(f"{resn}{mol.resid[i]:<d}{mol.insertion[i]}{mol.chain[i]}")
 
         # Guarantee unique atom names for each unique residue
-        seen_names = {}
-        atomnames = []
-        for i in range(mol.numAtoms):
-            if resnames[i] not in seen_names:
-                seen_names[resnames[i]] = {}
-            name = mol.name[i]
-            if name not in seen_names[resnames[i]]:
-                seen_names[resnames[i]][name] = 0
-                atomnames.append(name)
-            else:
-                seen_names[resnames[i]][name] += 1
-                atomnames.append(f"{name}{seen_names[resnames[i]][name]}")
+        atomnames = _uniquify_atomnames(mol.name, mol.resname)
 
         f.write("@<TRIPOS>ATOM\n")
         for i in range(mol.coords.shape[0]):
@@ -765,8 +771,12 @@ def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
 
     mapping = atom_site_mapping
     atom_block = "atom_site"
+
+    atomnames = mol.name
     if single_mol:
-        if len(np.unique(mol.name)) != mol.numAtoms:
+        # Guarantee unique atom names for each unique residue
+        atomnames = _uniquify_atomnames(mol.name, mol.resname)
+        if len(np.unique(atomnames)) != mol.numAtoms:
             raise RuntimeError(
                 "Atom names need to be unique to write small molecule CIF file"
             )
@@ -795,6 +805,8 @@ def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
                     data.append(f"{mol.coords[i, xyz_map[at], mol.frame]:.3f}")
                 elif mapping[at] == "frame":
                     data.append(1)
+                elif mapping[at] == "name":
+                    data.append(atomnames[i])
                 else:
                     data.append(mol.__dict__[mapping[at]][i])
             aCat.append(data)
@@ -814,8 +826,8 @@ def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
                 bCat.append(
                     [
                         mol.resname[0],
-                        mol.name[bonds[i][0]],
-                        mol.name[bonds[i][1]],
+                        atomnames[bonds[i][0]],
+                        atomnames[bonds[i][1]],
                         bondtype_map[bondtype[i]],
                     ]
                 )
@@ -1130,6 +1142,41 @@ class _TestWriters(unittest.TestCase):
 
             self.assertEqual(
                 filelines, reflines, msg=f"Failed comparison of {reffile} {tmpfile}"
+            )
+
+    def test_cif_mol2_atom_renaming(self):
+        from moleculekit.molecule import Molecule
+        import tempfile
+
+        # This ensures the right masses are written into the psf file from the elements
+
+        reffile1 = os.path.join(self.testfolder, "BEN_ideal.cif")
+        reffile2 = os.path.join(self.testfolder, "BEN_ideal.mol2")
+        mol = Molecule(os.path.join(self.testfolder, "BEN_ideal.sdf"))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpfile = os.path.join(tmpdir, "BEN_ideal.cif")
+            mol.write(tmpfile)
+
+            with open(tmpfile, "r") as f:
+                filelines = f.readlines()
+            with open(reffile1, "r") as f:
+                reflines = f.readlines()
+
+            self.assertEqual(
+                filelines, reflines, msg=f"Failed comparison of {reffile1} {tmpfile}"
+            )
+
+            tmpfile = os.path.join(tmpdir, "BEN_ideal.mol2")
+            mol.write(tmpfile)
+
+            with open(tmpfile, "r") as f:
+                filelines = f.readlines()
+            with open(reffile2, "r") as f:
+                reflines = f.readlines()
+
+            self.assertEqual(
+                filelines, reflines, msg=f"Failed comparison of {reffile2} {tmpfile}"
             )
 
 
