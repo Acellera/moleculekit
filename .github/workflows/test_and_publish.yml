@@ -26,7 +26,8 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          mamba-version: "*"
+          uses-mamba: true
+          miniforge-variant: Mambaforge
           channels: acellera,conda-forge,defaults
 
       - name: Lint with flake8
@@ -78,7 +79,8 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          mamba-version: "*"
+          uses-mamba: true
+          miniforge-variant: Mambaforge
           channels: acellera,conda-forge,defaults
 
       - name: Install conda deps
