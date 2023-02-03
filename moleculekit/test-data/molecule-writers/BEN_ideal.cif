@@ -1,0 +1,61 @@
+data_BEN
+#
+#
+_chem_comp.id                  BEN
+_chem_comp.type                NON-POLYMER
+_chem_comp.pdbx_formal_charge  0
+##
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+BEN  C   .  C  0  0.0  -0.023  -0.000   0.207  -0.023  -0.000   0.207  
+BEN  C1  .  C  0  0.0  -1.211   0.000  -0.524  -1.211   0.000  -0.524  
+BEN  C2  .  C  0  0.0  -1.168   0.000  -1.903  -1.168   0.000  -1.903  
+BEN  C3  .  C  0  0.0   0.048  -0.000  -2.560   0.048  -0.000  -2.560  
+BEN  C4  .  C  0  0.0   1.230  -0.002  -1.840   1.230  -0.002  -1.840  
+BEN  C5  .  C  0  0.0   1.200   0.004  -0.461   1.200   0.004  -0.461  
+BEN  C6  .  C  0  0.0  -0.062  -0.000   1.687  -0.062  -0.000   1.687  
+BEN  N   .  N  0  0.0  -1.206   0.000   2.309  -1.206   0.000   2.309  
+BEN  N1  .  N  0  0.0   1.112  -0.001   2.407   1.112  -0.001   2.407  
+BEN  H   .  H  0  0.0  -2.161   0.000  -0.012  -2.161   0.000  -0.012  
+BEN  H1  .  H  0  0.0  -2.087   0.000  -2.470  -2.087   0.000  -2.470  
+BEN  H2  .  H  0  0.0   0.076  -0.001  -3.640   0.076  -0.001  -3.640  
+BEN  H3  .  H  0  0.0   2.177  -0.003  -2.359   2.177  -0.003  -2.359  
+BEN  H4  .  H  0  0.0   2.123   0.004   0.099   2.123   0.004   0.099  
+BEN  H5  .  H  0  0.0  -2.033   0.000   1.802  -2.033   0.000   1.802  
+BEN  H6  .  H  0  0.0   1.087  -0.001   3.377   1.087  -0.001   3.377  
+BEN  H7  .  H  0  0.0   1.965  -0.005   1.944   1.965  -0.005   1.944  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+BEN  C   C1  DOUB  
+BEN  C   C5  SING  
+BEN  C   C6  SING  
+BEN  C1  C2  SING  
+BEN  C1  H   SING  
+BEN  C2  C3  DOUB  
+BEN  C2  H1  SING  
+BEN  C3  C4  SING  
+BEN  C3  H2  SING  
+BEN  C4  C5  DOUB  
+BEN  C4  H3  SING  
+BEN  C5  H4  SING  
+BEN  C6  N   DOUB  
+BEN  C6  N1  SING  
+BEN  N   H5  SING  
+BEN  N1  H6  SING  
+BEN  N1  H7  SING  
+##
