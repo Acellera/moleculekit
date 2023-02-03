@@ -2269,6 +2269,9 @@ def SDFread(filename, frame=None, topoloc=None):
         coords = []
         mol_start = 0
 
+        molname = lines[0].strip()
+        resname = molname[:3]
+
         n_atoms = int(lines[mol_start + 3][:3])
         n_bonds = int(lines[mol_start + 3][3:6])
 
@@ -2290,6 +2293,7 @@ def SDFread(filename, frame=None, topoloc=None):
             topo.name.append(atom_symbol)
             topo.serial.append(n - coord_start)
             topo.formalcharge.append(chargemap[line[36:39].strip()])
+            topo.resname.append(resname)
 
         for n in range(bond_start, bond_end):
             line = lines[n]
