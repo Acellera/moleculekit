@@ -2270,7 +2270,7 @@ def SDFread(filename, frame=None, topoloc=None):
         mol_start = 0
 
         molname = lines[0].strip()
-        resname = molname[:3]
+        resname = molname[:3].upper()
 
         n_atoms = int(lines[mol_start + 3][:3])
         n_bonds = int(lines[mol_start + 3][3:6])
