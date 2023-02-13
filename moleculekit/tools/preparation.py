@@ -207,7 +207,7 @@ def _delete_no_titrate(pka_list, no_titr):
             pkas.append(res)
         else:
             logger.info(
-                f"Skipped titration of residue {res['res_name']}:{key[1]}:{key[0]}{key[2]}"
+                f"Skipping titration of residue {res['res_name']}:{key[1]}:{key[0]}{key[2]}"
             )
     return pkas
 
@@ -377,12 +377,16 @@ def _get_hold_residues(
     _no_opt = []
     if no_opt is not None:
         for sel in no_opt:
-            _no_opt.append(_atomsel_to_hold(mol_in, sel))
+            res = _atomsel_to_hold(mol_in, sel)
+            _no_opt.append(res)
+            logger.info(f"Skipping optimization of residue {res[1]}:{res[0]}{res[2]}")
 
     _no_prot = []
     if no_prot is not None:
         for sel in no_prot:
-            _no_prot.append(_atomsel_to_hold(mol_in, sel))
+            res = _atomsel_to_hold(mol_in, sel)
+            _no_prot.append(res)
+            logger.info(f"Skipping protonation of residue {res[1]}:{res[0]}{res[2]}")
 
     _no_titr = []
     if no_titr is not None:
@@ -392,7 +396,11 @@ def _get_hold_residues(
     _force_prot = {}
     if force_protonation is not None:
         for sel, resn in force_protonation:
-            _force_prot[_atomsel_to_hold(mol_in, sel)] = resn
+            res = _atomsel_to_hold(mol_in, sel)
+            _force_prot[res] = resn
+            logger.info(
+                f"Forcing protonation of residue {res[1]}:{res[0]}{res[2]} to {resn}"
+            )
 
     # Add residues which should not be protonated to the residues which should not be titrated
     _no_titr += _no_prot
