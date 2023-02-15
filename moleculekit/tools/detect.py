@@ -13,7 +13,7 @@ import unittest
 logger = logging.getLogger(__name__)
 
 
-def _getMolecularGraph(molecule):
+def _getMolecularGraph(mol):
     """
     Generate a graph from the topology of molecule
 
@@ -22,11 +22,14 @@ def _getMolecularGraph(molecule):
     """
 
     graph = nx.Graph()
-    for i, element in enumerate(molecule.element):
+    for i in range(mol.numAtoms):
         graph.add_node(
-            i, element=element, number=periodictable[element.capitalize()].number
+            i,
+            element=mol.element[i],
+            number=periodictable[mol.element[i].capitalize()].number,
+            formal_charge=mol.formalcharge[i],
         )
-    graph.add_edges_from(molecule.bonds)
+    graph.add_edges_from(mol.bonds)
 
     return graph
 
@@ -42,7 +45,12 @@ def _getMolecularTree(graph, source):
     assert nx.is_connected(graph)
 
     tree = nx.DiGraph()
-    tree.add_node(0, base=source, element=graph.nodes[source]["element"])
+    tree.add_node(
+        0,
+        base=source,
+        element=graph.nodes[source]["element"],
+        formal_charge=graph.nodes[source]["formal_charge"],
+    )
     current_nodes = list(tree.nodes)
     base_nodes = {source}
 
@@ -55,7 +63,10 @@ def _getMolecularTree(graph, source):
             ):
                 new_node = len(tree.nodes)
                 tree.add_node(
-                    new_node, base=neighbor, element=graph.nodes[neighbor]["element"]
+                    new_node,
+                    base=neighbor,
+                    element=graph.nodes[neighbor]["element"],
+                    formal_charge=graph.nodes[neighbor]["formal_charge"],
                 )
                 tree.add_edge(current_node, new_node)
                 new_nodes.append(new_node)
@@ -76,7 +87,8 @@ def _checkIsomorphism(graph1, graph2):
     return nx.is_isomorphic(
         graph1,
         graph2,
-        node_match=lambda node1, node2: node1["element"] == node2["element"],
+        node_match=lambda node1, node2: node1["element"] == node2["element"]
+        and node1["formal_charge"] == node2["formal_charge"],
     )
 
 
@@ -164,10 +176,10 @@ def _getMethylGraph():
     """
 
     methyl = nx.Graph()
-    methyl.add_node(0, element="C")
-    methyl.add_node(1, element="H")
-    methyl.add_node(2, element="H")
-    methyl.add_node(3, element="H")
+    methyl.add_node(0, element="C", formal_charge=0)
+    methyl.add_node(1, element="H", formal_charge=0)
+    methyl.add_node(2, element="H", formal_charge=0)
+    methyl.add_node(3, element="H", formal_charge=0)
     methyl.add_edge(0, 1)
     methyl.add_edge(0, 2)
     methyl.add_edge(0, 3)
@@ -431,30 +443,58 @@ def detectParameterizableDihedrals(molecule, exclude_atoms=()):
 
 
 class _TestEquivDetection(unittest.TestCase):
+    def _compare(self, arr1, arr2):
+        import numpy as np
+
+        assert np.array_equal(
+            np.array(arr1, dtype=object), np.array(arr2, dtype=object)
+        ), f"Different results:\n{arr1}\n{arr2}"
+
     def test_atom_detection(self):
         import os
         from moleculekit.home import home
         from moleculekit.molecule import Molecule
-        import numpy as np
 
         mol = Molecule(os.path.join(home(dataDir="test-detect"), "KCX.cif"))
         eqgroups, eqatoms, eqgroupbyatom = detectEquivalentAtoms(mol)
 
         # fmt: off
-        eqgroups_ref = [(0, 2, 3), (1,), (4,), (5,), (6,), (7,), (8,), (9,), (10,), (11, 12, 13), (14,), (15,), (16,), (17,), (18,), (19,), (20,), (21,), (22,), (23,), (24,), (25,), (26, 27), (28, 29), (30, 31), (32, 33), (34, 35), (36,), (37,), (38,), (39,), (40,), (41,), (42,), (43,), (44, 45, 46), (47,), (48,), (49,), (50,), (51,), (52, 53, 54)]
-        eqatoms_ref = [(0, 2, 3), (1,), (0, 2, 3), (0, 2, 3), (4,), (5,), (6,), (7,), (8,), (9,), (10,), (11, 12, 13), (11, 12, 13), (11, 12, 13), (14,), (15,), (16,), (17,), (18,), (19,), (20,), (21,), (22,), (23,), (24,), (25,), (26, 27), (26, 27), (28, 29), (28, 29), (30, 31), (30, 31), (32, 33), (32, 33), (34, 35), (34, 35), (36,), (37,), (38,), (39,), (40,), (41,), (42,), (43,), (44, 45, 46), (44, 45, 46), (44, 45, 46), (47,), (48,), (49,), (50,), (51,), (52, 53, 54), (52, 53, 54), (52, 53, 54)]
-        eqgroupbyatom_ref = [0, 1, 0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 35, 35, 36, 37, 38, 39, 40, 41, 41, 41]
+        eqgroups_ref = [(0, 2, 3), (1,), (4,), (5,), (6,), (7,), (8,), (9,), (10,), (11, 12, 13), (14,), (15,), (16,), (17,), (18,), (19,), (20,), (21,), (22,), (23,), (24,), (25,), (26,), (27,), (28, 29), (30, 31), (32, 33), (34, 35), (36,), (37,), (38,), (39,), (40,), (41,), (42,), (43,), (44, 45, 46), (47,), (48,), (49,), (50,), (51,), (52, 53, 54)]
+        eqatoms_ref = [(0, 2, 3), (1,), (0, 2, 3), (0, 2, 3), (4,), (5,), (6,), (7,), (8,), (9,), (10,), (11, 12, 13), (11, 12, 13), (11, 12, 13), (14,), (15,), (16,), (17,), (18,), (19,), (20,), (21,), (22,), (23,), (24,), (25,), (26,), (27,), (28, 29), (28, 29), (30, 31), (30, 31), (32, 33), (32, 33), (34, 35), (34, 35), (36,), (37,), (38,), (39,), (40,), (41,), (42,), (43,), (44, 45, 46), (44, 45, 46), (44, 45, 46), (47,), (48,), (49,), (50,), (51,), (52, 53, 54), (52, 53, 54), (52, 53, 54)]
+        eqgroupbyatom_ref = [0, 1, 0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 24, 25, 25, 26, 26, 27, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 36, 36, 37, 38, 39, 40, 41, 42, 42, 42]
         # fmt: on
-        assert np.array_equal(
-            np.array(eqgroups, dtype=object), np.array(eqgroups_ref, dtype=object)
-        )
-        assert np.array_equal(
-            np.array(eqatoms, dtype=object), np.array(eqatoms_ref, dtype=object)
-        )
-        assert np.array_equal(
-            np.array(eqgroupbyatom, dtype=object),
-            np.array(eqgroupbyatom_ref, dtype=object),
-        )
+        self._compare(eqgroups, eqgroups_ref)
+        self._compare(eqatoms, eqatoms_ref)
+        self._compare(eqgroupbyatom, eqgroupbyatom_ref)
+
+    def test_charged_detection(self):
+        import os
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule
+
+        mol = Molecule(os.path.join(home(dataDir="test-detect"), "BEN_pH7.4.sdf"))
+        eqgroups, eqatoms, eqgroupbyatom = detectEquivalentAtoms(mol)
+
+        # fmt: off
+        eqgroups_ref = [(0,), (1, 5), (2, 4), (3,), (6,), (7,), (8,), (9, 13), (10, 12), (11,), (14, 15), (16, 17)]
+        eqatoms_ref = [(0,), (1, 5), (2, 4), (3,), (2, 4), (1, 5), (6,), (7,), (8,), (9, 13), (10, 12), (11,), (10, 12), (9, 13), (14, 15), (14, 15), (16, 17), (16, 17)]
+        eqgroupbyatom_ref = [0, 1, 2, 3, 2, 1, 4, 5, 6, 7, 8, 9, 8, 7, 10, 10, 11, 11]
+        # fmt: on
+        self._compare(eqgroups, eqgroups_ref)
+        self._compare(eqatoms, eqatoms_ref)
+        self._compare(eqgroupbyatom, eqgroupbyatom_ref)
+
+        # Set formal charge to 0 and try again
+        mol.formalcharge[8] = 0
+        eqgroups, eqatoms, eqgroupbyatom = detectEquivalentAtoms(mol)
+        # fmt: off
+        eqgroups_ref = [(0,), (1, 5), (2, 4), (3,), (6,), (7, 8), (9, 13), (10, 12), (11,), (14, 15, 16, 17)]
+        eqatoms_ref = [(0,), (1, 5), (2, 4), (3,), (2, 4), (1, 5), (6,), (7, 8), (7, 8), (9, 13), (10, 12), (11,), (10, 12), (9, 13), (14, 15, 16, 17), (14, 15, 16, 17), (14, 15, 16, 17), (14, 15, 16, 17)]
+        eqgroupbyatom_ref = [0, 1, 2, 3, 2, 1, 4, 5, 5, 6, 7, 8, 7, 6, 9, 9, 9, 9]
+        # fmt: on
+        self._compare(eqgroups, eqgroups_ref)
+        self._compare(eqatoms, eqatoms_ref)
+        self._compare(eqgroupbyatom, eqgroupbyatom_ref)
 
 
 if __name__ == "__main__":
