@@ -305,7 +305,7 @@ def _chooseTerminals(graph, centre, sideGraph):
         else:
             logger.warn(
                 "Molecular scoring function is not sufficient. "
-                "Dihedal selection depends on the atom order! "
+                "Dihedral selection depends on the atom order! "
                 "Redundant dihedrals might be present!"
             )
 
