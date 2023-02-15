@@ -1,0 +1,145 @@
+3PTB - preprocessed_ligand
+                    3D
+ Structure written by MMmdl.
+ 18 18  0  0  1  0            999 V2000
+   -1.8181   14.3136   16.6551 C   0  0  0  0  0  0
+   -1.8530   15.7258   16.6910 C   0  0  0  0  0  0
+   -1.5368   16.4111   17.8818 C   0  0  0  0  0  0
+   -1.1770   15.6895   19.0372 C   0  0  0  0  0  0
+   -1.1363   14.2830   19.0036 C   0  0  0  0  0  0
+   -1.4578   13.5949   17.8161 C   0  0  0  0  0  0
+   -2.1477   13.6023   15.4133 C   0  0  0  0  0  0
+   -2.8247   14.2078   14.4579 N   0  0  0  0  0  0
+   -1.7009   12.3701   15.2181 N   0  3  0  0  0  0
+   -2.1161   16.2948   15.8072 H   0  0  0  0  0  0
+   -1.5732   17.4912   17.9082 H   0  0  0  0  0  0
+   -0.9320   16.2111   19.9513 H   0  0  0  0  0  0
+   -0.8683   13.7363   19.8988 H   0  0  0  0  0  0
+   -1.4434   12.5146   17.8087 H   0  0  0  0  0  0
+   -3.1207   13.7073   13.5941 H   0  0  0  0  0  0
+   -3.2354   15.1179   14.6215 H   0  0  0  0  0  0
+   -2.0647   11.8190   14.4260 H   0  0  0  0  0  0
+   -1.1480   11.9216   15.9214 H   0  0  0  0  0  0
+  1  2  2  0  0  0
+  1  6  1  0  0  0
+  1  7  1  0  0  0
+  2  3  1  0  0  0
+  2 10  1  0  0  0
+  3  4  2  0  0  0
+  3 11  1  0  0  0
+  4  5  1  0  0  0
+  4 12  1  0  0  0
+  5  6  2  0  0  0
+  5 13  1  0  0  0
+  6 14  1  0  0  0
+  7  8  1  0  0  0
+  7  9  2  0  0  0
+  8 15  1  0  0  0
+  8 16  1  0  0  0
+  9 17  1  0  0  0
+  9 18  1  0  0  0
+M  CHG  1   9   1
+M  END
+> <s_m_entry_id>
+3
+
+> <s_m_entry_name>
+3ptb.1_ligand
+
+> <s_pdb_PDB_TITLE>
+THE GEOMETRY OF THE REACTIVE SITE AND OF THE PEPTIDE GROUPS IN TRYPSIN, TRYPSINOGEN AND ITS COMPLEXES WITH INHIBITORS
+
+> <s_pdb_PDB_ID>
+3PTB
+
+> <r_pdb_PDB_CRYST1_a>
+54.89
+
+> <r_pdb_PDB_CRYST1_b>
+58.52
+
+> <r_pdb_PDB_CRYST1_c>
+67.63
+
+> <r_pdb_PDB_CRYST1_alpha>
+90
+
+> <r_pdb_PDB_CRYST1_beta>
+90
+
+> <r_pdb_PDB_CRYST1_gamma>
+90
+
+> <s_pdb_PDB_CRYST1_Space_Group>
+P 21 21 21
+
+> <i_pdb_PDB_CRYST1_z>
+4
+
+> <s_pdb_PDB_CLASSIFICATION>
+HYDROLASE (SERINE PROTEINASE)
+
+> <s_pdb_PDB_DEPOSITION_DATE>
+27-SEP-82
+
+> <s_pdb_PDB_format_version>
+3.15
+
+> <r_pdb_PDB_R>
+0.182
+
+> <r_pdb_PDB_RESOLUTION>
+1.7
+
+> <s_pdb_PDB_EXPDTA>
+X-RAY DIFFRACTION
+
+> <s_pdb_PDB_REMARK_350_Biomolecule_1_Transform_1_Chains>
+A
+
+> <s_pdb_PDB_REMARK_350_Biomolecule_1_Transform_1_Matrix_1>
+1.000000 0.000000 0.000000   0.000000;0.000000 1.000000 0.000000   0.000000;0.000000 0.000000 1.000000   0.000000
+
+> <s_m_Source_Path>
+D:\Documents\Schrodinger
+
+> <s_m_Source_File>
+3ptb.pdb
+
+> <i_m_Source_File_Index>
+1
+
+> <s_ppw_entry_id_backup>
+1
+
+> <b_ppw_prepared>
+1
+
+> <s_ppw_prepared_with_version>
+2018-4
+
+> <b_ppw_assigned_bond_orders>
+1
+
+> <b_ppw_added_hydrogens>
+1
+
+> <b_ppw_treated_metals>
+1
+
+> <b_ppw_created_disulfur>
+1
+
+> <b_ppw_deleted_far_waters>
+1
+
+> <s_m_subgroupid>
+3PTB - preprocessed_split_by_structure
+
+> <s_m_subgroup_title>
+3PTB - preprocessed_split_by_structure
+
+> <b_m_subgroup_collapsed>
+0
+
+$$$$
