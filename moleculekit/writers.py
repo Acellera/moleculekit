@@ -515,10 +515,16 @@ def MOL2write(mol, filename, explicitbonds=None):
         DIRECT.
         """
         # Guarantee unique residues
-        resnames = []
-        for i in range(mol.numAtoms):
-            resn = mol.resname[i] if mol.resname[i] != "" else "MOL"
-            resnames.append(f"{resn}{mol.resid[i]:<d}{mol.insertion[i]}{mol.chain[i]}")
+        if mol.numResidues == 1:
+            resn = mol.resname[0] if mol.resname[0] != "" else "MOL"
+            resnames = [resn] * mol.numAtoms
+        else:
+            resnames = []
+            for i in range(mol.numAtoms):
+                resn = mol.resname[i] if mol.resname[i] != "" else "MOL"
+                resnames.append(
+                    f"{resn}{mol.resid[i]:<d}{mol.insertion[i]}{mol.chain[i]}"
+                )
 
         # Guarantee unique atom names for each unique residue
         atomnames = _uniquify_atomnames(mol.name, mol.resname)
