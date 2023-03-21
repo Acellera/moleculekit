@@ -26,13 +26,6 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_DOCS }}
           service_account: ${{ secrets.GCP_DOC_SERVICE_ACCOUNT }}
 
-      - name: Check out software.acellera.com repo
-        uses: actions/checkout@v2
-        with:
-          repository: acellera/software.acellera.com
-          path: software.acellera.com
-          token: ${{ secrets.SOFTWARE_ACELLERA_COM_READ_TOKEN }}
-
       - uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
