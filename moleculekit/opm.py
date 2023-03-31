@@ -28,8 +28,6 @@ def _filter_opm_pdb(lines, keep_dum=False):
 
 
 def generate_opm_sequences(opm_pdbs, outjson):
-    import numpy as np
-
     sequences = {}
     with tempfile.TemporaryDirectory() as tmpdir:
         outf = os.path.join(tmpdir, "new.pdb")
@@ -107,7 +105,7 @@ def blast_search_opm(query, sequences):
 
 
 def get_opm_pdb(pdbid, keep=False, keepaltloc="A", validateElements=False):
-    """Download a molecule from the OPM.
+    """Download a membrane system from the OPM.
 
     Parameters
     ----------
@@ -130,12 +128,12 @@ def get_opm_pdb(pdbid, keep=False, keepaltloc="A", validateElements=False):
 
     Examples
     --------
-    >>> mol, thickness = opm("1z98")
+    >>> mol, thickness = get_opm_pdb("1z98")
     >>> mol.numAtoms
     7902
     >>> thickness
     28.2
-    >>> _, thickness = opm('4u15')
+    >>> _, thickness = get_opm_pdb('4u15')
     >>> thickness is None
     True
 
@@ -173,13 +171,14 @@ def get_opm_pdb(pdbid, keep=False, keepaltloc="A", validateElements=False):
     return mol, thickness
 
 
-def align_to_opm(mol, molsel="all", maxalignments=3):
+def align_to_opm(mol, molsel="all", maxalignments=3, opmid=None, macrotype="protein"):
     """Align a Molecule to proteins/nucleics in the OPM database by sequence search
 
     This function requires BLAST+ to be installed. You can find the latest BLAST executables here:
     https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
     Once you have it installed, export it to your PATH before starting python so that it's able to
     detect the blastp and makeblastdb executables.
+    Alternatively install it via `conda install blast -c bioconda`
 
     Parameters
     ----------
@@ -189,6 +188,10 @@ def align_to_opm(mol, molsel="all", maxalignments=3):
         The atom selection for the query molecule to use
     maxalignments : int
         The maximum number of aligned structures to return
+    opmid : str
+        If an OPM ID is passed the function will skip searching the database
+    macrotype : str
+        If to align on "protein" or "nucleic"
 
     Returns
     -------
@@ -205,7 +208,11 @@ def align_to_opm(mol, molsel="all", maxalignments=3):
     with open(os.path.join(home(shareDir=""), "opm_sequences.json"), "r") as f:
         sequences = json.load(f)
 
-    macrotype = "protein"
+    if opmid is not None:
+        if opmid.lower() not in sequences:
+            raise RuntimeError(f"Could not find {opmid} in OPM database")
+        # Throw away all other sequences
+        sequences = {opmid.lower(): sequences[opmid.lower()]}
 
     seqmol, molidx = mol.sequence(
         noseg=True, return_idx=True, sel=molsel, _logger=False

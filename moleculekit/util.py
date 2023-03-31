@@ -349,7 +349,13 @@ def uniformRandomRotation():
 
 
 def writeVoxels(arr, filename, vecMin, vecRes):
-    """Writes grid free energy to cube file
+    """DEPRECACTED: Use writeCube instead"""
+    logger.warning("writeVoxels is deprecated. Please use writeCube instead.")
+    writeCube(arr, filename, vecMin, vecRes)
+
+
+def writeCube(arr, filename, vecMin, vecRes):
+    """Writes 3D array to cube file
 
     Parameters
     ----------
@@ -360,7 +366,7 @@ def writeVoxels(arr, filename, vecMin, vecRes):
     vecMin: np.ndarray
         3D vector denoting the minimal corner of the grid
     vecRes: np.ndarray
-        3D vector denoting the resolution of the grid in each dimension
+        3D vector denoting the resolution of the grid in each dimension in Angstrom
     """
     vecRes = np.array(vecRes)
     vecMin = np.array(vecMin)
@@ -398,6 +404,10 @@ def writeVoxels(arr, filename, vecMin, vecRes):
                     if np.mod(cont, 6) == 5:
                         outFile.write("\n")
                     cont += 1
+
+
+def readCube(cubef):
+    pass
 
 
 def _get_pdb_entities(pdbids):

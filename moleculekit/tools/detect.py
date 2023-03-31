@@ -303,7 +303,7 @@ def _chooseTerminals(graph, centre, sideGraph):
         if _checkIsomorphism(terminalGraph, refTerminalGraph):
             chosen_terminals.append(terminal)
         else:
-            logger.warn(
+            logger.warning(
                 "Molecular scoring function is not sufficient. "
                 "Dihedral selection depends on the atom order! "
                 "Redundant dihedrals might be present!"
