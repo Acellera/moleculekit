@@ -526,10 +526,10 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 		int traj_nframes;
 		double dt;
 		int dstep;
-		int *garbage_natoms;
+		int garbage_natoms;
 
 		//	printf("reading whole file\n" );
-		frames = xtc_read(filename, garbage_natoms, &traj_nframes, &dt, &dstep);
+		frames = xtc_read(filename, &garbage_natoms, &traj_nframes, &dt, &dstep);
 		int xidx, yidx, zidx, aidx;
 		if (frame < traj_nframes)
 		{
