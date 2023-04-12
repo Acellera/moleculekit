@@ -414,6 +414,13 @@ def p_numprop_mathop(p):
     p[0] = ("mathop", p[2], p[1], p[3])
 
 
+def p_numprop_eq_list(p):
+    """
+    numprop : numprop list
+    """
+    p[0] = ("numprop_list_eq", p[1][1], p[2])
+
+
 def p_numprop_eq_number(p):
     """
     numprop : numprop number
@@ -583,6 +590,7 @@ class _TestLanguareParser(unittest.TestCase):
             "occupancy == 1",
             "(occupancy 1) and same beta as exwithin 3 of (occupancy 0)",
             "backbonetype proteinback or backbonetype nucleicback or backbonetype normal",
+            "beta 2 3",
         ]
 
         for sel in selections:

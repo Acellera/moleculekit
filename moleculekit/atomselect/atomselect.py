@@ -74,13 +74,15 @@ def traverse_ast(mol, analysis, node):
             return analysis["nucleic"]
         raise RuntimeError(f"Invalid molecule selection {molec}")
 
-    if operation in ("molprop_int_eq", "molprop_str_eq"):
+    if operation in ("molprop_int_eq", "molprop_str_eq", "numprop_list_eq"):
         molprop = node[1]
         value = node[2]
         if operation == "molprop_int_eq" and isinstance(value, list):
             value = list(map(int, value))
         if operation == "molprop_str_eq" and isinstance(value, list):
             value = list(map(str, value))
+        if operation == "numprop_list_eq" and isinstance(value, list):
+            value = list(map(float, value))
 
         # TODO: Improve this with Cython
         def fn(x, y):
@@ -433,6 +435,22 @@ class _TestAtomSelect(unittest.TestCase):
         if write_reffile:
             with open(reffile, "wb") as f:
                 pickle.dump(results, f)
+
+    def test_numprop_list_equality(self):
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule
+        import os
+
+        pdb = os.path.join(home(dataDir="test-atomselect"), "test.pdb")
+        mol = Molecule(pdb)
+        selections = ["beta 1 2", "beta 2 3"]
+        expected = [
+            [False, True, False, False, True, False, False, False],
+            [True, True, True, True, False, False, True, True],
+        ]
+        for sel, exp in zip(selections, expected):
+            res = mol.atomselect(sel)
+            assert np.array_equal(res, exp), f"{sel}\n{res}\n{exp}"
 
 
 if __name__ == "__main__":
