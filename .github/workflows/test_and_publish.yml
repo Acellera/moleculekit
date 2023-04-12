@@ -52,10 +52,10 @@ jobs:
 
       - name: Test
         run: |
-          pytest --cov ./moleculekit
+          pytest ./moleculekit
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v3
 
   deploypypi:
     if: startsWith(github.event.ref, 'refs/tags/')
