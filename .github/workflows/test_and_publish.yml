@@ -32,7 +32,7 @@ jobs:
 
       - name: Lint with flake8
         run: |
-          pip install flake8 coverage codecov pytest pytest-subtests
+          pip install flake8 coverage pytest-cov pytest pytest-subtests
           # stop the build if there are Python syntax errors or undefined names
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
@@ -52,8 +52,10 @@ jobs:
 
       - name: Test
         run: |
-          coverage run -m pytest ./moleculekit
-          codecov
+          pytest --cov ./moleculekit
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
 
   deploypypi:
     if: startsWith(github.event.ref, 'refs/tags/')
