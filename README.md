@@ -1,6 +1,5 @@
 # MoleculeKit
 
-[![Build Status](https://dev.azure.com/stefdoerr/moleculekit/_apis/build/status/Acellera.moleculekit?branchName=master)](https://dev.azure.com/stefdoerr/moleculekit/_build/latest?definitionId=1&branchName=master)
 [![Conda](https://anaconda.org/acellera/moleculekit/badges/version.svg)](https://anaconda.org/acellera/moleculekit)
 [![codecov](https://codecov.io/gh/Acellera/moleculekit/branch/master/graph/badge.svg)](https://codecov.io/gh/Acellera/moleculekit)
 
