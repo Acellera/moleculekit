@@ -121,6 +121,27 @@ def traverse_ast(mol, analysis, node):
             return (propvals % val1) != val2
         raise RuntimeError(f"Unknown modulo operand {oper}")
 
+    if operation == "molprop_int_comp":
+        # TODO: This can probably be condensed to "comp" rule by evaluating the molprop itself first
+        molprop = node[2]
+        val2 = node[3]
+        op = node[1]
+
+        propvals = get_molprop(mol, molprop, analysis)
+        if op in ("=", "=="):
+            if _is_float(val2) or _is_float(propvals):
+                return abs(val2 - propvals) < 1e-6
+            return propvals == val2
+        if op == "<":
+            return propvals < val2
+        if op == ">":
+            return propvals > val2
+        if op == "<=":
+            return propvals <= val2
+        if op == ">=":
+            return propvals >= val2
+        raise RuntimeError(f"Invalid comparison op {op}")
+
     if operation == "logop":
         op = node[1]
         if op == "and":
@@ -352,6 +373,7 @@ class _TestAtomSelect(unittest.TestCase):
             "backbonetype nucleicback",
             "backbonetype normal",
             "backbonetype proteinback and residue 15 to 20",
+            "resid < 20",
         ]
 
         pdbids = [

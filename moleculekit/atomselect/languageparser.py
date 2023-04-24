@@ -373,6 +373,13 @@ def p_molprop_string(p):
     p[0] = p[1]
 
 
+def p_molprop_int_comp(p):
+    """
+    expression : molprop_int compop expression  %prec COMP
+    """
+    p[0] = ("molprop_int_comp", p[2], p[1], p[3])
+
+
 def p_molprop_int_modulo(p):
     """
     molprop_int_eq : molprop_int MODULO integer DOUBLEEQ integer
@@ -591,6 +598,7 @@ class _TestLanguareParser(unittest.TestCase):
             "(occupancy 1) and same beta as exwithin 3 of (occupancy 0)",
             "backbonetype proteinback or backbonetype nucleicback or backbonetype normal",
             "beta 2 3",
+            "resid < 20",
         ]
 
         for sel in selections:
