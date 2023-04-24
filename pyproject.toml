@@ -32,3 +32,16 @@ namespaces = false
 [build-system]
 requires = ["setuptools", "numpy>=1.18.5", "Cython>=0.29.21", "toml", "versioneer[toml]==0.26"]
 build-backend = "setuptools.build_meta"
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "moleculekit/_version.py"
+versionfile_build = "moleculekit/_version.py"
+parentdir_prefix = "moleculekit-"
+
+[tool.pytest.ini_options]
+python_files = "*.py"
+python_classes = "_Test"
+python_functions = "_test*"
+norecursedirs = "test-data"
