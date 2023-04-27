@@ -135,9 +135,6 @@ class SmallMol(object):
         if fixHs:
             if _logger:
                 logger.info("Adding any missing hydrogens (fixHs=True)")
-            from IPython.core.debugger import set_trace
-
-            set_trace()
             self.addHs(addCoords=True)
 
     def _initializeMolObj(self, mol, force_reading, ignore_errors):
