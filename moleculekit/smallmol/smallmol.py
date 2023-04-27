@@ -135,6 +135,9 @@ class SmallMol(object):
         if fixHs:
             if _logger:
                 logger.info("Adding any missing hydrogens (fixHs=True)")
+            from IPython.core.debugger import set_trace
+
+            set_trace()
             self.addHs(addCoords=True)
 
     def _initializeMolObj(self, mol, force_reading, ignore_errors):
@@ -684,6 +687,9 @@ class SmallMol(object):
         # get the rdkit mol and copy it.
         mol = deepcopy(self._mol)
         # hydrogens are added for safety
+        from IPython.core.debugger import set_trace
+
+        set_trace()
         mol = Chem.AddHs(mol)
 
         # generating conformations
@@ -938,9 +944,9 @@ class SmallMol(object):
             mol.write(tmppdb)
             return tmppdb
         else:
-            tmpmol2 = NamedTemporaryFile(suffix=".mol2").name
-            mol.write(tmpmol2)
-            return tmpmol2
+            tmpmol = NamedTemporaryFile(suffix=".sdf").name
+            mol.write(tmpmol)
+            return tmpmol
 
     def toMolecule(self, ids=None):
         """
