@@ -450,19 +450,22 @@ def XSCwrite(mol, filename, frames=None):
 
 def _uniquify_atomnames(orig_names, resnames):
     # Guarantee unique atom names for each unique residue
-    seen_names = {}
-    atomnames = []
-    for i in range(len(orig_names)):
-        if resnames[i] not in seen_names:
-            seen_names[resnames[i]] = {}
-        name = orig_names[i]
-        if name not in seen_names[resnames[i]]:
-            seen_names[resnames[i]][name] = 0
-            atomnames.append(name)
-        else:
-            seen_names[resnames[i]][name] += 1
-            atomnames.append(f"{name}{seen_names[resnames[i]][name]}")
-    return atomnames
+    import re
+
+    new_names = orig_names.copy()
+    for resn in np.unique(resnames):
+        idx = np.where(resnames == resn)[0]
+        for i in idx:
+            name = new_names[i]
+            while np.sum(name == new_names[idx]) > 1:  # Check for identical names
+                # Get the second identical name index
+                j = np.flatnonzero(name == new_names[idx])[1]
+                prefix, sufix = re.match(r"(.*?\D*)(\d*)$", new_names[idx[j]]).groups()
+                sufix = 0 if sufix == "" else int(sufix)
+                while prefix + str(sufix) in new_names[idx]:  # Search for a unique name
+                    sufix += 1
+                new_names[idx[j]] = prefix + str(sufix)
+    return new_names
 
 
 def MOL2write(mol, filename, explicitbonds=None):
@@ -762,7 +765,14 @@ def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
         "pdbx_model_Cartn_y_ideal": "coords",
         "pdbx_model_Cartn_z_ideal": "coords",
     }
-    bondtype_map = {"1": "SING", "2": "DOUB", "3": "TRIP", "4": "QUAD", "ar": "AROM"}
+    bondtype_map = {
+        "1": "SING",
+        "2": "DOUB",
+        "3": "TRIP",
+        "4": "QUAD",
+        "ar": "AROM",
+        "am": "SING",
+    }
     xyz_map = {
         "Cartn_x": 0,
         "Cartn_y": 1,
