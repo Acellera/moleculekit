@@ -684,9 +684,6 @@ class SmallMol(object):
         # get the rdkit mol and copy it.
         mol = deepcopy(self._mol)
         # hydrogens are added for safety
-        from IPython.core.debugger import set_trace
-
-        set_trace()
         mol = Chem.AddHs(mol)
 
         # generating conformations
