@@ -461,7 +461,7 @@ def _uniquify_atomnames(orig_names, resnames):
                 # Get the second identical name index
                 j = np.flatnonzero(name == new_names[idx])[1]
                 prefix, sufix = re.match(r"(.*?\D*)(\d*)$", new_names[idx[j]]).groups()
-                sufix = 0 if sufix == "" else int(sufix)
+                sufix = 1 if sufix == "" else int(sufix)
                 while prefix + str(sufix) in new_names[idx]:  # Search for a unique name
                     sufix += 1
                 new_names[idx[j]] = prefix + str(sufix)
