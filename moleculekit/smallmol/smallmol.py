@@ -938,9 +938,9 @@ class SmallMol(object):
             mol.write(tmppdb)
             return tmppdb
         else:
-            tmpmol = NamedTemporaryFile(suffix=".sdf").name
-            mol.write(tmpmol)
-            return tmpmol
+            tmpmol2 = NamedTemporaryFile(suffix=".mol2").name
+            mol.write(tmpmol2)
+            return tmpmol2
 
     def toMolecule(self, ids=None):
         """

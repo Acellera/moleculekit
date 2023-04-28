@@ -77,7 +77,7 @@ FOUNDBOND_SMI = "C=CN"
 class _TestSmallMol(unittest.TestCase):
     def setUp(self):
         self.dataDir = home("test-smallmol")
-        self.benzamidine_mol2 = os.path.join(self.dataDir, "benzamidine.mol2")
+        self.benzamidine_mol2 = os.path.join(self.dataDir, "benzamidine.sdf")
         self.indole_mol2 = os.path.join(self.dataDir, "indole.mol2")
 
     def test_loadMol2file(self):
@@ -136,7 +136,7 @@ class _TestSmallMol(unittest.TestCase):
             btypes_element_O,
             PHENOL_BTYPES_OX,
             "Bondtypes of the oxygen atom do not correspond:"
-            "Expeected: {}; Now: {}".format(btypes_element_O, PHENOL_BTYPES_OX),
+            "Expected: {}; Now: {}".format(btypes_element_O, PHENOL_BTYPES_OX),
         )
 
     def test_isChiral(self):
