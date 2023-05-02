@@ -2089,6 +2089,8 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True):
             )
         coords = ideal_allcoords
 
+    if "chem_comp_atom" in dataObj.getObjNameList():
+        topo.record = ["HETATM"] * len(topo.name)
     return MolFactory.construct(topo, Trajectory(coords=coords), filename, frame)
 
 
