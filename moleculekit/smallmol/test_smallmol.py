@@ -220,13 +220,14 @@ class _TestSmallMol(unittest.TestCase):
 
         sm = SmallMol(self.benzamidine_mol2)
         mol = sm.toMolecule()
-
         assert mol_equal(sm, mol, exceptFields=["serial", "name"], _logger=False)
 
     def test_convertFromMolecule(self):
         from moleculekit.molecule import mol_equal
 
         mol = Molecule(self.benzamidine_mol2)
+        mol.atomtype[:] = mol.element
+        mol.resid[:] = 1
         sm = SmallMol(mol)
 
         assert mol_equal(
