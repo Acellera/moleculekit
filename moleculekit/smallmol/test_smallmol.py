@@ -225,24 +225,12 @@ class _TestSmallMol(unittest.TestCase):
     def test_convertFromMolecule(self):
         from moleculekit.molecule import mol_equal
 
-        mol = Molecule(self.benzamidine_mol2)
-        mol.atomtype[:] = mol.element
-        mol.resid[:] = 1
-        sm = SmallMol(mol)
-
-        assert mol_equal(
-            sm, mol, exceptFields=["serial", "name", "formalcharge"], _logger=False
-        )
-
-        mol = Molecule(self.indole_mol2)
-        sm = SmallMol(mol, force_reading=True)
-        # Force reading writes to sdf which loses atomtypes and charges
-        assert mol_equal(
-            sm,
-            mol,
-            exceptFields=["serial", "name", "atomtype", "charge"],
-            _logger=False,
-        )
+        for ff in ["BEN_model.sdf", "BEN_pH7_4.sdf", "indole.mol2", "benzamidine.mol2"]:
+            ff = os.path.join(self.dataDir, ff)
+            mol = Molecule(ff)
+            mol.resid[:] = 1
+            sm = SmallMol(mol)
+            assert mol_equal(sm, mol, exceptFields=["serial", "name"], _logger=False)
 
     def test_getBonds(self):
         sm = SmallMol(self.benzamidine_mol2)

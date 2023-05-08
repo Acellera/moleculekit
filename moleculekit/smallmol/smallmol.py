@@ -928,6 +928,9 @@ class SmallMol(object):
         conf = Conformer(mol.numAtoms)
         for i in range(mol.numAtoms):
             atm = Chem.rdchem.Atom(mol.element[i])
+            atm.SetFormalCharge(int(mol.formalcharge[i]))
+            atm.SetProp("_TriposAtomType", mol.atomtype[i])
+            atm.SetDoubleProp("_TriposPartialCharge", float(mol.charge[i]))
             _mol.AddAtom(atm)
             conf.SetAtomPosition(i, mol.coords[i, :, 0].tolist())
 
@@ -953,6 +956,7 @@ class SmallMol(object):
             raise RuntimeError(
                 "Number of atoms changed while converting to rdkit molecule"
             )
+        _mol.SetProp("_Name", mol.resname[0])
         return _mol
 
     def toMolecule(self, ids=None):

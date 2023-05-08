@@ -1,0 +1,61 @@
+data_MOL
+#
+#
+_chem_comp.id                  MOL
+_chem_comp.type                NON-POLYMER
+_chem_comp.pdbx_formal_charge  0
+##
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+MOL  C1  ca  C  0  -0.1989  6.699   9.948  20.673  6.699   9.948  20.673  
+MOL  C2  ca  C  0   -0.105  5.974   9.051  19.859  5.974   9.051  19.859  
+MOL  C3  ca  C  0  -0.1345  6.545   8.533  18.685  6.545   8.533  18.685  
+MOL  C4  ca  C  0   -0.117  7.844   8.906  18.310  7.844   8.906  18.310  
+MOL  C5  ca  C  0  -0.1345  8.574   9.798  19.110  8.574   9.798  19.110  
+MOL  C6  ca  C  0   -0.105  8.007  10.316  20.286  8.007  10.316  20.286  
+MOL  C7  ce  C  0   0.6388  6.097  10.493  21.913  6.097  10.493  21.913  
+MOL  N1  n2  N  0  -0.8351  6.793  10.741  22.940  6.793  10.741  22.940  
+MOL  N2  nv  N  0  -0.8938  4.820  10.914  21.826  4.820  10.914  21.826  
+MOL  H1  ha  H  0   0.1435  4.971   8.744  20.148  4.971   8.744  20.148  
+MOL  H2  ha  H  0    0.136  5.980   7.839  18.069  5.980   7.839  18.069  
+MOL  H3  ha  H  0    0.134  8.285   8.505  17.401  8.285   8.505  17.401  
+MOL  H4  ha  H  0    0.136  9.579  10.091  18.818  9.579  10.091  18.818  
+MOL  H5  ha  H  0   0.1435  8.578  11.019  20.889  8.578  11.019  20.889  
+MOL  H6  hn  H  0   0.3944  7.669  10.225  22.852  7.669  10.225  22.852  
+MOL  H7  hn  H  0   0.3983  4.578  11.512  22.600  4.578  11.512  22.600  
+MOL  H8  hn  H  0   0.3983  4.509  11.159  20.901  4.509  11.159  20.901  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+MOL  C1  C2  DOUB  
+MOL  C1  C6  SING  
+MOL  C1  C7  SING  
+MOL  C2  C3  SING  
+MOL  C2  H1  SING  
+MOL  C3  C4  DOUB  
+MOL  C3  H2  SING  
+MOL  C4  C5  SING  
+MOL  C4  H3  SING  
+MOL  C5  C6  DOUB  
+MOL  C5  H4  SING  
+MOL  C6  H5  SING  
+MOL  C7  N1  DOUB  
+MOL  C7  N2  SING  
+MOL  N1  H6  SING  
+MOL  N2  H7  SING  
+MOL  N2  H8  SING  
+##
