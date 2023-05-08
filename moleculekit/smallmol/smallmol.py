@@ -24,13 +24,18 @@ _bondtypes_TypeToString.update(
         BondType.SINGLE: "1",
         BondType.DOUBLE: "2",
         BondType.TRIPLE: "3",
+        BondType.QUADRUPLE: "4",
+        BondType.QUINTUPLE: "5",
         BondType.AROMATIC: "ar",
     }
 )
 _bondtypes_FullStringToType = {
+    "AROMATIC": BondType.AROMATIC,
     "SINGLE": BondType.SINGLE,
     "DOUBLE": BondType.DOUBLE,
     "TRIPLE": BondType.TRIPLE,
+    "QUADRUPLE": BondType.QUADRUPLE,
+    "QUINTUPLE": BondType.QUINTUPLE,
 }
 _bondtypes_StringToType = {val: key for key, val in _bondtypes_TypeToString.items()}
 
@@ -127,7 +132,7 @@ class SmallMol(object):
         self._frame = 0
         _logger = _logger & verbose
 
-        self._mol = self._initializeMolObj(mol, force_reading, ignore_errors)
+        self._mol = self._initializeMolObj(mol, force_reading, ignore_errors, _logger)
         if removeHs:
             if _logger:
                 logger.info("Removing hydrogens (removeHs=True)")
@@ -137,7 +142,7 @@ class SmallMol(object):
                 logger.info("Adding any missing hydrogens (fixHs=True)")
             self.addHs(addCoords=True)
 
-    def _initializeMolObj(self, mol, force_reading, ignore_errors):
+    def _initializeMolObj(self, mol, force_reading, ignore_errors, _logger):
         """
         Read the input and tries to convert it into a rdkit.Chem.rdchem.Mol obj
 
@@ -158,17 +163,11 @@ class SmallMol(object):
         """
         from moleculekit.molecule import Molecule
 
-        # If we are converting a Molecule object to a SmallMol object
-        remove = False
-        natoms = None
-        if isinstance(mol, Molecule):
-            natoms = mol.numAtoms
-            mol = self._fromMolecule(mol)  # Returns a temp filename
-            remove = True
-
         _mol = None
         if isinstance(mol, Chem.Mol):
             _mol = mol
+        elif isinstance(mol, Molecule):
+            _mol = self._fromMolecule(mol, _logger)
         elif isinstance(mol, str):
             if os.path.isfile(mol):
                 name_suffix = os.path.splitext(mol)[-1]
@@ -198,9 +197,6 @@ class SmallMol(object):
                 psmile.removeHs = False
                 _mol = Chem.MolFromSmiles(mol, psmile)
 
-        if remove:  # Remove temp file
-            os.remove(mol)
-
         if _mol is None and not ignore_errors:
             if isinstance(mol, str):
                 frerr = (
@@ -213,11 +209,6 @@ class SmallMol(object):
                 raise ValueError("Failed converting Molecule to SmallMol")
             else:
                 raise RuntimeError(f"Failed reading molecule {mol}.")
-
-        if natoms is not None and natoms != _mol.GetNumAtoms():
-            raise RuntimeError(
-                "Number of atoms changed while converting to rdkit molecule"
-            )
 
         return _mol
 
@@ -916,7 +907,7 @@ class SmallMol(object):
 
         return smi
 
-    def _fromMolecule(self, mol):
+    def _fromMolecule(self, mol, _logger):
         """
         Returns the rdkit.Chem.rdchem.Mol object from an moleculekit.molecule.Molecule one
 
@@ -930,17 +921,39 @@ class SmallMol(object):
         rmol: rdkit.Chem.rdchem.Mol
             The rdkit molecule object
         """
+        from moleculekit.molecule import calculateUniqueBonds
+        from rdkit.Chem.rdchem import Conformer
 
-        from tempfile import NamedTemporaryFile
+        _mol = Chem.rdchem.RWMol()
+        conf = Conformer(mol.numAtoms)
+        for i in range(mol.numAtoms):
+            atm = Chem.rdchem.Atom(mol.element[i])
+            _mol.AddAtom(atm)
+            conf.SetAtomPosition(i, mol.coords[i, :, 0].tolist())
 
-        if np.all(mol.bondtype == "un") and np.all(mol.atomtype == ""):
-            tmppdb = NamedTemporaryFile(suffix=".pdb").name
-            mol.write(tmppdb)
-            return tmppdb
-        else:
-            tmpmol2 = NamedTemporaryFile(suffix=".mol2").name
-            mol.write(tmpmol2)
-            return tmpmol2
+        bonds, bondtypes = calculateUniqueBonds(mol.bonds, mol.bondtype)
+        for i in range(bonds.shape[0]):
+            _mol.AddBond(
+                int(bonds[i, 0]),
+                int(bonds[i, 1]),
+                _bondtypes_StringToType[bondtypes[i]],
+            )
+
+        _mol.AddConformer(conf, True)
+
+        # print(Chem.MolToSmiles(_mol))
+        # Chem.SanitizeMol(_mol)
+        Chem.Kekulize(_mol)
+        if _logger:
+            logger.info(
+                f"Converted Molecule to SmallMol with SMILES: {Chem.MolToSmiles(_mol)}"
+            )
+
+        if mol.numAtoms != _mol.GetNumAtoms():
+            raise RuntimeError(
+                "Number of atoms changed while converting to rdkit molecule"
+            )
+        return _mol
 
     def toMolecule(self, ids=None):
         """
