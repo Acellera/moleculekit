@@ -945,7 +945,7 @@ class SmallMol(object):
         _mol.AddConformer(conf, True)
 
         # print(Chem.MolToSmiles(_mol))
-        # Chem.SanitizeMol(_mol)
+        Chem.SanitizeMol(_mol)
         Chem.Kekulize(_mol)
         if _logger:
             logger.info(
