@@ -896,6 +896,11 @@ class Molecule(object):
         sel: str
             Atom selection string. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
+        Returns
+        -------
+        removed : np.ndarray
+            An array of all atoms which did not belong to `sel` and were removed from the `Molecule` object
+
         Examples
         --------
         >>> mol=tryp.copy()
