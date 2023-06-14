@@ -286,44 +286,56 @@ def dist_trajectory_reduction_pairs(
 def cdist(
         FLOAT32_t[:,:] coords1,
         FLOAT32_t[:,:] coords2,
+        FLOAT32_t[:,:] results,
     ):
     cdef int i, j
     cdef int n_coo1 = coords1.shape[0]
     cdef int n_coo2 = coords2.shape[0]
-    cdef FLOAT32_t[:, :] results = np.zeros((n_coo1, n_coo2), dtype=FLOAT32)
-    cdef FLOAT64_t dist2, dx, dy, dz
+    cdef int shape2 = coords1.shape[1]
+    cdef FLOAT32_t dist2, diff
 
     for i in range(n_coo1):
         for j in range(n_coo2):
-            dx = coords1[i, 0] - coords2[j, 0]
-            dy = coords1[i, 1] - coords2[j, 1]
-            dz = coords1[i, 2] - coords2[j, 2]
-            dist2 = dx * dx + dy * dy + dz * dz
+            dist2 = 0
+            if shape2 >= 1:
+                diff = coords1[i, 0] - coords2[j, 0]
+                dist2 = dist2 + diff * diff
+            if shape2 >= 2:
+                diff = coords1[i, 1] - coords2[j, 1]
+                dist2 = dist2 + diff * diff
+            if shape2 >= 3:
+                diff = coords1[i, 2] - coords2[j, 2]
+                dist2 = dist2 + diff * diff
             results[i, j] = sqrt(dist2)
 
-    return results
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 def pdist(
         FLOAT32_t[:,:] coords,
+        FLOAT32_t[:] results,
     ):
-    cdef int i, j, k
+    cdef int i, j, ii
     cdef int n_coo = coords.shape[0]
-    cdef FLOAT32_t[:] results = np.zeros(int(n_coo*(n_coo-1)/2), dtype=FLOAT32)
-    cdef FLOAT64_t dist2, dx, dy, dz
+    cdef int shape2 = coords.shape[1]
+    cdef FLOAT32_t dist2, diff
 
-    k = 0
+    ii = 0
     for i in range(n_coo):
         for j in range(i+1, n_coo):
-            dx = coords[i, 0] - coords[j, 0]
-            dy = coords[i, 1] - coords[j, 1]
-            dz = coords[i, 2] - coords[j, 2]
-            dist2 = dx * dx + dy * dy + dz * dz
-            results[k] = sqrt(dist2)
-            k += 1
+            dist2 = 0
+            if shape2 >= 1:
+                diff = coords[i, 0] - coords[j, 0]
+                dist2 = dist2 + diff * diff
+            if shape2 >= 2:
+                diff = coords[i, 1] - coords[j, 1]
+                dist2 = dist2 + diff * diff
+            if shape2 >= 3:
+                diff = coords[i, 2] - coords[j, 2]
+                dist2 = dist2 + diff * diff
+            results[ii] = sqrt(dist2)
+            ii += 1
 
-    return results
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
