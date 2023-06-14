@@ -317,7 +317,7 @@ _all_masses = np.array([periodictable[el].mass for el in periodictable])
 
 def elements_from_masses(masses):
     from moleculekit.util import ensurelist
-    from scipy.spatial.distance import cdist
+    from moleculekit.distance import cdist
 
     masses = np.array(ensurelist(masses))
     if np.any(masses > 140):

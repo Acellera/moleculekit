@@ -51,53 +51,49 @@ def _pymol_get_mols():
     return cmd.get_object_list("all")
 
 
-def _launch_molkitstar_exe(port):
+def _launch_nap_exe(port):
     from moleculekit.util import find_executable, wait_for_port, check_port
     from subprocess import Popen
 
     if not check_port(port):
-        molkitstarexe = find_executable("molkitstar")
-        if molkitstarexe is None:
+        napexe = find_executable("nap")
+        if napexe is None:
             raise FileNotFoundError(
-                "Could not find 'molkitstar' viewer executable in PATH. Please install it with conda install molkitstar -c acellera"
+                "Could not find 'nap' viewer executable in PATH"
             )
-        Popen([molkitstarexe])
+        Popen([napexe])
 
         wait_for_port(port)
 
 
-def _molstar_launch(url):
+def _nap_launch(url):
     from moleculekit.util import check_port
 
     port = int(url.split(":")[-1])
     if not check_port(port):
-        _launch_molkitstar_exe(port)
+        _launch_nap_exe(port)
 
 
-def _molstar_view(mol, viewname, bonds=None, url=None):
+def _nap_view(mol, viewname, bonds=None, url=None):
     from moleculekit.util import check_port
     import requests
     import time
 
     port = int(url.split(":")[-1])
     if not check_port(port):
-        _molstar_launch(url)
+        _nap_launch(url)
 
-    trajext = "xtc"
+    ext = ".cif"
     if len(np.unique(mol.resname)) == 1:
-        ext = ".mol2"
-        topoext = "mol2"
-    else:
-        ext = ".cif"
-        topoext = "mmcif"
+        ext = ".mol2"        
 
     topo = tempname(suffix=ext)
     traj = tempname(suffix=".xtc")
     mol.write(topo)
     mol.write(traj)
 
-    files = {"topo": ("topo", open(topo, "rb")), "traj": ("traj", open(traj, "rb"))}
-    data = {"topoext": topoext, "trajext": trajext, "label": viewname}
+    files = {"topo": (topo, open(topo, "rb")), "traj": (traj, open(traj, "rb"))}
+    data = {"label": viewname, "systemId": viewname}
     response = requests.post(f"{url}/loadMolecule", headers={}, data=data, files=files)
     response.close()
 
@@ -105,7 +101,7 @@ def _molstar_view(mol, viewname, bonds=None, url=None):
     os.remove(topo)
 
     t = time.time()
-    while viewname not in _molstar_get_mols(url):
+    while viewname not in _nap_get_mols(url):
         # Wait for the mol to appear in the viewer before marking it as showing
         time.sleep(_checkFrequency)
         if time.time() - t > 10:  # Something went bad
@@ -114,7 +110,7 @@ def _molstar_view(mol, viewname, bonds=None, url=None):
     showing[viewname] = True
 
 
-def _molstar_get_mols(url):
+def _nap_get_mols(url):
     from moleculekit.util import check_port
     import requests
 
@@ -132,11 +128,11 @@ def getCurrentPymolViewer():
     getCurrentViewer(_pymol_launch, _pymol_view, _pymol_get_mols)
 
 
-def getCurrentMolstarViewer(url):
+def getCurrentNAPViewer(url):
     getCurrentViewer(
-        lambda: _molstar_launch(url),
-        lambda *args: _molstar_view(*args, url=url),
-        lambda: _molstar_get_mols(url),
+        lambda: _nap_launch(url),
+        lambda *args: _nap_view(*args, url=url),
+        lambda: _nap_get_mols(url),
     )
 
 

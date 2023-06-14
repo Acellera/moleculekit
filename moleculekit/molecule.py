@@ -1948,7 +1948,7 @@ class Molecule(object):
         name=None,
         viewerhandle=None,
         gui=False,
-        molstarurl="http://localhost:8090",
+        napurl="http://localhost:8090",
     ):
         """Visualizes the molecule in a molecular viewer
 
@@ -1964,7 +1964,7 @@ class Molecule(object):
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
         guessBonds : bool
             Allow the viewer to guess bonds for the molecule
-        viewer : str ('pymol', 'vmd', 'webgl')
+        viewer : str ('nap', 'pymol', 'vmd', 'webgl')
             Choose viewer backend. Default is taken from either moleculekit.config or if it doesn't exist from moleculekit.config
         hold : bool
             If set to True, it will not visualize the molecule but instead collect representations until set back to False.
@@ -1972,8 +1972,8 @@ class Molecule(object):
             A name to give to the molecule in the viewer
         viewerhandle : :class:`VMD <moleculekit.vmdviewer.VMD>` object, optional
             A specific viewer in which to visualize the molecule. If None it will use the current default viewer.
-        molstarurl : string
-            URL of molkitstar REST server
+        napurl : string
+            URL of NAP REST server
         """
         from moleculekit.util import tempname
 
@@ -2018,19 +2018,19 @@ class Molecule(object):
             retval = self._viewNGL(gui=gui)
         elif viewer.lower() == "pymol":
             self._viewPymol(name)
-        elif viewer.lower() == "molstar":
-            self._viewMolstar(name, url=molstarurl)
+        elif viewer.lower() == "nap":
+            self._viewNAP(name, url=napurl)
         else:
             raise ValueError("Unknown viewer.")
 
         if retval is not None:
             return retval
 
-    def _viewMolstar(self, name, url):
-        from moleculekit.viewer import getCurrentMolstarViewer, viewingMols
+    def _viewNAP(self, name, url):
+        from moleculekit.viewer import getCurrentNAPViewer, viewingMols
         import uuid
 
-        getCurrentMolstarViewer(url=url)
+        getCurrentNAPViewer(url=url)
 
         viewname = name
         if name is None:
@@ -2108,7 +2108,7 @@ class Molecule(object):
         Each node corresponds to an atom and edges correspond to bonds
         """
         import networkx as nx
-        from scipy.spatial.distance import pdist, squareform
+        from moleculekit.distance import pdist, squareform
 
         if fields is None:
             fields = self._atom_fields
@@ -2504,7 +2504,7 @@ def mol_equal(
 
 
 def _detectCollisions(mol1, frame1, mol2, frame2, gap):
-    from scipy.spatial.distance import cdist
+    from moleculekit.distance import cdist
 
     distances = cdist(mol1.coords[:, :, frame1], mol2.coords[:, :, frame2])
     idx1, idx2 = np.where(distances < gap)

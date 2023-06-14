@@ -286,7 +286,7 @@ def maxDistance(mol, sel="all", origin=None):
     >>> print(round(y,2))
     48.39
     """
-    from scipy.spatial.distance import cdist
+    from moleculekit.distance import cdist
 
     if origin is None:
         origin = [0, 0, 0]

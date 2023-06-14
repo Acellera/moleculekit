@@ -79,7 +79,7 @@ def compareGraphs(G, H, fields=("element",), tolerance=0.5, returnmatching=False
 
 
 def makeMolGraph(mol, sel, fields):
-    from scipy.spatial.distance import pdist, squareform
+    from moleculekit.distance import pdist, squareform
 
     if sel != "all":
         sel = mol.atomselect(sel, indexes=True)
