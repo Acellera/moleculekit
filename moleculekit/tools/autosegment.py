@@ -171,8 +171,13 @@ def autoSegment2(
     -------
     >>> newmol = autoSegment2(mol)
     """
-    from scipy.sparse import csr_matrix
-    from scipy.sparse.csgraph import connected_components
+    try:
+        from scipy.sparse import csr_matrix
+        from scipy.sparse.csgraph import connected_components
+    except ImportError:
+        raise ImportError(
+            "Failed at importing scipy. Please install it to use this function."
+        )
 
     if isinstance(fields, str):
         fields = (fields,)
