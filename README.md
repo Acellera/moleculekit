@@ -78,18 +78,25 @@ python setup.py build_ext --inplace
 Install `emscripten` https://emscripten.org/docs/getting_started/downloads.html
 
 ```
-conda create -n pyodide-build
-conda install python=3.10
-pip install pyodide-build==0.22.0.dev0
+mamba create -n pyodide-build
+mamba activate pyodide-build
+mamba install python=3.10
+pip install pyodide-build==0.23.2
 
 # Activate the emscripten environment
-cd ../../emsdk
+cd ../emsdk
+git checkout 3.1.32
+./emsdk install latest
+./emsdk activate latest
 source emsdk_env.sh
 cd -
 
 # Build the package
-pyodide build # Requires some hacking around the pip installation
-cp dist/moleculekit-*wasm32.whl test_wasm/moleculekit-X-cp310-cp310-emscripten_3_1_14_wasm32.whl
+export PYO3_CROSS_INCLUDE_DIR="HACK"
+export PYO3_CROSS_LIB_DIR="HACK"
+rm -rf .pyodide-xbuildenv
+pyodide build --build-dependencies -o dist_pyodide
+cp dist_pyodide/*.whl test_wasm/wheels/
 cd test_wasm
 python3 -m http.server
 ```
