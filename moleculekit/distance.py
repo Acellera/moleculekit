@@ -49,8 +49,8 @@ class _TestDistances(unittest.TestCase):
         import numpy as np
 
         refdists = np.array([[3.0, 4.0, 5.0], [2.0, 3.0, 4.0], [1.0, 2.0, 3.0]])
-        x = np.array([0, 1, 2], dtype=np.float32)[:, None]
-        y = np.array([3, 4, 5], dtype=np.float32)[:, None]
+        x = np.array([0, 1, 2])[:, None]
+        y = np.array([3, 4, 5])[:, None]
         dists = cdist(x, y)
 
         assert np.allclose(dists, refdists)
@@ -59,6 +59,15 @@ class _TestDistances(unittest.TestCase):
             [[5.656854, 8.485281, 11.313708], [2.828427, 5.656854, 8.485281]]
         )
         dists = cdist(np.array([[0, 1], [2, 3]]), np.array([[4, 5], [6, 7], [8, 9]]))
+
+        assert np.allclose(dists, refdists)
+
+    def test_pdist(self):
+        import numpy as np
+
+        refdists = np.array([2.828427, 5.656854, 2.828427])
+        x = np.array([[4, 5], [6, 7], [8, 9]])
+        dists = pdist(x)
 
         assert np.allclose(dists, refdists)
 
