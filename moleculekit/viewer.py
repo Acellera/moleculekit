@@ -58,9 +58,7 @@ def _launch_nap_exe(port):
     if not check_port(port):
         napexe = find_executable("nap")
         if napexe is None:
-            raise FileNotFoundError(
-                "Could not find 'nap' viewer executable in PATH"
-            )
+            raise FileNotFoundError("Could not find 'nap' viewer executable in PATH")
         Popen([napexe])
 
         wait_for_port(port)
@@ -85,7 +83,7 @@ def _nap_view(mol, viewname, bonds=None, url=None):
 
     ext = ".cif"
     if len(np.unique(mol.resname)) == 1:
-        ext = ".mol2"        
+        ext = ".mol2"
 
     topo = tempname(suffix=ext)
     traj = tempname(suffix=".xtc")
@@ -93,8 +91,10 @@ def _nap_view(mol, viewname, bonds=None, url=None):
     mol.write(traj)
 
     files = {"topo": (topo, open(topo, "rb")), "traj": (traj, open(traj, "rb"))}
-    data = {"label": viewname, "systemId": viewname}
-    response = requests.post(f"{url}/loadMolecule", headers={}, data=data, files=files)
+    data = {"label": viewname, "moleculeID": viewname}
+    response = requests.post(
+        f"{url}/load-molecules", headers={}, data=data, files=files
+    )
     response.close()
 
     os.remove(traj)
@@ -113,15 +113,18 @@ def _nap_view(mol, viewname, bonds=None, url=None):
 def _nap_get_mols(url):
     from moleculekit.util import check_port
     import requests
+    import json
 
     port = int(url.split(":")[-1])
     if not check_port(port):
         return []
 
-    response = requests.get(f"{url}/getMolecules")
+    response = requests.get(f"{url}/get-molecules")
     response.close()
 
-    return response.text.split(",")
+    mols = json.loads(response.text)
+
+    return mols
 
 
 def getCurrentPymolViewer():
