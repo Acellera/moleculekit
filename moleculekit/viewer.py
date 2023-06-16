@@ -81,11 +81,7 @@ def _nap_view(mol, viewname, bonds=None, url=None):
     if not check_port(port):
         _nap_launch(url)
 
-    ext = ".cif"
-    if len(np.unique(mol.resname)) == 1:
-        ext = ".mol2"
-
-    topo = tempname(suffix=ext)
+    topo = tempname(suffix=".cif")
     traj = tempname(suffix=".xtc")
     mol.write(topo)
     mol.write(traj)
