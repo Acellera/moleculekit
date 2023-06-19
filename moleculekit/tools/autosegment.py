@@ -171,13 +171,7 @@ def autoSegment2(
     -------
     >>> newmol = autoSegment2(mol)
     """
-    try:
-        from scipy.sparse import csr_matrix
-        from scipy.sparse.csgraph import connected_components
-    except ImportError:
-        raise ImportError(
-            "Failed at importing scipy. Please install it to use this function."
-        )
+    import networkx as nx
 
     if isinstance(fields, str):
         fields = (fields,)
@@ -224,17 +218,10 @@ def autoSegment2(
                 )
 
     # Calculate connected components using the bonds
-    sparsemat = csr_matrix(
-        (
-            np.ones(bonds.shape[0] * 2),  # Values
-            (
-                np.hstack((bonds[:, 0], bonds[:, 1])),  # Rows
-                np.hstack((bonds[:, 1], bonds[:, 0])),
-            ),
-        ),
-        shape=[submol.numAtoms, submol.numAtoms],
-    )  # Columns
-    numcomp, compidx = connected_components(sparsemat, directed=False)
+    submol.bonds = bonds  # Restore the modified bonds to the submol
+    submol.bondtype = np.array([], dtype=object)
+    components = list(nx.connected_components(submol.toGraph(fields=[])))
+    numcomp = len(components)
 
     # Letters to be used for chains, if free: 0123456789abcd...ABCD..., minus chain symbols already used
     sel_mask = mol.atomselect(orig_sel)
@@ -248,7 +235,7 @@ def autoSegment2(
     prevsegres = None
     for i in range(numcomp):  # For each connected component / segment
         segid = basename + str(i)
-        backboneSegIdx = idx[compidx == i]  # The backbone atoms of the segment
+        backboneSegIdx = idx[list(components[i])]  # The backbone atoms of the segment
         segres = mol.atomselect(
             f"same residue as index {' '.join(map(str, backboneSegIdx))}"
         )  # Get whole residues
