@@ -1975,17 +1975,19 @@ class Molecule(object):
         napurl : string
             URL of NAP REST server
         """
-        from moleculekit.util import tempname
+        from moleculekit.util import tempname, find_executable
 
         if viewer is None:
-            try:
-                from htmd.config import _config
+            from moleculekit.config import _config
 
-                viewer = _config["viewer"]
-            except Exception:
-                from moleculekit.config import _config
+            viewer = _config["viewer"]
 
-                viewer = _config["viewer"]
+        if viewer is None:
+            for exe in ["nap", "vmd", "pymol"]:
+                found = find_executable(exe)
+                if found is not None:
+                    viewer = exe
+                    break
 
         if self.numFrames == 0:
             raise RuntimeError("No frames in this molecule to visualize.")
@@ -2124,7 +2126,9 @@ class Molecule(object):
 
         edges = []
         for i, (bi, bj) in enumerate(self.bonds):
-            props = {"type": self.bondtype[i]}
+            props = {}
+            if len(self.bondtype):
+                props["type"] = self.bondtype[i]
             if distances:
                 props["distance"] = dd[bi, bj]
             edges.append([bi, bj, props])
