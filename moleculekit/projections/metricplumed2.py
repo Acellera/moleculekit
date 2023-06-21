@@ -434,6 +434,7 @@ class MetricPlumed2(Projection):
     """
 
     def __init__(self, plumed_inp):
+        super().__init__()
         # I am not sure at all about opening files here is good style
         self._plumed_exe = shutil.which("plumed")
         self.colvar = None
@@ -482,7 +483,8 @@ class MetricPlumed2(Projection):
         return numpy.array(data, dtype=numpy.float32)
 
     def _calculateMolProp(self, mol, props="all"):
-        pass
+        res = {}
+        return res
 
     def getMapping(self, mol):
         """Return the labels of the colvars used in this projection.
