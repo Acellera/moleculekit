@@ -412,7 +412,7 @@ class Molecule(object):
 
         return len(np.unique(sequenceID((self.resid, self.insertion, self.chain))))
 
-    def insert(self, mol, index, collisions=0, coldist=1.3):
+    def insert(self, mol, index, collisions=0, coldist=1.3, removesel="all"):
         """Insert the atoms of one molecule into another at a specific index.
 
         Parameters
@@ -425,6 +425,8 @@ class Molecule(object):
             If set to True it will remove residues of `mol` which collide with atoms of this Molecule object.
         coldist : float
             Collision distance in Angstrom between atoms of the two molecules. Anything closer will be considered a collision.
+        removesel : str
+            Atomselection for atoms to be removed from the passed molecule in case of collisions.
 
         Example
         -------
@@ -453,7 +455,9 @@ class Molecule(object):
         append = index == self.numAtoms
 
         if collisions and self.numAtoms > 0:
-            _, idx2 = _detectCollisions(self, self.frame, mol, mol.frame, coldist)
+            _, idx2 = _detectCollisions(
+                self, self.frame, mol, mol.frame, coldist, removesel
+            )
             torem, numres = _getResidueIndexesByAtom(mol, idx2)
             mol = mol.copy()
             logger.info(
@@ -761,7 +765,7 @@ class Molecule(object):
         else:
             self.coords = aligns[0].coords.copy()
 
-    def append(self, mol, collisions=False, coldist=1.3):
+    def append(self, mol, collisions=False, coldist=1.3, removesel="all"):
         """Append a molecule at the end of the current molecule
 
         Parameters
@@ -772,6 +776,8 @@ class Molecule(object):
             If set to True it will remove residues of `mol` which collide with atoms of this Molecule object.
         coldist : float
             Collision distance in Angstrom between atoms of the two molecules. Anything closer will be considered a collision.
+        removesel : str
+            Atomselection for atoms to be removed from the passed molecule in case of collisions.
 
         Example
         -------
@@ -783,7 +789,13 @@ class Molecule(object):
         array([   0,    1,    2, ..., 1698, 1699, 1700], dtype=int32)
         >>> mol.append(lig)
         """
-        self.insert(mol, self.numAtoms, collisions=collisions, coldist=coldist)
+        self.insert(
+            mol,
+            self.numAtoms,
+            collisions=collisions,
+            coldist=coldist,
+            removesel=removesel,
+        )
 
     def _getBonds(self, fileBonds=True, guessBonds=True):
         """Returns an array of all bonds.
@@ -2507,13 +2519,15 @@ def mol_equal(
     return True
 
 
-def _detectCollisions(mol1, frame1, mol2, frame2, gap):
+def _detectCollisions(mol1, frame1, mol2, frame2, gap, removesel):
     from moleculekit.distance import cdist
 
     distances = cdist(mol1.coords[:, :, frame1], mol2.coords[:, :, frame2])
-    idx1, idx2 = np.where(distances < gap)
+    close = distances < gap
+    if removesel != "all":
+        close = close & mol2.atomselect(removesel)
 
-    return idx1, idx2
+    return np.where(close)
 
 
 def _getResidueIndexesByAtom(mol, idx):
@@ -3088,6 +3102,21 @@ class _TestMolecule(TestCase):
 
         mol = Molecule()
         mol.append(mol1)
+
+    def test_append_collisions(self):
+        mol = Molecule("3ptb")
+        ben = mol.copy()
+        ben.filter("resname BEN")
+        ben2 = ben.copy()
+        mol.filter("protein")
+
+        # Removes protein residues that are within 6A of BEN
+        ben.append(mol, collisions=True, coldist=6)
+        assert ben.numAtoms == 1469
+
+        # When specifying a removesel you don't remove atoms which are not specified
+        ben2.append(mol, collisions=True, coldist=6, removesel="water")
+        assert ben2.numAtoms == 1638
 
     def test_split_append_insert_trajectory(self):
         lig = self.trajmol.copy()
