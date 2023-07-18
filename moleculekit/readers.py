@@ -2251,7 +2251,7 @@ def SDFread(filename, frame=None, topoloc=None):
     # Format is correctly specified here: https://www.daylight.com/meetings/mug05/Kappler/ctfile.pdf
     chargemap = {"7": -3, "6": -2, "5": -1, "0": 0, "3": 1, "2": 2, "1": 3, "4": 0}
 
-    with open(filename, "r") as f:
+    with openFileOrStringIO(filename, "r") as f:
         lines = f.readlines()
         molend = False
         for line in lines:
@@ -2320,6 +2320,20 @@ def SDFread(filename, frame=None, topoloc=None):
 
     traj = Trajectory(coords=np.vstack(coords))
     return MolFactory.construct(topo, traj, filename, frame)
+
+
+def sdf_generator(sdffile):
+    """Generates Molecule objects from an SDF file"""
+    from io import StringIO
+
+    sdfstr = ""
+    with open(sdffile, "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            sdfstr += line
+            if line.startswith("$$$$"):
+                yield Molecule(StringIO(sdfstr), type="sdf")
+                sdfstr = ""
 
 
 def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
