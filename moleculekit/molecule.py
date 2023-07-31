@@ -268,6 +268,7 @@ class Molecule(object):
     )
     _traj_fields = ("coords", "box", "boxangles", "fileloc", "step", "time")
     _atom_and_coord_fields = tuple(list(_atom_fields) + ["coords"])
+    _atom_and_traj_fields = tuple(list(_atom_fields) + list(_traj_fields))
 
     _dtypes = {
         "record": object,

@@ -687,6 +687,8 @@ def MDTRAJwrite(mol, filename):
             f"To support extension {os.path.splitext(filename)[1]} please install the `mdtraj` package"
         )
 
+    from mdtraj.core.trajectory import Trajectory
+
     try:
         from moleculekit.util import tempname
 
@@ -695,29 +697,32 @@ def MDTRAJwrite(mol, filename):
             pieces = filename.split(".")
             ext = f"{pieces[-2]}.{pieces[-1]}"
 
+        tmppdb = tempname(suffix=".pdb")
+        mol.write(tmppdb)
+        traj = md.load(tmppdb)
+        os.remove(tmppdb)
+
         if ext in _MDTRAJ_TOPOLOGY_SAVERS:
-            tmppdb = tempname(suffix=".pdb")
-            mol.write(tmppdb)
-            traj = md.load(tmppdb)
-            os.remove(tmppdb)
-        elif ext in _MDTRAJ_TRAJECTORY_SAVERS:
+            traj.save(filename)
+            return
+
+        if ext in _MDTRAJ_TRAJECTORY_SAVERS:
             mol = mol.copy()
-            mol.time = mol.time / 1000  # convert fs to ps
-            tmppdb = tempname(suffix=".pdb")
-            tmpxtc = tempname(suffix=".xtc")
-            mol.write(tmppdb)
-            mol.write(tmpxtc)
-            traj = md.load(tmpxtc, top=tmppdb)
-            os.remove(tmppdb)
-            os.remove(tmpxtc)
-        else:
-            raise ValueError(f"Unknown file type for file {filename}")
-        # traj.xyz = np.swapaxes(np.swapaxes(self.coords, 1, 2), 0, 1) / 10
-        # traj.time = self.time
-        # traj.unitcell_lengths = self.box.T / 10
-        traj.save(filename)
+            time = np.array([x / 1000 for x in mol.time])  # convert fs to ps
+
+            traj = Trajectory(
+                xyz=np.transpose(mol.coords, (2, 0, 1)) / 10,  # Ang to nm
+                topology=traj.topology,
+                time=time,
+                unitcell_lengths=mol.box.T / 10,  # Ang to nm
+                unitcell_angles=mol.boxangles.T,
+            )
+            traj.save(filename)
+            return
+
+        raise ValueError(f"Unknown file type for file {filename}")
     except Exception as e:
-        raise ValueError(f'MDtraj reader failed for file {filename} with error "{e}"')
+        raise ValueError(f'MDtraj writer failed for file {filename} with error "{e}"')
 
 
 def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
@@ -1194,6 +1199,29 @@ class _TestWriters(unittest.TestCase):
             self.assertEqual(
                 filelines, reflines, msg=f"Failed comparison of {reffile2} {tmpfile}"
             )
+
+    def test_dcd_writer(self):
+        from moleculekit.molecule import Molecule, mol_equal
+        from moleculekit.home import home
+        import tempfile
+
+        reader_dir = home(dataDir="molecule-readers")
+        mol = Molecule(os.path.join(reader_dir, "1N09", "structure.prmtop"))
+        molc = mol.copy()
+
+        mol.read(os.path.join(reader_dir, "1N09", "output.dcd"))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mol.write(os.path.join(tmpdir, "output.dcd"))
+            molc.read(os.path.join(tmpdir, "output.dcd"))
+
+        assert mol_equal(
+            mol,
+            molc,
+            checkFields=Molecule._atom_and_traj_fields,
+            exceptFields=("fileloc"),
+            fieldPrecision={"coords": 3e-6, "box": 3e-6},
+        )
 
 
 if __name__ == "__main__":
