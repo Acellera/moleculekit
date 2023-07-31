@@ -708,14 +708,25 @@ def MDTRAJwrite(mol, filename):
 
         if ext in _MDTRAJ_TRAJECTORY_SAVERS:
             mol = mol.copy()
+
             time = np.array([x / 1000 for x in mol.time])  # convert fs to ps
+            if time.shape[0] == 0:  # Assign 0 time if not present
+                time = np.zeros(mol.numFrames, dtype=np.float32)
+
+            box = mol.box.T / 10  # Ang to nm
+            if box.shape[0] == 0:  # Assign 0 box if not present
+                box = np.zeros((3, mol.numFrames), dtype=np.float32)
+
+            boxangles = mol.boxangles.T
+            if boxangles.shape[0] == 0:  # Assign 90 degree box angles if not present
+                boxangles = np.full_like(box, 90.0, dtype=np.float32)
 
             traj = Trajectory(
                 xyz=np.transpose(mol.coords, (2, 0, 1)) / 10,  # Ang to nm
                 topology=traj.topology,
                 time=time,
-                unitcell_lengths=mol.box.T / 10,  # Ang to nm
-                unitcell_angles=mol.boxangles.T,
+                unitcell_lengths=box,
+                unitcell_angles=boxangles,
             )
             traj.save(filename)
             return
