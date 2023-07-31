@@ -710,15 +710,18 @@ def MDTRAJwrite(mol, filename):
             mol = mol.copy()
 
             time = np.array([x / 1000 for x in mol.time])  # convert fs to ps
-            if time.shape[0] == 0:  # Assign 0 time if not present
+            if time.shape[0] != mol.numFrames and np.all(time == 0):
+                # Assign 0 time if not present
                 time = np.zeros(mol.numFrames, dtype=np.float32)
 
             box = mol.box.T / 10  # Ang to nm
-            if box.shape[0] == 0:  # Assign 0 box if not present
-                box = np.zeros((3, mol.numFrames), dtype=np.float32)
+            if box.shape[0] != mol.numFrames and np.all(box == 0):
+                # Assign 0 box if not present
+                box = np.zeros((mol.numFrames, 3), dtype=np.float32)
 
             boxangles = mol.boxangles.T
-            if boxangles.shape[0] == 0:  # Assign 90 degree box angles if not present
+            if boxangles.shape[0] != mol.numFrames and np.all(boxangles == 0):
+                # Assign 90 degree box angles if not present
                 boxangles = np.full_like(box, 90.0, dtype=np.float32)
 
             traj = Trajectory(
