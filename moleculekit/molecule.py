@@ -2238,6 +2238,25 @@ class Molecule(object):
     def _ix(self, resid, name):
         return np.where((self.name == name) & (self.resid == resid))[0][0]
 
+    def toOpenFFMolecule(self):
+        import tempfile
+        from moleculekit.smallmol.smallmol import SmallMol
+        from openff.toolkit.topology import Molecule as OFFMolecule
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            molc = self.copy()
+            # for i in range(molc.numAtoms):
+            #     molc.name[i] = molc.name[i] + str(i)
+            pdbfile = os.path.join(tmpdir, "mol.pdb")
+            smiles = SmallMol(molc, fixHs=False).toSMILES(
+                explicitHs=True, kekulizeSmile=True
+            )
+            molc.write(pdbfile)
+            offmol = OFFMolecule.from_pdb_and_smiles(pdbfile, smiles=smiles)
+            assert np.array_equal(molc.name, [x.name for x in offmol.atoms])
+
+            return offmol
+
 
 class UniqueAtomID:
     _fields = ("name", "altloc", "resname", "chain", "resid", "insertion", "segid")
