@@ -95,7 +95,7 @@ cd -
 export PYO3_CROSS_INCLUDE_DIR="HACK"
 export PYO3_CROSS_LIB_DIR="HACK"
 rm -rf .pyodide-xbuildenv
-pyodide build --build-dependencies -o dist_pyodide
+pyodide build -o dist_pyodide
 cp dist_pyodide/*.whl test_wasm/wheels/
 cd test_wasm
 python3 -m http.server
