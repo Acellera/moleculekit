@@ -2336,7 +2336,31 @@ def sdf_generator(sdffile):
                 sdfstr = ""
 
 
+# This is a hack to fix the URL fetching of MMTF in pyodide
+def get_raw_data_from_url(pdb_id, reduced=False):
+    """ " Get the msgpack unpacked data given a PDB id.
+
+    :param pdb_id: the input PDB id
+    :return the unpacked data (a dict)"""
+    from mmtf.api.default_api import get_url, ungzip_data, _unpack, urllib2
+
+    url = get_url(pdb_id, reduced)
+    request = urllib2.Request(url)
+    request.add_header("Accept-encoding", "gzip")
+    response = urllib2.urlopen(request)
+    if response.info().get("Content-Encoding") == "gzip":
+        data = ungzip_data(response.read())
+    else:
+        # Fixed here from original data = response.read()
+        data = response
+    return _unpack(data)
+
+
 def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
+    from mmtf.api import default_api
+
+    # Monkey-patch the function to fix bug in data = response.read() which should not have read()
+    default_api.get_raw_data_from_url = get_raw_data_from_url
     from mmtf import fetch, parse_gzip, parse
 
     if len(filename) == 4 and not os.path.isfile(filename):
