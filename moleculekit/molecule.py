@@ -21,6 +21,68 @@ class TopologyInconsistencyError(Exception):
         return repr(self.value)
 
 
+_originalResname = {
+    "ARG": "ARG",
+    "AR0": "ARG",
+    "HIS": "HIS",
+    "HID": "HIS",
+    "HIE": "HIS",
+    "HIP": "HIS",
+    "HSD": "HIS",
+    "HSE": "HIS",
+    "HSP": "HIS",
+    "LYS": "LYS",
+    "LSN": "LYS",
+    "LYN": "LYS",
+    "ASP": "ASP",
+    "ASH": "ASP",
+    "GLU": "GLU",
+    "GLH": "GLU",
+    "SER": "SER",
+    "THR": "THR",
+    "ASN": "ASN",
+    "GLN": "GLN",
+    "CYS": "CYS",
+    "CYM": "CYS",
+    "CYX": "CYS",
+    "SEC": "SEC",
+    "GLY": "GLY",
+    "PRO": "PRO",
+    "ALA": "ALA",
+    "VAL": "VAL",
+    "ILE": "ILE",
+    "LEU": "LEU",
+    "MET": "MET",
+    "PHE": "PHE",
+    "TYR": "TYR",
+    "TRP": "TRP",
+    "G": "G",
+    "G5": "G",
+    "G3": "G",
+    "C": "C",
+    "C5": "C",
+    "C3": "C",
+    "U": "U",
+    "U5": "U",
+    "U3": "U",
+    "A": "A",
+    "A5": "A",
+    "A3": "A",
+    "T": "T",
+    "DG": "G",
+    "DG5": "G",
+    "DG3": "G",
+    "DC": "C",
+    "DC5": "C",
+    "DC3": "C",
+    "DA": "A",
+    "DA5": "A",
+    "DA3": "A",
+    "DT": "T",
+    "DT5": "T",
+    "DT3": "T",
+}
+
 _residueNameTable = {
     "ARG": "R",
     "AR0": "R",
@@ -2237,6 +2299,25 @@ class Molecule(object):
 
     def _ix(self, resid, name):
         return np.where((self.name == name) & (self.resid == resid))[0][0]
+
+    def toOpenFFMolecule(self):
+        import tempfile
+        from moleculekit.smallmol.smallmol import SmallMol
+        from openff.toolkit.topology import Molecule as OFFMolecule
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            molc = self.copy()
+            # for i in range(molc.numAtoms):
+            #     molc.name[i] = molc.name[i] + str(i)
+            pdbfile = os.path.join(tmpdir, "mol.pdb")
+            smiles = SmallMol(molc, fixHs=False).toSMILES(
+                explicitHs=True, kekulizeSmile=True
+            )
+            molc.write(pdbfile)
+            offmol = OFFMolecule.from_pdb_and_smiles(pdbfile, smiles=smiles)
+            assert np.array_equal(molc.name, [x.name for x in offmol.atoms])
+
+            return offmol
 
 
 class UniqueAtomID:
