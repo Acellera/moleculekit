@@ -1933,7 +1933,7 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True):
     dataObj = myDataList[0]
 
     def fixDefault(val, dtype):
-        if val == "?":
+        if val in ("?", "."):
             if dtype == float or dtype == int:
                 val = 0
             if dtype == str:
