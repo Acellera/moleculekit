@@ -742,6 +742,7 @@ def MDTRAJwrite(mol, filename):
 def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
     from moleculekit.pdbx.reader.PdbxContainers import DataContainer, DataCategory
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
+    from moleculekit.molecule import _originalResname
 
     if chemcomp is not None:
         single_mol = chemcomp
@@ -769,6 +770,7 @@ def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
         "auth_asym_id": "chain",
         "auth_atom_id": "name",
         "pdbx_PDB_model_num": "frame",
+        "label_comp_id": "resname",
     }
     chem_comp_mapping = {
         "comp_id": "resname",
@@ -842,6 +844,11 @@ def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
                     data.append(1)
                 elif mapping[at] == "name":
                     data.append(atomnames[i])
+                elif at == "label_comp_id":
+                    if mol.resname[i] not in _originalResname:
+                        data.append(mol.resname[i])
+                    else:
+                        data.append(_originalResname[mol.resname[i]])
                 else:
                     data.append(mol.__dict__[mapping[at]][i])
             aCat.append(data)
