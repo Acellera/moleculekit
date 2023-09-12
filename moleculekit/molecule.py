@@ -2305,18 +2305,18 @@ class Molecule(object):
         from openff.toolkit.topology import Molecule as OFFMolecule
         from openff.units import unit
 
-        sm = SmallMol(molc, fixHs=False, removeHs=False, _logger=False)
+        sm = SmallMol(self, fixHs=False, removeHs=False, _logger=False)
         sm.assignStereoChemistry(from3D=True)
 
         offmol = OFFMolecule.from_rdkit(sm._mol, hydrogens_are_explicit=True)
         offmol.partial_charges = self.charge * unit.e
-        assert np.array_equal(molc.name, [x.name for x in offmol.atoms])
+        assert np.array_equal(self.name, [x.name for x in offmol.atoms])
         assert np.array_equal(
-            molc.charge,
+            self.charge,
             [x.m_as(unit.e) for x in offmol.partial_charges],
         )
         assert np.array_equal(
-            molc.formalcharge, [x.formal_charge.m_as(unit.e) for x in offmol.atoms]
+            self.formalcharge, [x.formal_charge.m_as(unit.e) for x in offmol.atoms]
         )
 
         return offmol
