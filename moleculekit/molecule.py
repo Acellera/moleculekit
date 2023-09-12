@@ -2301,30 +2301,25 @@ class Molecule(object):
         return np.where((self.name == name) & (self.resid == resid))[0][0]
 
     def toOpenFFMolecule(self):
-        import tempfile
         from moleculekit.smallmol.smallmol import SmallMol
         from openff.toolkit.topology import Molecule as OFFMolecule
         from openff.units import unit
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            molc = self.copy()
-            pdbfile = os.path.join(tmpdir, "mol.pdb")
-            smiles = SmallMol(molc, fixHs=False).toSMILES(
-                explicitHs=True, kekulizeSmile=True
-            )
-            molc.write(pdbfile)
-            offmol = OFFMolecule.from_pdb_and_smiles(pdbfile, smiles=smiles)
-            offmol.partial_charges = self.charge * unit.e
-            assert np.array_equal(molc.name, [x.name for x in offmol.atoms])
-            assert np.array_equal(
-                molc.charge,
-                [x.m_as(unit.e) for x in offmol.partial_charges],
-            )
-            assert np.array_equal(
-                molc.formalcharge, [x.formal_charge.m_as(unit.e) for x in offmol.atoms]
-            )
+        sm = SmallMol(molc, fixHs=False, removeHs=False, _logger=False)
+        sm.assignStereoChemistry(from3D=True)
 
-            return offmol
+        offmol = OFFMolecule.from_rdkit(sm._mol, hydrogens_are_explicit=True)
+        offmol.partial_charges = self.charge * unit.e
+        assert np.array_equal(molc.name, [x.name for x in offmol.atoms])
+        assert np.array_equal(
+            molc.charge,
+            [x.m_as(unit.e) for x in offmol.partial_charges],
+        )
+        assert np.array_equal(
+            molc.formalcharge, [x.formal_charge.m_as(unit.e) for x in offmol.atoms]
+        )
+
+        return offmol
 
 
 class UniqueAtomID:

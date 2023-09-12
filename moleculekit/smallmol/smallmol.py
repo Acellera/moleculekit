@@ -26,6 +26,7 @@ _bondtypes_TypeToString.update(
         BondType.TRIPLE: "3",
         BondType.QUADRUPLE: "4",
         BondType.QUINTUPLE: "5",
+        BondType.HEXTUPLE: "6",
         BondType.AROMATIC: "ar",
     }
 )
@@ -36,6 +37,7 @@ _bondtypes_FullStringToType = {
     "TRIPLE": BondType.TRIPLE,
     "QUADRUPLE": BondType.QUADRUPLE,
     "QUINTUPLE": BondType.QUINTUPLE,
+    "HEXTUPLE": BondType.HEXTUPLE,
 }
 _bondtypes_StringToType = {val: key for key, val in _bondtypes_TypeToString.items()}
 
@@ -420,6 +422,10 @@ class SmallMol(object):
 
     def _getBonds(self, fileBonds=True, guessBonds=True):
         return self._bonds
+
+    def getProp(self, prop_name):
+        """Returns a given property of the molecule"""
+        return self._mol.GetProp(prop_name)
 
     def filter(self, sel):
         # Not implemented
@@ -854,6 +860,12 @@ class SmallMol(object):
         query = Chem.MolFromSmarts(metalSMARTS)
         return self._mol.HasSubstructMatch(query)
 
+    def assignStereoChemistry(self, from3D=True):
+        if from3D:
+            Chem.AssignStereochemistryFrom3D(self._mol)
+        else:
+            Chem.AssignStereochemistry(self._mol, force=True, cleanIt=True)
+
     def toSMARTS(self, explicitHs=False):
         """
         Returns the smarts string of the molecule
@@ -925,14 +937,14 @@ class SmallMol(object):
         from rdkit.Chem.rdchem import Conformer
 
         _mol = Chem.rdchem.RWMol()
-        conf = Conformer(mol.numAtoms)
         for i in range(mol.numAtoms):
             atm = Chem.rdchem.Atom(mol.element[i])
+            atm.SetNoImplicit(True)  # Stop rdkit from adding implicit hydrogens
+            atm.SetProp("_Name", mol.name[i])
             atm.SetFormalCharge(int(mol.formalcharge[i]))
             atm.SetProp("_TriposAtomType", mol.atomtype[i])
             atm.SetDoubleProp("_TriposPartialCharge", float(mol.charge[i]))
             _mol.AddAtom(atm)
-            conf.SetAtomPosition(i, mol.coords[i, :, 0].tolist())
 
         bonds, bondtypes = calculateUniqueBonds(mol.bonds, mol.bondtype)
         for i in range(bonds.shape[0]):
@@ -942,10 +954,14 @@ class SmallMol(object):
                 _bondtypes_StringToType[bondtypes[i]],
             )
 
-        _mol.AddConformer(conf, True)
+        for f in range(mol.numFrames):
+            conf = Conformer(mol.numAtoms)
+            for i in range(mol.numAtoms):
+                conf.SetAtomPosition(i, mol.coords[i, :, f].tolist())
+            _mol.AddConformer(conf, assignId=True)
 
         # print(Chem.MolToSmiles(_mol))
-        Chem.SanitizeMol(_mol)
+        Chem.SanitizeMol(_mol)  # , Chem.SANITIZE_ALL ^ Chem.SANITIZE_ADJUSTHS)
         Chem.Kekulize(_mol)
         if _logger:
             logger.info(
@@ -957,7 +973,9 @@ class SmallMol(object):
                 "Number of atoms changed while converting to rdkit molecule"
             )
         _mol.SetProp("_Name", mol.resname[0])
-        return _mol
+
+        # Return non-editable version
+        return Chem.Mol(_mol)
 
     def toMolecule(self, ids=None):
         """
