@@ -2246,27 +2246,36 @@ def PREPIread(filename, frame=None, topoloc=None):
     return MolFactory.construct(topo, None, filename, frame)
 
 
-def SDFread(filename, frame=None, topoloc=None):
+def SDFread(filename, frame=None, topoloc=None, mol_idx=None):
     # Some (mostly correct) info here: www.nonlinear.com/progenesis/sdf-studio/v0.9/faq/sdf-file-format-guidance.aspx
     # Format is correctly specified here: https://www.daylight.com/meetings/mug05/Kappler/ctfile.pdf
     chargemap = {"7": -3, "6": -2, "5": -1, "0": 0, "3": 1, "2": 2, "1": 3, "4": 0}
 
+    if mol_idx is None:
+        mol_idx = 0
+        logger.warning(
+            "MoleculeKit will only read the first molecule from the SDF file."
+        )
+
     with openFileOrStringIO(filename, "r") as f:
-        lines = f.readlines()
-        molend = False
-        for line in lines:
+        curr_mol = 0
+        lines = []
+        for line in f:
+            lines.append(line)
             if "V3000" in line:
                 raise RuntimeError(
                     "Moleculekit does not support parsing V3000 SDF files yet."
                 )
             if line.strip() == "$$$$":
-                molend = True
-            elif molend and line.strip() != "":
-                logger.warning(
-                    "MoleculeKit will only read the first molecule from the SDF file."
-                )
-                break
+                if curr_mol == mol_idx:
+                    break
+                else:
+                    curr_mol += 1
+                    lines = []
 
+        if mol_idx >= curr_mol and len(lines) == 0:
+            raise RuntimeError(f"SDF file contains only {curr_mol} molecules. Cannot read the requested mol_idx {mol_idx}")
+                    
         topo = Topology()
         coords = []
         mol_start = 0
@@ -2332,7 +2341,7 @@ def sdf_generator(sdffile):
         for line in lines:
             sdfstr += line
             if line.startswith("$$$$"):
-                yield Molecule(StringIO(sdfstr), type="sdf")
+                yield Molecule(StringIO(sdfstr), type="sdf", mol_idx=0)
                 sdfstr = ""
 
 
@@ -2917,6 +2926,23 @@ class _TestReaders(unittest.TestCase):
                 if pdbid in pdb_exceptions:
                     exc += pdb_exceptions[pdbid]
                 assert mol_equal(mol1, mol2, exceptFields=exc)
+
+    def test_sdf(self):
+        sdf_file = os.path.join(self.testfolder(), 'fda_drugs_light.sdf')
+        mol = Molecule(sdf_file)
+        assert mol.numAtoms == 41
+        mol = Molecule(sdf_file, mol_idx=99)
+        assert mol.numAtoms == 13
+        self.assertRaises(RuntimeError, Molecule, filename=sdf_file, mol_idx=100)
+
+        gen = sdf_generator(sdf_file)
+        ref_n_atoms = [41, 12, 33, 41]
+        k = 0
+        for mol in gen:
+            if k >= len(ref_n_atoms):
+                break
+            assert mol.numAtoms == ref_n_atoms[k]
+            k += 1
 # fmt: on
 
 if __name__ == "__main__":
