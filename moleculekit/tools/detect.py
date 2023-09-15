@@ -205,7 +205,6 @@ def detectParameterizableCores(graph):
 
     all_core_sides = []
     for core in list(nx.bridges(graph)):
-
         # Get side graphs of the core
         graph.remove_edge(*core)
         sideGraphs = list(connected_component_subgraphs(graph))
@@ -312,7 +311,9 @@ def _chooseTerminals(graph, centre, sideGraph):
     return chosen_terminals
 
 
-def detectParameterizableDihedrals(molecule, exclude_atoms=()):
+def detectParameterizableDihedrals(
+    molecule, exclude_atoms=(), return_all_dihedrals=False
+):
     """
     Detect parameterizable dihedral angles
 
@@ -322,6 +323,9 @@ def detectParameterizableDihedrals(molecule, exclude_atoms=()):
         Molecule object
     exclude_atoms : list
         Ignore dihedrals which consist purely of atoms in this list
+    return_all_dihedrals : bool
+        Return all dihedral terms. When False it filters out and selects only the dihedral
+        with the terminal with the highest centrality for each core.
 
     Return
     ------
@@ -403,11 +407,16 @@ def detectParameterizableDihedrals(molecule, exclude_atoms=()):
     # Get parameterizable dihedral angles
     dihedrals = []
     for core, sides in detectParameterizableCores(graph):
-
-        # Choose the best terminals for each side
-        all_terminals = [
-            _chooseTerminals(graph, centre, side) for centre, side in zip(core, sides)
-        ]
+        if return_all_dihedrals:
+            all_terminals = [
+                list(side.neighbors(centre)) for centre, side in zip(core, sides)
+            ]
+        else:
+            # Choose the best terminals for each side
+            all_terminals = [
+                _chooseTerminals(graph, centre, side)
+                for centre, side in zip(core, sides)
+            ]
 
         # Generate all terminal combinations
         all_terminals = itertools.product(*all_terminals)
@@ -498,7 +507,6 @@ class _TestEquivDetection(unittest.TestCase):
 
 
 if __name__ == "__main__":
-
     import sys
     import doctest
 
