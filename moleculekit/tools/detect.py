@@ -286,7 +286,6 @@ def _chooseTerminals(graph, centre, sideGraph):
     1. Largest closeness centrality
     2. Largest atomic number weighted closeness centrality
     """
-
     terminals = list(sideGraph.neighbors(centre))
 
     # Get a subgraph for each terminal
@@ -480,6 +479,21 @@ def detectParameterizableDihedrals(
             equivalent_dihedrals.get(groups, []) + [dihedral]
         )
     equivalent_dihedrals = sorted(equivalent_dihedrals.values())
+
+    # Filter out multiple dihedrals per dihedral bond
+    if not return_all_dihedrals:
+        from collections import defaultdict
+
+        dihedral_dict = defaultdict(list)
+        for dih in equivalent_dihedrals:
+            dihedral_dict[dih[0][1:3]].append(dih)
+
+        equivalent_dihedrals = []
+        for core in dihedral_dict:
+            equiv_lens = [len(x) for x in dihedral_dict[core]]
+            max_idx = equiv_lens.index(max(equiv_lens))
+            equivalent_dihedrals.append(dihedral_dict[core][max_idx])
+
     return equivalent_dihedrals
 
 
