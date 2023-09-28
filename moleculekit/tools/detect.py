@@ -187,13 +187,26 @@ def _getMethylGraph():
     return methyl
 
 
+def _getHydroxylGraph():
+    """
+    Generate a molecular graph for hydroxyl group
+    """
+
+    gg = nx.Graph()
+    gg.add_node(0, element="O", formal_charge=0)
+    gg.add_node(1, element="H", formal_charge=0)
+    gg.add_edge(0, 1)
+
+    return gg
+
+
 def connected_component_subgraphs(graph):
     return (
         graph.subgraph(component).copy() for component in nx.connected_components(graph)
     )
 
 
-def detectParameterizableCores(graph):
+def detectParameterizableCores(graph, skip_methyl=True, skip_hydroxyl=False):
     """
     Detect parametrizable dihedral angle cores (central atom pairs)
 
@@ -202,6 +215,7 @@ def detectParameterizableCores(graph):
     """
 
     methyl = _getMethylGraph()
+    hydroxyl = _getHydroxylGraph()
 
     all_core_sides = []
     for core in list(nx.bridges(graph)):
@@ -219,8 +233,16 @@ def detectParameterizableCores(graph):
         assert core[0] in sideGraphs[0] and core[1] in sideGraphs[1]
 
         # Skip if a side graph is a methyl group
-        if _checkIsomorphism(sideGraphs[0], methyl) or _checkIsomorphism(
-            sideGraphs[1], methyl
+        if skip_methyl and (
+            _checkIsomorphism(sideGraphs[0], methyl)
+            or _checkIsomorphism(sideGraphs[1], methyl)
+        ):
+            continue
+
+        # Skip if a side graph is a hydroxyl group
+        if skip_hydroxyl and (
+            _checkIsomorphism(sideGraphs[0], hydroxyl)
+            or _checkIsomorphism(sideGraphs[1], hydroxyl)
         ):
             continue
 
@@ -312,7 +334,11 @@ def _chooseTerminals(graph, centre, sideGraph):
 
 
 def detectParameterizableDihedrals(
-    molecule, exclude_atoms=(), return_all_dihedrals=False
+    molecule,
+    exclude_atoms=(),
+    return_all_dihedrals=False,
+    skip_methyl=True,
+    skip_hydroxyl=False,
 ):
     """
     Detect parameterizable dihedral angles
@@ -326,6 +352,10 @@ def detectParameterizableDihedrals(
     return_all_dihedrals : bool
         Return all dihedral terms. When False it filters out and selects only the dihedral
         with the terminal with the highest centrality for each core.
+    skip_methyl : bool
+        Setting to True will skip dihedrals whose terminal is a methyl group
+    skip_hydroxyl : bool
+        Setting to True will skip dihedrals whose terminal is a hydroxyl group
 
     Return
     ------
@@ -406,7 +436,9 @@ def detectParameterizableDihedrals(
 
     # Get parameterizable dihedral angles
     dihedrals = []
-    for core, sides in detectParameterizableCores(graph):
+    for core, sides in detectParameterizableCores(
+        graph, skip_methyl=skip_methyl, skip_hydroxyl=skip_hydroxyl
+    ):
         if return_all_dihedrals:
             all_terminals = [
                 list(side.neighbors(centre)) for centre, side in zip(core, sides)
