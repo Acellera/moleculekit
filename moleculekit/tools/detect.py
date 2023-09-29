@@ -27,7 +27,7 @@ def _getMolecularGraph(mol):
             i,
             element=mol.element[i],
             number=periodictable[mol.element[i].capitalize()].number,
-            formal_charge=mol.formalcharge[i],
+            formalcharge=mol.formalcharge[i],
         )
     graph.add_edges_from(mol.bonds)
 
@@ -45,12 +45,7 @@ def _getMolecularTree(graph, source):
     assert nx.is_connected(graph)
 
     tree = nx.DiGraph()
-    tree.add_node(
-        0,
-        base=source,
-        element=graph.nodes[source]["element"],
-        formal_charge=graph.nodes[source]["formal_charge"],
-    )
+    tree.add_node(0, base=source, **graph.nodes[source])
     current_nodes = list(tree.nodes)
     base_nodes = {source}
 
@@ -62,12 +57,7 @@ def _getMolecularTree(graph, source):
                 neighbor_filter, graph.neighbors(tree.nodes[current_node]["base"])
             ):
                 new_node = len(tree.nodes)
-                tree.add_node(
-                    new_node,
-                    base=neighbor,
-                    element=graph.nodes[neighbor]["element"],
-                    formal_charge=graph.nodes[neighbor]["formal_charge"],
-                )
+                tree.add_node(new_node, base=neighbor, **graph.nodes[neighbor])
                 tree.add_edge(current_node, new_node)
                 new_nodes.append(new_node)
 
@@ -79,6 +69,137 @@ def _getMolecularTree(graph, source):
     return tree
 
 
+def rooted_tree_isomorphism(t1, root1, t2, root2):
+    """Return if two rooted trees are isomorphic
+
+    Given two rooted trees `t1` and `t2`,
+    with roots `root1` and `root2` respectively
+    this routine will determine if they are isomorphic.
+
+    The idea is that for each node we build a hash of the node and its children which takes into account
+    all the properties of the node which we want (here elements and formal charges).
+    Thus isomorphic trees will have identical hashes.
+
+    We start from the bottom of the tree, going up. Everytime we find a new node+children combination
+    we generate a new hash.
+    If at any level hashes don't match it means that one of the two trees has a different structure,
+    this allows us to quit early while going up the tree.
+
+    The idea on how to iterate the tree is based on the same named networkx function, but the algorithm is completely original.
+
+    Parameters
+    ----------
+    t1 :  NetworkX graph
+        One of the trees being compared
+    root1 : int
+        a node of `t1` which is the root of the tree
+    t2 : undirected NetworkX graph
+        The other tree being compared
+    root2 : int
+        a node of `t2` which is the root of the tree
+    """
+    import numpy as np
+    from networkx.algorithms.isomorphism.tree_isomorphism import (
+        assign_levels,
+        group_by_levels,
+    )
+
+    assert nx.is_tree(t1)
+    assert nx.is_tree(t2)
+
+    # compute the distance from the root, with 0 for our
+    levels1 = assign_levels(t1, root1)
+    levels2 = assign_levels(t2, root2)
+
+    # height
+    h1 = max(levels1.values())
+    h2 = max(levels2.values())
+    if h1 != h2:
+        return False
+
+    # collect nodes into a dict by level
+    L1 = group_by_levels(levels1)
+    L2 = group_by_levels(levels2)
+
+    # We add all atom properties to the atom_props dictionaries
+    # The hashes dict stores the unique hashes which are discovered while traversing the tree
+    # node_hashes stores the final hashes assigned to each node. We start off by giving them the hash of their element/charge
+    node_hashes1 = {}
+    node_hashes2 = {}
+    atom_props1 = {}
+    atom_props2 = {}
+    hashes = {}
+    hashcount = 0
+    for v in t1:
+        pp = t1.nodes[v]
+        key = f'{pp["element"]}{pp["formalcharge"]}'
+        atom_props1[v] = key
+        if key not in hashes:
+            hashes[key] = hashcount
+            hashcount += 1
+        node_hashes1[v] = hashes[key]
+
+    for v in t2:
+        pp = t2.nodes[v]
+        key = f'{pp["element"]}{pp["formalcharge"]}'
+        atom_props2[v] = key
+        if key not in hashes:
+            hashes[key] = hashcount
+            hashcount += 1
+        node_hashes2[v] = hashes[key]
+
+    # nothing to do on last level so start on h-1
+    for i in range(h1 - 1, -1, -1):
+        if len(L1[i]) != len(L2[i]):
+            return False
+
+        curr_hashes1 = []
+        curr_hashes2 = []
+
+        for v in L1[i]:
+            node_key = atom_props1[v]
+            if t1.out_degree(v) > 0:
+                # Create a new label for the atom which looks like X|Y,Z,W where X is the hash
+                # of the current atom and Y,Z,W the hashes of it's i.e. 3 children
+                node_key = (
+                    str(node_hashes1[v])
+                    + "|"
+                    + ",".join(sorted(str(node_hashes1[u]) for u in t1.successors(v)))
+                )
+                if node_key not in hashes:
+                    hashes[node_key] = hashcount
+                    hashcount += 1
+            # Assign to this node the new hash
+            node_hashes1[v] = hashes[node_key]
+            # Keep a collection of the hashes of this level to compare at the end
+            curr_hashes1.append(hashes[node_key])
+
+        # Identical loop as above for the second tree. Too lazy to generalize it right now
+        # TODO: Generalize this loop out
+        for v in L2[i]:
+            node_key = atom_props2[v]
+            if t2.out_degree(v) > 0:
+                # get all the pairs of labels and nodes of children
+                # and sort by labels
+                node_key = (
+                    str(node_hashes2[v])
+                    + "|"
+                    + ",".join(sorted(str(node_hashes2[u]) for u in t2.successors(v)))
+                )
+                if node_key not in hashes:
+                    hashes[node_key] = hashcount
+                    hashcount += 1
+            node_hashes2[v] = hashes[node_key]
+            curr_hashes2.append(hashes[node_key])
+
+        # If the hashes of the current level don't match, the trees are not isomorphic
+        if not np.array_equal(sorted(curr_hashes1), sorted(curr_hashes2)):
+            return False
+
+    # If the root hashes are identical we won! The trees are isomorphic
+    return node_hashes1[root1] == node_hashes2[root2]
+
+
 def _checkIsomorphism(graph1, graph2):
     """
     Check if two molecular graphs are isomorphic based on topology (bonds) and elements.
@@ -88,7 +209,7 @@ def _checkIsomorphism(graph1, graph2):
         graph1,
         graph2,
         node_match=lambda node1, node2: node1["element"] == node2["element"]
-        and node1["formal_charge"] == node2["formal_charge"],
+        and node1["formalcharge"] == node2["formalcharge"],
     )
 
 
@@ -122,7 +243,7 @@ def detectEquivalentAtoms(molecule):
     >>> molFile = os.path.join(home('test-detect'), 'benzamidine.mol2')
     >>> mol = Molecule(molFile)
 
-    Find the equivalent atoms of bezamidine
+    Find the equivalent atoms of benzamidine
     >>> equivalent_groups, equivalent_atoms, equivalent_group_by_atom = detectEquivalentAtoms(mol)
     >>> equivalent_groups
     [(0,), (1, 5), (2, 4), (3,), (6,), (7, 11), (8, 10), (9,), (12, 13), (14, 15, 16, 17)]
@@ -144,10 +265,8 @@ def detectEquivalentAtoms(molecule):
     >>> equivalent_group_by_atom
     [0, 1, 2, 3, 4, 5, 6, 7]
     """
-    from networkx.algorithms.isomorphism import rooted_tree_isomorphism
-
     # Generate a molecular tree for each atom
-    graph = _getMolecularGraph(molecule)
+    graph = molecule.toGraph(fields=("element", "formalcharge"))
     trees = [_getMolecularTree(graph, node) for node in graph.nodes]
 
     equivalent_atoms = {}
@@ -155,7 +274,7 @@ def detectEquivalentAtoms(molecule):
     equivalent_atoms[0] = equivalent_groups[0]
     for i in range(1, len(trees)):
         for g, grp in enumerate(equivalent_groups):
-            if _checkIsomorphism(trees[i], trees[grp[0]]):
+            if rooted_tree_isomorphism(trees[i], 0, trees[grp[0]], 0):
                 equivalent_groups[g].append(i)
                 equivalent_atoms[i] = equivalent_groups[g]
                 break
@@ -176,10 +295,10 @@ def _getMethylGraph():
     """
 
     methyl = nx.Graph()
-    methyl.add_node(0, element="C", formal_charge=0)
-    methyl.add_node(1, element="H", formal_charge=0)
-    methyl.add_node(2, element="H", formal_charge=0)
-    methyl.add_node(3, element="H", formal_charge=0)
+    methyl.add_node(0, element="C", formalcharge=0)
+    methyl.add_node(1, element="H", formalcharge=0)
+    methyl.add_node(2, element="H", formalcharge=0)
+    methyl.add_node(3, element="H", formalcharge=0)
     methyl.add_edge(0, 1)
     methyl.add_edge(0, 2)
     methyl.add_edge(0, 3)
@@ -193,8 +312,8 @@ def _getHydroxylGraph():
     """
 
     gg = nx.Graph()
-    gg.add_node(0, element="O", formal_charge=0)
-    gg.add_node(1, element="H", formal_charge=0)
+    gg.add_node(0, element="O", formalcharge=0)
+    gg.add_node(1, element="H", formalcharge=0)
     gg.add_edge(0, 1)
 
     return gg
@@ -486,7 +605,7 @@ def detectParameterizableDihedrals(
 
         dihedral_dict = defaultdict(list)
         for dih in equivalent_dihedrals:
-            dihedral_dict[sorted(dih[0][1:3])].append(dih)
+            dihedral_dict[tuple(sorted(dih[0][1:3]))].append(dih)
 
         equivalent_dihedrals = []
         for core in dihedral_dict:
