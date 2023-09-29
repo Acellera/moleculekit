@@ -486,7 +486,7 @@ def detectParameterizableDihedrals(
 
         dihedral_dict = defaultdict(list)
         for dih in equivalent_dihedrals:
-            dihedral_dict[dih[0][1:3]].append(dih)
+            dihedral_dict[sorted(dih[0][1:3])].append(dih)
 
         equivalent_dihedrals = []
         for core in dihedral_dict:
