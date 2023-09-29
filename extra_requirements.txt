@@ -1,6 +1,6 @@
 tqdm
 ipython
-matplotlib
+matplotlib-base
 joblib
 scikit-learn
 rdkit>=2020.09.5
