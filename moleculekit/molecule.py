@@ -2023,7 +2023,7 @@ class Molecule(object):
         name=None,
         viewerhandle=None,
         gui=False,
-        napurl="http://localhost:8090",
+        pmviewurl="http://localhost:8090",
     ):
         """Visualizes the molecule in a molecular viewer
 
@@ -2039,7 +2039,7 @@ class Molecule(object):
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
         guessBonds : bool
             Allow the viewer to guess bonds for the molecule
-        viewer : str ('nap', 'pymol', 'vmd', 'webgl')
+        viewer : str ('pmview', 'pymol', 'vmd', 'webgl')
             Choose viewer backend. Default is taken from either moleculekit.config or if it doesn't exist from moleculekit.config
         hold : bool
             If set to True, it will not visualize the molecule but instead collect representations until set back to False.
@@ -2047,8 +2047,8 @@ class Molecule(object):
             A name to give to the molecule in the viewer
         viewerhandle : :class:`VMD <moleculekit.vmdviewer.VMD>` object, optional
             A specific viewer in which to visualize the molecule. If None it will use the current default viewer.
-        napurl : string
-            URL of NAP REST server
+        pmviewurl : string
+            URL of pmview REST server
         """
         from moleculekit.util import tempname, find_executable
 
@@ -2058,7 +2058,7 @@ class Molecule(object):
             viewer = _config["viewer"]
 
         if viewer is None:
-            for exe in ["nap", "vmd", "pymol"]:
+            for exe in ["pmview", "vmd", "pymol"]:
                 found = find_executable(exe)
                 if found is not None:
                     viewer = exe
@@ -2095,19 +2095,19 @@ class Molecule(object):
             retval = self._viewNGL(gui=gui)
         elif viewer.lower() == "pymol":
             self._viewPymol(name)
-        elif viewer.lower() == "nap":
-            self._viewNAP(name, url=napurl)
+        elif viewer.lower() == "pmview":
+            self._viewPMView(name, url=pmviewurl)
         else:
             raise ValueError("Unknown viewer.")
 
         if retval is not None:
             return retval
 
-    def _viewNAP(self, name, url):
-        from moleculekit.viewer import getCurrentNAPViewer, viewingMols
+    def _viewPMView(self, name, url):
+        from moleculekit.viewer import getCurrentPMViewer, viewingMols
         import uuid
 
-        getCurrentNAPViewer(url=url)
+        getCurrentPMViewer(url=url)
 
         viewname = name
         if name is None:

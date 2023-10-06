@@ -51,35 +51,37 @@ def _pymol_get_mols():
     return cmd.get_object_list("all")
 
 
-def _launch_nap_exe(port):
+def _launch_pmview_exe(port):
     from moleculekit.util import find_executable, wait_for_port, check_port
     from subprocess import Popen
 
     if not check_port(port):
-        napexe = find_executable("nap")
-        if napexe is None:
-            raise FileNotFoundError("Could not find 'nap' viewer executable in PATH")
-        Popen([napexe])
+        pmview_exe = find_executable("pmview")
+        if pmview_exe is None:
+            raise FileNotFoundError(
+                "Could not find 'pmview' executable in PATH. You can install it with 'conda install pmview -c acellera'"
+            )
+        Popen([pmview_exe])
 
         wait_for_port(port)
 
 
-def _nap_launch(url):
+def _pmview_launch(url):
     from moleculekit.util import check_port
 
     port = int(url.split(":")[-1])
     if not check_port(port):
-        _launch_nap_exe(port)
+        _launch_pmview_exe(port)
 
 
-def _nap_view(mol, viewname, bonds=None, url=None):
+def _pmview_view(mol, viewname, bonds=None, url=None):
     from moleculekit.util import check_port
     import requests
     import time
 
     port = int(url.split(":")[-1])
     if not check_port(port):
-        _nap_launch(url)
+        _pmview_launch(url)
 
     topo = tempname(suffix=".cif")
     traj = tempname(suffix=".xtc")
@@ -97,7 +99,7 @@ def _nap_view(mol, viewname, bonds=None, url=None):
     os.remove(topo)
 
     t = time.time()
-    while viewname not in _nap_get_mols(url):
+    while viewname not in _pmview_get_mols(url):
         # Wait for the mol to appear in the viewer before marking it as showing
         time.sleep(_checkFrequency)
         if time.time() - t > 10:  # Something went bad
@@ -106,7 +108,7 @@ def _nap_view(mol, viewname, bonds=None, url=None):
     showing[viewname] = True
 
 
-def _nap_get_mols(url):
+def _pmview_get_mols(url):
     from moleculekit.util import check_port
     import requests
     import json
@@ -127,11 +129,11 @@ def getCurrentPymolViewer():
     getCurrentViewer(_pymol_launch, _pymol_view, _pymol_get_mols)
 
 
-def getCurrentNAPViewer(url):
+def getCurrentPMViewer(url):
     getCurrentViewer(
-        lambda: _nap_launch(url),
-        lambda *args: _nap_view(*args, url=url),
-        lambda: _nap_get_mols(url),
+        lambda: _pmview_launch(url),
+        lambda *args: _pmview_view(*args, url=url),
+        lambda: _pmview_get_mols(url),
     )
 
 
