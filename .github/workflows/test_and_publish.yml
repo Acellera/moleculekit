@@ -41,7 +41,7 @@ jobs:
       - name: Install moleculekit conda deps. rdkit version is just set high for tests to pass
         run: |
           mamba install -y -q --file extra_requirements.txt python=${{ matrix.python-version }} -c acellera -c conda-forge
-          mamba install -y -q rdkit=2022.03.4 -c conda-forge
+          mamba install -y -q rdkit=2023.03.3 -c conda-forge
 
       - name: Install moleculekit
         run: |
