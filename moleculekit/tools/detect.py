@@ -325,7 +325,9 @@ def connected_component_subgraphs(graph):
     )
 
 
-def detectParameterizableCores(graph, skip_methyl=True, skip_hydroxyl=False):
+def detectParameterizableCores(
+    graph, skip_methyl=True, skip_hydroxyl=False, skip_terminal_hs=False
+):
     """
     Detect parametrizable dihedral angle cores (central atom pairs)
 
@@ -370,6 +372,15 @@ def detectParameterizableCores(graph, skip_methyl=True, skip_hydroxyl=False):
             continue
         if graph.nodes[core[1]]["element"] == "C" and graph.degree(core[1]) == 2:
             continue
+
+        # Skip if side contains only Hs
+        if skip_terminal_hs:
+            keys_0 = [x for x in sideGraphs[0].nodes if x != core[0]]
+            keys_1 = [x for x in sideGraphs[1].nodes if x != core[1]]
+            if all([graph.nodes[i]["element"] == "H" for i in keys_0]):
+                continue
+            if all([graph.nodes[i]["element"] == "H" for i in keys_1]):
+                continue
 
         all_core_sides.append((core, sideGraphs))
 
@@ -457,6 +468,7 @@ def detectParameterizableDihedrals(
     return_all_dihedrals=False,
     skip_methyl=True,
     skip_hydroxyl=False,
+    skip_terminal_hs=False,
 ):
     """
     Detect parameterizable dihedral angles
@@ -474,6 +486,8 @@ def detectParameterizableDihedrals(
         Setting to True will skip dihedrals whose terminal is a methyl group
     skip_hydroxyl : bool
         Setting to True will skip dihedrals whose terminal is a hydroxyl group
+    skip_terminal_hs : bool
+        Setting to True will skip dihedrals ending in hydrogens
 
     Return
     ------
@@ -555,7 +569,10 @@ def detectParameterizableDihedrals(
     # Get parameterizable dihedral angles
     dihedrals = []
     for core, sides in detectParameterizableCores(
-        graph, skip_methyl=skip_methyl, skip_hydroxyl=skip_hydroxyl
+        graph,
+        skip_methyl=skip_methyl,
+        skip_hydroxyl=skip_hydroxyl,
+        skip_terminal_hs=skip_terminal_hs,
     ):
         if return_all_dihedrals:
             all_terminals = [
@@ -669,6 +686,34 @@ class _TestEquivDetection(unittest.TestCase):
         self._compare(eqgroups, eqgroups_ref)
         self._compare(eqatoms, eqatoms_ref)
         self._compare(eqgroupbyatom, eqgroupbyatom_ref)
+
+    def test_detect_dihedrals(self):
+        import os
+        from moleculekit.home import home
+        from moleculekit.molecule import Molecule
+        import numpy as np
+
+        mol = Molecule(os.path.join(home(dataDir="test-detect"), "m19.cif"))
+        res1 = detectParameterizableDihedrals(mol, skip_terminal_hs=False)
+        ref1 = [
+            [(10, 9, 8, 12)],
+            [(12, 13, 14, 15)],
+            [(13, 14, 15, 16)],
+            [(14, 13, 12, 18)],
+            [(18, 6, 5, 20)],
+            [(20, 1, 0, 21), (20, 1, 0, 22)],
+        ]
+        assert res1 == ref1
+
+        res2 = detectParameterizableDihedrals(mol, skip_terminal_hs=True)
+        ref2 = [
+            [(10, 9, 8, 12)],
+            [(12, 13, 14, 15)],
+            [(13, 14, 15, 16)],
+            [(14, 13, 12, 18)],
+            [(18, 6, 5, 20)],
+        ]
+        assert res2 == ref2
 
 
 if __name__ == "__main__":
