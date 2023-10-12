@@ -98,7 +98,8 @@ def rooted_tree_isomorphism(t1, root1, t2, root2, keyfunc):
     root2 : int
         a node of `t2` which is the root of the tree
     keyfunc : function
-        Function which generates the unique key for each node. It should take as input the node and return a string
+        Function which generates the description key for each node.
+        It should take as input the node and return a string
     """
     import numpy as np
     from networkx.algorithms.isomorphism.tree_isomorphism import (
@@ -746,6 +747,29 @@ class _TestEquivDetection(unittest.TestCase):
             [(18, 6, 5, 20)],
         ]
         assert res == ref, f"{res}, {ref}"
+
+        res = detectParameterizableDihedrals(
+            mol, skip_terminal_hs=True, return_all_dihedrals=True
+        )
+        ref = [
+            [(4, 5, 6, 7)],
+            [(4, 5, 6, 18)],
+            [(7, 6, 5, 20)],
+            [(7, 8, 9, 10)],
+            [(7, 8, 9, 11)],
+            [(8, 12, 13, 14)],
+            [(10, 9, 8, 12)],
+            [(11, 9, 8, 12)],
+            [(12, 13, 14, 15)],
+            [(12, 13, 14, 26), (12, 13, 14, 27)],
+            [(13, 14, 15, 16)],
+            [(13, 14, 15, 17)],
+            [(14, 13, 12, 18)],
+            [(16, 15, 14, 26), (16, 15, 14, 27)],
+            [(17, 15, 14, 26), (17, 15, 14, 27)],
+            [(18, 6, 5, 20)],
+        ]
+        assert res == ref, f"{res}\n{ref}"
 
         # Interesting case because if you don't use formal charges in the weighted centrality
         # score it messes up by choosing once the charged (in one of the copies)
