@@ -69,7 +69,7 @@ def _getMolecularTree(graph, source):
     return tree
 
 
-def rooted_tree_isomorphism(t1, root1, t2, root2):
+def rooted_tree_isomorphism(t1, root1, t2, root2, keyfunc):
     """Return if two rooted trees are isomorphic
 
     Given two rooted trees `t1` and `t2`,
@@ -97,6 +97,9 @@ def rooted_tree_isomorphism(t1, root1, t2, root2):
         The other tree being compared
     root2 : int
         a node of `t2` which is the root of the tree
+    keyfunc : function
+        Function which generates the description key for each node.
+        It should take as input the node and return a string
     """
     import numpy as np
     from networkx.algorithms.isomorphism.tree_isomorphism import (
@@ -106,6 +109,10 @@ def rooted_tree_isomorphism(t1, root1, t2, root2):
 
     assert nx.is_tree(t1)
     assert nx.is_tree(t2)
+
+    # Check if root nodes have same key
+    if keyfunc(t1.nodes[root1]) != keyfunc(t2.nodes[root2]):
+        return False
 
     # compute the distance from the root, with 0 for our
     levels1 = assign_levels(t1, root1)
@@ -132,7 +139,7 @@ def rooted_tree_isomorphism(t1, root1, t2, root2):
     hashcount = 0
     for v in t1:
         pp = t1.nodes[v]
-        key = f'{pp["element"]}{pp["formalcharge"]}'
+        key = keyfunc(pp)
         atom_props1[v] = key
         if key not in hashes:
             hashes[key] = hashcount
@@ -141,7 +148,7 @@ def rooted_tree_isomorphism(t1, root1, t2, root2):
 
     for v in t2:
         pp = t2.nodes[v]
-        key = f'{pp["element"]}{pp["formalcharge"]}'
+        key = keyfunc(pp)
         atom_props2[v] = key
         if key not in hashes:
             hashes[key] = hashcount
@@ -274,7 +281,13 @@ def detectEquivalentAtoms(molecule):
     equivalent_atoms[0] = equivalent_groups[0]
     for i in range(1, len(trees)):
         for g, grp in enumerate(equivalent_groups):
-            if rooted_tree_isomorphism(trees[i], 0, trees[grp[0]], 0):
+            if rooted_tree_isomorphism(
+                trees[i],
+                0,
+                trees[grp[0]],
+                0,
+                keyfunc=lambda n: f'{n["element"]}{n["formalcharge"]}',
+            ):
                 equivalent_groups[g].append(i)
                 equivalent_atoms[i] = equivalent_groups[g]
                 break
@@ -387,18 +400,19 @@ def detectParameterizableCores(
     return all_core_sides
 
 
-def _weighted_closeness_centrality(graph, node, weight=None):
+def _weighted_closeness_centrality(graph, node, weightfunc=None):
     """
     Weighted closeness centrality
 
-    Identical to networkx.closeness_centrality, except the shorted path lengths are weighted by a node attribute.
+    Identical to networkx.closeness_centrality, except the shorted path lengths are weighted
+    by a function which takes as input the node and outputs a score.
     """
 
     lengths = nx.shortest_path_length(graph, source=node)
     del lengths[node]
     weights = (
-        {node_: graph.nodes[node_][weight] for node_ in lengths}
-        if weight
+        {node_: weightfunc(graph.nodes[node_]) for node_ in lengths}
+        if weightfunc
         else {node_: 1 for node_ in lengths}
     )
     centrality = sum(weights.values()) / sum(
@@ -432,8 +446,17 @@ def _chooseTerminals(graph, centre, sideGraph):
 
     # Compute a score for each terminal
     centralities = [nx.closeness_centrality(graph, terminal) for terminal in terminals]
+
+    def _weightfunc(node):
+        # Give following score to each atom:
+        # element number + formal charge * 0.1 + 0.5
+        # The reasoning is that with formal charge 0 you will get for C 6.5
+        # With -1 formal charge you will get 6.49, with +1 formal charge you will get 6.56
+        # That way we can differentiate between formal charges and elements
+        return node["number"] + node["formalcharge"] * 0.01 + 0.5
+
     weightedCentralities = [
-        _weighted_closeness_centrality(graph, terminal, weight="number")
+        _weighted_closeness_centrality(graph, terminal, weightfunc=_weightfunc)
         for terminal in terminals
     ]
     scores = list(zip(centralities, weightedCentralities))
@@ -566,46 +589,49 @@ def detectParameterizableDihedrals(
     # Get a molecular graph
     graph = _getMolecularGraph(molecule)
 
+    # Get the equivalence groups for each atom in the molecule
+    _, _, equivalent_group_by_atom = detectEquivalentAtoms(molecule)
+
     # Get parameterizable dihedral angles
-    dihedrals = []
+    chosen_groups = []
+    all_dihedrals = []
     for core, sides in detectParameterizableCores(
         graph,
         skip_methyl=skip_methyl,
         skip_hydroxyl=skip_hydroxyl,
         skip_terminal_hs=skip_terminal_hs,
     ):
-        if return_all_dihedrals:
-            all_terminals = [
-                list(side.neighbors(centre)) for centre, side in zip(core, sides)
-            ]
-        else:
-            # Choose the best terminals for each side
-            all_terminals = [
-                _chooseTerminals(graph, centre, side)
-                for centre, side in zip(core, sides)
-            ]
+        # Keep all terminals
+        all_terminals = [
+            list(side.neighbors(centre)) for centre, side in zip(core, sides)
+        ]
+        # Choose the best terminals for each side
+        chosen_left = _chooseTerminals(graph, core[0], sides[0])
+        chosen_right = _chooseTerminals(graph, core[1], sides[1])
 
-        # Generate all terminal combinations
-        all_terminals = itertools.product(*all_terminals)
-
-        # Generate new dihedral angles
-        for terminals in all_terminals:
+        # Generate all terminal combinations for all dihedrals
+        for terminals in itertools.product(*all_terminals):
             new_dihedral = (terminals[0], *core, terminals[1])
             if all([idx in exclude_atoms for idx in new_dihedral]):
                 # Skip dihedrals consisting purely of atoms in exclude_atoms
                 continue
-            dihedrals.append(new_dihedral)
+            all_dihedrals.append(new_dihedral)
+
+            # Add dihedral group to chosen if the terminals match the chosen ones
+            groups = [equivalent_group_by_atom[x] for x in new_dihedral]
+            groups = groups[::-1] if groups[::-1] < groups else groups
+            if terminals[0] in chosen_left and terminals[1] in chosen_right:
+                chosen_groups.append(tuple(groups))
 
     # Get equivalent groups for each atom for each dihedral
-    _, _, equivalent_group_by_atom = detectEquivalentAtoms(molecule)
     dihedral_groups = [
         tuple([equivalent_group_by_atom[atom] for atom in dihedral])
-        for dihedral in dihedrals
+        for dihedral in all_dihedrals
     ]
 
     # Group equivalent dihedral angles and reverse them that equivalent atoms are matched
-    equivalent_dihedrals = OrderedDict()
-    for dihedral, groups in zip(dihedrals, dihedral_groups):
+    equivalent_dihedrals = {}
+    for dihedral, groups in zip(all_dihedrals, dihedral_groups):
         dihedral, groups = (
             (dihedral[::-1], groups[::-1])
             if groups[::-1] < groups
@@ -614,14 +640,20 @@ def detectParameterizableDihedrals(
         equivalent_dihedrals[groups] = sorted(
             equivalent_dihedrals.get(groups, []) + [dihedral]
         )
-    equivalent_dihedrals = sorted(equivalent_dihedrals.values())
 
-    # Filter out multiple dihedrals per dihedral bond
+    # Keep only chosen dihedrals and filter out multiple dihedrals per dihedral bond
     if not return_all_dihedrals:
         from collections import defaultdict
 
+        # Delete all groups which were not chosen
+        to_delete = [
+            group for group in equivalent_dihedrals if group not in chosen_groups
+        ]
+        for td in to_delete:
+            del equivalent_dihedrals[td]
+
         dihedral_dict = defaultdict(list)
-        for dih in equivalent_dihedrals:
+        for dih in equivalent_dihedrals.values():
             dihedral_dict[tuple(sorted(dih[0][1:3]))].append(dih)
 
         equivalent_dihedrals = []
@@ -629,8 +661,10 @@ def detectParameterizableDihedrals(
             equiv_lens = [len(x) for x in dihedral_dict[core]]
             max_idx = equiv_lens.index(max(equiv_lens))
             equivalent_dihedrals.append(dihedral_dict[core][max_idx])
+    else:
+        equivalent_dihedrals = equivalent_dihedrals.values()
 
-    return equivalent_dihedrals
+    return sorted(equivalent_dihedrals)
 
 
 class _TestEquivDetection(unittest.TestCase):
@@ -691,29 +725,82 @@ class _TestEquivDetection(unittest.TestCase):
         import os
         from moleculekit.home import home
         from moleculekit.molecule import Molecule
-        import numpy as np
 
         mol = Molecule(os.path.join(home(dataDir="test-detect"), "m19.cif"))
-        res1 = detectParameterizableDihedrals(mol, skip_terminal_hs=False)
-        ref1 = [
-            [(10, 9, 8, 12)],
+        res = detectParameterizableDihedrals(mol, skip_terminal_hs=False)
+        ref = [
+            [(11, 9, 8, 12)],
             [(12, 13, 14, 15)],
-            [(13, 14, 15, 16)],
+            [(13, 14, 15, 17)],
             [(14, 13, 12, 18)],
             [(18, 6, 5, 20)],
             [(20, 1, 0, 21), (20, 1, 0, 22)],
         ]
-        assert res1 == ref1
+        assert res == ref, f"{res}, {ref}"
 
-        res2 = detectParameterizableDihedrals(mol, skip_terminal_hs=True)
-        ref2 = [
-            [(10, 9, 8, 12)],
+        res = detectParameterizableDihedrals(mol, skip_terminal_hs=True)
+        ref = [
+            [(11, 9, 8, 12)],
             [(12, 13, 14, 15)],
-            [(13, 14, 15, 16)],
+            [(13, 14, 15, 17)],
             [(14, 13, 12, 18)],
             [(18, 6, 5, 20)],
         ]
-        assert res2 == ref2
+        assert res == ref, f"{res}, {ref}"
+
+        res = detectParameterizableDihedrals(
+            mol, skip_terminal_hs=True, return_all_dihedrals=True
+        )
+        ref = [
+            [(4, 5, 6, 7)],
+            [(4, 5, 6, 18)],
+            [(7, 6, 5, 20)],
+            [(7, 8, 9, 10)],
+            [(7, 8, 9, 11)],
+            [(8, 12, 13, 14)],
+            [(10, 9, 8, 12)],
+            [(11, 9, 8, 12)],
+            [(12, 13, 14, 15)],
+            [(12, 13, 14, 26), (12, 13, 14, 27)],
+            [(13, 14, 15, 16)],
+            [(13, 14, 15, 17)],
+            [(14, 13, 12, 18)],
+            [(16, 15, 14, 26), (16, 15, 14, 27)],
+            [(17, 15, 14, 26), (17, 15, 14, 27)],
+            [(18, 6, 5, 20)],
+        ]
+        assert res == ref, f"{res}\n{ref}"
+
+        # Interesting case because if you don't use formal charges in the weighted centrality
+        # score it messes up by choosing once the charged (in one of the copies)
+        # and once the uncharged atom (in the other 3 copies of the terminal)
+        mol = Molecule(os.path.join(home(dataDir="test-detect"), "OAH_Sampl5_host.cif"))
+        res = detectParameterizableDihedrals(mol, skip_terminal_hs=True)
+        ref = [
+            [
+                (0, 31, 72, 75),
+                (7, 9, 64, 67),
+                (15, 9, 64, 67),
+                (20, 23, 56, 59),
+                (25, 23, 56, 59),
+                (33, 31, 72, 75),
+                (48, 51, 80, 83),
+                (53, 51, 80, 83),
+            ],
+            [(9, 64, 67, 70), (23, 56, 59, 62), (31, 72, 75, 78), (51, 80, 83, 86)],
+            [(56, 59, 62, 63), (64, 67, 70, 71), (72, 75, 78, 79), (80, 83, 86, 166)],
+            [
+                (132, 138, 168, 172),
+                (136, 138, 168, 172),
+                (142, 149, 163, 173),
+                (144, 149, 163, 173),
+                (151, 158, 159, 171),
+                (153, 158, 159, 171),
+                (176, 182, 161, 170),
+                (180, 182, 161, 170),
+            ],
+        ]
+        assert res == ref
 
 
 if __name__ == "__main__":
