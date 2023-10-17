@@ -331,6 +331,12 @@ class Molecule(object):
     _traj_fields = ("coords", "box", "boxangles", "fileloc", "step", "time")
     _atom_and_coord_fields = tuple(list(_atom_fields) + ["coords"])
     _atom_and_traj_fields = tuple(list(_atom_fields) + list(_traj_fields))
+    _all_fields = tuple(
+        list(_atom_fields)
+        + list(_traj_fields)
+        + list(_connectivity_fields)
+        + ["crystalinfo"]
+    )
 
     _dtypes = {
         "record": object,
@@ -969,22 +975,50 @@ class Molecule(object):
             return deepcopy(self)
         else:
             if sel is not None:
+                sel_str = sel
                 sel = self.atomselect(sel)
+                if sel.sum() == 0:
+                    raise RuntimeError(
+                        f'No atoms were selected with atom selection "{sel_str}".'
+                    )
             if frames is not None:
                 frames = ensurelist(frames)
 
             newmol = Molecule().empty(self.numAtoms)
+
+            # Copy first the connectivity fields because updating bonds/angles/dihedrals requires this
+            for field in self._connectivity_fields:
+                newmol.__dict__[field] = self.__dict__[field].copy()
+            if sel is not None:
+                newmol._updateBondsAnglesDihedrals(np.where(~sel)[0])
+
+            # Copy the rest of the topology fields
             for field in self._topo_fields:
                 if self.__dict__[field] is not None:
+                    if field in self._connectivity_fields:
+                        continue
                     field_val = self.__dict__[field]
                     if field in self._atom_fields and sel is not None:
                         field_val = field_val[sel]
                     newmol.__dict__[field] = deepcopy(field_val)
 
-            if frames is not None:
-                newmol.coords = self.coords[:, :, frames].copy()
+            # Copy and subselect the trajectory fields
+            if frames is None:
+                for field in self._traj_fields:
+                    if self.__dict__[field] is not None:
+                        newmol.__dict__[field] = deepcopy(self.__dict__[field])
             else:
-                newmol.coords = self.coords.copy()
+                for field in ("coords", "box", "boxangles"):
+                    if self.__dict__[field] is not None:
+                        newmol.__dict__[field] = self.__dict__[field][
+                            ..., frames
+                        ].copy()
+                for field in ("fileloc", "step", "time"):
+                    if self.__dict__[field] is not None:
+                        newmol.__dict__[field] = [
+                            deepcopy(self.__dict__[field][f]) for f in frames
+                        ]
+
             if sel is not None:
                 newmol.coords = newmol.coords[sel].copy()
             return newmol
@@ -1022,6 +1056,11 @@ class Molecule(object):
 
         Needs to be called before removing atoms!
         """
+        if isinstance(idx, np.ndarray) and idx.dtype == bool:
+            raise RuntimeError(
+                "_updateBondsAnglesDihedrals cannot work with boolean selections"
+            )
+
         if len(idx) == 0:
             return
         if (
@@ -3255,7 +3294,15 @@ class _TestMolecule(TestCase):
 
     def test_advanced_copy(self):
         traj2 = self.trajmol.copy(frames=[1, 3])
-        assert mol_equal(traj2, self.trajmol, exceptFields=["coords"])
+        traj3 = self.trajmol.copy()
+        traj3.dropFrames(keep=[1, 3])
+        assert mol_equal(
+            traj2,
+            self.trajmol,
+            checkFields=Molecule._all_fields,
+            exceptFields=["coords", "box", "boxangles", "fileloc", "step", "time"],
+        )
+        assert mol_equal(traj2, traj3)
         assert np.array_equal(traj2.coords, self.trajmol.coords[:, :, [1, 3]])
         assert not np.array_equal(traj2.coords, self.trajmol.coords[:, :, [2, 3]])
 
@@ -3263,7 +3310,12 @@ class _TestMolecule(TestCase):
         traj3 = self.trajmol.copy()
         traj3.filter("resname MOL")
         traj3.dropFrames(keep=[1, 3])
-        assert mol_equal(traj2, traj3)
+        assert mol_equal(traj2, traj3, checkFields=Molecule._all_fields)
+
+        traj2 = self.trajmol.copy(sel="resname MOL")
+        traj3 = self.trajmol.copy()
+        traj3.filter("resname MOL")
+        assert mol_equal(traj2, traj3, checkFields=Molecule._all_fields)
 
 
 if __name__ == "__main__":
