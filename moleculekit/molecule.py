@@ -953,15 +953,41 @@ class Molecule(object):
                 return s, ast
             return s
 
-    def copy(self):
+    def copy(self, frames=None, sel=None):
         """Create a copy of the Molecule object
 
         Returns
         -------
         newmol : :class:`Molecule`
             A copy of the object
+        frames : list of int
+            If specified, only the selected frames will be copied.
+        sel : str
+            Atom selection for atoms to keep in the copy.
         """
-        return deepcopy(self)
+        if frames is None and sel is None:
+            return deepcopy(self)
+        else:
+            if sel is not None:
+                sel = self.atomselect(sel)
+            if frames is not None:
+                frames = ensurelist(frames)
+
+            newmol = Molecule().empty(self.numAtoms)
+            for field in self._topo_fields:
+                if self.__dict__[field] is not None:
+                    field_val = self.__dict__[field]
+                    if field in self._atom_fields and sel is not None:
+                        field_val = field_val[sel]
+                    newmol.__dict__[field] = deepcopy(field_val)
+
+            if frames is not None:
+                newmol.coords = self.coords[:, :, frames].copy()
+            else:
+                newmol.coords = self.coords.copy()
+            if sel is not None:
+                newmol.coords = newmol.coords[sel].copy()
+            return newmol
 
     def filter(self, sel, _logger=True):
         """Removes all atoms not included in the selection
@@ -3226,6 +3252,18 @@ class _TestMolecule(TestCase):
         refmol = Molecule(os.path.join(homedir, "structure.prmtop"))
         refmol.read(os.path.join(homedir, "output_wrapped.xtc"))
         assert np.allclose(mol.coords, refmol.coords, atol=1e-2)
+
+    def test_advanced_copy(self):
+        traj2 = self.trajmol.copy(frames=[1, 3])
+        assert mol_equal(traj2, self.trajmol, exceptFields=["coords"])
+        assert np.array_equal(traj2.coords, self.trajmol.coords[:, :, [1, 3]])
+        assert not np.array_equal(traj2.coords, self.trajmol.coords[:, :, [2, 3]])
+
+        traj2 = self.trajmol.copy(sel="resname MOL", frames=[1, 3])
+        traj3 = self.trajmol.copy()
+        traj3.filter("resname MOL")
+        traj3.dropFrames(keep=[1, 3])
+        assert mol_equal(traj2, traj3)
 
 
 if __name__ == "__main__":
