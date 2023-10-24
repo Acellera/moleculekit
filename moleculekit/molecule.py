@@ -1008,12 +1008,12 @@ class Molecule(object):
                     if self.__dict__[field] is not None:
                         newmol.__dict__[field] = deepcopy(self.__dict__[field])
             else:
-                for field in ("coords", "box", "boxangles"):
+                for field in ("coords", "box", "boxangles", "step", "time"):
                     if self.__dict__[field] is not None:
                         newmol.__dict__[field] = self.__dict__[field][
                             ..., frames
                         ].copy()
-                for field in ("fileloc", "step", "time"):
+                for field in ("fileloc",):
                     if self.__dict__[field] is not None:
                         newmol.__dict__[field] = [
                             deepcopy(self.__dict__[field][f]) for f in frames
