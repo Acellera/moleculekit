@@ -24,7 +24,7 @@ def pp_calcDistances(
         if box is None or np.sum(box) == 0:
             raise RuntimeError(
                 "No periodic box dimensions given in the molecule/trajectory. "
-                "If you want to calculate distance without wrapping, set the periodic option to `None`"
+                "If you want to calculate distance without wrapping, set the periodic option to None"
             )
     else:
         box = np.zeros((3, coords.shape[2]), dtype=np.float32)
