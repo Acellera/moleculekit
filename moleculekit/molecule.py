@@ -755,7 +755,7 @@ class Molecule(object):
                 raise RuntimeError(
                     "Cannot align molecules. The two selections produced different number of atoms. Either fix the selections or use a different alignment `mode` option (i.e. structure)"
                 )
-            self.coords = _pp_align(
+            _pp_align(
                 self.coords,
                 refmol.coords,
                 np.array(sel, dtype=np.int64),
@@ -763,6 +763,7 @@ class Molecule(object):
                 frames,
                 refmol.frame,
                 matchingframes,
+                inplace=True
             )
         elif mode == "structure":
             TM1, rmsd, nali, coords, trans = molTMalign(

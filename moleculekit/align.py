@@ -33,8 +33,14 @@ def _pp_measure_fit(P, Q):
     return U, RMSD
 
 
-def _pp_align(coords, refcoords, sel, refsel, frames, refframe, matchingframes):
-    newcoords = coords.copy()
+def _pp_align(
+    coords, refcoords, sel, refsel, frames, refframe, matchingframes, inplace=False
+):
+    if not inplace:
+        newcoords = coords.copy()
+    else:
+        newcoords = coords
+
     for f in frames:
         P = coords[sel, :, f]
         if matchingframes:
@@ -54,7 +60,9 @@ def _pp_align(coords, refcoords, sel, refsel, frames, refframe, matchingframes):
         # Translating to centroid of refmol
         all1 = all1 + centroidQ
         newcoords[:, :, f] = all1
-    return newcoords
+
+    if not inplace:
+        return newcoords
 
 
 def molTMscore(mol, ref, molsel="protein", refsel="protein"):
@@ -229,6 +237,7 @@ class _TestAlign(unittest.TestCase):
         )
         self.assertTrue(np.allclose(tmscore, expectedTMscore))
         self.assertTrue(np.allclose(rmsd, expectedRMSD))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
