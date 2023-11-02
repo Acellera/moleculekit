@@ -12,6 +12,78 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def get_ligand_props(mol, offset_idx=0):
+    props = {
+        "donors": [],
+        "acceptors": [],
+        "rings": [],
+        "pos_charged": [],
+        "neg_charged": [],
+        "aryl_halides": [],
+    }
+    props["donors"], props["acceptors"] = get_ligand_donors_acceptors(mol)
+    props["rings"] = get_ligand_rings(mol)
+    props["pos_charged"], props["neg_charged"] = get_ligand_charged(mol)
+    props["aryl_halides"] = get_ligand_aryl_halides(mol)
+
+    return offset_ligand_props(props, offset_idx)
+
+
+def offset_ligand_props(props, offset_idx=0):
+    from moleculekit.util import ensurelist
+
+    offset_idx = ensurelist(offset_idx)
+
+    if len(offset_idx) == 0 and offset_idx[0] == 0:
+        return props
+
+    new_props = {
+        "donors": [],
+        "acceptors": [],
+        "rings": [],
+        "pos_charged": [],
+        "neg_charged": [],
+        "aryl_halides": [],
+    }
+    for offidx in offset_idx:
+        for k in props:
+            if isinstance(props[k], np.ndarray):
+                new_props[k].append(np.array(props[k], dtype=np.uint32) + offidx)
+            elif isinstance(props[k], list):
+                new_props[k] += [pp + offidx for pp in props[k]]
+
+    new_props = {
+        "donors": np.vstack(new_props["donors"]),
+        "acceptors": np.hstack(new_props["acceptors"]),
+        "rings": new_props["rings"],
+        "pos_charged": np.hstack(new_props["pos_charged"]),
+        "neg_charged": np.hstack(new_props["neg_charged"]),
+        "aryl_halides": np.hstack(new_props["aryl_halides"]),
+    }
+    return new_props
+
+
+def get_receptor_props(mol):
+    props = {
+        "donors": [],
+        "acceptors": [],
+        "rings": [],
+        "charged": [],
+        "aryl_halides": [],
+    }
+    props["donors"], props["acceptors"] = get_donors_acceptors(
+        mol, exclude_water=True, exclude_backbone=False
+    )
+    props["rings"] = get_receptor_rings(mol, rec_type="both")
+    pos_prot, neg_prot = get_protein_charged(mol)
+    pos_nucl, neg_nucl = get_nucleic_charged(mol)
+    props["pos_charged"] = np.hstack((pos_prot, pos_nucl))
+    props["neg_charged"] = np.hstack((neg_prot, neg_nucl))
+    props["aryl_halides"] = get_protein_aryl_halides(mol)
+
+    return props
+
+
 def get_donors_acceptors(mol, exclude_water=True, exclude_backbone=False):
     if not isProteinProtonated(mol):
         raise RuntimeError(
@@ -71,6 +143,34 @@ def get_donors_acceptors(mol, exclude_water=True, exclude_backbone=False):
     return donor_pairs.astype(np.uint32), acceptors.astype(np.uint32)
 
 
+def get_ligand_donors_acceptors(smol, start_idx=0):
+    from rdkit.Chem import ChemicalFeatures
+    from rdkit import RDConfig
+    import os
+
+    start_idx = int(start_idx)
+
+    fdef = os.path.join(RDConfig.RDDataDir, "BaseFeatures.fdef")
+    factory = ChemicalFeatures.BuildFeatureFactory(fdef)
+    molFeats = factory.GetFeaturesForMol(smol._mol)
+
+    donor_pairs = []
+    acceptors = []
+    for feat in molFeats:
+        family = feat.GetFamily()
+        for idx in feat.GetAtomIds():
+            if family == "Acceptor":
+                acceptors.append(idx)
+            if family == "Donor":
+                at = smol._mol.GetAtomWithIdx(idx + start_idx)
+                for bond in at.GetBonds():
+                    oat = bond.GetOtherAtom(at)
+                    if oat.GetSymbol() == "H":
+                        donor_pairs.append([idx + start_idx, oat.GetIdx() + start_idx])
+
+    return np.array(donor_pairs, dtype=np.uint32), np.array(acceptors, dtype=np.uint32)
+
+
 def view_hbonds(mol, hbonds):
     from moleculekit.vmdgraphics import VMDCylinder
 
@@ -96,40 +196,33 @@ def view_hbonds(mol, hbonds):
 
 
 def get_protein_rings(mol):
-    _aromatics = ["PHE", "HIS", "HID", "HIE", "HIP", "TYR", "TRP"]
-    _excluded_atoms = ["N", "CA", "C", "O"]  # , "CB", "OH"]
-
-    arom_res_atoms = np.isin(mol.resname, _aromatics) & ~np.isin(
-        mol.name, _excluded_atoms
-    )
-    mol2 = mol.copy()
-    mol2.filter(arom_res_atoms, _logger=False)
-    bonds = mol2._guessBonds()
-
-    graph = nx.Graph()
-    graph.add_edges_from(bonds)
-    cycles = nx.cycle_basis(graph)
-
-    original_idx = np.where(arom_res_atoms)[0]
-    cycles = [tuple(sorted(original_idx[cc])) for cc in cycles]
-    cycles = sorted(cycles, key=lambda x: x[0])
-
-    return cycles
+    return get_receptor_rings(mol, "protein")
 
 
 def get_nucleic_rings(mol):
-    nucleic_sel = mol.atomselect("nucleic and not backbone")
-    original_idx = np.where(nucleic_sel)[0]
+    return get_receptor_rings(mol, "nucleic")
 
-    mol2 = mol.copy()
-    mol2.filter(nucleic_sel, _logger=False)
+
+def get_receptor_rings(mol, rec_type):
+    _prot_aromatics = ["PHE", "HIS", "HID", "HIE", "HIP", "TYR", "TRP"]
+    _prot_excluded_atoms = ["N", "CA", "C", "O"]  # , "CB", "OH"]
+    _prot_sel = np.isin(mol.resname, _prot_aromatics) & ~np.isin(
+        mol.name, _prot_excluded_atoms
+    )
+    _nucl_sel = mol.atomselect("nucleic and not backbone")
+    _both_sel = _prot_sel | _nucl_sel
+
+    sel = {"protein": _prot_sel, "nucleic": _nucl_sel, "both": _both_sel}[rec_type]
+
+    mol2 = mol.copy(sel=sel)
     bonds = mol2._guessBonds()
 
     graph = nx.Graph()
     graph.add_edges_from(bonds)
     cycles = nx.cycle_basis(graph)
 
-    cycles = [tuple(sorted(original_idx[cc])) for cc in cycles]
+    original_idx = np.where(sel)[0]
+    cycles = [np.array(sorted(original_idx[cc]), dtype=np.uint32) for cc in cycles]
     cycles = sorted(cycles, key=lambda x: x[0])
 
     return cycles
@@ -159,7 +252,7 @@ metals = [
 
 
 def get_metal_charged(mol):
-    return list(np.where(np.isin(mol.element, metals))[0]), []
+    return np.where(np.isin(mol.element, metals))[0].astype(np.uint32), []
 
 
 def get_protein_charged(mol):
@@ -172,12 +265,12 @@ def get_protein_charged(mol):
     glu_c = (mol.resname == "GLU") & (mol.name == "CD")
     neg = asp_c | glu_c
 
-    return list(np.where(pos)[0]), list(np.where(neg)[0])
+    return np.where(pos)[0].astype(np.uint32), np.where(neg)[0].astype(np.uint32)
 
 
 def get_nucleic_charged(mol):
     nuc = mol.atomselect("nucleic and backbone and name OP2")
-    return [], list(np.where(nuc)[0])
+    return np.array([], dtype=np.uint32), np.where(nuc)[0].astype(np.uint32)
 
 
 def get_ligand_rings(sm, start_idx=0):
@@ -187,7 +280,9 @@ def get_ligand_rings(sm, start_idx=0):
         aromatics = sum([sm._mol.GetAtomWithIdx(idx).GetIsAromatic() for idx in ring])
         if aromatics != len(ring):
             continue
-        ligandAtomAromaticRings.append(tuple(sorted([r + start_idx for r in ring])))
+        ligandAtomAromaticRings.append(
+            np.array(sorted([r + start_idx for r in ring]), dtype=np.uint32)
+        )
     ligandAtomAromaticRings = sorted(ligandAtomAromaticRings, key=lambda x: x[0])
     return ligandAtomAromaticRings
 
@@ -201,7 +296,7 @@ def get_ligand_charged(sm, start_idx=0):
             pos.append(i + start_idx)
         elif fc < 0:
             neg.append(i + start_idx)
-    return pos, neg
+    return np.array(pos, dtype=np.uint32), np.array(neg, dtype=np.uint32)
 
 
 def get_ligand_aryl_halides(sm, start_idx=0):
@@ -210,7 +305,7 @@ def get_ligand_aryl_halides(sm, start_idx=0):
     halogens = ["Cl", "Br", "I"]
     rings = get_ligand_rings(sm)
     if len(rings) == 0:
-        return []
+        return np.array([], dtype=np.uint32)
 
     ring_atoms = np.hstack(rings)
     halogens = np.where(np.isin(sm._element, halogens))[0]
@@ -226,7 +321,7 @@ def get_ligand_aryl_halides(sm, start_idx=0):
         if neighs[0] in ring_atoms:
             halides.append([hi + start_idx, neighs[0] + start_idx])
 
-    return halides
+    return np.array(halides, dtype=np.uint32)
 
 
 def hbonds_calculate(
@@ -329,6 +424,8 @@ def waterbridge_calculate(
         for f in range(mol.numFrames):
             # Only keep interactions which have at least one water
             curr_shell[f] = np.array(curr_shell[f])
+            if len(curr_shell[f]) == 0:
+                continue
             has_water = np.any(np.isin(curr_shell[f], water_idx), axis=1)
             curr_shell[f] = curr_shell[f][has_water, :]
             # Append the valid edges for this frame
@@ -339,6 +436,9 @@ def waterbridge_calculate(
                 edges[f].append(curr_shell[f][:, 1:])
 
         # Find which water atoms interacted with sel1_b_curr to use them for the next shell
+        curr_shell = [cs for cs in curr_shell if len(cs) > 0]
+        if len(curr_shell) == 0:
+            break
         shell = np.vstack(curr_shell)[:, [0, 2]]
         sel1_b_curr = np.zeros(mol.numAtoms, dtype=bool)
         interacted = np.unique(shell[np.isin(shell, water_goal_idx)])
@@ -355,6 +455,8 @@ def waterbridge_calculate(
         water_bridges.append([])
 
     for f in range(mol.numFrames):
+        if len(edges[f]) == 0:
+            continue
         ee = np.vstack(edges[f])
         starts = np.unique(ee[np.isin(ee, sel1_idx)])
         ends = np.unique(ee[np.isin(ee, sel2_idx)])
@@ -433,16 +535,14 @@ def pipi_calculate(
 
 
 def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
-    from moleculekit.projections.util import pp_calcDistances
-
     if len(pos) == 0 or len(neg) == 0:
         return [[] for _ in range(mol.numFrames)]
 
-    sel1 = mol.atomselect(sel1).astype(np.uint32).copy()
+    sel1 = mol.atomselect(sel1)
     if sel2 is None:
         sel2 = sel1.copy()
     else:
-        sel2 = mol.atomselect(sel2).astype(np.uint32).copy()
+        sel2 = mol.atomselect(sel2)
 
     charged = np.zeros(sel1.shape, dtype=bool)
     charged[pos] = True
@@ -451,31 +551,12 @@ def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
     sel1 = sel1 & charged
     sel2 = sel2 & charged
 
-    if np.sum(sel1) == 0 or np.sum(sel2) == 0:
-        return [[] for _ in range(mol.numFrames)]
+    _inter = _close_distance_calc(mol, sel1, sel2, threshold)
 
-    periodic = "selections" if not np.all(mol.box == 0) else None
-    dists = pp_calcDistances(mol, sel1, sel2, periodic, metric="distances")
-
-    sel1 = np.where(sel1)[0]
-    sel2 = np.where(sel2)[0]
-
-    salt_bridge_list = []
-    triui = np.triu_indices(len(sel1), k=1)
+    inter = []
     for f in range(mol.numFrames):
-        idx = np.where(dists[f] < threshold)[0]
-        if np.array_equal(sel1, sel2):
-            sel1_sub = sel1[triui[0][idx]]
-            sel2_sub = sel2[triui[1][idx]]
-        else:
-            sel1_sub = sel1[(idx / len(sel2)).astype(int)]
-            sel2_sub = sel2[(idx % len(sel2)).astype(int)]
-        inter = np.vstack((sel1_sub, sel2_sub)).T
-        # Should only have one positive per row (the other is necessarily negative)
-        opposite_charges = np.sum(np.isin(inter, pos), axis=1) == 1
-        salt_bridge_list.append(inter[opposite_charges])
-
-    return salt_bridge_list
+        inter.append(_inter[f][np.sum(np.isin(_inter[f], pos), axis=1) == 1])
+    return inter
 
 
 def cationpi_calculate(
@@ -560,6 +641,154 @@ def sigmahole_calculate(
     return index_list, dist_ang_list
 
 
+def _close_distance_calc(mol, sel1, sel2, threshold):
+    from moleculekit.projections.util import pp_calcDistances
+
+    if np.sum(sel1) == 0 or np.sum(sel2) == 0:
+        return [np.empty((0, 2), dtype=np.uint32) for _ in range(mol.numFrames)]
+
+    periodic = "selections" if not np.all(mol.box == 0) else None
+    dists = pp_calcDistances(
+        mol,
+        sel1.astype(np.uint32).copy(),
+        sel2.astype(np.uint32).copy(),
+        periodic,
+        metric="distances",
+    )
+
+    sel1 = np.where(sel1)[0].astype(np.uint32)
+    sel2 = np.where(sel2)[0].astype(np.uint32)
+
+    inter_list = []
+    triui = np.triu_indices(len(sel1), k=1)
+    for f in range(mol.numFrames):
+        idx = np.where(dists[f] < threshold)[0]
+        if np.array_equal(sel1, sel2):
+            sel1_sub = sel1[triui[0][idx]]
+            sel2_sub = sel2[triui[1][idx]]
+        else:
+            sel1_sub = sel1[(idx / len(sel2)).astype(int)]
+            sel2_sub = sel2[(idx % len(sel2)).astype(int)]
+        inter = np.vstack((sel1_sub, sel2_sub)).T
+        inter_list.append(inter)
+    return inter_list
+
+
+def hydrophobic_calculate(mol, sel1, sel2, dist_threshold=4.0):
+    # TODO: Maybe check for ligand hydrophobic atoms since we can with rdkit?
+
+    carbons = mol.element == "C"
+    sel1 = mol.atomselect(sel1)
+    sel1 &= carbons
+    sel2 = mol.atomselect(sel2)
+    sel2 &= carbons
+
+    return _close_distance_calc(mol, sel1, sel2, dist_threshold)
+
+
+def halogenbond_calculate():
+    pass
+
+
+def metal_coordination_calculate(mol, sel1, sel2, dist_threshold=3.5):
+    # Mostly taken from BINANA. See also:
+    # https://chem.libretexts.org/Bookshelves/General_Chemistry/Chemistry_(OpenSTAX)/19%3A_Transition_Metals_and_Coordination_Chemistry/19.2%3A_Coordination_Chemistry_of_Transition_Metals
+    metals = [
+        "Ac",
+        "Ag",
+        "Al",
+        "Am",
+        "Au",
+        "Ba",
+        "Be",
+        "Bi",
+        "Bk",
+        "Cd",
+        "Ce",
+        "Cf",
+        "Cm",
+        "Cr",
+        "Cs",
+        "Ca",
+        "Co",
+        "Cu",
+        "Db",
+        "Dy",
+        "Er",
+        "Es",
+        "Eu",
+        "Fm",
+        "Fr",
+        "Fe",
+        "Ga",
+        "Gd",
+        "Ge",
+        "Hf",
+        "Hg",
+        "Ho",
+        "In",
+        "Ir",
+        "La",
+        "Lr",
+        "Lu",
+        "Md",
+        "Mg",
+        "Mn",
+        "Mo",
+        "No",
+        "Np",
+        "Nb",
+        "Nd",
+        "Ni",
+        "Os",
+        "Pa",
+        "Pd",
+        "Pm",
+        "Po",
+        "Pr",
+        "Pt",
+        "Pu",
+        "Pb",
+        "Ra",
+        "Re",
+        "Rf",
+        "Rh",
+        "Ru",
+        "Sb",
+        "Sc",
+        "Sg",
+        "Sm",
+        "Sn",
+        "Sr",
+        "Ta",
+        "Tb",
+        "Tc",
+        "Th",
+        "Ti",
+        "Tl",
+        "Tm",
+        "Yb",
+        "Zn",
+        "Zr",
+    ]
+    coord_lig_elems = ["N", "O", "Cl", "F", "Br", "I", "CL", "BR", "S"]
+
+    sel1 = mol.atomselect(sel1)
+    sel2 = mol.atomselect(sel2)
+
+    sel1_c = sel1 & np.isin(mol.element, metals)
+    sel2_c = sel2 & np.isin(mol.element, coord_lig_elems)
+    inter1 = _close_distance_calc(mol, sel1_c, sel2_c, dist_threshold)
+
+    sel1_c = sel1 & np.isin(mol.element, coord_lig_elems)
+    sel2_c = sel2 & np.isin(mol.element, metals)
+    inter2 = _close_distance_calc(mol, sel1_c, sel2_c, dist_threshold)
+
+    inter = [np.vstack((inter1[f], inter2[f])) for f in range(mol.numFrames)]
+
+    return inter
+
+
 class _TestInteractions(unittest.TestCase):
     def test_hbonds(self):
         from moleculekit.home import home
@@ -571,25 +800,34 @@ class _TestInteractions(unittest.TestCase):
         lig = os.path.join(home(dataDir="test-interactions"), "3PTB_BEN.sdf")
 
         mol = Molecule(prot)
-        lig = SmallMol(lig).toMolecule()
+        mol.guessBonds()
+        donors, acceptors = get_donors_acceptors(
+            mol, exclude_water=True, exclude_backbone=False
+        )
+
+        lig_sm = SmallMol(lig)
+        lig = lig_sm.toMolecule()
         mol.append(lig)
+        lig_idx = np.where(mol.resname == "BEN")[0][0]
+
+        lig_don, lig_acc = get_ligand_donors_acceptors(lig_sm)
 
         # TODO: Add check if bonds exist in molecule! Add it to moleculechecks
         mol.bonds = mol._guessBonds()
         mol.coords = np.tile(mol.coords, (1, 1, 2)).copy()  # Fake second frame
         mol.box = np.tile(mol.box, (1, 2)).copy()
-        donors, acceptors = get_donors_acceptors(
-            mol, exclude_water=True, exclude_backbone=False
-        )
+
+        donors = np.vstack((donors, lig_don + lig_idx))
+        acceptors = np.hstack((acceptors, lig_acc + lig_idx))
 
         hb = hbonds_calculate(mol, donors, acceptors, "protein", "resname BEN")
         assert len(hb) == 2
         ref = np.array(
             [
-                [3415, 3424, 2482],
-                [3414, 3422, 2789],
                 [3414, 3421, 2471],
+                [3414, 3422, 2789],
                 [3415, 3423, 2472],
+                [3415, 3424, 2482],
             ]
         )
         assert np.array_equal(hb[0], ref) and np.array_equal(hb[1], ref), f"{hb}, {ref}"
@@ -673,7 +911,11 @@ class _TestInteractions(unittest.TestCase):
         lig_pos, lig_neg = get_ligand_charged(lig, start_idx=lig_idx)
 
         bridges = saltbridge_calculate(
-            mol, prot_pos + lig_pos, prot_neg + lig_neg, "protein", "resname BEN"
+            mol,
+            np.hstack((prot_pos, lig_pos)),
+            np.hstack((prot_neg, lig_neg)),
+            "protein",
+            "resname BEN",
         )
 
         assert len(bridges) == 2
@@ -694,15 +936,17 @@ class _TestInteractions(unittest.TestCase):
     def test_cationpi_protein(self):
         from moleculekit.home import home
         from moleculekit.molecule import Molecule
-        from moleculekit.smallmol.smallmol import SmallMol
         import os
 
         mol = Molecule(os.path.join(home(dataDir="test-interactions"), "1LPI.pdb"))
+
         prot_rings = get_protein_rings(mol)
         prot_pos, _ = get_protein_charged(mol)
         metal_pos, _ = get_metal_charged(mol)
 
-        catpi, distang = cationpi_calculate(mol, prot_rings, prot_pos + metal_pos)
+        catpi, distang = cationpi_calculate(
+            mol, prot_rings, np.hstack((prot_pos, metal_pos))
+        )
 
         ref_atms = np.array([[0, 8], [17, 1001], [18, 1001]])
         assert np.array_equal(ref_atms, catpi[0]), f"{ref_atms}, {catpi[0]}"
@@ -736,7 +980,7 @@ class _TestInteractions(unittest.TestCase):
         lig_pos, _ = get_ligand_charged(lig, start_idx=lig_idx)
 
         catpi, distang = cationpi_calculate(
-            mol, prot_rings + lig_rings, prot_pos + lig_pos
+            mol, prot_rings + lig_rings, np.hstack((prot_pos, lig_pos))
         )
 
         ref_atms = np.array([[11, 3494]])
@@ -837,6 +1081,26 @@ class _TestInteractions(unittest.TestCase):
                 ]
             ],
         ), wb
+
+    def test_metal_coordination(self):
+        from moleculekit.molecule import Molecule
+
+        mol = Molecule("5vl5")
+        res = metal_coordination_calculate(mol, "all", "resname S31 and not element Cu")
+
+        ref = np.array(
+            [[933, 922], [933, 932], [933, 934], [933, 935], [933, 937], [933, 944]],
+            dtype=np.uint32,
+        )
+        assert np.array_equal(res[0], ref)
+
+        mol = Molecule("3ptb")
+        res = metal_coordination_calculate(mol, "not protein", "protein")
+
+        ref = np.array(
+            [[1629, 383], [1629, 396], [1629, 420], [1629, 460]], dtype=np.uint32
+        )
+        assert np.array_equal(res[0], ref)
 
 
 if __name__ == "__main__":
