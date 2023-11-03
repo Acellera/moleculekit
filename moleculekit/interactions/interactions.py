@@ -230,7 +230,7 @@ def get_receptor_rings(mol, rec_type):
 
 def get_protein_aryl_halides(mol):
     # TODO: Need to support non-standard residues
-    pass
+    raise NotImplementedError("Need to add support for non-standard residues")
 
 
 metals = [
@@ -684,10 +684,6 @@ def hydrophobic_calculate(mol, sel1, sel2, dist_threshold=4.0):
     sel2 &= carbons
 
     return _close_distance_calc(mol, sel1, sel2, dist_threshold)
-
-
-def halogenbond_calculate():
-    pass
 
 
 def metal_coordination_calculate(mol, sel1, sel2, dist_threshold=3.5):
