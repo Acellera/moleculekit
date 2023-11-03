@@ -1,6 +1,9 @@
 import numpy as np
 from moleculekit.bondguesser_utils import make_grid_neighborlist_nonperiodic, grid_bonds
 import unittest
+import logging
+
+logger = logging.getLogger(__name__)
 
 # VdW radii are from A. Bondi J. Phys. Chem., 68, 441 - 452, 1964
 # H is overriden to 1A from 1.2A in J.Phys.Chem., 100, 7384 - 7391, 1996
@@ -219,6 +222,14 @@ def bond_grid_search(
         xyz_boxes = np.floor(xyzrange / pairdist).astype(np.uint32) + 1
         num_boxes = xyz_boxes[0] * xyz_boxes[1] * xyz_boxes[2]
         newpairdist = pairdist * cutoff_incr  # sqrt(2) ~= 1.26
+
+    if num_boxes > 1e6:
+        logger.warning(
+            "It seems like you might be guessing bonds on an unwrapped simulation. "
+            "This can consume large amounts of memory and possibly crash. If you already have "
+            "all the bonds in Molecule pass `guessBonds=False` to the function or perform "
+            "the bond guessing on a wrapped frame."
+        )
 
     # Compute box index for all atoms
     box_idx = np.floor((coords - min_c) / pairdist).astype(int)
