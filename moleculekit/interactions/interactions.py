@@ -535,6 +535,8 @@ def pipi_calculate(
 
 
 def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
+    from moleculekit.distance import calculate_contacts
+
     if len(pos) == 0 or len(neg) == 0:
         return [[] for _ in range(mol.numFrames)]
 
@@ -551,7 +553,8 @@ def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
     sel1 = sel1 & charged
     sel2 = sel2 & charged
 
-    _inter = _close_distance_calc(mol, sel1, sel2, threshold)
+    periodic = "selections" if not np.all(mol.box == 0) else None
+    _inter = calculate_contacts(mol, sel1, sel2, periodic, threshold)
 
     inter = []
     for f in range(mol.numFrames):
@@ -641,40 +644,9 @@ def sigmahole_calculate(
     return index_list, dist_ang_list
 
 
-def _close_distance_calc(mol, sel1, sel2, threshold):
-    from moleculekit.projections.util import pp_calcDistances
-
-    if np.sum(sel1) == 0 or np.sum(sel2) == 0:
-        return [np.empty((0, 2), dtype=np.uint32) for _ in range(mol.numFrames)]
-
-    periodic = "selections" if not np.all(mol.box == 0) else None
-    dists = pp_calcDistances(
-        mol,
-        sel1.astype(np.uint32).copy(),
-        sel2.astype(np.uint32).copy(),
-        periodic,
-        metric="distances",
-    )
-
-    sel1 = np.where(sel1)[0].astype(np.uint32)
-    sel2 = np.where(sel2)[0].astype(np.uint32)
-
-    inter_list = []
-    triui = np.triu_indices(len(sel1), k=1)
-    for f in range(mol.numFrames):
-        idx = np.where(dists[f] < threshold)[0]
-        if np.array_equal(sel1, sel2):
-            sel1_sub = sel1[triui[0][idx]]
-            sel2_sub = sel2[triui[1][idx]]
-        else:
-            sel1_sub = sel1[(idx / len(sel2)).astype(int)]
-            sel2_sub = sel2[(idx % len(sel2)).astype(int)]
-        inter = np.vstack((sel1_sub, sel2_sub)).T
-        inter_list.append(inter)
-    return inter_list
-
-
 def hydrophobic_calculate(mol, sel1, sel2, dist_threshold=4.0):
+    from moleculekit.distance import calculate_contacts
+
     # TODO: Maybe check for ligand hydrophobic atoms since we can with rdkit?
 
     carbons = mol.element == "C"
@@ -683,10 +655,13 @@ def hydrophobic_calculate(mol, sel1, sel2, dist_threshold=4.0):
     sel2 = mol.atomselect(sel2)
     sel2 &= carbons
 
-    return _close_distance_calc(mol, sel1, sel2, dist_threshold)
+    periodic = "selections" if not np.all(mol.box == 0) else None
+    return calculate_contacts(mol, sel1, sel2, periodic, dist_threshold)
 
 
 def metal_coordination_calculate(mol, sel1, sel2, dist_threshold=3.5):
+    from moleculekit.distance import calculate_contacts
+
     # Mostly taken from BINANA. See also:
     # https://chem.libretexts.org/Bookshelves/General_Chemistry/Chemistry_(OpenSTAX)/19%3A_Transition_Metals_and_Coordination_Chemistry/19.2%3A_Coordination_Chemistry_of_Transition_Metals
     metals = [
@@ -774,11 +749,13 @@ def metal_coordination_calculate(mol, sel1, sel2, dist_threshold=3.5):
 
     sel1_c = sel1 & np.isin(mol.element, metals)
     sel2_c = sel2 & np.isin(mol.element, coord_lig_elems)
-    inter1 = _close_distance_calc(mol, sel1_c, sel2_c, dist_threshold)
+    periodic = None if np.all(mol.box == 0) else "selections"
+    inter1 = calculate_contacts(mol, sel1_c, sel2_c, periodic, dist_threshold)
 
     sel1_c = sel1 & np.isin(mol.element, coord_lig_elems)
     sel2_c = sel2 & np.isin(mol.element, metals)
-    inter2 = _close_distance_calc(mol, sel1_c, sel2_c, dist_threshold)
+    periodic = None if np.all(mol.box == 0) else "selections"
+    inter2 = calculate_contacts(mol, sel1_c, sel2_c, periodic, dist_threshold)
 
     inter = [np.vstack((inter1[f], inter2[f])) for f in range(mol.numFrames)]
 

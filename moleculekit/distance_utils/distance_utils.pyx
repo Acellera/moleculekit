@@ -52,6 +52,46 @@ cdef FLOAT32_t _dist(
 
     return dx * dx + dy * dy + dz * dz
 
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+def contacts_trajectory(
+        FLOAT32_t[:,:,:] coords,
+        FLOAT32_t[:,:] box,
+        UINT32_t[:] sel1,
+        UINT32_t[:] sel2,
+        UINT32_t[:] digitized_chains,
+        bool selfdist,
+        bool pbc,
+        float dist_threshold=5,
+    ):
+    # Same as dist_trajectory but instead of returning distances it returns index
+    # pairs of atoms that are within a certain distance threshold
+    cdef int f, i, j, bstart, s1atm, s2atm
+    cdef int n_frames = coords.shape[2]
+    cdef int n_sel1 = sel1.shape[0]
+    cdef int n_sel2 = sel2.shape[0]
+    cdef FLOAT32_t dist2
+    cdef vector[vector[int]] results
+    dist_threshold = dist_threshold * dist_threshold
+
+    for f in range(n_frames):
+        results.push_back(vector[int]())
+        for i in range(n_sel1):
+            s1atm = sel1[i]
+            bstart = 0
+            if selfdist:
+                bstart = i + 1
+
+            for j in range(bstart, n_sel2):
+                s2atm = sel2[j]
+                dist2 = _dist(coords, box, digitized_chains, s1atm, s2atm, f, pbc)
+                if dist2 <= dist_threshold:
+                    results[f].push_back(s1atm)
+                    results[f].push_back(s2atm)
+    return results
+
+
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 def dist_trajectory(
