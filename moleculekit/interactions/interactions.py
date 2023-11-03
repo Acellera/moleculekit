@@ -230,7 +230,7 @@ def get_receptor_rings(mol, rec_type):
 
 def get_protein_aryl_halides(mol):
     # TODO: Need to support non-standard residues
-    raise NotImplementedError("Need to add support for non-standard residues")
+    pass
 
 
 metals = [
