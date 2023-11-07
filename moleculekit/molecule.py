@@ -763,7 +763,7 @@ class Molecule(object):
                 frames,
                 refmol.frame,
                 matchingframes,
-                inplace=True
+                inplace=True,
             )
         elif mode == "structure":
             TM1, rmsd, nali, coords, trans = molTMalign(
@@ -1422,6 +1422,11 @@ class Molecule(object):
         self._mergeTopologies(newmols, overwrite=overwrite, _logger=_logger)
         self._mergeTrajectories(newmols, append=append, skip=skip)
 
+        # Remove references to numpy arrays reassigned above to self
+        for mm in newmols:
+            # Using `del mm` does not force the GC to run immediately, hence force it
+            mm.__del__()
+
         self._dropAltLoc(keepaltloc=keepaltloc, _logger=_logger)
 
         if guess is not None or guessNE is not None:
@@ -1699,6 +1704,12 @@ class Molecule(object):
             self.fileloc = self.fileloc[::skip]
 
         self.coords = np.atleast_3d(self.coords)
+
+    def __del__(self):
+        # Explicit deletion of references to all fields to assist a bit the GC
+        for field in Molecule._all_fields:
+            if hasattr(self, field):
+                delattr(self, field)
 
     def mutateResidue(self, sel, newres):
         """Mutates a residue by deleting its sidechain and renaming it
