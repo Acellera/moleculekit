@@ -32,34 +32,6 @@ ctypedef np.float64_t FLOAT64_t
 
 import cython
 
-
-@cython.boundscheck(False) # turn off bounds-checking for entire function
-@cython.wraparound(False)  # turn off negative index wrapping for entire function
-def get_bonded_groups(
-        UINT32_t[:,:] bonds,
-        UINT32_t[:] has_lower_bond,
-        int n_atoms,
-        UINT32_t[:] group,
-    ):
-    cdef int i, j, k
-    cdef int n_bonds = bonds.shape[0]
-    cdef vector[int] results
-
-    # Mark atoms which have bonds to lower indexes
-    for i in range(n_bonds):
-        has_lower_bond[max(bonds[i, 0], bonds[i, 1])] = 1
-
-    # Atoms which don't have bonds to lower indexes are the start of a new fragment
-    k = 0
-    for i in range(n_atoms):
-        if not has_lower_bond[i]:
-            k += 1
-            results.push_back(i)
-        group[i] = k
-            
-    results.push_back(n_atoms)
-
-    return results
             
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
