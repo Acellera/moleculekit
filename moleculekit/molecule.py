@@ -1739,6 +1739,10 @@ class Molecule(object):
     def wrap(self, wrapsel="all", fileBonds=True, guessBonds=False):
         """Wraps the coordinates of the molecule into the simulation box
 
+        It assumes that all bonded groups are sequential in Molecule. I.e. you don't have a molecule B
+        in between the atoms of molecule A.
+        It also requires correct bonding (ideally read from a topology file).
+
         Parameters
         ----------
         wrapsel : str
@@ -2757,10 +2761,6 @@ def calculateUniqueBonds(bonds, bondtype):
 
 def getBondedGroups(mol, bonds=None):
     """Calculates all bonded groups in a Molecule
-
-    It assumes that all bonded groups are sequential in Molecule. I.e. you don't have a molecule B
-    in between the atoms of molecule A.
-    It also requires correct bonds (ideally read from a topology file).
 
     Parameters
     ----------
