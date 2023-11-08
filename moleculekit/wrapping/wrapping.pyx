@@ -25,6 +25,72 @@ ctypedef np.float64_t FLOAT64_t
 import cython
 
 
+# https://en.wikipedia.org/wiki/Disjoint-set_data_structure
+# Disjoint set implementation for finding the connected components of our molecule
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+def disjoint_set_find(
+        UINT32_t x,
+        UINT32_t[:] parent,
+    ):
+    # # Path halving implementation (does not mark all parents exhaustively)
+    # while parent[x] != x:
+    #     parent[x] = parent[parent[x]]
+    #     x = parent[x]
+
+    # Path compression implementation
+    if parent[x] != x:
+        parent[x] = disjoint_set_find(parent[x], parent)
+        return parent[x]
+    else:
+        return x
+    return x
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+def disjoint_set_merge(
+        UINT32_t x,
+        UINT32_t y,
+        UINT32_t[:] parent,
+        UINT32_t[:] size,
+    ):
+    # Replace nodes by roots
+    x = disjoint_set_find(x, parent)
+    y = disjoint_set_find(y, parent)
+
+    if x == y:
+        return # x and y are already in the same set
+
+    if size[x] < size[y]:
+        parent[x] = y
+        size[y] += size[x]
+    else:
+        parent[y] = x
+        size[x] += size[y]
+
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+def get_bonded_groups(
+        UINT32_t[:,:] bonds,
+        int n_atoms,
+        UINT32_t[:] parent,
+        UINT32_t[:] size,
+    ):
+    cdef int i, j, k
+    cdef int n_bonds = bonds.shape[0]
+
+    # Iterate over the bonds
+    for i in range(n_bonds):
+        disjoint_set_merge(bonds[i, 0], bonds[i, 1], parent, size)
+
+    # Now everything is connected but not every node has the right parent marked
+
+    # Iterate over the atoms to fix the final parent
+    for i in range(n_atoms):
+        disjoint_set_find(i, parent)
+
+
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 def calculate(

@@ -1739,6 +1739,10 @@ class Molecule(object):
     def wrap(self, wrapsel="all", fileBonds=True, guessBonds=False):
         """Wraps the coordinates of the molecule into the simulation box
 
+        It assumes that all bonded groups are sequential in Molecule. I.e. you don't have a molecule B
+        in between the atoms of molecule A.
+        It also requires correct bonding (ideally read from a topology file).
+
         Parameters
         ----------
         wrapsel : str
@@ -2758,10 +2762,6 @@ def calculateUniqueBonds(bonds, bondtype):
 def getBondedGroups(mol, bonds=None):
     """Calculates all bonded groups in a Molecule
 
-    It assumes that all bonded groups are sequential in Molecule. I.e. you don't have a molecule B
-    in between the atoms of molecule A.
-    It also requires correct bonds (ideally read from a topology file).
-
     Parameters
     ----------
     mol : Molecule
@@ -2784,15 +2784,16 @@ def getBondedGroups(mol, bonds=None):
     >>> for i in range(len(groups)-1):
     ...     print(f"Group {i} starts at index {groups[i]} and ends at index {groups[i+1]-1}")
     """
-    from moleculekit.atomselect_utils import get_bonded_groups
+    from moleculekit.wrapping import get_bonded_groups
 
     if bonds is None:
         bonds = mol.bonds
 
-    has_lower_bond = np.zeros(mol.numAtoms, dtype=np.uint32)
-    grouparray = np.zeros(mol.numAtoms, dtype=np.uint32)
-    grouplist = get_bonded_groups(bonds, has_lower_bond, mol.numAtoms, grouparray)
-    return np.array(grouplist, dtype=np.uint32), grouparray
+    parent = np.arange(mol.numAtoms).astype(np.uint32)
+    size = np.ones(mol.numAtoms, dtype=np.uint32)
+    get_bonded_groups(mol.bonds, mol.numAtoms, parent, size)
+    _, grouplist, grouparray = np.unique(parent, return_index=True, return_inverse=True)
+    return np.hstack((grouplist, [mol.numAtoms])).astype(np.uint32), grouparray
 
 
 class Representations:
@@ -3328,6 +3329,30 @@ class _TestMolecule(TestCase):
         traj3 = self.trajmol.copy()
         traj3.filter("resname MOL")
         assert mol_equal(traj2, traj3, checkFields=Molecule._all_fields)
+
+    def test_connected_components(self):
+        from moleculekit.home import home
+        import networkx as nx
+
+        homedir = home(dataDir="test-wrapping")
+        mol = Molecule(os.path.join(homedir, "6X18.psf"))
+
+        g = mol.toGraph()
+        conn_comp = list(nx.connected_components(g))
+
+        _, group_mask = getBondedGroups(mol)
+        groups = [
+            set(np.where(group_mask == x)[0]) for x in range(group_mask.max() + 1)
+        ]
+        assert len(groups) == len(conn_comp)
+
+        for cc in conn_comp:
+            assert cc in groups
+
+        mol.read(os.path.join(homedir, "6X18.xtc"))
+        mol.wrap("protein and segid P3")
+        dims = mol.coords.max(axis=0) - mol.coords.min(axis=0)
+        assert np.all(np.abs(dims - mol.box) < 17.5)  # 17.5 A because lipids stick out
 
 
 if __name__ == "__main__":
