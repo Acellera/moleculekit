@@ -3334,6 +3334,33 @@ class _TestMolecule(TestCase):
         from moleculekit.home import home
         import networkx as nx
 
+        class _FakeMol:
+            pass
+
+        n_atoms = 100
+        n_bonds = 80
+
+        for _ in range(10):
+            bonds = []
+            for j in range(n_bonds):
+                bonds.append(np.random.randint(0, n_atoms, 2))
+            bonds = np.array(bonds, dtype=np.uint32)
+            g = nx.Graph()
+            g.add_edges_from(bonds)
+            conn_comp = list(nx.connected_components(g))
+
+            mol = _FakeMol()
+            mol.bonds = bonds
+            mol.numAtoms = n_atoms
+            _, group_mask = getBondedGroups(mol)
+            groups = [
+                set(np.where(group_mask == x)[0]) for x in range(group_mask.max() + 1)
+            ]
+            assert len(groups) == len(conn_comp)
+
+            for cc in conn_comp:
+                assert cc in groups
+
         homedir = home(dataDir="test-wrapping")
         mol = Molecule(os.path.join(homedir, "6X18.psf"))
 
