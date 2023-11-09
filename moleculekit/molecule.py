@@ -3337,15 +3337,16 @@ class _TestMolecule(TestCase):
         class _FakeMol:
             pass
 
-        n_atoms = 100
-        n_bonds = 80
+        n_atoms = 1000
+        n_bonds = 800
 
         for _ in range(10):
             bonds = []
-            for j in range(n_bonds):
+            for _ in range(n_bonds):
                 bonds.append(np.random.randint(0, n_atoms, 2))
             bonds = np.array(bonds, dtype=np.uint32)
             g = nx.Graph()
+            g.add_nodes_from(range(n_atoms))
             g.add_edges_from(bonds)
             conn_comp = list(nx.connected_components(g))
 
