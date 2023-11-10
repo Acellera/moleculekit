@@ -1082,7 +1082,7 @@ class Molecule(object):
             tempdata[:] = map[tempdata[:]]
             stays = np.invert(np.any(tempdata == -1, axis=1))
             # Delete bonds/angles/dihedrals between non-existent atoms
-            self.__dict__[field] = tempdata[stays, ...]
+            self.__dict__[field] = tempdata[stays, ...].astype(np.uint32).copy()
             if field == "bonds" and len(self.bondtype):
                 self.bondtype = self.bondtype[stays]
 
@@ -2604,6 +2604,7 @@ def mol_equal(
     checkFields=Molecule._atom_and_coord_fields,
     exceptFields=None,
     fieldPrecision=None,
+    dtypes=False,
     _logger=True,
 ):
     """Compare two Molecules for equality.
@@ -2620,6 +2621,8 @@ def mol_equal(
         A list of fields to not compare.
     fieldPrecision : dict
         A dictionary of `field`, `precision` key-value pairs which defines the numerical precision of the value comparisons of two arrays
+    dtypes : bool
+        Set to True to also compare datatypes of the fields
     _logger : bool
         Set to False to disable the printing of the differences in the two Molecules
 
@@ -2646,17 +2649,13 @@ def mol_equal(
             field1 = "_" + field
             if _logger:
                 logger.warning(
-                    "Could not find attribute {f} in mol1. Using attribute _{f}".format(
-                        f=field
-                    )
+                    f"Could not find attribute {field} in mol1. Using attribute _{field}"
                 )
         if not hasattr(mol2, field) and hasattr(mol2, "_" + field):
             field2 = "_" + field
             if _logger:
                 logger.warning(
-                    "Could not find attribute {f} in mol2. Using attribute _{f}".format(
-                        f=field
-                    )
+                    f"Could not find attribute {field} in mol2. Using attribute _{field}"
                 )
 
         if fieldPrecision is not None:
@@ -2676,6 +2675,16 @@ def mol_equal(
             mol1.__getattribute__(field1), mol2.__getattribute__(field2)
         ):
             difffields += [field]
+
+        if dtypes:
+            attr1 = mol1.__getattribute__(field1)
+            attr2 = mol2.__getattribute__(field2)
+            if type(attr1) != type(attr2):
+                difffields += [field + "_dtype"]
+                continue
+
+            if isinstance(attr1, np.ndarray) and (attr1.dtype != attr2.dtype):
+                difffields += [field + "_dtype"]
 
     if len(difffields):
         if _logger:
@@ -2791,7 +2800,7 @@ def getBondedGroups(mol, bonds=None):
 
     parent = np.arange(mol.numAtoms).astype(np.uint32)
     size = np.ones(mol.numAtoms, dtype=np.uint32)
-    get_bonded_groups(mol.bonds, mol.numAtoms, parent, size)
+    get_bonded_groups(bonds, mol.numAtoms, parent, size)
     _, grouplist, grouparray = np.unique(parent, return_index=True, return_inverse=True)
     return np.hstack((grouplist, [mol.numAtoms])).astype(np.uint32), grouparray
 
@@ -3306,29 +3315,36 @@ class _TestMolecule(TestCase):
         assert np.allclose(mol.coords, refmol.coords, atol=1e-2)
 
     def test_advanced_copy(self):
-        traj2 = self.trajmol.copy(frames=[1, 3])
-        traj3 = self.trajmol.copy()
+        from moleculekit.home import home
+
+        homedir = home(dataDir="test-wrapping")
+        trajmol = Molecule(os.path.join(homedir, "structure.prmtop"))
+        trajmol.read(os.path.join(homedir, "output.xtc"))
+
+        traj2 = trajmol.copy(frames=[1, 3])
+        traj3 = trajmol.copy()
         traj3.dropFrames(keep=[1, 3])
         assert mol_equal(
             traj2,
-            self.trajmol,
+            trajmol,
             checkFields=Molecule._all_fields,
             exceptFields=["coords", "box", "boxangles", "fileloc", "step", "time"],
+            dtypes=True,
         )
-        assert mol_equal(traj2, traj3)
-        assert np.array_equal(traj2.coords, self.trajmol.coords[:, :, [1, 3]])
-        assert not np.array_equal(traj2.coords, self.trajmol.coords[:, :, [2, 3]])
+        assert mol_equal(traj2, traj3, dtypes=True)
+        assert np.array_equal(traj2.coords, trajmol.coords[:, :, [1, 3]])
+        assert not np.array_equal(traj2.coords, trajmol.coords[:, :, [2, 3]])
 
-        traj2 = self.trajmol.copy(sel="resname MOL", frames=[1, 3])
-        traj3 = self.trajmol.copy()
-        traj3.filter("resname MOL")
+        traj2 = trajmol.copy(sel=trajmol.resid == 10, frames=[1, 3])
+        traj3 = trajmol.copy()
+        traj3.filter(traj3.resid == 10)
         traj3.dropFrames(keep=[1, 3])
-        assert mol_equal(traj2, traj3, checkFields=Molecule._all_fields)
+        assert mol_equal(traj2, traj3, checkFields=Molecule._all_fields, dtypes=True)
 
-        traj2 = self.trajmol.copy(sel="resname MOL")
-        traj3 = self.trajmol.copy()
-        traj3.filter("resname MOL")
-        assert mol_equal(traj2, traj3, checkFields=Molecule._all_fields)
+        traj2 = trajmol.copy(sel=trajmol.resid == 10)
+        traj3 = trajmol.copy()
+        traj3.filter(traj3.resid == 10)
+        assert mol_equal(traj2, traj3, checkFields=Molecule._all_fields, dtypes=True)
 
     def test_connected_components(self):
         from moleculekit.home import home
