@@ -730,6 +730,8 @@ class Molecule(object):
         """
         from moleculekit.align import _pp_align, molTMalign
 
+        self._invalidate_box()
+
         if refmol is None:
             refmol = self
             if matchingframes:
@@ -819,6 +821,8 @@ class Molecule(object):
         from moleculekit.tools.sequencestructuralalignment import (
             sequenceStructureAlignment,
         )
+
+        self._invalidate_box()
 
         aligns, _ = sequenceStructureAlignment(
             mol=self,
@@ -1133,6 +1137,11 @@ class Molecule(object):
                 ["un"] * self.bonds.shape[0], dtype=self._dtypes["bondtype"]
             )
 
+    def _invalidate_box(self):
+        if self.box is None or np.all(self.box == 0):
+            return
+        self.box = np.zeros((3, self.numFrames), dtype=self._dtypes["box"])
+
     def translateBy(self, vector, sel=None):
         """Move a selection of atoms by a given vector
 
@@ -1179,6 +1188,7 @@ class Molecule(object):
         >>> mol = tryp.copy()
         >>> mol.rotateBy(rotationMatrix([0, 1, 0], 1.57))
         """
+        self._invalidate_box()
         if abs(np.linalg.det(M) - 1) > 1e-5:
             logger.warning(f"Suspicious non-unitary determinant: {np.linalg.det(M)}")
         coords = self.get("coords", sel=sel)
