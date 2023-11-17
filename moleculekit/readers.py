@@ -785,7 +785,7 @@ def _getPDB(pdbid):
     # Try loading it from the pdb data directory
     tempfile = False
     localpdb = os.path.join(home(dataDir="pdb"), pdbid.lower() + ".pdb")
-    if os.path.isfile(localpdb):
+    if os.path.isfile(localpdb) and "GITHUB_ACTIONS" in os.environ:
         logger.info(f"Using local copy for {pdbid}: {localpdb}")
         filepath = localpdb
     else:
@@ -2274,8 +2274,10 @@ def SDFread(filename, frame=None, topoloc=None, mol_idx=None):
                     lines = []
 
         if mol_idx >= curr_mol and len(lines) == 0:
-            raise RuntimeError(f"SDF file contains only {curr_mol} molecules. Cannot read the requested mol_idx {mol_idx}")
-                    
+            raise RuntimeError(
+                f"SDF file contains only {curr_mol} molecules. Cannot read the requested mol_idx {mol_idx}"
+            )
+
         topo = Topology()
         coords = []
         mol_start = 0
@@ -2367,13 +2369,18 @@ def get_raw_data_from_url(pdb_id, reduced=False):
 
 def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
     from mmtf.api import default_api
+    from moleculekit.home import home
 
     # Monkey-patch the function to fix bug in data = response.read() which should not have read()
     default_api.get_raw_data_from_url = get_raw_data_from_url
     from mmtf import fetch, parse_gzip, parse
 
     if len(filename) == 4 and not os.path.isfile(filename):
-        data = fetch(filename)
+        if "GITHUB_ACTIONS" not in os.environ:
+            data = fetch(filename)
+        else:
+            localpdb = os.path.join(home(dataDir="pdb"), f"{filename.upper()}.mmtf.gz")
+            data = parse_gzip(localpdb)
     elif filename.endswith(".gz"):
         data = parse_gzip(filename)
     else:
