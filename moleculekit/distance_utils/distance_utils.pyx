@@ -328,7 +328,7 @@ def cdist(
         FLOAT32_t[:,:] coords2,
         FLOAT32_t[:,:] results,
     ):
-    cdef int i, j
+    cdef int i, j, k
     cdef int n_coo1 = coords1.shape[0]
     cdef int n_coo2 = coords2.shape[0]
     cdef int shape2 = coords1.shape[1]
@@ -337,15 +337,20 @@ def cdist(
     for i in range(n_coo1):
         for j in range(n_coo2):
             dist2 = 0
-            if shape2 >= 1:
-                diff = coords1[i, 0] - coords2[j, 0]
-                dist2 = dist2 + diff * diff
-            if shape2 >= 2:
-                diff = coords1[i, 1] - coords2[j, 1]
-                dist2 = dist2 + diff * diff
-            if shape2 >= 3:
-                diff = coords1[i, 2] - coords2[j, 2]
-                dist2 = dist2 + diff * diff
+            if shape2 <= 3: # Is this useless optimization really?
+                if shape2 >= 1:
+                    diff = coords1[i, 0] - coords2[j, 0]
+                    dist2 = dist2 + diff * diff
+                if shape2 >= 2:
+                    diff = coords1[i, 1] - coords2[j, 1]
+                    dist2 = dist2 + diff * diff
+                if shape2 >= 3:
+                    diff = coords1[i, 2] - coords2[j, 2]
+                    dist2 = dist2 + diff * diff
+            else:
+                for k in range(shape2):
+                    diff = coords1[i, k] - coords2[j, k]
+                    dist2 = dist2 + diff * diff
             results[i, j] = sqrt(dist2)
 
 
@@ -355,7 +360,7 @@ def pdist(
         FLOAT32_t[:,:] coords,
         FLOAT32_t[:] results,
     ):
-    cdef int i, j, ii
+    cdef int i, j, k, ii
     cdef int n_coo = coords.shape[0]
     cdef int shape2 = coords.shape[1]
     cdef FLOAT32_t dist2, diff
@@ -364,15 +369,20 @@ def pdist(
     for i in range(n_coo):
         for j in range(i+1, n_coo):
             dist2 = 0
-            if shape2 >= 1:
-                diff = coords[i, 0] - coords[j, 0]
-                dist2 = dist2 + diff * diff
-            if shape2 >= 2:
-                diff = coords[i, 1] - coords[j, 1]
-                dist2 = dist2 + diff * diff
-            if shape2 >= 3:
-                diff = coords[i, 2] - coords[j, 2]
-                dist2 = dist2 + diff * diff
+            if shape2 <= 3: # Is this useless optimization really?
+                if shape2 >= 1:
+                    diff = coords[i, 0] - coords[j, 0]
+                    dist2 = dist2 + diff * diff
+                if shape2 >= 2:
+                    diff = coords[i, 1] - coords[j, 1]
+                    dist2 = dist2 + diff * diff
+                if shape2 >= 3:
+                    diff = coords[i, 2] - coords[j, 2]
+                    dist2 = dist2 + diff * diff
+            else:
+                for k in range(shape2):
+                    diff = coords[i, k] - coords[j, k]
+                    dist2 = dist2 + diff * diff
             results[ii] = sqrt(dist2)
             ii += 1
 

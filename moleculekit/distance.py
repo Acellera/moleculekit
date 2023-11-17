@@ -7,8 +7,6 @@ def cdist(coords1, coords2):
 
     assert coords1.ndim == 2, "cdist only supports 2D arrays"
     assert coords2.ndim == 2, "cdist only supports 2D arrays"
-    assert coords1.shape[1] <= 3, "cdist only supports 1D, 2D and 3D coordinates"
-    assert coords2.shape[1] <= 3, "cdist only supports 1D, 2D and 3D coordinates"
     assert (
         coords1.shape[1] == coords2.shape[1]
     ), "Second dimension of input arguments must match"
@@ -27,7 +25,6 @@ def pdist(coords):
     import numpy as np
 
     assert coords.ndim == 2, "pdist only supports 2D arrays"
-    assert coords.shape[1] <= 3, "pdist only supports 1D, 2D and 3D coordinates"
     if coords.dtype != np.float32:
         coords = coords.astype(np.float32)
 
