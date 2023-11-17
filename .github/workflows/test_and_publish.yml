@@ -53,7 +53,7 @@ jobs:
       - name: Test
         run: |
           pytest ./moleculekit
-        environment:
+        env:
           GITHUB_ACTIONS: 1
 
       # - name: Upload coverage to Codecov
