@@ -1866,14 +1866,18 @@ def GROTOPread(filename, frame=None, topoloc=None):
     return MolFactory.construct(topo, None, filename, frame)
 
 
-def CIFread(filename, frame=None, topoloc=None, zerowarning=True):
+def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader
+    import mmcif
 
-    myDataList = []
-    ifh = open(filename, "r")
-    pRd = PdbxReader(ifh)
-    pRd.read(myDataList)
-    ifh.close()
+    if data is not None:
+        myDataList = data
+    else:
+        myDataList = []
+        ifh = open(filename, "r")
+        pRd = PdbxReader(ifh)
+        pRd.read(myDataList)
+        ifh.close()
 
     # Taken from http://mmcif.wwpdb.org/docs/pdb_to_pdbx_correspondences.html#ATOMP
     atom_site_mapping = {
@@ -2060,7 +2064,10 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True):
                 ]
             )
 
-    if "chem_comp_bond" in dataObj.getObjNameList():
+    if (
+        "atom_site" not in dataObj.getObjNameList()
+        and "chem_comp_bond" in dataObj.getObjNameList()
+    ):
         bond_site = dataObj.getObj("chem_comp_bond")
         for i in range(bond_site.getRowCount()):
             row = bond_site.getRow(i)
@@ -2070,7 +2077,7 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True):
             idx1 = topo.name.index(name1)
             idx2 = topo.name.index(name2)
             topo.bonds.append([idx1, idx2])
-            topo.bondtype.append(bondtype_mapping[bondtype])
+            topo.bondtype.append(bondtype_mapping[bondtype.upper()])
 
     if len(coords) != 0:
         allcoords.append(coords)
@@ -2495,6 +2502,33 @@ def ALPHAFOLDread(
     return results
 
 
+def BCIFread(
+    filename,
+    frame=None,
+    topoloc=None,
+    zerowarning=True,
+    uri="https://models.rcsb.org/{pdbid}.bcif.gz",
+):
+    from moleculekit.home import home
+    from mmcif.io.BinaryCifReader import BinaryCifReader
+
+    if len(filename) == 4 and not os.path.isfile(filename):
+        if "GITHUB_ACTIONS" in os.environ:
+            filename = os.path.join(home(dataDir="pdb"), f"{filename.lower()}.bcif.gz")
+        else:
+            filename = uri.format(pdbid=filename.lower())
+
+    bcr = BinaryCifReader(storeStringsAsBytes=False, defaultStringEncoding="utf-8")
+    data = bcr.deserialize(filename)
+    return CIFread(
+        filename=filename,
+        data=data,
+        frame=frame,
+        topoloc=topoloc,
+        zerowarning=zerowarning,
+    )
+
+
 # Register here all readers with their extensions
 _TOPOLOGY_READERS = {
     "prmtop": PRMTOPread,
@@ -2516,6 +2550,8 @@ _TOPOLOGY_READERS = {
     "mmtf": MMTFread,
     "mmtf.gz": MMTFread,
     "alphafold": ALPHAFOLDread,
+    "bcif": BCIFread,
+    "bcif.gz": BCIFread,
 }
 
 _MDTRAJ_TOPOLOGY_EXTS = [
@@ -2950,6 +2986,18 @@ class _TestReaders(unittest.TestCase):
                 break
             assert mol.numAtoms == ref_n_atoms[k]
             k += 1
+
+    def test_bcif(self):
+        from moleculekit.home import home
+        from tqdm import tqdm
+
+        pdbids = ["3ptb", "3hyd", "6a5j", "5vbl", "7q5b"]
+        for pdbid in tqdm(pdbids, desc="CIF/BCIF comparison"):
+            with self.subTest(pdbid=pdbid):
+                ciffile = os.path.join(home(dataDir="pdb"), f"{pdbid.upper()}.cif")
+                mol1 = Molecule(ciffile, type="cif")
+                mol2 = Molecule(pdbid, type="bcif")
+                assert mol_equal(mol1, mol2, checkFields=Molecule._all_fields, exceptFields=["fileloc"])
 # fmt: on
 
 if __name__ == "__main__":
