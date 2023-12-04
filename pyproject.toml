@@ -1,22 +1,21 @@
 [project]
 name = "moleculekit"
 description = "A molecule reading/writing and manipulation package."
-authors = [
-  { name = "Stefan Doerr", email = "s.doerr@acellera.com" },
-]
+authors = [{ name = "Stefan Doerr", email = "s.doerr@acellera.com" }]
 readme = "README.md"
 requires-python = ">=3.8"
 dynamic = ["version"]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Operating System :: POSIX :: Linux",
 ]
 dependencies = [
-    "numpy>=1.18.5",
-    "pandas>=1.1.2",
-    "networkx",
-    "tqdm",
-    "mmtf-python",
+  "numpy>=1.18.5",
+  "pandas>=1.1.2",
+  "networkx",
+  "tqdm",
+  "mmtf-python",
+  "mmcif",
 ]
 
 [project.urls]
@@ -25,11 +24,17 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = [""]
-include = ["moleculekit*"]  
+include = ["moleculekit*"]
 namespaces = false
 
 [build-system]
-requires = ["setuptools", "numpy>=1.18.5", "Cython>=0.29.21", "toml", "versioneer[toml]==0.28"]
+requires = [
+  "setuptools",
+  "numpy>=1.18.5",
+  "Cython>=0.29.21",
+  "toml",
+  "versioneer[toml]==0.28",
+]
 build-backend = "setuptools.build_meta"
 
 [tool.versioneer]
