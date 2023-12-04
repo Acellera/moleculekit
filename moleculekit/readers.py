@@ -1868,7 +1868,6 @@ def GROTOPread(filename, frame=None, topoloc=None):
 
 def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader
-    import mmcif
 
     if data is not None:
         myDataList = data
