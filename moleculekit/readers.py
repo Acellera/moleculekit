@@ -2382,12 +2382,14 @@ def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
     default_api.get_raw_data_from_url = get_raw_data_from_url
     from mmtf import fetch, parse_gzip, parse
 
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+
     if len(filename) == 4 and not os.path.isfile(filename):
-        if "GITHUB_ACTIONS" not in os.environ:
-            data = fetch(filename)
-        else:
+        if "GITHUB_ACTIONS" in os.environ and repo == "Acellera/moleculekit":
             localpdb = os.path.join(home(dataDir="pdb"), f"{filename.upper()}.mmtf.gz")
             data = parse_gzip(localpdb)
+        else:
+            data = fetch(filename)
     elif filename.endswith(".gz"):
         data = parse_gzip(filename)
     else:
