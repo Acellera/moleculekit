@@ -15,7 +15,6 @@ dependencies = [
   "networkx",
   "tqdm",
   "mmtf-python",
-  "mmcif",
 ]
 
 [project.urls]

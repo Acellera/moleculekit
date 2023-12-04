@@ -2988,17 +2988,17 @@ class _TestReaders(unittest.TestCase):
             assert mol.numAtoms == ref_n_atoms[k]
             k += 1
 
-    def test_bcif(self):
-        from moleculekit.home import home
-        from tqdm import tqdm
+    # def test_bcif(self):
+    #     from moleculekit.home import home
+    #     from tqdm import tqdm
 
-        pdbids = ["3ptb", "3hyd", "6a5j", "5vbl", "7q5b"]
-        for pdbid in tqdm(pdbids, desc="CIF/BCIF comparison"):
-            with self.subTest(pdbid=pdbid):
-                ciffile = os.path.join(home(dataDir="pdb"), f"{pdbid.upper()}.cif")
-                mol1 = Molecule(ciffile, type="cif")
-                mol2 = Molecule(pdbid, type="bcif")
-                assert mol_equal(mol1, mol2, checkFields=Molecule._all_fields, exceptFields=["fileloc"])
+    #     pdbids = ["3ptb", "3hyd", "6a5j", "5vbl", "7q5b"]
+    #     for pdbid in tqdm(pdbids, desc="CIF/BCIF comparison"):
+    #         with self.subTest(pdbid=pdbid):
+    #             ciffile = os.path.join(home(dataDir="pdb"), f"{pdbid.upper()}.cif")
+    #             mol1 = Molecule(ciffile, type="cif")
+    #             mol2 = Molecule(pdbid, type="bcif")
+    #             assert mol_equal(mol1, mol2, checkFields=Molecule._all_fields, exceptFields=["fileloc"])
 # fmt: on
 
 if __name__ == "__main__":
