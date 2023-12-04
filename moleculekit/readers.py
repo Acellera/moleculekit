@@ -2385,7 +2385,7 @@ def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
     repo = os.environ.get("GITHUB_REPOSITORY", "")
 
     if len(filename) == 4 and not os.path.isfile(filename):
-        if "GITHUB_ACTIONS" in os.environ and repo == "Acellera/moleculekit":
+        if ("GITHUB_ACTIONS" in os.environ) and (repo == "Acellera/moleculekit"):
             localpdb = os.path.join(home(dataDir="pdb"), f"{filename.upper()}.mmtf.gz")
             data = parse_gzip(localpdb)
         else:
