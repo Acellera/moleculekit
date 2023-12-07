@@ -255,8 +255,8 @@ class MolFactory(object):
             and toponatoms != trajnatoms
         ):
             raise TopologyInconsistencyError(
-                "Different number of atoms in topology ({}) and trajectory ({}) for "
-                "file {}".format(toponatoms, trajnatoms, filename)
+                f"Different number of atoms in topology ({toponatoms}) and trajectory ({trajnatoms}) for "
+                f"file {filename}"
             )
 
         if toponatoms is not None:
@@ -814,11 +814,19 @@ def pdbGuessElementByName(elements, names, onlymissing=True):
 
     alternatives = defaultdict(list)
 
-    if not onlymissing or (elements.dtype == np.float64 and np.all(np.isnan(elements))):
+    bad_elements = []
+    for el in elements:
+        if el.strip() == "" or el.strip().capitalize() not in periodictable:
+            bad_elements.append(True)
+        else:
+            bad_elements.append(False)
+
+    if not onlymissing or all(bad_elements):
         noelem = np.arange(len(elements))
     else:
-        noelem = np.where((elements.str.strip() == "") | elements.isnull())[0]
+        noelem = np.where(bad_elements)[0]
 
+    names = np.array(names, dtype=object)
     uqnames = np.unique(names[noelem])
     for name in uqnames:
         name = (
@@ -871,7 +879,6 @@ def PDBread(
     validateElements=True,
     uniqueBonds=True,
 ):
-    from pandas import read_fwf
     import io
 
     tempfile = False
@@ -976,16 +983,15 @@ def PDBread(
         "chain": str,
         "resid": int,
         "insertion": str,
-        "occupancy": np.float32,
-        "beta": np.float32,
+        "occupancy": float,
+        "beta": float,
         "segid": str,
         "element": str,
         "atomtype": str,
-        "charge": np.float32,
-        "formalcharge": np.int32,
+        "charge": float,
+        "formalcharge": int,
     }
     coordcolspecs = [(30, 38), (38, 46), (46, 54)]
-    coordnames = ("x", "y", "z")
 
     """
     COLUMNS       DATA  TYPE      FIELD        DEFINITION
@@ -1053,227 +1059,186 @@ def PDBread(
     symmetrycolspecs = [(20, 23), (23, 33), (33, 43), (43, 53), (53, 68)]
     symmetrynames = ("idx", "rot1", "rot2", "rot3", "trans")
 
-    def concatCoords(coords, coorddata):
-        if coorddata.tell() != 0:  # Not empty
-            coorddata.seek(0)
-            parsedcoor = read_fwf(
-                coorddata,
-                colspecs=coordcolspecs,
-                names=coordnames,
-                na_values=_NA_VALUES,
-                keep_default_na=False,
-            )
-            if coords is None:
-                coords = np.zeros((len(parsedcoor), 3, 0), dtype=np.float32)
-            currcoords = np.vstack((parsedcoor.x, parsedcoor.y, parsedcoor.z)).T
-            if coords.shape[0] != currcoords.shape[0]:
-                logger.warning(
-                    "Different number of atoms read in different MODELs in the PDB file. "
-                    "Keeping only the first {} model(s)".format(coords.shape[2])
-                )
-                return coords
-            coords = np.append(coords, currcoords[:, :, np.newaxis], axis=2)
-        return coords
+    topo = Topology()
+    crystalinfo = {}
+    parsedsymmetry = {prop: [] for prop in symmetrynames}
+    parsedbonds = []
 
+    coords = []
     teridx = []
     currter = 0
     topoend = False
+    modelcoords = []
+    failed_type_conversion = set()
+    failed_parsing = set()
 
-    cryst1data = io.StringIO()
-    topodata = io.StringIO()
-    conectdata = io.StringIO()
-    coorddata = io.StringIO()
-    symmetrydata = io.StringIO()
-
-    coords = None
+    def _fix_formal_charge(val):
+        if prop == "formalcharge":
+            # Move the minus to the start. Sometimes it's at the end in PDB files
+            if "-" in val:
+                val = "-" + val.replace("-", "")
+            if "+" in val:
+                val = val.replace("+", "")
+        return val
 
     with openFileOrStringIO(filename, "r") as f:
         for line in f:
             if line.startswith("CRYST1"):
-                cryst1data.write(line)
+                for (s, e), prop in zip(cryst1colspecs, cryst1names):
+                    try:
+                        crystalinfo[prop] = line[s:e].strip()
+                        if len(crystalinfo[prop]):
+                            if prop == "sGroup":
+                                crystalinfo[prop] = crystalinfo[prop].split()
+                            elif prop == "z":
+                                crystalinfo[prop] = int(crystalinfo[prop])
+                            else:
+                                crystalinfo[prop] = float(crystalinfo[prop])
+                    except Exception as err:
+                        logger.warning(
+                            f"Failed to parse crystal info with error: {err}"
+                        )
+                        del crystalinfo[prop]
             if line.startswith("ATOM") or line.startswith("HETATM"):
-                coorddata.write(line)
+                modelcoords.append([float(line[s:e]) for s, e in coordcolspecs])
             if (line.startswith("ATOM") or line.startswith("HETATM")) and not topoend:
-                topodata.write(line)
                 teridx.append(str(currter))
+                for (s, e), prop in zip(topocolspecs, toponames):
+                    dt = topodtypes[prop]
+                    val = line[s:e]
+                    if dt != str:
+                        val = _fix_formal_charge(val.strip())
+                        if len(val):
+                            try:
+                                val = dt(val)
+                            except Exception:
+                                failed_type_conversion.add(prop)
+                        else:
+                            val = 0
+                    getattr(topo, prop).append(val)
             if line.startswith("TER"):
                 currter += 1
             if (mode == "pdb" and line.startswith("END")) or (
                 mode == "pdbqt" and line.startswith("ENDMDL")
             ):  # pdbqt should not stop reading at ENDROOT or ENDBRANCH
                 topoend = True
+                if len(modelcoords):
+                    coords.append(modelcoords)
+                modelcoords = []
             if line.startswith("CONECT"):
-                conectdata.write(line)
+                parsedbonds.append([line[s:e].strip() for s, e in bondcolspecs])
             if line.startswith("MODEL"):
-                coords = concatCoords(coords, coorddata)
-                coorddata = io.StringIO()
+                if len(modelcoords):
+                    coords.append(modelcoords)
+                modelcoords = []
             if line.startswith(
                 "REMARK 290   SMTRY"
-            ):  # TODO: Support BIOMT fields. It's a bit more complicated. Can't be done with pandas
-                symmetrydata.write(line)
+            ):  # TODO: Support BIOMT fields. It's a bit more complicated.
+                for (s, e), prop in zip(symmetrycolspecs, symmetrynames):
+                    try:
+                        parsedsymmetry[prop].append(float(line[s:e]))
+                    except Exception as err:
+                        logger.warning(
+                            f"Failed to parse symmetry info with error: {err}"
+                        )
+                        failed_parsing.add("symmetry")
 
-        cryst1data.seek(0)
-        topodata.seek(0)
-        conectdata.seek(0)
-        symmetrydata.seek(0)
+    if len(modelcoords):
+        coords.append(modelcoords)
 
-        coords = concatCoords(coords, coorddata)
+    natoms = None
+    for i, cc in enumerate(coords):
+        if natoms is None:
+            natoms = len(cc)
+        elif len(cc) != natoms:
+            logger.warning(
+                "Different number of atoms read in different MODELs in the PDB file. "
+                f"Keeping only the first {i} model(s)"
+            )
+            coords = coords[:i]
+            break
+    coords = np.stack(coords, axis=2)
 
-        parsedbonds = read_fwf(
-            conectdata,
-            colspecs=bondcolspecs,
-            names=bondnames,
-            na_values=_NA_VALUES,
-            keep_default_na=False,
-        )
-        parsedcryst1 = read_fwf(
-            cryst1data,
-            colspecs=cryst1colspecs,
-            names=cryst1names,
-            na_values=_NA_VALUES,
-            keep_default_na=False,
-        )
-        enforceddtypes = {"resname": str, "segid": str}
-        parsedtopo = read_fwf(
-            topodata,
-            colspecs=topocolspecs,
-            names=toponames,
-            na_values=_NA_VALUES,
-            keep_default_na=False,
-            dtype=enforceddtypes,
-            delimiter="\r\t",
-        )  # , dtype=topodtypes)
-        parsedsymmetry = read_fwf(
-            symmetrydata,
-            colspecs=symmetrycolspecs,
-            names=symmetrynames,
-            na_values=_NA_VALUES,
-            keep_default_na=False,
-        )
-
-    if len(parsedtopo) == 0:
+    if len(topo.name) == 0:
         raise RuntimeError(f"No atoms could be read from PDB file {filename}")
 
     # Before stripping guess elements from atomname as the spaces are significant
-    if "element" in parsedtopo:
-        if parsedtopo.element.dtype != object:
-            parsedtopo.element = parsedtopo.element.astype(object)
-        idx, newelem = pdbGuessElementByName(parsedtopo.element, parsedtopo.name)
-        if len(idx):
-            parsedtopo.iloc[idx, parsedtopo.columns.get_loc("element")] = newelem
+    if mode == "pdb":
+        idx, newelem = pdbGuessElementByName(topo.element, topo.name)
+        for i, ix in enumerate(idx):
+            topo.element[ix] = newelem[i]
 
-    for field in topodtypes:
-        if (
-            field in parsedtopo
-            and topodtypes[field] == str
-            and parsedtopo[field].dtype == object
-        ):
-            parsedtopo[field] = parsedtopo[field].str.strip()
-
-    # Fixing PDB format charges which can come after the number
-    if "formalcharge" in parsedtopo and parsedtopo.formalcharge.dtype == "object":
-        parsedtopo.formalcharge = parsedtopo.formalcharge.str.strip()
-        charges = np.zeros(len(parsedtopo.formalcharge), dtype=np.float32)
-        for i, c in enumerate(parsedtopo.formalcharge):
-            if not isinstance(c, str):
-                continue
-            if len(c) > 1:
-                if c[1] == "-":
-                    charges[i] = -1 * float(c[0])
-                elif c[1] == "+":
-                    charges[i] = float(c[0])
-            elif len(c):
-                charges[i] = float(c)
-        parsedtopo.formalcharge = charges
+    # Now we can safely strip all string fields
+    for prop in topodtypes:
+        if hasattr(topo, prop) and topodtypes[prop] == str and len(getattr(topo, prop)):
+            for i in range(len(topo.name)):
+                topo.__dict__[prop][i] = topo.__dict__[prop][i].strip()
 
     # Fixing hexadecimal index and resids
     # Support for reading hexadecimal
-    if parsedtopo.serial.dtype == "object":
+    if "serial" in failed_type_conversion:
         logger.warning(
             'Non-integer values were read from the PDB "serial" field. Dropping PDB values and assigning new ones.'
         )
-        if len(np.unique(parsedtopo.serial)) == len(parsedtopo.serial):
-            parsedtopo.serial = (
-                sequenceID(parsedtopo.serial) + 1
-            )  # Indexes should start from 1 in PDB
+        if len(np.unique(topo.serial)) == len(topo.serial):
+            # Indexes should start from 1 in PDB
+            topo.serial = sequenceID(topo.serial) + 1
         else:
-            parsedtopo.serial = np.arange(1, len(parsedtopo.serial) + 1)
-    if parsedtopo.resid.dtype == "object":
+            topo.serial = np.arange(1, len(topo.serial) + 1)
+    if "resid" in failed_type_conversion:
         logger.warning(
             'Non-integer values were read from the PDB "resid" field. Dropping PDB values and assigning new ones.'
         )
-        parsedtopo.resid = sequenceID(parsedtopo.resid)
+        topo.resid = sequenceID(topo.resid)
 
-    if parsedtopo.insertion.dtype == np.float64 and not np.all(
-        np.isnan(parsedtopo.insertion)
-    ):
-        # Trying to minimize damage from resids overflowing into insertion field
-        logger.warning(
-            'Integer values detected in "insertion" field. Your resids might be overflowing. Take care'
-        )
-        parsedtopo.insertion = [
-            str(int(x)) if not np.isnan(x) else "" for x in parsedtopo.insertion
-        ]
+    # if topo.insertion.dtype == np.float64 and not np.all(np.isnan(topo.insertion)):
+    #     # Trying to minimize damage from resids overflowing into insertion field
+    #     logger.warning(
+    #         'Integer values detected in "insertion" field. Your resids might be overflowing. Take care'
+    #     )
+    #     topo.insertion = [
+    #         str(int(x)) if not np.isnan(x) else "" for x in topo.insertion
+    #     ]
 
-    if len(parsedtopo) > 99999:
+    if len(topo.serial) > 99999:
         logger.warning(
             "Reading PDB file with more than 99999 atoms. Bond information can be wrong."
         )
 
-    crystalinfo = {}
-    if len(parsedcryst1):
-        crystalinfo = parsedcryst1.iloc[0].to_dict()
-        if isinstance(crystalinfo["sGroup"], str) or not np.isnan(
-            crystalinfo["sGroup"]
-        ):
-            crystalinfo["sGroup"] = crystalinfo["sGroup"].split()
-    if len(parsedsymmetry):
-        numcopies = int(len(parsedsymmetry) / 3)
+    if len(parsedsymmetry["rot1"]) and "symmetry" not in failed_parsing:
+        numcopies = int(len(parsedsymmetry["trans"]) / 3)
+        rots = np.vstack(
+            (parsedsymmetry["rot1"], parsedsymmetry["rot2"], parsedsymmetry["rot3"])
+        ).T
         crystalinfo["numcopies"] = numcopies
-        crystalinfo["rotations"] = parsedsymmetry[
-            ["rot1", "rot2", "rot3"]
-        ].values.reshape((numcopies, 3, 3))
-        crystalinfo["translations"] = parsedsymmetry["trans"].values.reshape(
+        crystalinfo["rotations"] = rots.reshape((numcopies, 3, 3))
+        crystalinfo["translations"] = np.array(parsedsymmetry["trans"]).reshape(
             (numcopies, 3)
         )
 
-    topo = Topology(parsedtopo)
-
     # Bond formatting part
-    # TODO: Speed this up. This is the slowest part for large PDB files. From 700ms to 7s
-    serials = parsedtopo.serial.values
-    # if isinstance(serials[0], str) and np.any(serials == '*****'):
-    #     logger.info('Non-integer serials were read. For safety we will discard all bond information and serials will be assigned automatically.')
-    #     topo.serial = np.arange(1, len(serials)+1, dtype=int)
-    if np.max(parsedbonds.max()) > np.max(serials):
-        logger.info(
-            "Bond indexes in PDB file exceed atom indexes. For safety we will discard all bond information."
-        )
-    else:
-        mapserials = np.full(np.max(serials) + 1, -1, dtype=np.int64)
-        mapserials[serials] = list(range(len(serials)))
-        for i in range(len(parsedbonds)):
-            row = parsedbonds.loc[i].tolist()
-            topo.bonds += [
-                [int(row[0]), int(row[b])] for b in range(1, 5) if not np.isnan(row[b])
-            ]
+    serials = topo.serial
+    mapserials = np.full(np.max(serials) + 1, -1, dtype=np.int64)
+    mapserials[serials] = list(range(len(serials)))
+    for i in range(len(parsedbonds)):
+        row = parsedbonds[i]
+        topo.bonds += [
+            [int(row[0]), int(row[b])] for b in range(1, 5) if row[b].strip() != ""
+        ]
 
+    if len(topo.bonds):
         topo.bonds = np.array(topo.bonds, dtype=np.uint32)
-        if topo.bonds.size != 0:
-            mappedbonds = mapserials[topo.bonds[:]]
-            wrongidx, _ = np.where(
-                mappedbonds == -1
-            )  # Some PDBs have bonds to non-existing serials... go figure
-            if len(wrongidx):
-                logger.info(
-                    f"Discarding {len(wrongidx)} bonds to non-existing indexes in the PDB file."
-                )
-            mappedbonds = np.delete(mappedbonds, wrongidx, axis=0)
-            topo.bonds = np.array(mappedbonds, dtype=np.uint32)
+        badidx = ~np.all(np.isin(topo.bonds, topo.serial), axis=1)
+        if np.any(badidx):
+            # Some PDBs have bonds to non-existing serials... go figure
+            topo.bonds = topo.bonds[~badidx]
+            logger.info(
+                f"Discarded {np.sum(badidx)} bonds to non-existing indexes in the PDB file."
+            )
+        topo.bonds = np.array(mapserials[topo.bonds[:]], dtype=np.uint32)
 
-    if (
-        len(topo.segid) and np.all(np.array(topo.segid) == "") and currter != 0
-    ):  # If no segid was read, use the TER rows to define segments
+    # If no segid was read, use the TER rows to define segments
+    if len(topo.segid) and np.all(np.array(topo.segid) == "") and currter != 0:
         topo.segid = teridx
 
     if tempfile:
@@ -1711,9 +1676,7 @@ def MDTRAJread(filename, frame=None, topoloc=None, validateElements=True):
         import mdtraj as md
     except ImportError:
         raise ImportError(
-            "To support extension {} please install the `mdtraj` package".format(
-                os.path.splitext(filename)[1]
-            )
+            f"To support extension {os.path.splitext(filename)[1]} please install the `mdtraj` package"
         )
 
     traj = md.load(filename, top=topoloc)
@@ -1755,9 +1718,7 @@ def MDTRAJTOPOread(filename, frame=None, topoloc=None, validateElements=True):
         import mdtraj as md
     except ImportError:
         raise ImportError(
-            "To support extension {} please install the `mdtraj` package".format(
-                os.path.splitext(filename)[1]
-            )
+            f"To support extension {os.path.splitext(filename)[1]} please install the `mdtraj` package"
         )
 
     mdstruct = md.load(filename)
@@ -2987,6 +2948,13 @@ class _TestReaders(unittest.TestCase):
                 break
             assert mol.numAtoms == ref_n_atoms[k]
             k += 1
+
+    def test_broken_pdbs(self):
+        from glob import glob
+
+        for ff in glob(self.testfolder('broken-pdbs') + '/*.pdb'):
+            mol = Molecule(ff)
+            assert mol.numAtoms > 0
 
     # def test_bcif(self):
     #     from moleculekit.home import home
