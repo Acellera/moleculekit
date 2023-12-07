@@ -809,6 +809,8 @@ def pdbGuessElementByName(elements, names, onlymissing=True):
     from collections import defaultdict
     import re
 
+    edge_cases = {"SOD": "Na"}
+
     allelements = [str(el).upper() for el in periodictable]
     newelements = np.array(["" for _ in range(len(elements))], dtype=object)
 
@@ -833,7 +835,11 @@ def pdbGuessElementByName(elements, names, onlymissing=True):
             re.sub(r"\d", " ", name[0]) + name[1:]
         )  # Remove numbers from first column
         elem = None
-        if name[0] == " ":  # If there is no letter in col 13 then col 14 is the element
+        if name.strip() in edge_cases:
+            elem = edge_cases[name.strip()]
+        elif (
+            name[0] == " "
+        ):  # If there is no letter in col 13 then col 14 is the element
             elem = name[1]
         else:
             if (
@@ -858,7 +864,7 @@ def pdbGuessElementByName(elements, names, onlymissing=True):
                 "to moleculekit issue tracker."
             )
             elem = None
-        newelements[names == name] = elem
+        newelements[names == name] = elem if elem is not None else ""
 
     for elem, altelem in alternatives:
         names = np.unique(alternatives[(elem, altelem)])
@@ -2917,7 +2923,8 @@ class _TestReaders(unittest.TestCase):
             with self.subTest(pdbid=pdbid):
                 mol1 = Molecule(pdbid, type="pdb")
                 mol2 = Molecule(pdbid, type="mmtf")
-                mol2.dropFrames(keep=0)
+                if mol1.coords.shape[2] == 1:
+                    mol2.dropFrames(keep=0)
                 exc = exceptions
                 if pdbid in pdb_exceptions:
                     exc += pdb_exceptions[pdbid]
