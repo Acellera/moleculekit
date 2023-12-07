@@ -4,7 +4,6 @@
 # No redistribution in whole or part
 #
 import logging
-from collections import OrderedDict
 import itertools
 import networkx as nx
 from moleculekit.periodictable import periodictable
