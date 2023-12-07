@@ -42,6 +42,8 @@ jobs:
         run: |
           mamba install -y -q --file extra_requirements.txt python=${{ matrix.python-version }} -c acellera -c conda-forge
           mamba install -y -q rdkit=2023.03.3 -c conda-forge
+          # scikit-learn, joblib, biopython are only used for rarely-used functions in smallmol
+          mamba install -y -q scikit-learn joblib biopython -c conda-forge
 
       - name: Install moleculekit
         run: |

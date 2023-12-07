@@ -212,7 +212,6 @@ def getChemblSimilarLigandsBySmile(smi, threshold=85, returnSmiles=False):
 
 
 def convertToString(arr):
-
     if isinstance(arr, list):
         arr_str = " ".join([str(i) for i in arr])
     elif isinstance(arr, tuple):
@@ -256,7 +255,6 @@ def _depictMol(
     from os.path import splitext
     from rdkit.Chem import Kekulize
     from rdkit.Chem.Draw import rdMolDraw2D
-    from IPython.display import SVG
 
     if highlightAtoms is not None and not isinstance(highlightAtoms, list):
         raise ValueError(
@@ -319,6 +317,8 @@ def _depictMol(
 
     # activate jupiter-notebook rendering
     if ipython:
+        from IPython.display import SVG
+
         svg = svg.replace("svg:", "")
         return SVG(svg)
     else:
@@ -358,7 +358,6 @@ def depictMultipleMols(
 
     """
     from rdkit.Chem.Draw import MolsToGridImage
-    from IPython.display import SVG
     from os.path import splitext
 
     sel_atoms = []
@@ -382,9 +381,10 @@ def depictMultipleMols(
 
     from rdkit.Chem.Draw import IPythonConsole as CDIPythonConsole
 
-    if MolsToGridImage == CDIPythonConsole.ShowMols:
-        CDIPythonConsole.UninstallIPythonRenderer()
-        from rdkit.Chem.Draw import MolsToGridImage
+    if ipython:
+        if MolsToGridImage == CDIPythonConsole.ShowMols:
+            CDIPythonConsole.UninstallIPythonRenderer()
+            from rdkit.Chem.Draw import MolsToGridImage
 
     svg = MolsToGridImage(
         mols_list,
@@ -404,6 +404,8 @@ def depictMultipleMols(
         f.close()
 
     if ipython:
+        from IPython.display import SVG
+
         _svg = SVG(svg)
         return _svg
     else:

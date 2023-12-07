@@ -453,7 +453,13 @@ def getFeatures(mol):
 
 def parallel(func, listobj, n_cpus=-1, *args):
     from tqdm import tqdm
-    from joblib import Parallel, delayed
+
+    try:
+        from joblib import Parallel, delayed
+    except ImportError:
+        raise ImportError(
+            "Please install joblib to use the parallel function with `conda install joblib`."
+        )
 
     results = Parallel(n_jobs=n_cpus)(delayed(func)(ob, *args) for ob in tqdm(listobj))
     return results
@@ -472,7 +478,9 @@ class _TestAtomTyper(unittest.TestCase):
 
         assert mol_equal(mol2, ref, exceptFields=("coords",))
 
-    @unittest.skipIf(sys.platform.startswith("win"), "Windows OBabel fails at atom typing")
+    @unittest.skipIf(
+        sys.platform.startswith("win"), "Windows OBabel fails at atom typing"
+    )
     def test_obabel_atomtyping(self):
         from moleculekit.home import home
         from moleculekit.molecule import Molecule

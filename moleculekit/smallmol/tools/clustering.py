@@ -9,7 +9,6 @@ import numpy as np
 import logging
 from moleculekit.smallmol.util import convertToString
 from tqdm import tqdm
-from joblib import Parallel, delayed  # Import delayed as well for other modules
 
 
 logger = logging.getLogger(__name__)
@@ -19,6 +18,7 @@ def ParallelExecutor(**joblib_args):
     """
     A wrapper for joblib.Parallel to allow custom progress bars.
     """
+    from joblib import Parallel
 
     def aprun(**tq_args):
         tqdm_f = lambda x, args: tqdm(x, **args)
@@ -91,7 +91,7 @@ def cluster(
     smallmol_list, method, distThresholds=0.2, returnDetails=True, removeHs=True
 ):
     """
-    Rreturn the SmallMol objects grouped in the cluster. It can also return the details of the clusters computed.
+    Return the SmallMol objects grouped in the cluster. It can also return the details of the clusters computed.
 
     Parameters
     ----------
@@ -117,8 +117,18 @@ def cluster(
     details: list
         A list with all the cluster details
     """
-
-    from sklearn.cluster import DBSCAN
+    try:
+        from sklearn.cluster import DBSCAN
+    except ImportError:
+        raise ImportError(
+            "Please install scikit-learn to use the clustering methods. You can install it with `conda install scikit-learn`"
+        )
+    try:
+        from joblib import delayed
+    except ImportError:
+        raise ImportError(
+            "Please install joblib to use the clustering methods. You can install it with `conda install joblib`"
+        )
 
     import sys
 
@@ -136,9 +146,7 @@ def cluster(
 
     if method not in _methods:
         raise ValueError(
-            "The method provided {} does not exists. The ones available are the following: {}".format(
-                method, _methods
-            )
+            f"The method provided '{method}' does not exist. The ones available are the following: {_methods}"
         )
 
     smallmol_list = np.array([sm.copy() for sm in smallmol_list])
@@ -202,6 +210,7 @@ def _maccsClustering(rdkit_mols):
         The numpy array containing the tanimoto matrix
     """
     from rdkit.Chem import MACCSkeys  # calcola MACCS keys
+    from joblib import delayed
 
     fps = []
     for m in tqdm(rdkit_mols):
@@ -230,6 +239,7 @@ def _pathFingerprintsClustering(rdkit_mols):
         The numpy array containing the tanimoto matrix
     """
     from rdkit.Chem.Fingerprints import FingerprintMols  # calcola path fingerprints
+    from joblib import delayed
 
     fps = []
     for m in tqdm(rdkit_mols):
@@ -258,6 +268,7 @@ def _atomsFingerprintsClustering(rdkit_mols):
         The numpy array containing the dice matrix
     """
     from rdkit.Chem.AtomPairs import Pairs  # Atom pairs
+    from joblib import delayed
 
     fps = []
     for m in tqdm(rdkit_mols):
@@ -286,6 +297,7 @@ def _torsionsFingerprintsClustering(rdkit_mols):
         The numpy array containing the dice matrix
     """
     from rdkit.Chem.AtomPairs import Torsions  # Topological Torsions
+    from joblib import delayed
 
     fps = []
     for m in tqdm(rdkit_mols):
@@ -318,6 +330,7 @@ def _circularFingerprintsClustering(rdkit_mols, radius=2):
         The numpy array containing the dice matrix
     """
     from rdkit.Chem import AllChem  # calcola circular fingerprints
+    from joblib import delayed
 
     fps = []
     for m in rdkit_mols:
