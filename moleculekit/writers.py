@@ -7,7 +7,6 @@ import numpy as np
 import os
 from moleculekit.molecule import mol_equal
 from moleculekit.util import ensurelist, sequenceID
-import networkx as nx
 import logging
 import numbers
 
@@ -122,6 +121,8 @@ def PDBQTwrite(mol, filename, frames=None, writebonds=True):
 
 
 def PDBwrite(mol, filename, frames=None, writebonds=True, mode="pdb"):
+    import networkx as nx
+
     if frames is None and mol.numFrames != 0:
         frames = mol.frame
     else:
@@ -739,10 +740,15 @@ def MDTRAJwrite(mol, filename):
         raise ValueError(f'MDtraj writer failed for file {filename} with error "{e}"')
 
 
-def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
-    from moleculekit.pdbx.reader.PdbxContainers import DataContainer, DataCategory
+def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None, return_data=False):
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
     from moleculekit.molecule import _originalResname
+
+    if not return_data:
+        from moleculekit.pdbx.reader.PdbxContainers import DataContainer, DataCategory
+    else:
+        from mmcif.api.DataCategory import DataCategory
+        from mmcif.api.PdbxContainers import DataContainer
 
     if chemcomp is not None:
         single_mol = chemcomp
@@ -876,8 +882,61 @@ def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
             curContainer.append(bCat)
 
         myDataList.append(curContainer)
+        if return_data:
+            return myDataList
         pdbxW = PdbxWriter(ofh)
         pdbxW.write(myDataList)
+
+
+mmcif_api = None
+
+
+def BCIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
+    from mmcif.io.BinaryCifWriter import BinaryCifWriter
+    from mmcif.api.DictionaryApi import DictionaryApi
+    from mmcif.api.PdbxContainers import DataContainer
+    from mmcif.api.DataCategoryTyped import DataCategoryTyped
+
+    raise NotImplementedError("BinaryCIF writing is not yet fully implemented")
+
+    global mmcif_api
+
+    if mmcif_api is None:
+        from mmcif.io.IoAdapterPy import IoAdapterPy as IoAdapter
+        from moleculekit.home import home
+
+        myIo = IoAdapter(raiseExceptions=True)
+        dict_path = os.path.join(home(shareDir="mmcif"), "mmcif_pdbx_v5_next.dic")
+        cl = myIo.readFile(inputFilePath=dict_path)
+        mmcif_api = DictionaryApi(cl, consolidate=True)
+
+    containerList = CIFwrite(
+        mol,
+        filename=filename,
+        explicitbonds=explicitbonds,
+        chemcomp=chemcomp,
+        return_data=True,
+    )
+
+    bcw = BinaryCifWriter(
+        dictionaryApi=mmcif_api,
+        storeStringsAsBytes=False,
+        defaultStringEncoding="utf-8",
+        applyTypes=True,
+        useFloat64=False,
+    )
+
+    # Convert to typed container
+    container = containerList[0]
+    cName = container.getName()
+    tc = DataContainer(cName)
+    for catName in container.getObjNameList():
+        dObj = container.getObj(catName)
+        tObj = DataCategoryTyped(dObj, dictionaryApi=mmcif_api, copyInputData=True)
+        tc.append(tObj)
+
+    # Write to file
+    bcw.serialize(filename, [tc])
 
 
 def MMTFwrite(mol, filename):
@@ -1044,6 +1103,7 @@ _WRITERS = {
     "xsc": XSCwrite,
     "cif": CIFwrite,
     "mmtf": MMTFwrite,
+    "bcif": BCIFwrite,
 }
 
 
