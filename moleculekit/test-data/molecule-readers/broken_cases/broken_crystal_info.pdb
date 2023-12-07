@@ -1,0 +1,55 @@
+HEADER    LIGASE                                  01-JAN-01   1HTO              
+TITLE     CRYSTALLOGRAPHIC STRUCTURE OF A RELAXED GLUTAMINE SYNTHETASE FROM     
+TITLE    2 MYCOBACTERIUM TUBERCULOSIS                                                                  
+REMARK 290                                                                      
+REMARK 290 CRYSTALLOGRAPHIC SYMMETRY                                            
+REMARK 290 SYMMETRY OPERATORS FOR SPACE GROUP: P 21 21 21                       
+REMARK 290                                                                      
+REMARK 290      SYMOP   SYMMETRY                                                
+REMARK 290     NNNMMM   OPERATOR                                                
+REMARK 290       1555   X,Y,Z                                                   
+REMARK 290       2555   -X+1/2,-Y,Z+1/2                                         
+REMARK 290       3555   -X,Y+1/2,-Z+1/2                                         
+REMARK 290       4555   X+1/2,-Y+1/2,-Z                                         
+REMARK 290                                                                      
+REMARK 290     WHERE NNN -> OPERATOR NUMBER                                     
+REMARK 290           MMM -> TRANSLATION VECTOR                                  
+REMARK 290                                                                      
+REMARK 290 CRYSTALLOGRAPHIC SYMMETRY TRANSFORMATIONS                            
+REMARK 290 THE FOLLOWING TRANSFORMATIONS OPERATE ON THE ATOM/HETATM             
+REMARK 290 RECORDS IN THIS ENTRY TO PRODUCE CRYSTALLOGRAPHICALLY                
+REMARK 290 RELATED MOLECULES.                                                   
+REMARK 290   SMTRY1   1  1.000000  0.000000  0.000000        0.00000            
+REMARK 290   SMTRY2   1  0.000000  1.000000  0.000000        0.00000            
+REMARK 290   SMTRY3   1  0.000000  0.000000  1.000000        0.00000            
+REMARK 290   SMTRY1   2 -1.000000  0.000000  0.000000      103.86000            
+REMARK 290   SMTRY2   2  0.000000 -1.000000  0.000000        0.00000            
+REMARK 290   SMTRY3   2  0.000000  0.000000  1.000000      137.25000            
+REMARK 290   SMTRY1   3 -1.000000  0.000000  0.000000        0.00000            
+REMARK 290   SMTRY2   3  0.000000  1.000000  0.000000      128.84500            
+REMARK 290   SMTRY3   3  0.000000  0.000000 -1.000000      137.25000            
+REMARK 290   SMTRY1   4  1.000000  0.000000  0.000000      103.86000            
+REMARK 290   SMTRY2   4  0.000000 -1.000000  0.000000      128.84500            
+REMARK 290   SMTRY3   4  0.000000  0.000000 -1.000000        0.00000            
+REMARK 290                                                                      
+REMARK 290 REMARK: NULL                                                         
+CRYST1  207.720  257.690     274.500  90.00  90.00  90.00 P 21 21 21   96          
+ORIGX1      1.000000  0.000000  0.000000        0.00000                         
+ORIGX2      0.000000  1.000000  0.000000        0.00000                         
+ORIGX3      0.000000  0.000000  1.000000        0.00000                         
+SCALE1      0.004810  0.000000  0.000000        0.00000                         
+SCALE2      0.000000  0.003880  0.000000        0.00000                         
+SCALE3      0.000000  0.000000  0.003640        0.00000                         
+ATOM      1  N   THR A 601     103.936  52.601 136.940  1.00 87.38           N  
+ATOM      2  CA  THR A 601     104.798  52.889 138.123  1.00100.00           C  
+ATOM      3  C   THR A 601     106.262  52.526 137.849  1.00100.00           C  
+ATOM      4  O   THR A 601     107.144  53.386 137.932  1.00100.00           O  
+ATOM      5  CB  THR A 601     104.306  52.129 139.397  1.00100.00           C  
+ATOM      6  OG1 THR A 601     102.935  52.458 139.660  1.00100.00           O  
+ATOM      7  CG2 THR A 601     105.143  52.515 140.620  1.00 90.85           C  
+ATOM      8  N   GLU A 602     106.509  51.266 137.494  1.00100.00           N  
+ATOM      9  CA  GLU A 602     107.871  50.806 137.230  1.00 99.67           C  
+ATOM     10  C   GLU A 602     108.155  50.148 135.878  1.00 94.54           C  
+ATOM     11  O   GLU A 602     109.321  50.000 135.505  1.00 99.67           O  
+ENDMDL
+END
