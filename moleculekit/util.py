@@ -631,6 +631,7 @@ class _TestUtils(TestCase):
     def test_missingSegid(self):
         mol = self.moldiala.copy()
 
+        mol.segid[:] = ""
         try:
             _missingSegID(mol)
         except RuntimeError:
