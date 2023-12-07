@@ -1103,7 +1103,7 @@ _WRITERS = {
     "xsc": XSCwrite,
     "cif": CIFwrite,
     "mmtf": MMTFwrite,
-    "bcif": BCIFwrite,
+    # "bcif": BCIFwrite,
 }
 
 
