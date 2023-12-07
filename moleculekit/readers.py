@@ -1191,15 +1191,6 @@ def PDBread(
         )
         topo.resid = sequenceID(topo.resid)
 
-    # if topo.insertion.dtype == np.float64 and not np.all(np.isnan(topo.insertion)):
-    #     # Trying to minimize damage from resids overflowing into insertion field
-    #     logger.warning(
-    #         'Integer values detected in "insertion" field. Your resids might be overflowing. Take care'
-    #     )
-    #     topo.insertion = [
-    #         str(int(x)) if not np.isnan(x) else "" for x in topo.insertion
-    #     ]
-
     if len(topo.serial) > 99999:
         logger.warning(
             "Reading PDB file with more than 99999 atoms. Bond information can be wrong."
