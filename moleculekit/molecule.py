@@ -2412,6 +2412,27 @@ class Molecule(object):
 
         return offmol
 
+    def toDict(self, fields=None):
+        """Returns a dictionary representation of the molecule
+
+        Parameters
+        ----------
+        fields : list of str
+            The fields to include in the representation. By default it will include only topology fields.
+        """
+        if fields is None:
+            fields = self._topo_fields
+        else:
+            fields = ensurelist(fields)
+
+        result = {}
+        for field in fields:
+            val = getattr(self, field)
+            if isinstance(val, np.ndarray):
+                val = val.tolist()
+            result[field] = val
+        return result
+
 
 class UniqueAtomID:
     _fields = ("name", "altloc", "resname", "chain", "resid", "insertion", "segid")
