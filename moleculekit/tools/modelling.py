@@ -60,6 +60,8 @@ def model_gaps(
 ):
     """Model gaps in a protein sequence using ProMod3.
 
+    This method will also mutate any residues in the Molecule that do not match the input sequence.
+
     Parameters
     ----------
     mol : Molecule
