@@ -223,9 +223,9 @@ void xtc_read_new(char *filename, float *coords_arr, float *box_arr, float *time
 	p = (rvec *)malloc(sizeof(rvec) * natoms);
 
 	int retval = 0;
-	int fidx = 0;
+	unsigned long long int fidx = 0;
 	int _natoms_garbage = 0;
-	int xidx, yidx, zidx, aidx;
+	unsigned long long int xidx, yidx, zidx, aidx;
 	while (exdrOK == (retval = read_xtc(xd, _natoms_garbage, &step, &time, box, p, &prec)))
 	{
 		time_arr[fidx] = time;
@@ -412,7 +412,7 @@ int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, 
 	XDRFILE *xd = NULL;
 	rvec *p = NULL;
 	int i, f;
-	int xidx, yidx, zidx;
+	unsigned long long int xidx, yidx, zidx;
 	matrix b;
 	float prec = 1000;
 	int nf3 = nframes * 3;
@@ -530,7 +530,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 
 		//	printf("reading whole file\n" );
 		frames = xtc_read(filename, &garbage_natoms, &traj_nframes, &dt, &dstep);
-		int xidx, yidx, zidx, aidx;
+		unsigned long long int xidx, yidx, zidx, aidx;
 		if (frame < traj_nframes)
 		{
 			for (i = 0; i < traj_nframes; i++)
@@ -606,7 +606,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 
 		p = (rvec *)malloc(sizeof(rvec) * natoms);
 
-		int xidx, yidx, zidx, aidx;
+		unsigned long long int xidx, yidx, zidx, aidx;
 		if (exdrOK == (read_xtc(xd, natoms, &step, &time, box, p, &prec)))
 		{
 			time_arr[fidx] = time;
