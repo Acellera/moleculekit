@@ -7,8 +7,8 @@ graft moleculekit/share
 recursive-include moleculekit *.pyx *.pxd
 recursive-include moleculekit/tmalign/include *.h
 recursive-include moleculekit/tmalign/src *.cpp
-recursive-include moleculekit/xtc_utils/include *.h
-recursive-include moleculekit/xtc_utils/src *.cpp
+recursive-include moleculekit/fileformats/xtc/include *.h
+recursive-include moleculekit/fileformats/xtc/src *.cpp
 recursive-include moleculekit/fileformats/dcd/include *.h
 recursive-include moleculekit/fileformats/dcd/src *.c
 
