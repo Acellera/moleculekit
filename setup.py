@@ -43,7 +43,21 @@ extentions.append(
         language="c++",
     )
 )
-compiler_args = ["-w"]
+extentions.append(
+    Extension(
+        "moleculekit.dcd",
+        sources=[
+            "moleculekit/fileformats/dcd/src/dcdplugin.c",
+            "moleculekit/fileformats/dcd/dcd.pyx",
+        ],
+        include_dirs=[
+            "moleculekit/fileformats/dcd/include/",
+            "moleculekit/fileformats/dcd/",
+            numpy.get_include(),
+        ],
+        language="c",
+    )
+)
 extentions.append(
     Extension(
         "moleculekit.tmalign",
@@ -56,7 +70,7 @@ extentions.append(
             "moleculekit/tmalign/",
             numpy.get_include(),
         ],
-        extra_compile_args=compiler_args,
+        extra_compile_args=["-w"],
         language="c++",
     )
 )

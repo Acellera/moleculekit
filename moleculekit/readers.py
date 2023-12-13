@@ -2541,7 +2541,7 @@ def NETCDFread(
         cell_lengths = None
 
     if "cell_angles" in _handle.variables:
-        cell_angles = _handle.variables["cell_angles"][frame_slice]
+        cell_angles = _handle.variables["cell_angles"][frame_slice].T
     else:
         cell_angles = None
 
@@ -2570,7 +2570,38 @@ def NETCDFread(
         Trajectory(
             coords=coordinates,
             box=cell_lengths,
+            boxangles=cell_angles,
             step=range(coordinates.shape[2]),
+            time=time,
+        ),
+        filename,
+        frame,
+    )
+
+
+def DCDread(filename, frame=None, topoloc=None, stride=None, atom_indices=None):
+    from moleculekit.dcd import load_dcd
+
+    xyz, cell_lengths, cell_angles = load_dcd(
+        filename, stride=stride, atom_indices=atom_indices, frame=frame
+    )
+    xyz = np.transpose(xyz, (1, 2, 0))
+    if cell_lengths is not None:
+        cell_lengths = cell_lengths.T
+    if cell_angles is not None:
+        cell_angles = cell_angles.T
+
+    if stride is None:
+        stride = 1
+    initial = 0
+    time = (stride * np.arange(len(xyz))) + initial
+    return MolFactory.construct(
+        None,
+        Trajectory(
+            coords=xyz,
+            box=cell_lengths,
+            boxangles=cell_angles,
+            step=range(xyz.shape[2]),
             time=time,
         ),
         filename,
@@ -2604,6 +2635,7 @@ _TOPOLOGY_READERS = {
     "nc": NETCDFread,
     "netcdf": NETCDFread,
     "ncdf": NETCDFread,
+    "dcd": DCDread,
 }
 
 _MDTRAJ_TOPOLOGY_EXTS = [
@@ -2628,7 +2660,7 @@ _TRAJECTORY_READERS = {"xtc": XTCread, "xsc": XSCread}
 
 _COORDINATE_READERS = {"crd": CRDread, "coor": BINCOORread}
 
-_MDTRAJ_TRAJECTORY_EXTS = ("dcd", "binpos", "trr", "nc", "h5", "lh5", "netcdf")
+_MDTRAJ_TRAJECTORY_EXTS = ("binpos", "trr", "h5", "lh5")
 for ext in _MDTRAJ_TRAJECTORY_EXTS:
     if ext not in _TRAJECTORY_READERS:
         _TRAJECTORY_READERS[ext] = MDTRAJread
@@ -2758,6 +2790,7 @@ class _TestReaders(unittest.TestCase):
     def test_dcd(self):
         mol = Molecule(os.path.join(self.testfolder('dcd'), '1kdx_0.pdb'))
         mol.read(os.path.join(self.testfolder('dcd'), '1kdx.dcd'))
+        assert mol.coords.shape == (1809, 3, 17)
 
     def test_dcd_into_prmtop(self):
         mol = Molecule(os.path.join(self.testfolder(), 'dialanine', 'structure.prmtop'))

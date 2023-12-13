@@ -1424,7 +1424,7 @@ class Molecule(object):
                 )
 
             # TODO: Needs redesign to remove hack
-            if frame is not None and ext != "xtc":
+            if frame is not None and ext not in ("xtc", "dcd", "nc", "netcdf", "ncdf"):
                 mol.dropFrames(keep=frame)
 
             newmols.append(mol)
