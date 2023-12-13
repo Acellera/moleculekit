@@ -30,14 +30,14 @@ extentions.append(
     Extension(
         "moleculekit.xtc",
         sources=[
-            "moleculekit/xtc_utils/src/xdrfile_xtc.cpp",
-            "moleculekit/xtc_utils/src/xdrfile.cpp",
-            "moleculekit/xtc_utils/src/xtc.cpp",
-            "moleculekit/xtc_utils/xtc.pyx",
+            "moleculekit/fileformats/xtc/src/xdrfile_xtc.cpp",
+            "moleculekit/fileformats/xtc/src/xdrfile.cpp",
+            "moleculekit/fileformats/xtc/src/xtc.cpp",
+            "moleculekit/fileformats/xtc/xtc.pyx",
         ],
         include_dirs=[
-            "moleculekit/xtc_utils/include/",
-            "moleculekit/xtc_utils/",
+            "moleculekit/fileformats/xtc/include/",
+            "moleculekit/fileformats/xtc/",
             numpy.get_include(),
         ],
         language="c++",
