@@ -1,9 +1,9 @@
-/* -*- mode: c; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- 
+/* -*- mode: c; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*-
  *
  * $Id: xdrfile.h,v 1.6 2009/05/18 09:06:38 spoel Exp $
  *
  * Copyright (c) Erik Lindahl, David van der Spoel 2003,2004.
- * Coordinate compression (c) by Frans van Hoesel. 
+ * Coordinate compression (c) by Frans van Hoesel.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -13,56 +13,55 @@
 #ifndef __XXX
 #define __XXX 1
 
-//#include "rpc/types.h"
-//#include "rpc/xdr.h"
-
+// #include "rpc/types.h"
+// #include "rpc/xdr.h"
 
 #include <inttypes.h>
+#include <stdio.h>
 enum xdr_op
 {
-  XDR_ENCODE = 0,
-  XDR_DECODE = 1,
-  XDR_FREE   = 2
+	XDR_ENCODE = 0,
+	XDR_DECODE = 1,
+	XDR_FREE = 2
 };
 
 typedef struct XDR XDR;
 
 struct XDR
 {
-  enum xdr_op x_op;
-  struct xdr_ops
-  {
-    int (*x_getlong) (XDR *__xdrs, int32_t *__lp);
-    int (*x_putlong) (XDR *__xdrs, int32_t *__lp);
-    int (*x_getbytes) (XDR *__xdrs, char *__addr, unsigned int __len);
-    int (*x_putbytes) (XDR *__xdrs, char *__addr, unsigned int __len);
-    /* two next routines are not 64-bit IO safe - don't use! */
-    unsigned int (*x_getpostn) (XDR *__xdrs);
-    int (*x_setpostn) (XDR *__xdrs, unsigned int __pos);
-    void (*x_destroy) (XDR *__xdrs);
-  }
-    *x_ops;
-  char *x_private;
+	enum xdr_op x_op;
+	struct xdr_ops
+	{
+		int (*x_getlong)(XDR *__xdrs, int32_t *__lp);
+		int (*x_putlong)(XDR *__xdrs, int32_t *__lp);
+		int (*x_getbytes)(XDR *__xdrs, char *__addr, unsigned int __len);
+		int (*x_putbytes)(XDR *__xdrs, char *__addr, unsigned int __len);
+		/* two next routines are not 64-bit IO safe - don't use! */
+		unsigned int (*x_getpostn)(XDR *__xdrs);
+		int (*x_setpostn)(XDR *__xdrs, unsigned int __pos);
+		void (*x_destroy)(XDR *__xdrs);
+	}
+		*x_ops;
+	char *x_private;
 };
 
 struct XDRFILE
 {
-    FILE *   fp;       /**< pointer to standard C library file handle */
-    XDR *    xdr;      /**< pointer to corresponding XDR handle       */
-    char     mode;     /**< r=read, w=write, a=append                 */
-    int *    buf1;     /**< Buffer for internal use                   */
-    int      buf1size; /**< Current allocated length of buf1          */
-    int *    buf2;     /**< Buffer for internal use                   */
-    int      buf2size; /**< Current allocated length of buf2          */
+	FILE *fp;	  /**< pointer to standard C library file handle */
+	XDR *xdr;	  /**< pointer to corresponding XDR handle       */
+	char mode;	  /**< r=read, w=write, a=append                 */
+	int *buf1;	  /**< Buffer for internal use                   */
+	int buf1size; /**< Current allocated length of buf1          */
+	int *buf2;	  /**< Buffer for internal use                   */
+	int buf2size; /**< Current allocated length of buf2          */
 };
-
 
 /*! \file  xdrfile.h
  *  \brief Interface to read/write portabile binary files using XDR.
  *
  * This file provides an interface to read & write portably binary files,
- * using XDR - the external data representation standard defined in RFC 1014. 
- * 
+ * using XDR - the external data representation standard defined in RFC 1014.
+ *
  * There are several advantages to the XDR approach:
  *
  * -# It is portable. And not just portable between big/small integer endian,
@@ -76,8 +75,8 @@ struct XDRFILE
  * -# XDR libraries are required for NFS and lots of other network functions.
  *    This means there isn't a single Unix-like system that doesn't have them.
  * -# There is NO extra metadata whatsoever, and we write plain XDR files.
- *    If you write a float, it will take exactly 4 bytes in the file. 
- *    (All basic datatypes are 4 bytes, double fp 8 bytes). 
+ *    If you write a float, it will take exactly 4 bytes in the file.
+ *    (All basic datatypes are 4 bytes, double fp 8 bytes).
  * -# You can read/write the files by calling the system XDR routines directly
  *    too - you don't have to use the routines defined in this file.
  * -# It is no problem if your system doesn't have XDR libraries (MS Windows).
@@ -99,45 +98,58 @@ struct XDRFILE
 #include "rpc/xdr.h"
  *
  * We also provide wrapper routines so this module can be used from FORTRAN -
- * see the file xdrfile_fortran.txt in the Gromacs distribution for 
+ * see the file xdrfile_fortran.txt in the Gromacs distribution for
  * documentation on the FORTRAN interface!
  */
-
 
 #ifndef _XDRFILE_H_
 #define _XDRFILE_H_
 
 #ifdef __cplusplus
-extern "C" 
+extern "C"
 {
 #endif
 
-	/*! \brief Abstract datatype for an portable binary file handle 
+	/*! \brief Abstract datatype for an portable binary file handle
 	 *
 	 *  This datatype essentially works just like the standard FILE type in C.
 	 *  The actual contents is hidden in the implementation, so you can only
-	 *  define pointers to it, for use with the xdrfile routines. 
-	 *  
+	 *  define pointers to it, for use with the xdrfile routines.
+	 *
 	 *  If you \a really need to see the definition it is in xdrfile.c, but you
 	 *  cannot access elements of the structure outside that file.
 	 *
 	 *  \warning The implementation is completely different from the C standard
-	 *  library FILE, so don't even think about using an XDRFILE pointer as an 
+	 *  library FILE, so don't even think about using an XDRFILE pointer as an
 	 *  argument to a routine that needs a standard FILE pointer.
 	 */
 	typedef struct XDRFILE XDRFILE;
 
-	enum { exdrOK, exdrHEADER, exdrSTRING, exdrDOUBLE, 
-		   exdrINT, exdrFLOAT, exdrUINT, exdr3DX, exdrCLOSE, exdrMAGIC,
-		   exdrNOMEM, exdrENDOFFILE, exdrFILENOTFOUND, exdrDUFF, exdrNR };
+	enum
+	{
+		exdrOK,
+		exdrHEADER,
+		exdrSTRING,
+		exdrDOUBLE,
+		exdrINT,
+		exdrFLOAT,
+		exdrUINT,
+		exdr3DX,
+		exdrCLOSE,
+		exdrMAGIC,
+		exdrNOMEM,
+		exdrENDOFFILE,
+		exdrFILENOTFOUND,
+		exdrDUFF,
+		exdrNR
+	};
 
 	extern char *exdr_message[exdrNR];
 
 #define DIM 3
 	typedef float matrix[DIM][DIM];
 	typedef float rvec[DIM];
-	typedef int   mybool;
-
+	typedef int mybool;
 
 	/*! \brief Open a portable binary file, just like fopen()
 	 *
@@ -152,27 +164,23 @@ extern "C"
 	 *
 	 */
 	XDRFILE *
-	xdrfile_open    (const char *    path, 
-					 const char *    mode);
-
+	xdrfile_open(const char *path,
+				 const char *mode);
 
 	/*! \brief Close a previously opened portable binary file, just like fclose()
 	 *
 	 *  Use this routine much like calls to the standard library function
 	 *  fopen(). The only difference is that it is used for an XDRFILE handle
 	 *  instead of a FILE handle.
-	 * 
+	 *
 	 *  \param xfp  Pointer to an abstract XDRFILE datatype
 	 *
-	 *  \return     0 on success, non-zero on error. 
+	 *  \return     0 on success, non-zero on error.
 	 */
 	int
-	xdrfile_close   (XDRFILE *       xfp);
+	xdrfile_close(XDRFILE *xfp);
 
-
-
-
-	/*! \brief Read one or more \a char type variable(s) 
+	/*! \brief Read one or more \a char type variable(s)
 	 *
 	 *  \param ptr    Pointer to memory where data should be written
 	 *  \param ndata  Number of characters to read
@@ -181,28 +189,24 @@ extern "C"
 	 *  \return       Number of characters read
 	 */
 	int
-	xdrfile_read_char(char *      ptr, 
-					  int         ndata, 
-					  XDRFILE *   xfp);
-
-
+	xdrfile_read_char(char *ptr,
+					  int ndata,
+					  XDRFILE *xfp);
 
 	/*! \brief Write one or more \a characters type variable(s)
 	 *
-	 *  \param ptr    Pointer to memory where data should be read 
+	 *  \param ptr    Pointer to memory where data should be read
 	 *  \param ndata  Number of characters to write.
 	 *  \param xfp    Handle to portable binary file, created with xdrfile_open()
 	 *
 	 *  \return       Number of characters written
 	 */
 	int
-	xdrfile_write_char(char *      ptr, 
-					   int         ndata, 
-					   XDRFILE *   xfp);
+	xdrfile_write_char(char *ptr,
+					   int ndata,
+					   XDRFILE *xfp);
 
-
-
-	/*! \brief Read one or more \a unsigned \a char type variable(s) 
+	/*! \brief Read one or more \a unsigned \a char type variable(s)
 	 *
 	 *  \param ptr    Pointer to memory where data should be written
 	 *  \param ndata  Number of unsigned characters to read
@@ -211,28 +215,24 @@ extern "C"
 	 *  \return       Number of unsigned characters read
 	 */
 	int
-	xdrfile_read_uchar(unsigned char *    ptr, 
-					   int		          ndata, 
-					   XDRFILE *          xfp);
-
-
+	xdrfile_read_uchar(unsigned char *ptr,
+					   int ndata,
+					   XDRFILE *xfp);
 
 	/*! \brief Write one or more \a unsigned \a characters type variable(s)
 	 *
-	 *  \param ptr    Pointer to memory where data should be read 
+	 *  \param ptr    Pointer to memory where data should be read
 	 *  \param ndata  Number of unsigned characters to write.
 	 *  \param xfp    Handle to portable binary file, created with xdrfile_open()
 	 *
 	 *  \return       Number of unsigned characters written
 	 */
 	int
-	xdrfile_write_uchar(unsigned char *   ptr, 
-						int               ndata, 
-						XDRFILE *         xfp);
+	xdrfile_write_uchar(unsigned char *ptr,
+						int ndata,
+						XDRFILE *xfp);
 
-
-
-	/*! \brief Read one or more \a short type variable(s) 
+	/*! \brief Read one or more \a short type variable(s)
 	 *
 	 *  \param ptr    Pointer to memory where data should be written
 	 *  \param ndata  Number of shorts to read
@@ -241,28 +241,24 @@ extern "C"
 	 *  \return       Number of shorts read
 	 */
 	int
-	xdrfile_read_short(short *             ptr, 
-					   int                 ndata, 
-					   XDRFILE *           xfp);
-
-
+	xdrfile_read_short(short *ptr,
+					   int ndata,
+					   XDRFILE *xfp);
 
 	/*! \brief Write one or more \a short type variable(s)
 	 *
-	 *  \param ptr    Pointer to memory where data should be read 
+	 *  \param ptr    Pointer to memory where data should be read
 	 *  \param ndata  Number of shorts to write.
 	 *  \param xfp    Handle to portable binary file, created with xdrfile_open()
 	 *
 	 *  \return       Number of shorts written
 	 */
 	int
-	xdrfile_write_short(short *            ptr, 
-						int                ndata, 
-						XDRFILE *          xfp);
+	xdrfile_write_short(short *ptr,
+						int ndata,
+						XDRFILE *xfp);
 
-
-
-	/*! \brief Read one or more \a unsigned \a short type variable(s) 
+	/*! \brief Read one or more \a unsigned \a short type variable(s)
 	 *
 	 *  \param ptr    Pointer to memory where data should be written
 	 *  \param ndata  Number of unsigned shorts to read
@@ -271,27 +267,24 @@ extern "C"
 	 *  \return       Number of unsigned shorts read
 	 */
 	int
-	xdrfile_read_ushort(unsigned short *   ptr, 
-						int                ndata, 
-						XDRFILE *          xfp);
-
-
+	xdrfile_read_ushort(unsigned short *ptr,
+						int ndata,
+						XDRFILE *xfp);
 
 	/*! \brief Write one or more \a unsigned \a short type variable(s)
 	 *
-	 *  \param ptr    Pointer to memory where data should be read 
+	 *  \param ptr    Pointer to memory where data should be read
 	 *  \param ndata  Number of unsigned shorts to write.
 	 *  \param xfp    Handle to portable binary file, created with xdrfile_open()
 	 *
 	 *  \return       Number of unsigned shorts written
 	 */
 	int
-	xdrfile_write_ushort(unsigned short *     ptr, 
-						 int                  ndata, 
-						 XDRFILE *            xfp);
+	xdrfile_write_ushort(unsigned short *ptr,
+						 int ndata,
+						 XDRFILE *xfp);
 
-
-	/*! \brief Read one or more \a integer type variable(s) 
+	/*! \brief Read one or more \a integer type variable(s)
 	 *
 	 *  \param ptr    Pointer to memory where data should be written
 	 *  \param ndata  Number of integers to read
@@ -308,15 +301,13 @@ extern "C"
 	 *  Split your 64-bit data into two 32-bit integers for portability!
 	 */
 	int
-	xdrfile_read_int(int *         ptr, 
-					 int           ndata, 
-					 XDRFILE *     xfp);
-
-
+	xdrfile_read_int(int *ptr,
+					 int ndata,
+					 XDRFILE *xfp);
 
 	/*! \brief Write one or more \a integer type variable(s)
 	 *
-	 *  \param ptr    Pointer to memory where data should be read 
+	 *  \param ptr    Pointer to memory where data should be read
 	 *  \param ndata  Number of integers to write.
 	 *  \param xfp    Handle to portable binary file, created with xdrfile_open()
 	 *
@@ -326,16 +317,16 @@ extern "C"
 	 *
 	 *  We do not provide any routines for reading/writing 64-bit integers, since
 	 *  - Not all XDR implementations support it
-	 *  - Not all machines have 64-bit integers 
+	 *  - Not all machines have 64-bit integers
 	 *
 	 *  Split your 64-bit data into two 32-bit integers for portability!
 	 */
 	int
-	xdrfile_write_int(int *        ptr, 
-					  int          ndata, 
-					  XDRFILE *    xfp);
+	xdrfile_write_int(int *ptr,
+					  int ndata,
+					  XDRFILE *xfp);
 
-	/*! \brief Read one or more \a unsigned \a integers type variable(s) 
+	/*! \brief Read one or more \a unsigned \a integers type variable(s)
 	 *
 	 *  \param ptr    Pointer to memory where data should be written
 	 *  \param ndata  Number of unsigned integers to read
@@ -352,15 +343,13 @@ extern "C"
 	 *  Split your 64-bit data into two 32-bit integers for portability!
 	 */
 	int
-	xdrfile_read_uint(unsigned int *    ptr, 
-					  int               ndata, 
-					  XDRFILE *         xfp);
-
-
+	xdrfile_read_uint(unsigned int *ptr,
+					  int ndata,
+					  XDRFILE *xfp);
 
 	/*! \brief Write one or more \a unsigned \a integer type variable(s)
 	 *
-	 *  \param ptr    Pointer to memory where data should be read 
+	 *  \param ptr    Pointer to memory where data should be read
 	 *  \param ndata  Number of unsigned integers to write.
 	 *  \param xfp    Handle to portable binary file, created with xdrfile_open()
 	 *
@@ -370,18 +359,16 @@ extern "C"
 	 *
 	 *  We do not provide any routines for reading/writing 64-bit integers, since
 	 *  - Not all XDR implementations support it
-	 *  - Not all machines have 64-bit integers 
+	 *  - Not all machines have 64-bit integers
 	 *
 	 *  Split your 64-bit data into two 32-bit integers for portability!
 	 */
 	int
-	xdrfile_write_uint(unsigned int *    ptr, 
-					   int               ndata,  
-					   XDRFILE *         xfp);
+	xdrfile_write_uint(unsigned int *ptr,
+					   int ndata,
+					   XDRFILE *xfp);
 
-
-
-	/*! \brief Read one or more \a float type variable(s) 
+	/*! \brief Read one or more \a float type variable(s)
 	 *
 	 *  \param ptr    Pointer to memory where data should be written
 	 *  \param ndata  Number of floats to read
@@ -390,28 +377,24 @@ extern "C"
 	 *  \return       Number of floats read
 	 */
 	int
-	xdrfile_read_float(float *           ptr, 
-					   int               ndata, 
-					   XDRFILE *         xfp);
-
-
+	xdrfile_read_float(float *ptr,
+					   int ndata,
+					   XDRFILE *xfp);
 
 	/*! \brief Write one or more \a float type variable(s)
 	 *
-	 *  \param ptr    Pointer to memory where data should be read 
+	 *  \param ptr    Pointer to memory where data should be read
 	 *  \param ndata  Number of floats to write.
 	 *  \param xfp    Handle to portable binary file, created with xdrfile_open()
 	 *
 	 *  \return       Number of floats written
 	 */
 	int
-	xdrfile_write_float(float *          ptr, 
-						int              ndata, 
-						XDRFILE *        xfp);
+	xdrfile_write_float(float *ptr,
+						int ndata,
+						XDRFILE *xfp);
 
-
-
-	/*! \brief Read one or more \a double type variable(s) 
+	/*! \brief Read one or more \a double type variable(s)
 	 *
 	 *  \param ptr    Pointer to memory where data should be written
 	 *  \param ndata  Number of doubles to read
@@ -420,26 +403,22 @@ extern "C"
 	 *  \return       Number of doubles read
 	 */
 	int
-	xdrfile_read_double(double *          ptr, 
-						int               ndata, 
-						XDRFILE *         xfp);
-
-
+	xdrfile_read_double(double *ptr,
+						int ndata,
+						XDRFILE *xfp);
 
 	/*! \brief Write one or more \a double type variable(s)
 	 *
-	 *  \param ptr    Pointer to memory where data should be read 
+	 *  \param ptr    Pointer to memory where data should be read
 	 *  \param ndata  Number of double to write.
 	 *  \param xfp    Handle to portable binary file, created with xdrfile_open()
 	 *
 	 *  \return       Number of doubles written
 	 */
 	int
-	xdrfile_write_double(double *        ptr, 
-						 int             ndata, 
-						 XDRFILE *       xfp);
-
-
+	xdrfile_write_double(double *ptr,
+						 int ndata,
+						 XDRFILE *xfp);
 
 	/*! \brief Read a string (array of characters)
 	 *
@@ -451,11 +430,9 @@ extern "C"
 	 *  \return        Number of characters read, including end-of-string
 	 */
 	int
-	xdrfile_read_string(char *          ptr, 
-						int             maxlen, 
-						XDRFILE *       xfp);
-
-
+	xdrfile_read_string(char *ptr,
+						int maxlen,
+						XDRFILE *xfp);
 
 	/*! \brief Write a string (array of characters)
 	 *
@@ -465,10 +442,8 @@ extern "C"
 	 *  \return        Number of characters written, including end-of-string
 	 */
 	int
-	xdrfile_write_string(char *          ptr, 
-						 XDRFILE *       xfp);
-
-
+	xdrfile_write_string(char *ptr,
+						 XDRFILE *xfp);
 
 	/*! \brief Read raw bytes from file (unknown datatype)
 	 *
@@ -479,12 +454,9 @@ extern "C"
 	 *  \return        Number of bytes read from file
 	 */
 	int
-	xdrfile_read_opaque(char *             ptr, 
-						int                nbytes, 
-						XDRFILE *          xfp);
-
-
-
+	xdrfile_read_opaque(char *ptr,
+						int nbytes,
+						XDRFILE *xfp);
 
 	/*! \brief Write raw bytes to file (unknown datatype)
 	 *
@@ -495,14 +467,9 @@ extern "C"
 	 *  \return        Number of bytes written to file
 	 */
 	int
-	xdrfile_write_opaque(char *            ptr, 
-						 int               nbytes, 
-						 XDRFILE *         xfp);
-
-
-
-
-
+	xdrfile_write_opaque(char *ptr,
+						 int nbytes,
+						 XDRFILE *xfp);
 
 	/*! \brief Compress coordiates in a float array to XDR file
 	 *
@@ -518,32 +485,29 @@ extern "C"
 	 *
 	 *  \param ptr        Pointer to coordinates to compress (length 3*ncoord)
 	 *  \param ncoord     Number of coordinate triplets in data
-	 *  \param precision  Scaling factor for lossy compression. If it is <=0, 
+	 *  \param precision  Scaling factor for lossy compression. If it is <=0,
 	 *                    the default value of 1000.0 is used.
 	 *  \param xfp        Handle to portably binary file
 	 *
-	 *  \return           Number of coordinate triplets written. 
+	 *  \return           Number of coordinate triplets written.
 	 *                    IMPORTANT: Check that this is equal to ncoord - if it is
-	 *                    negative, an error occured. This should not happen with 
+	 *                    negative, an error occured. This should not happen with
 	 *	   	              normal data, but if your coordinates are NaN or very
 	 *                    large (>1e6) it is not possible to use the compression.
 	 *
 	 *  \warning          The compression algorithm is not part of the XDR standard,
-	 *                    and very complicated, so you will need this xdrfile module 
-	 *                    to read it later. 
+	 *                    and very complicated, so you will need this xdrfile module
+	 *                    to read it later.
 	 */
 	int
-	xdrfile_compress_coord_float(float *     ptr,
-								 int         ncoord,
-								 float       precision,
-								 XDRFILE *   xfp);
-
-
-
+	xdrfile_compress_coord_float(float *ptr,
+								 int ncoord,
+								 float precision,
+								 XDRFILE *xfp);
 
 	/*! \brief Decompress coordiates from XDR file to array of floats
 	 *
-	 *  This routine will decompress three-dimensional coordinate data previously 
+	 *  This routine will decompress three-dimensional coordinate data previously
 	 *  stored in an XDR file and store it in the specified array of floats.
 	 *
 	 *  The precision used during the earlier compression is read from the file
@@ -561,23 +525,20 @@ extern "C"
 	 *  \return           Number of coordinate triplets read. If this is negative,
 	 *                    an error occured.
 	 *
-	 *  \warning          Since we cannot count on being able to set/get the 
+	 *  \warning          Since we cannot count on being able to set/get the
 	 *                    position of large files (>2Gb), it is not possible to
-	 *                    recover from errors by re-reading the frame if the 
-	 *                    storage area you provided was too small. To avoid this 
-	 *                    from happening, we recommend that you store the number of 
+	 *                    recover from errors by re-reading the frame if the
+	 *                    storage area you provided was too small. To avoid this
+	 *                    from happening, we recommend that you store the number of
 	 *                    coordinates triplet as an integer either in a header or
-	 *                    just before the compressed coordinate data, so you can 
+	 *                    just before the compressed coordinate data, so you can
 	 *                    read it first and allocated enough memory.
 	 */
 	int
-	xdrfile_decompress_coord_float(float *     ptr,
-								   int *	   ncoord,
-								   float *     precision,
-								   XDRFILE *   xfp);
-
-
-
+	xdrfile_decompress_coord_float(float *ptr,
+								   int *ncoord,
+								   float *precision,
+								   XDRFILE *xfp);
 
 	/*! \brief Compress coordiates in a double array to XDR file
 	 *
@@ -599,30 +560,27 @@ extern "C"
 	 *                    default value of 1000.0 is used.
 	 *  \param xfp        Handle to portably binary file
 	 *
-	 *  \return           Number of coordinate triplets written. 
+	 *  \return           Number of coordinate triplets written.
 	 *                    IMPORTANT: Check that this is equal to ncoord - if it is
-	 *                    negative, an error occured. This should not happen with 
+	 *                    negative, an error occured. This should not happen with
 	 *                    normal data, but if your coordinates are NaN or very
 	 *                    large (>1e6) it is not possible to use the compression.
 	 *
 	 *  \warning          The compression algorithm is not part of the XDR standard,
-	 *                    and very complicated, so you will need this xdrfile module 
-	 *                    to read it later. 
+	 *                    and very complicated, so you will need this xdrfile module
+	 *                    to read it later.
 	 */
 	int
-	xdrfile_compress_coord_double(double *     ptr,
-								  int          ncoord,
-								  double       precision,
-								  XDRFILE *    xfp);
-
-
-
+	xdrfile_compress_coord_double(double *ptr,
+								  int ncoord,
+								  double precision,
+								  XDRFILE *xfp);
 
 	/*! \brief Decompress coordiates from XDR file to array of doubles
 	 *
-	 *  This routine will decompress three-dimensional coordinate data previously 
+	 *  This routine will decompress three-dimensional coordinate data previously
 	 *  stored in an XDR file and store it in the specified array of doubles.
-	 *  Double will NOT give you any extra precision since the coordinates are 
+	 *  Double will NOT give you any extra precision since the coordinates are
 	 *  compressed. This routine just avoids allocating a temporary array of floats.
 	 *
 	 *  The precision used during the earlier compression is read from the file
@@ -640,22 +598,20 @@ extern "C"
 	 *  \return           Number of coordinate triplets read. If this is negative,
 	 *                    an error occured.
 	 *
-	 *  \warning          Since we cannot count on being able to set/get the 
+	 *  \warning          Since we cannot count on being able to set/get the
 	 *                    position of large files (>2Gb), it is not possible to
-	 *                    recover from errors by re-reading the frame if the 
-	 *                    storage area you provided was too small. To avoid this 
-	 *                    from happening, we recommend that you store the number of 
+	 *                    recover from errors by re-reading the frame if the
+	 *                    storage area you provided was too small. To avoid this
+	 *                    from happening, we recommend that you store the number of
 	 *                    coordinates triplet as an integer either in a header or
-	 *                    just before the compressed coordinate data, so you can 
+	 *                    just before the compressed coordinate data, so you can
 	 *                    read it first and allocated enough memory.
 	 */
 	int
-	xdrfile_decompress_coord_double(double *     ptr,
-									int *	     ncoord,
-									double *     precision,
-									XDRFILE *    xfp);
-
-
+	xdrfile_decompress_coord_double(double *ptr,
+									int *ncoord,
+									double *precision,
+									XDRFILE *xfp);
 
 #ifdef __cplusplus
 }
@@ -663,4 +619,3 @@ extern "C"
 
 #endif /* _XDRFILE_H_ */
 #endif
-

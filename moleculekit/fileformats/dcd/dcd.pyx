@@ -36,6 +36,7 @@ from dcdlib cimport molfile_timestep_t, dcdhandle
 from dcdlib cimport open_dcd_read, close_file_read, read_next_timestep
 from dcdlib cimport open_dcd_write, close_file_write, write_timestep
 from dcdlib cimport dcd_rewind
+from moleculekit.fileformats.utils import ensure_type, cast_indices
 
 
 ##############################################################################
@@ -93,6 +94,7 @@ def load_dcd(filename, stride=None, atom_indices=None, frame=None):
         raise TypeError('filename must be of type path-like for load_dcd. '
             'you supplied %s' % type(filename))
 
+    atom_indices = cast_indices(atom_indices)
     with DCDTrajectoryFile(str(filename)) as f:
         if frame is not None:
             f.seek(frame)
@@ -458,6 +460,8 @@ cdef class DCDTrajectoryFile:
             raise IOError("file is not open")
 
         # do typechecking, and then dispatch to the c level function
+        xyz = ensure_type(xyz, dtype=np.float32, ndim=3, name='xyz', can_be_none=False,
+                          add_newaxis_on_deficient_ndim=True)
         n_frames = len(xyz)
 
         # they must be both present or both absent
@@ -465,6 +469,13 @@ cdef class DCDTrajectoryFile:
             raise ValueError('cell_lengths were given, but no cell_angles')
         if cell_lengths is not None and cell_angles is None:
             raise ValueError('cell_angles were given, but no cell_lengths')
+
+        cell_lengths = ensure_type(cell_lengths, dtype=np.float32, ndim=2, name='cell_lengths',
+                                   can_be_none=True, shape=(n_frames, 3), add_newaxis_on_deficient_ndim=True,
+                                   warn_on_cast=False)
+        cell_angles = ensure_type(cell_angles, dtype=np.float32, ndim=2, name='cell_angles',
+                                  can_be_none=True, shape=(n_frames, 3), add_newaxis_on_deficient_ndim=True,
+                                  warn_on_cast=False)
 
         if self._needs_write_initialization:
             self._initialize_write(xyz.shape[1], (cell_lengths is not None) and (cell_angles is not None))

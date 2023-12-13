@@ -45,6 +45,23 @@ extentions.append(
 )
 extentions.append(
     Extension(
+        "moleculekit.trr",
+        sources=[
+            "moleculekit/fileformats/xtc/src/xdrfile_trr.c",
+            "moleculekit/fileformats/xtc/src/xdrfile.cpp",
+            "moleculekit/fileformats/xtc/src/xdr_seek.c",
+            "moleculekit/fileformats/xtc/trr.pyx",
+        ],
+        include_dirs=[
+            "moleculekit/fileformats/xtc/include/",
+            "moleculekit/fileformats/xtc/",
+            numpy.get_include(),
+        ],
+        language="c",
+    )
+)
+extentions.append(
+    Extension(
         "moleculekit.dcd",
         sources=[
             "moleculekit/fileformats/dcd/src/dcdplugin.c",
