@@ -2750,7 +2750,7 @@ def DCDread(filename, frame=None, topoloc=None, stride=None, atom_indices=None):
     if stride is None:
         stride = 1
     initial = 0
-    time = (stride * np.arange(len(xyz))) + initial
+    time = (stride * np.arange(xyz.shape[2])) + initial
     return MolFactory.construct(
         None,
         Trajectory(
