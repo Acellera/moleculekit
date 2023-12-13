@@ -2488,6 +2488,96 @@ def BCIFread(
     )
 
 
+def NETCDFread(
+    filename,
+    frame=None,
+    topoloc=None,
+    stride=None,
+    atom_indices=None,
+):
+    from moleculekit.fileformats.netcdf import netcdf_file
+
+    _handle = netcdf_file(filename, mode="r", version=2)
+
+    total_n_frames = _handle.variables["coordinates"].shape[0]
+    n_atoms = _handle.dimensions["atom"]
+    frame_slice = slice(0, total_n_frames, stride)
+
+    if atom_indices is None:
+        # get all of the atoms
+        atom_slice = slice(None)
+    else:
+        atom_slice = ensurelist(atom_indices)
+        if not np.all(atom_slice < n_atoms):
+            raise ValueError(
+                "As a zero-based index, the entries in "
+                "atom_indices must all be less than the number of atoms "
+                "in the trajectory, %d" % n_atoms
+            )
+        if not np.all(atom_slice >= 0):
+            raise ValueError(
+                "The entries in atom_indices must be greater " "than or equal to zero"
+            )
+
+    if "coordinates" in _handle.variables:
+        coordinates = _handle.variables["coordinates"][frame_slice, atom_slice, :]
+        coordinates = np.transpose(coordinates, [1, 2, 0])  # nm to Angstroms
+    else:
+        raise ValueError(
+            "No coordinates found in the NetCDF file. The only "
+            "variables in the file were %s" % _handle.variables.keys()
+        )
+
+    if "time" in _handle.variables:
+        time = (
+            _handle.variables["time"][frame_slice] * 1000
+        )  # need to go from picoseconds to femtoseconds
+    else:
+        time = None
+
+    if "cell_lengths" in _handle.variables:
+        cell_lengths = _handle.variables["cell_lengths"][frame_slice].T
+    else:
+        cell_lengths = None
+
+    if "cell_angles" in _handle.variables:
+        cell_angles = _handle.variables["cell_angles"][frame_slice]
+    else:
+        cell_angles = None
+
+    if cell_lengths is None and cell_angles is not None:
+        logger.warning("cell_lengths were found, but no cell_angles")
+    if cell_lengths is not None and cell_angles is None:
+        logger.warning("cell_angles were found, but no cell_lengths")
+
+    # scipy.io.netcdf variables are mem-mapped, and are only backed
+    # by valid memory while the file handle is open. This is _bad_.
+    # because we need to support the user opening the file, reading
+    # the coordinates, and then closing it, and still having the
+    # coordinates be a valid memory segment.
+    # https://github.com/rmcgibbo/mdtraj/issues/440
+    if coordinates is not None and not coordinates.flags["WRITEABLE"]:
+        coordinates = np.array(coordinates, copy=True)
+    if time is not None and not time.flags["WRITEABLE"]:
+        time = np.array(time, copy=True)
+    if cell_lengths is not None and not cell_lengths.flags["WRITEABLE"]:
+        cell_lengths = np.array(cell_lengths, copy=True)
+    if cell_angles is not None and not cell_angles.flags["WRITEABLE"]:
+        cell_angles = np.array(cell_angles, copy=True)
+
+    return MolFactory.construct(
+        None,
+        Trajectory(
+            coords=coordinates,
+            box=cell_lengths,
+            step=range(coordinates.shape[2]),
+            time=time,
+        ),
+        filename,
+        frame,
+    )
+
+
 # Register here all readers with their extensions
 _TOPOLOGY_READERS = {
     "prmtop": PRMTOPread,
@@ -2511,6 +2601,9 @@ _TOPOLOGY_READERS = {
     "alphafold": ALPHAFOLDread,
     "bcif": BCIFread,
     "bcif.gz": BCIFread,
+    "nc": NETCDFread,
+    "netcdf": NETCDFread,
+    "ncdf": NETCDFread,
 }
 
 _MDTRAJ_TOPOLOGY_EXTS = [
@@ -2953,6 +3046,13 @@ class _TestReaders(unittest.TestCase):
         for ff in glob(self.testfolder('broken-pdbs') + '/*.pdb'):
             mol = Molecule(ff)
             assert mol.numAtoms > 0
+
+    def test_netcdf(self):
+        from glob import glob
+
+        for ff in glob(self.testfolder('netcdf') + '/*.nc'):
+            mol = Molecule(ff)
+            assert mol.numAtoms > 0 and mol.numFrames > 0
 
     # def test_bcif(self):
     #     from moleculekit.home import home
