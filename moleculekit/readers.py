@@ -30,7 +30,12 @@ def openFileOrStringIO(strData, mode=None):
             strData.close()
     elif os.path.exists(strData):
         try:
-            fi = open(strData, mode)
+            if strData.endswith(".gz"):
+                import gzip
+
+                fi = gzip.open(strData, mode + "t")
+            else:
+                fi = open(strData, mode)
             yield fi
         finally:
             fi.close()
@@ -622,30 +627,41 @@ def box_vectors_to_lengths_and_angles(a, b, c):
 
 
 def XYZread(filename, frame=None, topoloc=None):
+    import gzip
+    import re
+
+    natom_line = re.compile(r"^([0-9]+)$")
+    coord_line = re.compile(
+        r"^\w+\s+([-+]?[0-9]*\.?[0-9]+)\s+([-+]?[0-9]*\.?[0-9]+)\s+([-+]?[0-9]*\.?[0-9]+)$"
+    )
     topo = Topology()
 
     frames = []
     firstconf = True
-    with open(filename, "r") as f:
-        while True:
-            line = f.readline()
-            if line == "":
-                break
-            natoms = int(line.split()[0])
-            f.readline()
-            coords = []
-            for i in range(natoms):
-                s = f.readline().split()
+    coords = None
+    i = 0
+    gz = filename.endswith(".gz")
+    with gzip.open(filename, "rt") if gz else open(filename, "r") as f:
+        for line in f:
+            if natom_line.match(line):
+                if coords is not None:
+                    frames.append(coords)
+                    firstconf = False
+                coords = []
+                natoms = int(line.split()[0])
+            elif coord_line.match(line):
+                pieces = line.split()
                 if firstconf:
                     topo.record.append("HETATM")
                     topo.serial.append(i + 1)
-                    topo.element.append(s[0])
-                    topo.name.append(s[0])
+                    topo.element.append(pieces[0])
+                    topo.name.append(pieces[0])
                     topo.resname.append("MOL")
-                coords.append(s[1:4])
-            frames.append(np.vstack(coords))
-            firstconf = False
+                    i += 1
+                coords.append([float(x) for x in pieces[1:4]])
 
+    frames.append(coords)
+    assert len(topo.record) == natoms
     coords = np.stack(frames, axis=2)
     traj = Trajectory(coords=coords)
     return MolFactory.construct(topo, traj, filename, frame)
@@ -2825,7 +2841,9 @@ _TOPOLOGY_READERS = {
     "mol2": MOL2read,
     "gjf": GJFread,
     "xyz": XYZread,
+    "xyz.gz": XYZread,
     "pdb": PDBread,
+    "pdb.gz": PDBread,
     "ent": PDBread,
     "pdbqt": PDBQTread,
     "top": [GROTOPread, PRMTOPread],
@@ -2842,7 +2860,6 @@ _TOPOLOGY_READERS = {
 }
 
 _MDTRAJ_TOPOLOGY_EXTS = [
-    "pdb.gz",
     "h5",
     "lh5",
     "parm7",

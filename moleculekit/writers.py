@@ -159,7 +159,12 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode="pdb"):
                 "Cannot write PDB beta/temperature with values smaller than -1E5 or larger than 1E6"
             )
 
-    fh = open(filename, "w", encoding="ascii")
+    if filename.endswith(".gz"):
+        import gzip
+
+        fh = gzip.open(filename, "wt", encoding="ascii")
+    else:
+        fh = open(filename, "w", encoding="ascii")
 
     if box is not None and not np.all(mol.box == 0):
         fh.write(
@@ -407,29 +412,6 @@ def PSFwrite(m, filename, explicitbonds=None):
     print("%10d !NNB\n\n" % (0), file=f)
     print("%10d %10d !NGRP\n" % (0, 0), file=f)
     f.close()
-
-
-def XYZwrite(src, filename):
-    import re
-
-    fh = open(filename, "w", encoding="ascii")
-    natoms = len(src.record)
-    print("%d\n" % (natoms), file=fh)
-    for i in range(natoms):
-        e = src.element[i].strip()
-        if not len(e):
-            e = re.sub("[1234567890]*", "", src.name[i])
-        print(
-            "%s   %f   %f    %f"
-            % (
-                e,
-                src.coords[i, 0, src.frame],
-                src.coords[i, 1, src.frame],
-                src.coords[i, 2, src.frame],
-            ),
-            file=fh,
-        )
-    fh.close()
 
 
 def XSCwrite(mol, filename, frames=None):
@@ -871,10 +853,27 @@ def NETCDFwrite(mol, filename):
     ncfile.close()
 
 
-# Taken from trajectory.py Trajectory()._savers() method of MDtraj
-_MDTRAJ_TOPOLOGY_SAVERS = ("pdb.gz", "xyz", "xyz.gz")
+def XYZwrite(mol, filename):
+    from moleculekit import __version__
+    from datetime import date
+    import gzip
 
-_MDTRAJ_TRAJECTORY_SAVERS = (
+    gz = filename.endswith(".gz")
+
+    with gzip.open(filename, "wt") if gz else open(filename, "w") as f:
+        for i in range(mol.numFrames):
+            f.write(f"{mol.numAtoms}\n")
+            f.write(f"Created with MoleculeKit {__version__} {date.today()}\n")
+            for j in range(mol.numAtoms):
+                coord = mol.coords[j, :, i]
+                f.write(
+                    f"{mol.element[j]} {coord[0]:8.5f} {coord[1]:8.5f} {coord[2]:8.5f}\n"
+                )
+
+
+# Taken from trajectory.py Trajectory()._savers() method of MDtraj
+
+_MDTRAJ_SAVERS = (
     "h5",
     "ncrst",
     "crd",
@@ -884,8 +883,6 @@ _MDTRAJ_TRAJECTORY_SAVERS = (
     "rst7",
     "tng",
 )
-
-_MDTRAJ_SAVERS = _MDTRAJ_TRAJECTORY_SAVERS + _MDTRAJ_TOPOLOGY_SAVERS
 
 
 def MDTRAJwrite(mol, filename):
@@ -911,11 +908,7 @@ def MDTRAJwrite(mol, filename):
         traj = md.load(tmppdb)
         os.remove(tmppdb)
 
-        if ext in _MDTRAJ_TOPOLOGY_SAVERS:
-            traj.save(filename)
-            return
-
-        if ext in _MDTRAJ_TRAJECTORY_SAVERS:
+        if ext in _MDTRAJ_SAVERS:
             mol = mol.copy()
 
             time = np.array([x / 1000 for x in mol.time])  # convert fs to ps
@@ -1301,10 +1294,10 @@ def MMTFwrite(mol, filename):
 _WRITERS = {
     "psf": PSFwrite,
     "pdb": PDBwrite,
+    "pdb.gz": PDBwrite,
     "pdbqt": PDBQTwrite,
     "mol2": MOL2write,
     "sdf": SDFwrite,
-    "xyz": XYZwrite,
     "gro": GROwrite,
     "coor": BINCOORwrite,
     "xtc": XTCwrite,
@@ -1317,6 +1310,8 @@ _WRITERS = {
     "ncdf": NETCDFwrite,
     "trr": TRRwrite,
     "binpos": BINPOSwrite,
+    "xyz": XYZwrite,
+    "xyz.gz": XYZwrite,
     # "bcif": BCIFwrite,
 }
 
@@ -1366,8 +1361,8 @@ class _TestWriters(unittest.TestCase):
             "netcdf",
             "ncdf",
             "tng",
-            "pdb.gz",
             "xyz.gz",
+            "xyz",
         )
 
         for ext in _WRITERS:
@@ -1505,7 +1500,7 @@ class _TestWriters(unittest.TestCase):
 
         mol.read(os.path.join(reader_dir, "1N09", "output.dcd"))
 
-        for ext in ("netcdf", "trr", "binpos", "dcd"):
+        for ext in ("netcdf", "trr", "binpos", "dcd", "xyz", "xyz.gz"):
             with self.subTest(extension=ext):
                 with tempfile.TemporaryDirectory() as tmpdir:
                     mol.write(os.path.join(tmpdir, f"output.{ext}"))
@@ -1513,6 +1508,13 @@ class _TestWriters(unittest.TestCase):
 
                 if ext == "binpos":
                     assert np.allclose(mol.coords, molc.coords, atol=1e-6)
+                elif ext in ("xyz", "xyz.gz"):
+                    assert mol_equal(
+                        mol,
+                        molc,
+                        checkFields=["element", "coords"],
+                        fieldPrecision={"coords": 2e-5},
+                    )
                 else:
                     assert mol_equal(
                         mol,
