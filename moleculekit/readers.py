@@ -2684,10 +2684,12 @@ def NETCDFread(
             "variables in the file were %s" % _handle.variables.keys()
         )
 
+    step = None
     if "time" in _handle.variables:
-        time = (
-            _handle.variables["time"][frame_slice] * 1000
-        )  # need to go from picoseconds to femtoseconds
+        time = _handle.variables["time"][frame_slice]
+        if len(time) > 1:
+            timestep = time[1] - time[0]
+            step = time / timestep
     else:
         time = None
 
@@ -2727,8 +2729,8 @@ def NETCDFread(
             coords=coordinates,
             box=cell_lengths,
             boxangles=cell_angles,
-            step=range(coordinates.shape[2]),
-            time=time,
+            step=step,
+            time=time * 1000 if time is not None else time,  # ps to fs
         ),
         filename,
         frame,
@@ -2758,7 +2760,7 @@ def DCDread(filename, frame=None, topoloc=None, stride=None, atom_indices=None):
             box=cell_lengths,
             boxangles=cell_angles,
             step=range(xyz.shape[2]),
-            time=time,
+            time=time * 1000,  # ps to fs
         ),
         filename,
         frame,
@@ -2787,6 +2789,10 @@ def TRRread(filename, frame=None, topoloc=None, stride=None, atom_indices=None):
     box = np.vstack((a_length, b_length, c_length)) * 10  # nm to Angstroms
     boxangles = np.vstack((alpha, beta, gamma))
 
+    step = None
+    if len(time) > 1:
+        timestep = time[1] - time[0]
+        step = time / timestep
     time *= 1000  # ps to fs
     return MolFactory.construct(
         None,
@@ -2794,7 +2800,7 @@ def TRRread(filename, frame=None, topoloc=None, stride=None, atom_indices=None):
             coords=xyz,
             box=box,
             boxangles=boxangles,
-            step=range(xyz.shape[2]),
+            step=step,
             time=time,
         ),
         filename,
