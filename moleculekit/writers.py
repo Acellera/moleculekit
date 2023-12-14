@@ -1495,28 +1495,32 @@ class _TestWriters(unittest.TestCase):
                 filelines, reflines, msg=f"Failed comparison of {reffile2} {tmpfile}"
             )
 
-    def test_dcd_writer(self):
+    def test_traj_writers(self):
         from moleculekit.molecule import Molecule, mol_equal
         from moleculekit.home import home
         import tempfile
 
         reader_dir = home(dataDir="molecule-readers")
         mol = Molecule(os.path.join(reader_dir, "1N09", "structure.prmtop"))
-        molc = mol.copy()
 
         mol.read(os.path.join(reader_dir, "1N09", "output.dcd"))
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            mol.write(os.path.join(tmpdir, "output.dcd"))
-            molc.read(os.path.join(tmpdir, "output.dcd"))
+        for ext in ("netcdf", "trr", "binpos", "dcd"):
+            with self.subTest(extension=ext):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    mol.write(os.path.join(tmpdir, f"output.{ext}"))
+                    molc = Molecule(os.path.join(tmpdir, f"output.{ext}"))
 
-        assert mol_equal(
-            mol,
-            molc,
-            checkFields=Molecule._atom_and_traj_fields,
-            exceptFields=("fileloc"),
-            fieldPrecision={"coords": 3e-6, "box": 3e-6},
-        )
+                if ext == "binpos":
+                    assert np.allclose(mol.coords, molc.coords, atol=1e-6)
+                else:
+                    assert mol_equal(
+                        mol,
+                        molc,
+                        checkFields=Molecule._traj_fields,
+                        exceptFields=("fileloc"),
+                        fieldPrecision={"coords": 3e-6, "box": 3e-6},
+                    )
 
 
 if __name__ == "__main__":
