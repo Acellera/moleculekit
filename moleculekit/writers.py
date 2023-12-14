@@ -656,21 +656,229 @@ def GROwrite(mol, filename):
         fh.write(b"%f %f %f 0 0 0 0 0 0" % (box[0], box[1], box[2]))
 
 
+def DCDwrite(mol, filename):
+    from moleculekit.dcd import DCDTrajectoryFile
+
+    xyz = np.transpose(mol.coords, (2, 0, 1))
+    box = mol.box.T
+    boxangles = mol.boxangles.T
+    with DCDTrajectoryFile(filename, "w") as fh:
+        fh.write(xyz, cell_lengths=box, cell_angles=boxangles)
+
+
+def BINPOSwrite(mol, filename):
+    from moleculekit.binpos import BINPOSTrajectoryFile
+
+    xyz = np.transpose(mol.coords, (2, 0, 1))
+    with BINPOSTrajectoryFile(filename, "w") as fh:
+        fh.write(xyz)
+
+
+def TRRwrite(mol, filename):
+    from moleculekit.trr import TRRTrajectoryFile
+    from moleculekit.readers import lengths_and_angles_to_box_vectors
+
+    xyz = np.transpose(mol.coords, (2, 0, 1)) / 10  # Convert Angstrom to nm
+    box = mol.box / 10  # Convert Angstrom to nm
+    boxangles = mol.boxangles
+    v1, v2, v3 = lengths_and_angles_to_box_vectors(
+        box[0],  # a
+        box[1],  # b
+        box[2],  # c
+        boxangles[0],  # alpha
+        boxangles[1],  # beta
+        boxangles[2],  # gamma
+    )
+    boxvectors = np.swapaxes(np.dstack((v1, v2, v3)), 1, 2)
+    time = mol.time / 1000  # Convert fs to ps
+    step = mol.step
+    with TRRTrajectoryFile(filename, "w") as fh:
+        fh.write(xyz, time=time, step=step, box=boxvectors, lambd=None)
+
+
+def NETCDFwrite(mol, filename):
+    # Patched together from MDTraj
+    from moleculekit.fileformats.netcdf import netcdf_file
+    from moleculekit.fileformats.utils import ensure_type
+    from moleculekit import __version__
+    from datetime import datetime
+    import socket
+
+    # typecheck all of the input arguments rigorously
+    coordinates = ensure_type(
+        np.transpose(mol.coords, (2, 0, 1)),
+        np.float32,
+        3,
+        "coordinates",
+        length=None,
+        can_be_none=False,
+        shape=(None, None, 3),
+        warn_on_cast=False,
+        add_newaxis_on_deficient_ndim=True,
+    )
+    n_frames, n_atoms = coordinates.shape[0], coordinates.shape[1]
+
+    time = ensure_type(
+        mol.time / 1000,  # Convert from fs to ps
+        np.float32,
+        1,
+        "time",
+        length=n_frames,
+        can_be_none=True,
+        warn_on_cast=False,
+        add_newaxis_on_deficient_ndim=True,
+    )
+    cell_lengths = ensure_type(
+        mol.box.T,
+        np.float64,
+        2,
+        "cell_lengths",
+        length=n_frames,
+        can_be_none=True,
+        shape=(n_frames, 3),
+        warn_on_cast=False,
+        add_newaxis_on_deficient_ndim=True,
+    )
+    cell_angles = ensure_type(
+        mol.boxangles.T,
+        np.float64,
+        2,
+        "cell_angles",
+        length=n_frames,
+        can_be_none=True,
+        shape=(n_frames, 3),
+        warn_on_cast=False,
+        add_newaxis_on_deficient_ndim=True,
+    )
+
+    # are we dealing with a periodic system?
+    if (cell_lengths is None and cell_angles is not None) or (
+        cell_lengths is not None and cell_angles is None
+    ):
+        provided, neglected = "cell_lengths", "cell_angles"
+        if cell_lengths is None:
+            provided, neglected = neglected, provided
+        raise ValueError(
+            'You provided the variable "%s", but neglected to '
+            'provide "%s". They either BOTH must be provided, or '
+            "neither. Having one without the other is meaningless"
+            % (provided, neglected)
+        )
+
+    set_cell = mol.box is not None and not np.all(mol.box == 0)
+    set_time = mol.time is not None and not np.all(mol.time == 0)
+
+    ncfile = netcdf_file(filename, mode="w", version=2)
+
+    # Initialize the headers
+    # Set attributes.
+    setattr(
+        ncfile, "title", "CREATED at %s on %s" % (datetime.now(), socket.gethostname())
+    )
+    setattr(ncfile, "application", "MoleculeKit")
+    setattr(ncfile, "program", "MoleculeKit")
+    setattr(ncfile, "programVersion", __version__)
+    setattr(ncfile, "Conventions", "AMBER")
+    setattr(ncfile, "ConventionVersion", "1.0")
+
+    # set the dimensions
+    # unlimited number of frames in trajectory
+    ncfile.createDimension("frame", 0)
+    # number of spatial coordinates
+    ncfile.createDimension("spatial", 3)
+    # number of atoms
+    ncfile.createDimension("atom", n_atoms)
+
+    if set_cell:
+        # three spatial coordinates for the length of the unit cell
+        ncfile.createDimension("cell_spatial", 3)
+        # three spatial coordinates for the angles that define the shape
+        # of the unit cell
+        ncfile.createDimension("cell_angular", 3)
+        # length of the longest string used for a label
+        ncfile.createDimension("label", 5)
+
+        # Define variables to store unit cell data
+        _cell_lengths = ncfile.createVariable(
+            "cell_lengths", "d", ("frame", "cell_spatial")
+        )
+        setattr(_cell_lengths, "units", "angstrom")
+        _cell_angles = ncfile.createVariable(
+            "cell_angles", "d", ("frame", "cell_angular")
+        )
+        setattr(_cell_angles, "units", "degree")
+
+        ncfile.createVariable("cell_spatial", "c", ("cell_spatial",))
+        ncfile.variables["cell_spatial"][0] = "a"
+        ncfile.variables["cell_spatial"][1] = "b"
+        ncfile.variables["cell_spatial"][2] = "c"
+
+        ncfile.createVariable("cell_angular", "c", ("cell_spatial", "label"))
+        ncfile.variables["cell_angular"][0] = "alpha"
+        ncfile.variables["cell_angular"][1] = "beta "
+        ncfile.variables["cell_angular"][2] = "gamma"
+
+    if set_time:
+        # Define coordinates and snapshot times.
+        frame_times = ncfile.createVariable("time", "f", ("frame",))
+        setattr(frame_times, "units", "picosecond")
+
+    frame_coordinates = ncfile.createVariable(
+        "coordinates", "f", ("frame", "atom", "spatial")
+    )
+    setattr(frame_coordinates, "units", "angstrom")
+
+    ncfile.createVariable("spatial", "c", ("spatial",))
+    ncfile.variables["spatial"][0] = "x"
+    ncfile.variables["spatial"][1] = "y"
+    ncfile.variables["spatial"][2] = "z"
+
+    # this slice object says where we're going to put the data in the
+    # arrays
+    frame_slice = slice(0, mol.numFrames)
+
+    # deposit the data
+    try:
+        ncfile.variables["coordinates"][frame_slice, :, :] = coordinates
+        if time is not None:
+            ncfile.variables["time"][frame_slice] = time
+        if cell_lengths is not None:
+            ncfile.variables["cell_lengths"][frame_slice, :] = cell_lengths
+        if cell_angles is not None:
+            ncfile.variables["cell_angles"][frame_slice, :] = cell_angles
+    except KeyError as e:
+        raise ValueError(
+            "The file that you're trying to save to doesn't "
+            "contain the field %s." % str(e)
+        )
+
+    # check for missing attributes
+    missing = None
+    if time is None and "time" in ncfile.variables:
+        missing = "time"
+    elif cell_angles is None and "cell_angles" in ncfile.variables:
+        missing = "cell_angles"
+    elif cell_lengths is None and "cell_lengths" in ncfile.variables:
+        missing = "cell_lengths"
+    if missing is not None:
+        raise ValueError(
+            "The file that you're saving to expects each frame "
+            "to contain %s information, but you did not supply it."
+            "I don't allow 'ragged' arrays." % missing
+        )
+
+    ncfile.sync()
+    ncfile.close()
+
+
 # Taken from trajectory.py Trajectory()._savers() method of MDtraj
-_MDTRAJ_TOPOLOGY_SAVERS = ("pdb", "pdb.gz", "xyz", "xyz.gz")
+_MDTRAJ_TOPOLOGY_SAVERS = ("pdb.gz", "xyz", "xyz.gz")
 
 _MDTRAJ_TRAJECTORY_SAVERS = (
-    "xtc",
-    "trr",
-    "dcd",
     "h5",
-    "binpos",
-    "nc",
-    "netcdf",
     "ncrst",
     "crd",
     "mdcrd",
-    "ncdf",
     "lammpstrj",
     "gro",
     "rst7",
@@ -1103,6 +1311,12 @@ _WRITERS = {
     "xsc": XSCwrite,
     "cif": CIFwrite,
     "mmtf": MMTFwrite,
+    "dcd": DCDwrite,
+    "netcdf": NETCDFwrite,
+    "nc": NETCDFwrite,
+    "ncdf": NETCDFwrite,
+    "trr": TRRwrite,
+    "binpos": BINPOSwrite,
     # "bcif": BCIFwrite,
 }
 
