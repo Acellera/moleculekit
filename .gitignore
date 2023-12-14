@@ -5,7 +5,10 @@ __pycache__
 *.cpython-*.so
 .pyodide-xbuildenv/
 dist/
+dist_pyodide/
+moleculekit.egg-info/
 build/
+pkg/
 moleculekit/tmalign/tmalign_util.cpp
 moleculekit/tmalign/tmalign_util.html
 moleculekit/tools/test.json
