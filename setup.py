@@ -77,6 +77,21 @@ extentions.append(
 )
 extentions.append(
     Extension(
+        "moleculekit.binpos",
+        sources=[
+            "moleculekit/fileformats/binpos/src/binposplugin.c",
+            "moleculekit/fileformats/binpos/binpos.pyx",
+        ],
+        include_dirs=[
+            "moleculekit/fileformats/binpos/include/",
+            "moleculekit/fileformats/binpos/",
+            numpy.get_include(),
+        ],
+        language="c",
+    )
+)
+extentions.append(
+    Extension(
         "moleculekit.tmalign",
         sources=[
             "moleculekit/tmalign/src/TMAlign.cpp",

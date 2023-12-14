@@ -2808,6 +2808,14 @@ def TRRread(filename, frame=None, topoloc=None, stride=None, atom_indices=None):
     )
 
 
+def BINPOSread(filename, frame=None, topoloc=None, stride=None, atom_indices=None):
+    from moleculekit.binpos import load_binpos
+
+    xyz = load_binpos(filename, stride=stride, atom_indices=atom_indices, frame=frame)
+    xyz = np.transpose(xyz, (1, 2, 0))
+    return MolFactory.construct(None, Trajectory(coords=xyz), filename, frame)
+
+
 # Register here all readers with their extensions
 _TOPOLOGY_READERS = {
     "prmtop": PRMTOPread,
@@ -2831,22 +2839,13 @@ _TOPOLOGY_READERS = {
     "alphafold": ALPHAFOLDread,
     "bcif": BCIFread,
     "bcif.gz": BCIFread,
-    "nc": NETCDFread,
-    "netcdf": NETCDFread,
-    "ncdf": NETCDFread,
-    "dcd": DCDread,
-    "trr": TRRread,
 }
 
 _MDTRAJ_TOPOLOGY_EXTS = [
-    "pdb",
     "pdb.gz",
     "h5",
     "lh5",
-    "prmtop",
     "parm7",
-    "psf",
-    "mol2",
     "hoomdxml",
     "gro",
     "arc",
@@ -2856,14 +2855,20 @@ for ext in _MDTRAJ_TOPOLOGY_EXTS:
     if ext not in _TOPOLOGY_READERS:
         _TOPOLOGY_READERS[ext] = MDTRAJTOPOread
 
-_TRAJECTORY_READERS = {"xtc": XTCread, "xsc": XSCread}
+_TRAJECTORY_READERS = {
+    "xtc": XTCread,
+    "xsc": XSCread,
+    "nc": NETCDFread,
+    "netcdf": NETCDFread,
+    "ncdf": NETCDFread,
+    "dcd": DCDread,
+    "trr": TRRread,
+    "binpos": BINPOSread,
+    "h5": MDTRAJread,
+    "lh5": MDTRAJread,
+}
 
 _COORDINATE_READERS = {"crd": CRDread, "coor": BINCOORread}
-
-_MDTRAJ_TRAJECTORY_EXTS = ("binpos", "h5", "lh5")
-for ext in _MDTRAJ_TRAJECTORY_EXTS:
-    if ext not in _TRAJECTORY_READERS:
-        _TRAJECTORY_READERS[ext] = MDTRAJread
 
 
 _ALL_READERS = {}
@@ -3293,6 +3298,13 @@ class _TestReaders(unittest.TestCase):
         for ff in glob(self.testfolder('trr') + '/*.trr'):
             mol = Molecule(ff)
             assert mol.coords.shape == (22, 3, 501)
+
+    def test_binpos(self):
+        from glob import glob
+
+        for ff in glob(self.testfolder('trr') + '/*.binpos'):
+            mol = Molecule(ff)
+            assert mol.coords.shape == (2269, 3, 1)
 
     # def test_bcif(self):
     #     from moleculekit.home import home

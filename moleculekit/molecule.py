@@ -1333,11 +1333,7 @@ class Molecule(object):
             from htmd.simlist import Sim, Frame
         except ImportError:
             Sim = Frame = ()  # Empty tuple to disable isinstance checks
-        from moleculekit.readers import (
-            _MDTRAJ_TRAJECTORY_EXTS,
-            _ALL_READERS,
-            FormatError,
-        )
+        from moleculekit.readers import _ALL_READERS, FormatError
 
         # If a single filename is specified, turn it into an array so we can iterate
         from moleculekit.util import ensurelist
@@ -1383,7 +1379,7 @@ class Molecule(object):
 
             # To use MDTraj we need to write out a PDB file to use it to read the trajs
             tmppdb = None
-            if ext in _MDTRAJ_TRAJECTORY_EXTS:
+            if ext in ("l5", "lh5"):
                 tmppdb = tempname(suffix=".pdb")
                 self.write(tmppdb)
 
