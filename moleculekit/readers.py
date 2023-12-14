@@ -630,9 +630,9 @@ def XYZread(filename, frame=None, topoloc=None):
     import gzip
     import re
 
-    natom_line = re.compile(r"^([0-9]+)$")
+    natom_line = re.compile(r"^([0-9]+)\s*$")
     coord_line = re.compile(
-        r"^\w+\s+([-+]?[0-9]*\.?[0-9]+)\s+([-+]?[0-9]*\.?[0-9]+)\s+([-+]?[0-9]*\.?[0-9]+)$"
+        r"^\w+\s+([-+]?[0-9]*\.?[0-9]+)\s+([-+]?[0-9]*\.?[0-9]+)\s+([-+]?[0-9]*\.?[0-9]+)\s*$"
     )
     topo = Topology()
 
