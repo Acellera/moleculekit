@@ -130,11 +130,14 @@ class SmallMol(object):
         removeHs=False,
         verbose=True,
         _logger=True,
+        **kwargs,
     ):
         self._frame = 0
         _logger = _logger & verbose
 
-        self._mol = self._initializeMolObj(mol, force_reading, ignore_errors, _logger)
+        self._mol = self._initializeMolObj(
+            mol, force_reading, ignore_errors, _logger, **kwargs
+        )
         if removeHs:
             if _logger:
                 logger.info("Removing hydrogens (removeHs=True)")
@@ -144,7 +147,7 @@ class SmallMol(object):
                 logger.info("Adding any missing hydrogens (fixHs=True)")
             self.addHs(addCoords=True)
 
-    def _initializeMolObj(self, mol, force_reading, ignore_errors, _logger):
+    def _initializeMolObj(self, mol, force_reading, ignore_errors, _logger, **kwargs):
         """
         Read the input and tries to convert it into a rdkit.Chem.rdchem.Mol obj
 
@@ -169,7 +172,7 @@ class SmallMol(object):
         if isinstance(mol, Chem.Mol):
             _mol = mol
         elif isinstance(mol, Molecule):
-            _mol = self._fromMolecule(mol, _logger)
+            _mol = self._fromMolecule(mol, _logger, **kwargs)
         elif isinstance(mol, str):
             if os.path.isfile(mol):
                 name_suffix = os.path.splitext(mol)[-1]
@@ -230,7 +233,12 @@ class SmallMol(object):
     @property
     def _name(self):
         return np.array(
-            [f"{a.GetSymbol()}{a.GetIdx()}" for a in self._mol.GetAtoms()],
+            [
+                f"{a.GetSymbol()}{a.GetIdx()}"
+                if a.GetProp("_Name") == ""
+                else a.GetProp("_Name")
+                for a in self._mol.GetAtoms()
+            ],
             dtype=SmallMol._dtypes["name"],
         )
 
@@ -919,7 +927,7 @@ class SmallMol(object):
 
         return smi
 
-    def _fromMolecule(self, mol, _logger):
+    def _fromMolecule(self, mol, _logger, **kwargs):
         """
         Returns the rdkit.Chem.rdchem.Mol object from an moleculekit.molecule.Molecule one
 
@@ -961,8 +969,10 @@ class SmallMol(object):
             _mol.AddConformer(conf, assignId=True)
 
         # print(Chem.MolToSmiles(_mol))
-        Chem.SanitizeMol(_mol)  # , Chem.SANITIZE_ALL ^ Chem.SANITIZE_ADJUSTHS)
-        Chem.Kekulize(_mol)
+        if kwargs.get("sanitize", True):
+            Chem.SanitizeMol(_mol)  # , Chem.SANITIZE_ALL ^ Chem.SANITIZE_ADJUSTHS)
+        if kwargs.get("kekulize", True):
+            Chem.Kekulize(_mol)
         if _logger:
             logger.info(
                 f"Converted Molecule to SmallMol with SMILES: {Chem.MolToSmiles(_mol)}"
