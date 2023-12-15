@@ -234,9 +234,9 @@ class SmallMol(object):
     def _name(self):
         return np.array(
             [
-                f"{a.GetSymbol()}{a.GetIdx()}"
-                if a.GetProp("_Name") == ""
-                else a.GetProp("_Name")
+                a.GetProp("_Name")
+                if (a.HasProp("_Name") and a.GetProp("_Name") != "")
+                else f"{a.GetSymbol()}{a.GetIdx()}"
                 for a in self._mol.GetAtoms()
             ],
             dtype=SmallMol._dtypes["name"],
