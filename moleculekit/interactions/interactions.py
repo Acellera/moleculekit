@@ -29,13 +29,8 @@ def get_ligand_props(mol, offset_idx=0):
     return offset_ligand_props(props, offset_idx)
 
 
-def offset_ligand_props(props, offset_idx=0):
+def offset_ligand_props(props, offset_idx=0, idx_mapping_fn=None):
     from moleculekit.util import ensurelist
-
-    offset_idx = ensurelist(offset_idx)
-
-    if len(offset_idx) == 0 and offset_idx[0] == 0:
-        return props
 
     new_props = {
         "donors": [],
@@ -45,12 +40,23 @@ def offset_ligand_props(props, offset_idx=0):
         "neg_charged": [],
         "aryl_halides": [],
     }
+
+    if idx_mapping_fn is None:
+        idx_mapping_fn = lambda x: x
+
+    offset_idx = ensurelist(offset_idx)
+
+    if len(offset_idx) == 0 and offset_idx[0] == 0:
+        return props
+
     for offidx in offset_idx:
         for k in props:
             if isinstance(props[k], np.ndarray):
-                new_props[k].append(np.array(props[k], dtype=np.uint32) + offidx)
+                new_props[k].append(
+                    idx_mapping_fn(np.array(props[k], dtype=np.uint32)) + offidx
+                )
             elif isinstance(props[k], list):
-                new_props[k] += [pp + offidx for pp in props[k]]
+                new_props[k] += [idx_mapping_fn(pp) + offidx for pp in props[k]]
 
     new_props = {
         "donors": np.vstack(new_props["donors"]),
