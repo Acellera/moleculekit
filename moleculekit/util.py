@@ -406,42 +406,38 @@ def writeCube(arr, filename, vecMin, vecRes):
                     cont += 1
 
 
-def _getline(cube):
-    """
-    Read a line from cube file where first field is an int
-    and the remaining fields are floats.
-
-    params:
-        cube: file object of the cube file
-
-    returns: (int, list<float>)
-    """
-    l = cube.readline().strip().split()
-    return int(l[0]), map(float, l[1:])
-
-
 def readCube(fname):
-    """
-    Read cube file into numpy array
+    """Read 3D numpy array from CUBE file
 
-    params:
-        fname: filename of cube file
+    Parameters
+    ----------
+    fname: str
+        CUBE file path
 
-    returns: (data: np.array, metadata: dict)
+    Returns
+    -------
+    data: np.ndarray
+        3D numpy array with the volumetric data
+    meta: dict
+        Dictionary with the metadata of the CUBE file
     """
+
+    def _get(f):
+        l = f.readline().strip().split()
+        return int(l[0]), map(float, l[1:])
 
     meta = {}
-    with open(fname, "r") as cube:
-        cube.readline()
-        cube.readline()  # ignore comments
-        natm, meta["org"] = _getline(cube)
-        nx, meta["xvec"] = _getline(cube)
-        ny, meta["yvec"] = _getline(cube)
-        nz, meta["zvec"] = _getline(cube)
-        meta["atoms"] = [_getline(cube) for i in range(natm)]
+    with open(fname, "r") as f:
+        f.readline()
+        f.readline()  # ignore comments
+        natm, meta["org"] = _get(f)
+        nx, meta["xvec"] = _get(f)
+        ny, meta["yvec"] = _get(f)
+        nz, meta["zvec"] = _get(f)
+        meta["atoms"] = [_get(f) for i in range(natm)]
         data = np.zeros((nx * ny * nz))
         idx = 0
-        for line in cube:
+        for line in f:
             for val in line.strip().split():
                 data[idx] = float(val)
                 idx += 1
