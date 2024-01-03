@@ -642,8 +642,18 @@ def DCDwrite(mol, filename):
     from moleculekit.dcd import DCDTrajectoryFile
 
     xyz = np.transpose(mol.coords, (2, 0, 1))
-    box = mol.box.T
-    boxangles = mol.boxangles.T
+    n_frames = xyz.shape[0]
+
+    if not np.all(mol.box == 0):
+        box = mol.box.T
+    else:
+        box = np.zeros((n_frames, 3), dtype=np.float32)
+
+    if not np.all(mol.boxangles == 0):
+        boxangles = mol.boxangles.T
+    else:
+        boxangles = np.zeros((n_frames, 3), dtype=np.float32)
+
     with DCDTrajectoryFile(filename, "w") as fh:
         fh.write(xyz, cell_lengths=box, cell_angles=boxangles)
 
