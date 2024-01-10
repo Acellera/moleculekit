@@ -69,6 +69,29 @@ def offset_ligand_props(props, offset_idx=0, idx_mapping_fn=None):
     return new_props
 
 
+def filter_props(props, exclude_idx=None, include_idx=None):
+    """Remove atoms from the properties based on their index"""
+
+    def _filter_func(arr):
+        if arr.ndim == 2:
+            if include_idx is not None:
+                arr = arr[np.all(np.isin(arr, include_idx), axis=1)]
+            if exclude_idx is not None:
+                arr = arr[~np.any(np.isin(arr, exclude_idx), axis=1)]
+        else:
+            if include_idx is not None:
+                arr = arr[np.isin(arr, include_idx)]
+            if exclude_idx is not None:
+                arr = arr[~np.isin(arr, exclude_idx)]
+        return arr
+
+    for k in props:
+        if isinstance(props[k], np.ndarray):
+            props[k] = _filter_func(props[k])
+        elif isinstance(props[k], list):
+            props[k] += [_filter_func(pp) for pp in props[k]]
+
+
 def get_receptor_props(mol):
     props = {
         "donors": [],
