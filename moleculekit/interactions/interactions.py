@@ -6,7 +6,7 @@
 import networkx as nx
 import numpy as np
 import unittest
-from moleculekit.tools.moleculechecks import isProteinProtonated
+from moleculekit.tools.moleculechecks import isProteinProtonated, proteinHasBonds
 import logging
 
 logger = logging.getLogger(__name__)
@@ -94,6 +94,10 @@ def get_donors_acceptors(mol, exclude_water=True, exclude_backbone=False):
     if not isProteinProtonated(mol):
         raise RuntimeError(
             "The protein seems to not be protonated. You must provide a protonated system for H-bonds to be detected."
+        )
+    if not proteinHasBonds(mol):
+        raise RuntimeError(
+            "The protein is missing bonds. Cannot calculate donors/acceptors"
         )
 
     donor_elements = ("N", "O")
@@ -365,6 +369,10 @@ def hbonds_calculate(
     sel_idx = np.where(sel1 | sel2)[0]
     donors = donors[np.all(np.isin(donors, sel_idx), axis=1)]
     acceptors = acceptors[np.isin(acceptors, sel_idx)]
+
+    if ignore_hs:
+        # if we are ignoring hydrogens, reduce the donors list to only heavy atoms
+        donors = np.unique(donors[:, 0])[:, None]
 
     hb = hbonds.calculate(
         donors,

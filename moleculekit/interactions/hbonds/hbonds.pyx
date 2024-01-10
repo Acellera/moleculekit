@@ -57,7 +57,10 @@ def calculate(
             for a in range(n_acceptors):
                 a_idx = acceptors[a]
                 d_idx_d = donors[d, 0]
-                d_idx_h = donors[d, 1]
+                d_idx = d_idx_d
+                if not ignore_hs:
+                    d_idx_h = donors[d, 1]
+                    d_idx = d_idx_h
 
                 # Don't calculate h-bonds with identical donor-acceptor atom
                 if a_idx == d_idx_d:
@@ -74,9 +77,6 @@ def calculate(
 
                 dist2_a = 0
                 dist2_b = 0
-                d_idx = d_idx_h
-                if ignore_hs: # If we ignore the hydrogen just calculate heavy to heavy distance
-                    d_idx = d_idx_d
                 # Calculate donor hydrogen (or heavy if ignore_hs) to acceptor vector
                 for i in range(3):
                     val = coords[a_idx, i, f] - coords[d_idx, i, f] 
