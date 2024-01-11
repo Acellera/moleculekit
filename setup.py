@@ -14,6 +14,7 @@ extentions = [
     "moleculekit/atomselect_utils/atomselect_utils.pyx",
     "moleculekit/distance_utils/distance_utils.pyx",
     "moleculekit/occupancy_utils/occupancy_utils.pyx",
+    "moleculekit/cython_utils/cython_utils.pyx",
 ]
 extentions = [
     Extension(

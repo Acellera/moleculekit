@@ -509,43 +509,16 @@ def _get_pdb_entity_sequences(entities):
     return results
 
 
-def guessAnglesAndDihedrals(bonds, cyclicdih=False):
+def calculateAnglesAndDihedrals(bonds, cyclicdih=False):
     """
-    Generate a guess of angle and dihedral N-body terms based on a list of bond index pairs.
+    Calculate all angles and dihedrals from a set of bonds.
     """
+    from moleculekit.cython_utils import calculateAnglesAndDihedrals as _calculate
 
-    import networkx as nx
-
-    g = nx.Graph()
-    g.add_nodes_from(np.unique(bonds))
-    g.add_edges_from([tuple(b) for b in bonds])
-
-    angles = []
-    for n in g.nodes():
-        neighbors = list(g.neighbors(n))
-        for e1 in range(len(neighbors)):
-            for e2 in range(e1 + 1, len(neighbors)):
-                angles.append((neighbors[e1], n, neighbors[e2]))
+    _, angles, dihedrals = _calculate(bonds, cyclicdih, np.max(bonds) + 1)
 
     angles = sorted([sorted([angle, angle[::-1]])[0] for angle in angles])
     angles = np.array(angles, dtype=np.uint32)
-
-    dihedrals = []
-    for a1 in range(len(angles)):
-        for a2 in range(a1 + 1, len(angles)):
-            a1a = angles[a1]
-            a2a = angles[a2]
-            a2f = a2a[
-                ::-1
-            ]  # Flipped a2a. We don't need flipped a1a as it produces the flipped versions of these 4
-            if np.all(a1a[1:] == a2a[:2]) and (cyclicdih or (a1a[0] != a2a[2])):
-                dihedrals.append(list(a1a) + [a2a[2]])
-            if np.all(a1a[1:] == a2f[:2]) and (cyclicdih or (a1a[0] != a2f[2])):
-                dihedrals.append(list(a1a) + [a2f[2]])
-            if np.all(a2a[1:] == a1a[:2]) and (cyclicdih or (a2a[0] != a1a[2])):
-                dihedrals.append(list(a2a) + [a1a[2]])
-            if np.all(a2f[1:] == a1a[:2]) and (cyclicdih or (a2f[0] != a1a[2])):
-                dihedrals.append(list(a2f) + [a1a[2]])
 
     dihedrals = sorted(
         [sorted([dihedral, dihedral[::-1]])[0] for dihedral in dihedrals]
@@ -558,6 +531,16 @@ def guessAnglesAndDihedrals(bonds, cyclicdih=False):
         angles = np.zeros((0, 3), dtype=np.uint32)
 
     return angles, dihedrals
+
+
+def guessAnglesAndDihedrals(bonds, cyclicdih=False):
+    """
+    Calculate all angles and dihedrals from a set of bonds.
+    """
+    logger.warning(
+        "guessAnglesAndDihedrals is deprecated. Please use calculateAnglesAndDihedrals instead."
+    )
+    return calculateAnglesAndDihedrals(bonds, cyclicdih)
 
 
 def assertSameAsReferenceDir(compareDir, outdir="."):

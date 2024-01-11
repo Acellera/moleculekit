@@ -39,3 +39,6 @@ moleculekit/occupancy_utils/occupancy_utils.html
 moleculekit/wrapping/wrapping.c
 moleculekit/wrapping/wrapping.cpp
 moleculekit/wrapping/wrapping.html
+moleculekit/cython_utils/cython_utils.c
+moleculekit/cython_utils/cython_utils.cpp
+moleculekit/cython_utils/cython_utils.html
