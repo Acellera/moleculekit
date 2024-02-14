@@ -614,39 +614,42 @@ cdef bool _atomsel_sidechain(
 def within_distance(
         FLOAT32_t[:, :] coords,
         float cutoff,
-        UINT32_t[:] source,
-        FLOAT32_t[:] source_min,
-        FLOAT32_t[:] source_max,
-        bool[:] mask,
+        UINT32_t[:] sel1,
+        UINT32_t[:] sel2,
+        FLOAT32_t[:] sel2_min_coords,
+        FLOAT32_t[:] sel2_max_coords,
+        bool[:] results,
     ):
     # TODO: Improve with neighbour list / cell list implementation
-    cdef int n_atoms = coords.shape[0]
-    cdef int n_source = source.shape[0]
+    cdef int n_sel1 = sel1.shape[0]
+    cdef int n_sel2 = sel2.shape[0]
     cdef bool close_enough
-    cdef int i, j, k
+    cdef int i, ii, j, jj, k
     cdef FLOAT32_t diff, sq_cutoff
 
     sq_cutoff = cutoff * cutoff
 
-    for i in range(n_atoms):
+    for ii in range(n_sel1):
+        i = sel1[ii]
         # Trivial check if it's too far from all source atoms
         close_enough = False
         for k in range(3):
-            if coords[i, k] >= (source_min[k] - cutoff):
+            if coords[i, k] >= (sel2_min_coords[k] - cutoff):
                 close_enough = True
                 break
-            if coords[i, k] <= (source_max[k] + cutoff):
+            if coords[i, k] <= (sel2_max_coords[k] + cutoff):
                 close_enough = True
                 break
 
         if not close_enough:
             continue
 
-        for j in range(n_source):
+        for jj in range(n_sel2):
+            j = sel2[jj]
             diff = 0
             for k in range(3):
-                diff += (coords[i, k] - coords[source[j], k]) ** 2
+                diff += (coords[i, k] - coords[j, k]) ** 2
             if diff < sq_cutoff:
-                mask[i] = True
+                results[ii] = True
                 break
 

@@ -240,6 +240,7 @@ def traverse_ast(mol, analysis, node):
         within_distance(
             mol.coords[:, :, mol.frame],
             cutoff,
+            np.arange(0, mol.numAtoms).astype(np.uint32),
             np.where(source)[0].astype(np.uint32),
             min_source,
             max_source,
