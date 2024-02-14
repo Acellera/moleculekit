@@ -17,16 +17,15 @@ jobs:
         shell: bash -l {0}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           lfs: true
           submodules: true
 
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v4
         with:
-          auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          uses-mamba: true
+          mamba-version: "*"
           miniforge-variant: Mambaforge
           channels: acellera,conda-forge,defaults
 
@@ -73,9 +72,9 @@ jobs:
         python-version: ["3.9"]
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
 
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v4
         with:
           activate-environment: deploy
           python-version: ${{ matrix.python-version }}
@@ -86,7 +85,7 @@ jobs:
           python -m build --sdist --outdir dist/ .
 
       - name: Publish distribution 📦 to PyPI
-        uses: pypa/gh-action-pypi-publish@master
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PUBLIC_PYPI_API_TOKEN }}
           skip_existing: true
@@ -105,9 +104,9 @@ jobs:
         container: ["quay.io/pypa/manylinux2014_x86_64"]
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
 
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v4
         with:
           miniconda-version: "latest"
           activate-environment: ../deploy-env
@@ -139,9 +138,9 @@ jobs:
         python-version: ["3.8", "3.9", "3.10"]
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
 
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v4
         with:
           miniconda-version: "latest"
           activate-environment: ../deploy-env
