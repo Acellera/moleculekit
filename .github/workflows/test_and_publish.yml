@@ -22,7 +22,7 @@ jobs:
           lfs: true
           submodules: true
 
-      - uses: conda-incubator/setup-miniconda@v4
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: ${{ matrix.python-version }}
           mamba-version: "*"
@@ -74,7 +74,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: conda-incubator/setup-miniconda@v4
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: deploy
           python-version: ${{ matrix.python-version }}
@@ -106,7 +106,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: conda-incubator/setup-miniconda@v4
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniconda-version: "latest"
           activate-environment: ../deploy-env
@@ -140,7 +140,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: conda-incubator/setup-miniconda@v4
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniconda-version: "latest"
           activate-environment: ../deploy-env
