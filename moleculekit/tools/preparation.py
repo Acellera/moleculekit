@@ -139,6 +139,7 @@ def _generate_nonstandard_residues_ff(
                 end = np.where(molresn & (molc.name == lastname))[0][0]
                 # Remove all other stuff
                 molc.filter(f"index {start} to {end}", _logger=False)
+                molc.guessBonds()
 
                 if len(np.unique(molc.name)) != molc.numAtoms:
                     raise RuntimeError(
@@ -637,6 +638,9 @@ def systemPrepare(
         If True it will ignore errors on non-canonical residues leaving them unprotonated.
     outdir : str
         A path where to save custom residue cif files used for building
+    residue_smiles : dict
+        A dictionary with keys being residue names and values being the SMILES string of the residue. This is used to
+        create protonated versions of non-canonical residues with the help of the aceprep library.
 
     Returns
     -------
@@ -690,6 +694,7 @@ def systemPrepare(
             "pdb2pqr not installed. To use the system preparation features please do `conda install pdb2pqr -c acellera -c conda-forge`"
         )
     from moleculekit.tools.preparation_customres import _get_custom_ff
+    from moleculekit.util import ensurelist
 
     old_level = logger.getEffectiveLevel()
     if not verbose:
@@ -702,6 +707,18 @@ def systemPrepare(
         logging.getLogger("pdb2pqr").setLevel(_logger_level)
         logging.getLogger("propka").setLevel(_logger_level)
     logger.debug("Starting.")
+
+    if residue_smiles is not None and not isinstance(residue_smiles, dict):
+        raise ValueError(
+            "residue_smiles should be a dictionary with residue names as keys and SMILES strings as values."
+        )
+
+    if no_opt is not None:
+        no_opt = ensurelist(no_opt)
+    if no_prot is not None:
+        no_prot = ensurelist(no_prot)
+    if no_titr is not None:
+        no_titr = ensurelist(no_titr)
 
     mol_in = mol_in.copy()
 

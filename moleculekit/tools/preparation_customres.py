@@ -60,6 +60,8 @@ def _template_residue_from_smiles(inmol: Molecule, nsres: str, smiles=None):
 
         with tempfile.TemporaryDirectory() as outdir:
             resfile = os.path.join(outdir, f"residue_{nsres}.pdb")
+            # Guess the bonds so that the rdkit templating will work
+            inmol.guessBonds()
             inmol.write(resfile)
 
             outsdf = os.path.join(outdir, f"residue_{nsres}_templated.sdf")
@@ -114,7 +116,14 @@ def _process_custom_residue(mol: Molecule, resname: str):
     import networkx as nx
 
     gg = mol.toGraph()
-    sp = nx.shortest_path(gg, _get_idx(mol, "N"), _get_idx(mol, "C"))
+    n_idx = _get_idx(mol, "N")
+    c_idx = _get_idx(mol, "C")
+    if n_idx is None or c_idx is None:
+        raise RuntimeError(
+            f"Residue {resname} does not contain N or C atoms. List of atoms: {mol.name}"
+        )
+
+    sp = nx.shortest_path(gg, n_idx, c_idx)
     if len(sp) != 3:
         raise RuntimeError(
             f"Cannot prepare residues with elongated backbones. This backbone consists of atoms {' '.join(mol.name[sp])}"
