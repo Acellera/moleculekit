@@ -603,6 +603,9 @@ class Molecule(object):
         array([   1,    9,   16,   20,   24,   36,   43,   49,   53,   58,...
         """
         sel = self.atomselect(selection, indexes=True)
+        if len(sel) == 0:
+            return sel
+
         self._updateBondsAnglesDihedrals(sel)
         for k in self._atom_and_coord_fields:
             self.__dict__[k] = np.delete(self.__dict__[k], sel, axis=0)
@@ -2789,9 +2792,11 @@ def calculateUniqueBonds(bonds, bondtype):
         sortidx = np.lexsort((bonds[:, 1], bonds[:, 0]))
         return (
             bonds[sortidx].astype(np.uint32).copy(),
-            None
-            if not len(bondtype)
-            else np.array([bondtype[0]] * bonds.shape[0], dtype=object),
+            (
+                None
+                if not len(bondtype)
+                else np.array([bondtype[0]] * bonds.shape[0], dtype=object)
+            ),
         )
 
 
