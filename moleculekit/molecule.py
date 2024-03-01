@@ -2713,7 +2713,7 @@ def mol_equal(
         if dtypes:
             attr1 = mol1.__getattribute__(field1)
             attr2 = mol2.__getattribute__(field2)
-            if isinstance(attr1, type(attr2)):
+            if not isinstance(attr1, type(attr2)):
                 difffields += [field + "_dtype"]
                 continue
 
