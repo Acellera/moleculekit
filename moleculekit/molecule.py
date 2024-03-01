@@ -524,15 +524,19 @@ class Molecule(object):
         append = index == self.numAtoms
 
         if collisions and self.numAtoms > 0:
-            _, idx2 = _detectCollisions(
-                self, self.frame, mol, mol.frame, coldist, removesel
+            idx2 = _detectCollisions(
+                self.coords[:, :, self.frame],
+                mol.coords[:, :, mol.frame],
+                coldist,
+                mol.atomselect(removesel, indexes=True),
             )
-            torem, numres = _getResidueIndexesByAtom(mol, idx2)
-            mol = mol.copy()
-            logger.info(
-                f"Removed {numres} residues from appended Molecule due to collisions."
-            )
-            mol.remove(torem, _logger=False)
+            if len(idx2):
+                torem, numres = _getResidueIndexesByAtom(mol, idx2)
+                mol = mol.copy()
+                logger.info(
+                    f"Removed {numres} residues from appended Molecule due to collisions."
+                )
+                mol.remove(torem, _logger=False)
 
         backup = self.copy()
         try:
@@ -2709,7 +2713,7 @@ def mol_equal(
         if dtypes:
             attr1 = mol1.__getattribute__(field1)
             attr2 = mol2.__getattribute__(field2)
-            if type(attr1) != type(attr2):
+            if isinstance(attr1, type(attr2)):
                 difffields += [field + "_dtype"]
                 continue
 
@@ -2723,15 +2727,14 @@ def mol_equal(
     return True
 
 
-def _detectCollisions(mol1, frame1, mol2, frame2, gap, removesel):
-    from moleculekit.distance import cdist
+def _detectCollisions(coords1, coords2, gap, remove_idx):
+    from moleculekit.distance_utils import get_collisions
 
-    distances = cdist(mol1.coords[:, :, frame1], mol2.coords[:, :, frame2])
-    close = distances < gap
-    if removesel != "all":
-        close = close & mol2.atomselect(removesel)
-
-    return np.where(close)
+    contacts = get_collisions(coords1, coords2, gap)
+    # Get just the second indexes (for second mol)
+    contacts = np.unique(contacts[1::2]).astype(np.uint32)
+    close = contacts[np.isin(contacts, remove_idx)]
+    return close
 
 
 def _getResidueIndexesByAtom(mol, idx):

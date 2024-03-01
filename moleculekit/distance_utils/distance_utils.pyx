@@ -28,6 +28,7 @@ ctypedef np.float64_t FLOAT64_t
 
 import cython
 
+
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 cdef FLOAT32_t _dist(
@@ -39,7 +40,7 @@ cdef FLOAT32_t _dist(
         int f,
         bool pbc,
     ):
-    cdef FLOAT32_t dist2, dx, dy, dz
+    cdef FLOAT32_t dx, dy, dz
 
     dx = coords[i, 0, f] - coords[j, 0, f]
     dy = coords[i, 1, f] - coords[j, 1, f]
@@ -89,6 +90,34 @@ def contacts_trajectory(
                 if dist2 <= dist_threshold:
                     results[f].push_back(s1atm)
                     results[f].push_back(s2atm)
+    return results
+
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+def get_collisions(
+        FLOAT32_t[:,:] coords1,
+        FLOAT32_t[:,:] coords2,
+        float dist_threshold,
+    ):
+    # Same as dist_trajectory but instead of returning distances it returns index
+    # pairs of atoms that are within a certain distance threshold
+    cdef UINT32_t i, j
+    cdef int n_atm1 = coords1.shape[0]
+    cdef int n_atm2 = coords2.shape[0]
+    cdef FLOAT32_t dist2, dx, dy, dz
+    cdef vector[UINT32_t] results
+    dist_threshold = dist_threshold * dist_threshold
+
+    for i in range(n_atm1):
+        for j in range(n_atm2):
+            dx = coords1[i, 0] - coords2[j, 0]
+            dy = coords1[i, 1] - coords2[j, 1]
+            dz = coords1[i, 2] - coords2[j, 2]
+            dist2 = dx * dx + dy * dy + dz * dz
+            if dist2 <= dist_threshold:
+                results.push_back(i)
+                results.push_back(j)
     return results
 
 
