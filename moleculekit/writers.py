@@ -570,7 +570,7 @@ def SDFwrite(mol, filename):
             "Cannot write 'un' bond types to SDF. Please specify the molecule bond orders."
         )
 
-    mol2bonds = {"1": 1, "2": 2, "3": 3, "ar": 4, "4": 4}
+    bondmap = {"1": 1, "2": 2, "3": 3, "ar": 4, "4": "un"}
     with open(filename, "w", encoding="ascii") as fh:
         fh.write(f"{mol.viewname}\n")
         currtime = datetime.datetime.now().strftime("%m%d%y%H%M")
@@ -596,7 +596,7 @@ def SDFwrite(mol, filename):
 
         for i in range(mol.bonds.shape[0]):
             fh.write(
-                f"{mol.bonds[i, 0]+1:>3}{mol.bonds[i, 1]+1:>3}  {mol2bonds[mol.bondtype[i]]}  0  0  0  0\n"
+                f"{mol.bonds[i, 0]+1:>3}{mol.bonds[i, 1]+1:>3}  {bondmap[mol.bondtype[i]]}  0  0  0  0\n"
             )
 
         if len(charges):

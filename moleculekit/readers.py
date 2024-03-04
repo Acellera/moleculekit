@@ -2386,6 +2386,16 @@ def SDFread(filename, frame=None, topoloc=None, mol_idx=None):
     # Some (mostly correct) info here: www.nonlinear.com/progenesis/sdf-studio/v0.9/faq/sdf-file-format-guidance.aspx
     # Format is correctly specified here: https://www.daylight.com/meetings/mug05/Kappler/ctfile.pdf
     chargemap = {"7": -3, "6": -2, "5": -1, "0": 0, "3": 1, "2": 2, "1": 3, "4": 0}
+    bondmap = {
+        "1": "1",
+        "2": "2",
+        "3": "3",
+        "4": "ar",  # aromatic
+        "5": "un",  # single or double
+        "6": "un",  # single or aromatic
+        "7": "un",  # double or aromatic
+        "8": "un",  # any
+    }
 
     if mol_idx is None:
         mol_idx = 0
@@ -2455,7 +2465,7 @@ def SDFread(filename, frame=None, topoloc=None, mol_idx=None):
             idx2 = line[3:6].strip()
             bond_type = line[6:9].strip()
             topo.bonds.append([int(idx1) - 1, int(idx2) - 1])
-            topo.bondtype.append(bond_type)
+            topo.bondtype.append(bondmap[bond_type])
 
         for line in lines[bond_end:]:
             if line.strip() == "$$$$":
