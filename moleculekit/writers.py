@@ -881,12 +881,31 @@ def XYZwrite(mol, filename):
                 )
 
 
+def INPCRDwrite(mol, filename):
+    with open(filename, "w", encoding="ascii") as f:
+        f.write("Created with MoleculeKit\n")
+        f.write(f"  {mol.numAtoms}\n")
+        for i in range(mol.numAtoms):
+            f.write(
+                f"  {mol.coords[i, 0, mol.frame]:10.7f}  {mol.coords[i, 1, mol.frame]:10.7f}  {mol.coords[i, 2, mol.frame]:10.7f}"
+            )
+            if i % 2 == 1:  # Add a newline every two atoms
+                f.write("\n")
+        if mol.numAtoms % 2 == 1:  # Put a final newline if the number of atoms is odd
+            f.write("\n")
+        box = mol.box[:, mol.frame]
+        angles = mol.boxangles[:, mol.frame]
+        f.write(
+            f"  {box[0]:10.7f}  {box[1]:10.7f}  {box[2]:10.7f}  {angles[0]:10.7f}  {angles[1]:10.7f}  {angles[2]:10.7f}"
+        )
+        f.write("\n")
+
+
 # Taken from trajectory.py Trajectory()._savers() method of MDtraj
 
 _MDTRAJ_SAVERS = (
     "h5",
     "ncrst",
-    "crd",
     "mdcrd",
     "lammpstrj",
     "gro",
@@ -1323,6 +1342,8 @@ _WRITERS = {
     "xyz": XYZwrite,
     "xyz.gz": XYZwrite,
     # "bcif": BCIFwrite,
+    "inpcrd": INPCRDwrite,
+    "crd": INPCRDwrite,
 }
 
 
