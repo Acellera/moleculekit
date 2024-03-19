@@ -160,34 +160,37 @@ def _monitoringThread(view_fn, get_mols_fn):
         view_fn(curr_mols[unique_id], unique_id)
 
     while True:
-        # print("KEYS", curr_mols.keys())
-        new_keys = np.setdiff1d(list(viewingMols.keys()), list(curr_mols.keys()))
-        for unique_id in new_keys:
-            curr_mols[unique_id] = viewingMols[unique_id].copy()
-            view_fn(curr_mols[unique_id], unique_id)
-            # print("viewed new mol")
-
-        for unique_id in curr_mols:
-            if not mol_equal(
-                curr_mols[unique_id], viewingMols[unique_id], _logger=False
-            ):
+        try:
+            # print("KEYS", curr_mols.keys())
+            new_keys = [key for key in viewingMols if key not in curr_mols.keys()]
+            for unique_id in new_keys:
                 curr_mols[unique_id] = viewingMols[unique_id].copy()
                 view_fn(curr_mols[unique_id], unique_id)
-                # print("updated existing mol")
+                # print("viewed new mol")
 
-        time.sleep(_checkFrequency)
+            for unique_id in curr_mols:
+                if not mol_equal(
+                    curr_mols[unique_id], viewingMols[unique_id], _logger=False
+                ):
+                    curr_mols[unique_id] = viewingMols[unique_id].copy()
+                    view_fn(curr_mols[unique_id], unique_id)
+                    # print("updated existing mol")
 
-        if len(viewingMols) and get_mols_fn is not None:
-            # Check if molecule which was showing before does not exist in viewer anymore
-            # If it doesn't remove it from our lists here to clean-up
-            molnames = get_mols_fn()
+            time.sleep(_checkFrequency)
 
-            todelete = []
-            for key in showing:
-                if key not in molnames:
-                    todelete.append(key)
+            if len(viewingMols) and get_mols_fn is not None:
+                # Check if molecule which was showing before does not exist in viewer anymore
+                # If it doesn't remove it from our lists here to clean-up
+                molnames = get_mols_fn()
 
-            for key in todelete:
-                del showing[key]
-                del curr_mols[key]
-                del viewingMols[key]
+                todelete = []
+                for key in showing:
+                    if key not in molnames:
+                        todelete.append(key)
+
+                for key in todelete:
+                    del showing[key]
+                    del curr_mols[key]
+                    del viewingMols[key]
+        except Exception:
+            continue
