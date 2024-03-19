@@ -1057,11 +1057,14 @@ def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None, return_data=False
         mapping = chem_comp_mapping
         atom_block = "chem_comp_atom"
 
+    viewname = mol.viewname
+    if viewname is None or len(viewname) == 0:
+        viewname = "MOL"
+    viewname = re.sub(r"\W+", "_", viewname)
+
     myDataList = []
     with open(filename, "w") as ofh:
-        curContainer = DataContainer(
-            mol.resname[0] if single_mol else re.sub(r"\W+", "_", mol.viewname)
-        )
+        curContainer = DataContainer(mol.resname[0] if single_mol else viewname)
         if atom_block == "chem_comp_atom":
             aCat = DataCategory("chem_comp")
             aCat.appendAttribute("id")
