@@ -2207,7 +2207,7 @@ class Molecule(object):
             if val == self:
                 return
 
-        if name is None:
+        if name is not None:
             self.viewname = name
 
         unique_id = uuid.uuid4().hex[:6].upper()
