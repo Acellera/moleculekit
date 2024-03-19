@@ -29,20 +29,20 @@ def _pymol_launch():
     sys.stdout, sys.stderr = _stdouterr
 
 
-def _pymol_view(mol, viewname):
+def _pymol_view(mol, unique_id):
     from pymol import cmd
 
     topo = tempname(suffix=".cif")
     xtc = tempname(suffix=".xtc")
     mol.write(topo)
     mol.write(xtc)
-    cmd.delete(viewname)
-    cmd.load(topo, viewname)
-    cmd.load_traj(xtc, viewname, state=1)
+    cmd.delete(unique_id)
+    cmd.load(topo, unique_id)
+    cmd.load_traj(xtc, unique_id, state=1)
     cmd.dss()  # Guess SS
     os.remove(topo)
     os.remove(xtc)
-    showing[viewname] = True
+    showing[unique_id] = True
 
 
 def _pymol_get_mols():
@@ -74,7 +74,7 @@ def _pmview_launch(url):
         _launch_pmview_exe(port)
 
 
-def _pmview_view(mol, viewname, bonds=None, url=None):
+def _pmview_view(mol, unique_id, bonds=None, url=None):
     from moleculekit.util import check_port
     import requests
     import time
@@ -89,7 +89,7 @@ def _pmview_view(mol, viewname, bonds=None, url=None):
     mol.write(traj)
 
     files = {"topo": (topo, open(topo, "rb")), "traj": (traj, open(traj, "rb"))}
-    data = {"label": viewname, "moleculeID": viewname}
+    data = {"label": mol.viewname, "moleculeID": unique_id}
     response = requests.post(
         f"{url}/load-molecules", headers={}, data=data, files=files
     )
@@ -99,13 +99,13 @@ def _pmview_view(mol, viewname, bonds=None, url=None):
     os.remove(topo)
 
     t = time.time()
-    while viewname not in _pmview_get_mols(url):
+    while unique_id not in _pmview_get_mols(url):
         # Wait for the mol to appear in the viewer before marking it as showing
         time.sleep(_checkFrequency)
         if time.time() - t > 10:  # Something went bad
             return
 
-    showing[viewname] = True
+    showing[unique_id] = True
 
 
 def _pmview_get_mols(url):
@@ -156,21 +156,23 @@ def _monitoringThread(view_fn, get_mols_fn):
     import time
 
     curr_mols = {key: val.copy() for key, val in viewingMols.items()}
-    for viewname in curr_mols:
-        view_fn(curr_mols[viewname], viewname)
+    for unique_id in curr_mols:
+        view_fn(curr_mols[unique_id], unique_id)
 
     while True:
         # print("KEYS", curr_mols.keys())
         new_keys = np.setdiff1d(list(viewingMols.keys()), list(curr_mols.keys()))
-        for viewname in new_keys:
-            curr_mols[viewname] = viewingMols[viewname].copy()
-            view_fn(curr_mols[viewname], viewname)
+        for unique_id in new_keys:
+            curr_mols[unique_id] = viewingMols[unique_id].copy()
+            view_fn(curr_mols[unique_id], unique_id)
             # print("viewed new mol")
 
-        for viewname in curr_mols:
-            if not mol_equal(curr_mols[viewname], viewingMols[viewname], _logger=False):
-                curr_mols[viewname] = viewingMols[viewname].copy()
-                view_fn(curr_mols[viewname], viewname)
+        for unique_id in curr_mols:
+            if not mol_equal(
+                curr_mols[unique_id], viewingMols[unique_id], _logger=False
+            ):
+                curr_mols[unique_id] = viewingMols[unique_id].copy()
+                view_fn(curr_mols[unique_id], unique_id)
                 # print("updated existing mol")
 
         time.sleep(_checkFrequency)

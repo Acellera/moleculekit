@@ -2203,17 +2203,15 @@ class Molecule(object):
 
         getCurrentPMViewer(url=url)
 
-        viewname = name
-        if name is None:
-            viewname = f"{self.viewname}_{uuid.uuid4().hex[:6].upper()}"
-
-        if "," in viewname:
-            raise RuntimeError("Commas are not allowed in molecule names in MolKit*")
-
         for val in viewingMols.values():
             if val == self:
                 return
-        viewingMols[viewname] = self
+
+        if name is None:
+            self.viewname = name
+
+        unique_id = uuid.uuid4().hex[:6].upper()
+        viewingMols[unique_id] = self
 
     def _viewPymol(self, name):
         from moleculekit.viewer import getCurrentPymolViewer, viewingMols
@@ -2864,7 +2862,7 @@ class Representations:
             raise RuntimeError("You can only append Representations objects.")
         self.replist += reps.replist
 
-    def add(self, sel=None, style=None, color=None):
+    def add(self, sel=None, style=None, color=None, frames=None, opacity=None):
         """Adds a new representation for Molecule.
 
         Parameters
@@ -2877,8 +2875,12 @@ class Representations:
         color : str or int
             Coloring mode (str) or ColorID (int).
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
+        frames : list
+            List of frames to visualize with this representation. If None it will visualize the current frame only.
+        opacity : float
+            Opacity of the representation. 0 is fully transparent and 1 is fully opaque.
         """
-        self.replist.append(_Representation(sel, style, color))
+        self.replist.append(_Representation(sel, style, color, frames, opacity))
 
     def remove(self, index=None):
         """Removed one or all representations.
@@ -3004,19 +3006,12 @@ class _Representation:
     >>> r = _Representation(sel='ions', style='VDW', color=1)
     """
 
-    def __init__(self, sel=None, style=None, color=None):
-        if sel is not None:
-            self.sel = sel
-        else:
-            self.sel = "all"
-        if style is not None:
-            self.style = style
-        else:
-            self.style = "Lines"
-        if color is not None:
-            self.color = color
-        else:
-            self.color = "Name"
+    def __init__(self, sel=None, style=None, color=None, frames=None, opacity=None):
+        self.sel = "all" if sel is None else sel
+        self.style = "Lines" if style is None else style
+        self.color = "Name" if color is None else color
+        self.frames = frames
+        self.opacity = 1 if opacity is None else opacity
 
 
 from unittest import TestCase
