@@ -973,6 +973,7 @@ def MDTRAJwrite(mol, filename):
 def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None, return_data=False):
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
     from moleculekit.molecule import _originalResname
+    import re
 
     if not return_data:
         from moleculekit.pdbx.reader.PdbxContainers import DataContainer, DataCategory
@@ -1058,7 +1059,9 @@ def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None, return_data=False
 
     myDataList = []
     with open(filename, "w") as ofh:
-        curContainer = DataContainer(mol.resname[0] if single_mol else mol.viewname)
+        curContainer = DataContainer(
+            mol.resname[0] if single_mol else re.sub(r"\W+", "_", mol.viewname)
+        )
         if atom_block == "chem_comp_atom":
             aCat = DataCategory("chem_comp")
             aCat.appendAttribute("id")
