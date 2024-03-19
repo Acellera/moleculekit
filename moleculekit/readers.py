@@ -1680,9 +1680,8 @@ def XTCread(filename, frame=None, topoloc=None):
     if frame is None:
         coords, box, time, step = read_xtc(filename.encode("UTF-8"))
     else:
-        frame = ensurelist(frame)
         coords, box, time, step = read_xtc_frames(
-            filename.encode("UTF-8"), np.array(frame, dtype=np.int32)
+            filename.encode("UTF-8"), np.array(ensurelist(frame), dtype=np.int32)
         )
 
     if np.size(coords, 2) == 0:
