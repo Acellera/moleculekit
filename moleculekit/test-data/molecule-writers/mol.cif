@@ -1,4 +1,4 @@
-data_filtered.pdb
+data_filtered_pdb
 #
 #
 loop_
