@@ -204,7 +204,7 @@ void xtc_read_new(char *filename, float *coords_arr, float *box_arr, float *time
 	int step;
 	float prec;
 	matrix box;
-	int nf3 = nframes * 3; // Precalculate 3 * nframes for the coordinate lookup macro
+	// int nf3 = nframes * 3; // Precalculate 3 * nframes for the coordinate lookup macro
 
 	if (!natoms)
 	{
@@ -415,7 +415,7 @@ int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, 
 	unsigned long long int xidx, yidx, zidx;
 	matrix b;
 	float prec = 1000;
-	int nf3 = nframes * 3;
+	// int nf3 = nframes * 3;
 
 	// if( step <=0 ) {
 	//	xd = xdrfile_open( filename, "w" );
@@ -436,10 +436,10 @@ int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, 
 		return 1;
 	}
 
+	p = (rvec *)malloc(sizeof(rvec) * natoms * 3);
+
 	for (f = 0; f < nframes; f++)
 	{
-		p = (rvec *)malloc(sizeof(rvec) * natoms * 3);
-
 		b[0][0] = box[0 * nframes + f];
 		b[0][1] = 0.;
 		b[0][2] = 0.;
@@ -465,10 +465,11 @@ int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, 
 		}
 		// printf("Frame: %d Step: %d Time: %f\n", f, step[f], timex[f]);
 		write_xtc(xd, natoms, (unsigned int)step[f], (float)timex[f], b, p, prec);
-
-		condfree((void *)p);
-		p = NULL;
 	}
+
+	condfree((void *)p);
+	p = NULL;
+
 	xdrfile_close(xd);
 
 	return 0;
@@ -487,9 +488,6 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 	FILE *indexfn = NULL;
 
 	char index_file[PATH_MAX + 1];
-
-	int reading_index = 0;
-	int writing_index = 0;
 
 	if (frame < 0)
 	{
