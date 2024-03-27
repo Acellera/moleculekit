@@ -47,12 +47,8 @@ int safe_mode()
 
 #endif
 
-#define X(atom, frame, nframes, nf3) atom *nf3
-#define Y(atom, frame, nframes, nf3) atom *nf3 + 1
-#define Z(atom, frame, nframes, nf3) atom *nf3 + 2
-
 // I redefine here for frames to optimize calculations in the single frame use case
-#define Xf(atom, frame, nframes) atom * 3 * nframes + frame
+#define Xf(atom, frame, nframes) (uint64_t) atom * 3 * nframes + frame
 #define Yf(xidx, nframes) xidx + nframes
 #define Zf(yidx, nframes) yidx + nframes
 
@@ -223,9 +219,9 @@ void xtc_read_new(char *filename, float *coords_arr, float *box_arr, float *time
 	p = (rvec *)malloc(sizeof(rvec) * natoms);
 
 	int retval = 0;
-	unsigned long long int fidx = 0;
+	uint64_t fidx = 0;
 	int _natoms_garbage = 0;
-	unsigned long long int xidx, yidx, zidx, aidx;
+	uint64_t xidx, yidx, zidx, aidx;
 	while (exdrOK == (retval = read_xtc(xd, _natoms_garbage, &step, &time, box, p, &prec)))
 	{
 		time_arr[fidx] = time;
@@ -411,8 +407,7 @@ int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, 
 {
 	XDRFILE *xd = NULL;
 	rvec *p = NULL;
-	int i, f;
-	unsigned long long int xidx, yidx, zidx;
+	uint64_t xidx, yidx, zidx, i, f;
 	matrix b;
 	float prec = 1000;
 	// int nf3 = nframes * 3;
@@ -528,7 +523,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 
 		//	printf("reading whole file\n" );
 		frames = xtc_read(filename, &garbage_natoms, &traj_nframes, &dt, &dstep);
-		unsigned long long int xidx, yidx, zidx, aidx;
+		uint64_t xidx, yidx, zidx, aidx;
 		if (frame < traj_nframes)
 		{
 			for (i = 0; i < traj_nframes; i++)
@@ -596,7 +591,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 			return;
 		}
 
-		// MOve to offest of the single frame
+		// Move to offset of the single frame
 		if (0 != fseek(xd->fp, len, SEEK_SET))
 		{
 			fprintf(stderr, "xtc_read_frame(): Failed to seek: errno=%d\n", errno);
@@ -604,7 +599,7 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 
 		p = (rvec *)malloc(sizeof(rvec) * natoms);
 
-		unsigned long long int xidx, yidx, zidx, aidx;
+		uint64_t xidx, yidx, zidx, aidx;
 		if (exdrOK == (read_xtc(xd, natoms, &step, &time, box, p, &prec)))
 		{
 			time_arr[fidx] = time;
