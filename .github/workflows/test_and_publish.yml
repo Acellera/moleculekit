@@ -43,6 +43,8 @@ jobs:
           mamba install -y -q rdkit=2023.03.3 -c conda-forge
           # scikit-learn, joblib, biopython are only used for rarely-used functions in smallmol
           mamba install -y -q scikit-learn joblib biopython -c conda-forge
+          # for testing CDPKit SmallMol
+          pip install cdpkit
 
       - name: Install moleculekit
         run: |
