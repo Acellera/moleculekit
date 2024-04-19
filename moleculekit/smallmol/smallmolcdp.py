@@ -3,6 +3,7 @@ import CDPL.ConfGen as ConfGen
 import numpy as np
 import logging
 import unittest
+import platform
 
 logger = logging.getLogger(__name__)
 
@@ -220,6 +221,9 @@ class SmallMolCDP:
 
 
 class _Test_SmallMolCDP(unittest.TestCase):
+    @unittest.skipUnless(
+        platform.system() == "Linux", "CDPKit only works on Linux. Skipping test."
+    )
     def test_smallmolcdp(self):
         from moleculekit.home import home
 
