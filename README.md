@@ -81,13 +81,12 @@ Install `emscripten` https://emscripten.org/docs/getting_started/downloads.html
 mamba create -n pyodide-build
 mamba activate pyodide-build
 mamba install python=3.10
-pip install pyodide-build==0.23.2
+pip install pyodide-build==0.25.1
 
 # Activate the emscripten environment
 cd ../emsdk
-git checkout 3.1.32
-./emsdk install latest
-./emsdk activate latest
+./emsdk install 3.1.46
+./emsdk activate 3.1.46
 source emsdk_env.sh
 cd -
 
@@ -100,6 +99,8 @@ cp dist_pyodide/*.whl test_wasm/wheels/
 cd test_wasm
 python3 -m http.server
 ```
+
+If you get an error at building about numpy missing, check this issue https://github.com/pyodide/pyodide/issues/4347
 
 ## Citing MoleculeKit
 
