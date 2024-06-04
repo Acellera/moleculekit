@@ -903,15 +903,7 @@ def INPCRDwrite(mol, filename):
 
 # Taken from trajectory.py Trajectory()._savers() method of MDtraj
 
-_MDTRAJ_SAVERS = (
-    "h5",
-    "ncrst",
-    "mdcrd",
-    "lammpstrj",
-    "gro",
-    "rst7",
-    "tng",
-)
+_MDTRAJ_SAVERS = ("h5", "ncrst", "mdcrd", "lammpstrj", "gro", "rst7")
 
 
 def MDTRAJwrite(mol, filename):
@@ -1397,7 +1389,6 @@ class _TestWriters(unittest.TestCase):
             "nc",
             "netcdf",
             "ncdf",
-            "tng",
             "xyz.gz",
             "xyz",
         )
