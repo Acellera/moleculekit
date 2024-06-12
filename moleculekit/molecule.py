@@ -1770,9 +1770,18 @@ class Molecule(object):
         """
         from moleculekit import wrapping
 
-        centersel = self.atomselect(wrapsel, indexes=True)
-
         nbonds = self.bonds.shape[0]
+        guessAtomSelBonds = guessBonds
+        if nbonds < (self.numAtoms / 2):
+            logger.warning(
+                f"Wrapping detected {nbonds} bonds and {self.numAtoms} atoms. "
+                "Ignore this message if you believe this is correct, otherwise make sure you "
+                "have loaded a topology containing all the bonds of the system before wrapping. "
+                "The results may be inaccurate. If you want to use guessed bonds use the guessBonds argument."
+            )
+            guessAtomSelBonds = True
+
+        centersel = self.atomselect(wrapsel, indexes=True, guessBonds=guessAtomSelBonds)
 
         if np.all(self.box == 0):
             raise RuntimeError(
@@ -1783,14 +1792,6 @@ class Molecule(object):
             raise RuntimeError(
                 "Detected different number of simulation frames in `Molecule.box` and `Molecule.coords`. "
                 "This could mean that you have not read correctly the box information from the simulation."
-            )
-
-        if nbonds < (self.numAtoms / 2):
-            logger.warning(
-                f"Wrapping detected {nbonds} bonds and {self.numAtoms} atoms. "
-                "Ignore this message if you believe this is accurate, otherwise make sure you "
-                "have loaded a topology containing all the bonds of the system before wrapping. "
-                "The results may be inaccurate. If you want to use guessed bonds use the guessBonds argument."
             )
 
         bonds = self._getBonds(fileBonds, guessBonds)
@@ -1984,7 +1985,7 @@ class Molecule(object):
         self.step = np.concatenate((self.step, mol.step))
         self.time = np.concatenate((self.time, mol.time))
 
-    def renumberResidues(self, returnMapping=False):
+    def renumberResidues(self, returnMapping=False, start=0, modulo=None):
         """Renumbers protein residues incrementally.
 
         It checks for changes in either of the resid, insertion, chain or segid fields and in case of a change it
@@ -2008,14 +2009,18 @@ class Molecule(object):
             chain = self.chain.copy()
             segid = self.segid.copy()
 
-        self.resid[:] = sequenceID((self.resid, self.insertion, self.chain, self.segid))
+        self.resid[:] = (
+            sequenceID((self.resid, self.insertion, self.chain, self.segid)) + start
+        )
+        if modulo is not None:
+            self.resid[:] = self.resid % modulo
         self.insertion[:] = ""
 
         if returnMapping:
             import pandas as pd
             from collections import OrderedDict
 
-            firstidx = np.where(np.diff([-1] + self.resid.tolist()) == 1)[0]
+            firstidx = np.where(np.diff([start - 1] + self.resid.tolist()) == 1)[0]
             od = OrderedDict(
                 {
                     "new_resid": self.resid[firstidx],
