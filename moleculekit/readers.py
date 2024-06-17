@@ -364,9 +364,13 @@ class MolFactory(object):
             fileloc = [["StringIO", 0]]
             viewname = "StringIO"
         else:
-            topoloc = os.path.abspath(filename)
+            if os.path.isfile(filename):
+                topoloc = os.path.abspath(filename)
+                viewname = os.path.basename(filename)
+            else:
+                topoloc = filename
+                viewname = filename
             fileloc = [[filename, 0]]
-            viewname = os.path.basename(filename)
 
         mol.topoloc = topoloc
         mol.fileloc = fileloc
