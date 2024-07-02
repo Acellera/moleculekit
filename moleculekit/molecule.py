@@ -2439,6 +2439,35 @@ class Molecule(object):
             result[field] = val
         return result
 
+    def getCenter(self, sel="all", com=False):
+        """Get the center of an atom selection
+
+        Parameters
+        ----------
+        sel : str
+            Atom selection string for which to calculate the center of mass
+        com : bool
+            If True it will calculate the center of mass. If False it will calculate the geometric center.
+
+        Returns
+        -------
+        center : np.ndarray
+            The center of mass or geometric center of the selection
+        """
+        sel = self.atomselect(sel)
+        coords = self.coords[sel].squeeze()
+        if not com:  # Geometric center
+            return np.mean(coords, axis=0)
+
+        masses = self.masses[sel]
+        if np.all(masses == 0):
+            raise RuntimeError(
+                "All masses of the selection are zero. Cannot calculate center of mass."
+            )
+
+        masses = np.expand_dims(masses, list(range(1, coords.ndim)))
+        return (coords * masses).sum(axis=0) / masses.sum()
+
 
 class UniqueAtomID:
     _fields = ("name", "altloc", "resname", "chain", "resid", "insertion", "segid")
