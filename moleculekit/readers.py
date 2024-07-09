@@ -2205,6 +2205,7 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
             val = dtype(fixDefault(row[cryst.getAttributeIndex(source_field)], dtype))
             crystalinfo[target_field] = val
 
+        # the sGroup info can exist in the symmetry object as well
         cryst2 = dataObj.getObj("symmetry")
         if cryst2 is not None:
             row = cryst2.getRow(0)
@@ -2221,7 +2222,7 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
 
         topo.crystalinfo = crystalinfo
 
-    # Parsing residue bond data
+    # Parsing intra-residue bond data
     chem_comp_bond = {}
     if "chem_comp_bond" in dataObj.getObjNameList():
         bond_site = dataObj.getObj("chem_comp_bond")
@@ -2262,8 +2263,7 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
             id1 = (resid1, insertion1, chain1, name1)
             id2 = (resid2, insertion2, chain2, name2)
             struct_conn[id1].append(id2)
-            all_struct_conn_atoms.append(id1)
-            all_struct_conn_atoms.append(id2)
+            all_struct_conn_atoms += [id1, id2]
 
     # Parsing ATOM and HETATM data
     if "atom_site" in dataObj.getObjNameList():
@@ -2287,9 +2287,9 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
         mapping = chem_comp_mapping
 
     attrs = atom_site.getAttributeList()
-    curr_residue_atoms = {}
-    bond_atoms_idx = {}
-    prev_residue = None
+    curr_residue_atoms = {}  # Track index of atoms in the current residue for bond calc
+    bond_atoms_idx = {}  # Track index of inter-residue bond atoms
+    prev_residue = None  # Keep track when residue changes to reset curr_residue_atoms
     for i in range(atom_site.getRowCount()):
         row = atom_site.getRow(i)
 
@@ -2334,7 +2334,7 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
                     val = ""
                 topo.__dict__[target_field].append(val)
 
-            # Detect bonds
+            # Define residue and atom unique IDs for bond mapping
             if len(topo.resid):
                 uqid = (
                     topo.resid[-1],
@@ -2348,16 +2348,20 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
                     topo.chain[-1],
                     topo.name[-1],
                 )
-            else:
+            else:  # Small molecules only have a single residue. No need for ID
                 uqid = "smallmol"
                 uqatomid = None
+
+            # When residue unique ID changes reset the residue atom dictionary
             if prev_residue is None or prev_residue != uqid:
                 prev_residue = uqid
                 curr_residue_atoms = {}
 
             curr_residue_atoms[topo.name[-1]] = len(topo.name) - 1
+            # If the atom exists in the intra-residue bond dict check the partners
             if topo.name[-1] in chem_comp_bond.get(topo.resname[-1], {}):
                 for bond in chem_comp_bond[topo.resname[-1]][topo.name[-1]]:
+                    # If we have also seen the partner of the bond add the bond
                     if bond[0] in curr_residue_atoms:
                         topo.bonds.append(
                             [
@@ -2368,6 +2372,7 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
                         topo.bondtype.append(
                             bondtype_mapping.get(bond[1].upper(), bond[1].upper())
                         )
+            # If the atom is part of inter-residue bonds add it to the bond_atoms_idx
             if uqatomid in all_struct_conn_atoms:
                 bond_atoms_idx[uqatomid] = len(topo.resid) - 1
 
@@ -2410,6 +2415,7 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
                 ]
             )
 
+    # Add the inter-residue bonds
     if len(struct_conn):
         for atm1 in struct_conn:
             for atm2 in struct_conn[atm1]:
