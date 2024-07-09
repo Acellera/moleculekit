@@ -2264,6 +2264,7 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
             id2 = (resid2, insertion2, chain2, name2)
             struct_conn[id1].append(id2)
             all_struct_conn_atoms += [id1, id2]
+    all_struct_conn_atoms = set(all_struct_conn_atoms)
 
     # Parsing ATOM and HETATM data
     if "atom_site" in dataObj.getObjNameList():
