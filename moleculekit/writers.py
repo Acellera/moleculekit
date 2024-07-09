@@ -1449,11 +1449,12 @@ class _TestWriters(unittest.TestCase):
     def test_mmtf_writer(self):
         from moleculekit.molecule import Molecule
         from moleculekit.util import tempname
+        from moleculekit.home import home
 
         pdbids = ["3ptb", "1unc", "7q5b", "5vbl", "6a5j", "3zhi"]
         for pdbid in pdbids:
             with self.subTest(pdbid=pdbid):
-                mol = Molecule(pdbid)
+                mol = Molecule(os.path.join(home(dataDir="pdb"), f"{pdbid}.pdb"))
                 tmpfile = tempname(suffix=".mmtf")
                 mol.write(tmpfile)
                 mol2 = Molecule(tmpfile)
