@@ -1382,7 +1382,12 @@ class Molecule(object):
         for fname, frame in zip(filename, frames):
             if not isinstance(fname, StringIO):
                 fname = self._unzip(fname)
-            ext = self._getExt(fname, type)
+
+            # Handle the case where it was not unzipped after all
+            if not isinstance(fname, StringIO) and fname.endswith(".gz"):
+                ext = self._getExt(fname[:-3], type)
+            else:
+                ext = self._getExt(fname, type)
 
             # To use MDTraj we need to write out a PDB file to use it to read the trajs
             tmppdb = None
@@ -1469,14 +1474,17 @@ class Molecule(object):
         if type is not None and type.lower() in _ALL_READERS:
             return type
         if not os.path.isfile(fname) and len(fname) == 4:
-            return "mmtf"
+            return "bcif"
         if not os.path.isfile(fname) and fname.startswith("AF-"):
             return "alphafold"
         return os.path.splitext(fname)[1][1:]
 
     def _unzip(self, fname):
-        # mmtf has it's own gzip handler and won't decode to utf-8 anyway.
-        if fname.endswith(".gz") and not fname.endswith(".mmtf.gz"):
+        if fname.endswith(".gz"):
+            # mmtf, bcif etc have their own gzip handler and won't decode to utf-8 anyway.
+            if os.path.splitext(fname[:-3])[1] in (".mmtf", ".bcif", "xyz", "pdb"):
+                return fname
+
             import gzip
             from moleculekit.util import tempname
 
