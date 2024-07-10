@@ -415,7 +415,7 @@ class _TestAtomSelect(unittest.TestCase):
                 mol.serial[10] = -88
                 mol.beta[:] = 0
                 mol.beta[1000:] = -1
-                bonds = mol._getBonds(fileBonds=True, guessBonds=True)
+                bonds = mol._getBonds(fileBonds=False, guessBonds=True)
 
                 t = time.time()
                 analysis = analyze(mol, bonds)
