@@ -52,9 +52,11 @@ class BinaryCifReader(object):
         Returns:
             list: list DataContainer objects
         """
+        import os
+
         cL = []
         try:
-            if self.__isLocal(locator):
+            if os.path.exists(locator):  # FIXED BY STEFAN: if self.__isLocal(locator):
                 with (
                     gzip.open(locator, mode="rb")
                     if locator[-3:] == ".gz"
