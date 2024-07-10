@@ -3101,7 +3101,7 @@ class _TestMolecule(TestCase):
         # Testing dihedral setting
         mol = Molecule("2HBB")
         quad = [124, 125, 132, 133]
-        mol.setDihedral(quad, np.deg2rad(-90))
+        mol.setDihedral(quad, np.deg2rad(-90), guessBonds=True)
         angle = mol.getDihedral(quad)
         assert np.abs(np.deg2rad(-90) - angle) < 1e-3
 
@@ -3299,10 +3299,10 @@ class _TestMolecule(TestCase):
     def test_sequence(self):
         seq, seqatms = self.mol3PTB.sequence(return_idx=True)
         refseq = "IVGGYTCGANTVPYQVSLNSGYHFCGGSLINSQWVVSAAHCYKSGIQVRLGEDNINVVEGNEQFISASKSIVHPSYNSNTLNNDIMLIKLKSAASLNSRVASISLPTSCASAGTQCLISGWGNTKSSGTSYPDVLKCLKAPILSDSSCKSAYPGQITSNMFCAGYLEGGKDSCQGDSGGPVVCSGKLQGIVSWGSGCAQKNKPGVYTKVCNYVSWIKQTIASN"
-        assert seq["0"] == refseq
+        assert seq["1"] == refseq
 
         # Ensure that the returned indexes only belong to a single residue
-        for indexes in seqatms["0"]:
+        for indexes in seqatms["1"]:
             assert len(np.unique(self.mol3PTB.resname[indexes])) == 1
             assert len(np.unique(self.mol3PTB.resid[indexes])) == 1
 
