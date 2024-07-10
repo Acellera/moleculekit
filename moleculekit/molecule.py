@@ -2386,21 +2386,25 @@ class Molecule(object):
             self.bonds = np.delete(self.bonds, oldidx, axis=0)
             self.bondtype = np.delete(self.bondtype, oldidx, axis=0)
 
-    def getNeighbors(self, idx):
+    def getNeighbors(self, idx, bonds=None):
         """Returns all atoms bonded to a specific atom
 
         Parameters
         ----------
         idx : int
             The atom for which to find bonded atoms
+        bonds : np.ndarray
+            Override the bonds stored in the Molecule object
 
         Returns
         -------
         atoms : list of int
             The atoms bonded to `idx`
         """
-        rows = np.where(self.bonds == idx)[0]
-        return list(set(self.bonds[rows].flatten()) - {idx})
+        if bonds is None:
+            bonds = self.bonds
+        rows = np.where(bonds == idx)[0]
+        return list(set(bonds[rows].flatten()) - {idx})
 
     def _ix(self, resid, name):
         return np.where((self.name == name) & (self.resid == resid))[0][0]
