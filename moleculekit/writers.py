@@ -1392,8 +1392,10 @@ class _TestWriters(unittest.TestCase):
             "xyz.gz",
             "xyz",
         )
+        _WRITERS_COPY = _WRITERS.copy()
+        del _WRITERS_COPY["mmtf"]  # Not supported in tests due to deprecation
 
-        for ext in _WRITERS:
+        for ext in _WRITERS_COPY:
             with self.subTest(extension=ext):
                 tmpfile = tempname(suffix="." + ext)
                 if ext == "pdbqt":
@@ -1445,22 +1447,6 @@ class _TestWriters(unittest.TestCase):
         self.assertEqual(
             filelines, reflines, msg=f"Failed comparison of {reffile} {tmpfile}"
         )
-
-    def test_mmtf_writer(self):
-        from moleculekit.molecule import Molecule
-        from moleculekit.util import tempname
-        from moleculekit.home import home
-
-        pdbids = ["3ptb", "1unc", "7q5b", "5vbl", "6a5j", "3zhi"]
-        for pdbid in pdbids:
-            with self.subTest(pdbid=pdbid):
-                mol = Molecule(os.path.join(home(dataDir="pdb"), f"{pdbid}.pdb"))
-                tmpfile = tempname(suffix=".mmtf")
-                mol.write(tmpfile)
-                mol2 = Molecule(tmpfile)
-                mol.dropFrames(keep=0)  # We only write one frame by conviction
-                assert mol_equal(mol, mol2, exceptFields=("record"))
-                os.remove(tmpfile)
 
     def test_psf_writer(self):
         from moleculekit.molecule import Molecule
