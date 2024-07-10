@@ -2867,7 +2867,7 @@ def BCIFread(
     uri="https://models.rcsb.org/{pdbid}.bcif.gz",
 ):
     from moleculekit.home import home
-    from mmcif.io.BinaryCifReader import BinaryCifReader
+    from moleculekit.pdbx.reader.BinaryCifReader import BinaryCifReader
 
     if len(filename) == 4 and not os.path.isfile(filename):
         if "GITHUB_ACTIONS" in os.environ:
