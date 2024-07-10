@@ -9,7 +9,7 @@ with open(_sel, "r") as f:
     _sel = json.load(f)
 
 
-def find_backbone(mol: Molecule, mode):
+def find_backbone(mol: Molecule, bonds, mode):
     if mode == "protein":
         backb = np.isin(mol.name, _sel["protein_backbone_names"])
         terms = np.isin(mol.name, _sel["protein_terminal_names"])
@@ -21,7 +21,7 @@ def find_backbone(mol: Molecule, mode):
 
     for tt in np.where(terms)[0]:
         # Check if atoms bonded to terminal Os are backbone
-        nn = mol.getNeighbors(tt)
+        nn = mol.getNeighbors(tt, bonds=bonds)
         for n in nn:
             if backb[n]:  # If bonded atom is backbone break
                 break
@@ -81,8 +81,8 @@ def analyze(mol: Molecule, bonds, _profile=False):
     analysis["lipids"] = np.isin(mol.resname, _sel["lipid_resnames"])
     analysis["ions"] = np.isin(mol.resname, _sel["ion_resnames"])
     analysis["residues"] = np.zeros(mol.numAtoms, dtype=np.uint32)
-    analysis["protein_bb"] = find_backbone(mol, "protein")
-    analysis["nucleic_bb"] = find_backbone(mol, "nucleic")
+    analysis["protein_bb"] = find_backbone(mol, bonds, "protein")
+    analysis["nucleic_bb"] = find_backbone(mol, bonds, "nucleic")
     analysis["protein"] = np.zeros(mol.numAtoms, dtype=bool)
     analysis["nucleic"] = np.zeros(mol.numAtoms, dtype=bool)
     analysis["fragments"] = np.full(mol.numAtoms, mol.numAtoms + 1, dtype=np.uint32)
