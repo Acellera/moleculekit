@@ -3838,7 +3838,7 @@ class _TestReaders(unittest.TestCase):
         pdbids = ["3ptb", "3hyd", "6a5j", "5vbl", "7q5b"]
         for pdbid in tqdm(pdbids, desc="CIF/BCIF comparison"):
             with self.subTest(pdbid=pdbid):
-                ciffile = os.path.join(home(dataDir="pdb"), f"{pdbid.upper()}.cif")
+                ciffile = os.path.join(home(dataDir="pdb"), f"{pdbid.lower()}.cif")
                 bciffile = os.path.join(home(dataDir="pdb"), f"{pdbid.lower()}.bcif.gz")
                 mol1 = Molecule(ciffile)
                 mol2 = Molecule(bciffile)
@@ -3858,7 +3858,7 @@ class _TestReaders(unittest.TestCase):
         for pdbid in tqdm(pdbids, desc="BCIF/PDB comparison"):
             with self.subTest(pdbid=pdbid):
                 ciffile = os.path.join(home(dataDir="pdb"), f"{pdbid.lower()}.bcif.gz")
-                pdbfile = os.path.join(home(dataDir="pdb"), f"{pdbid.upper()}.pdb")
+                pdbfile = os.path.join(home(dataDir="pdb"), f"{pdbid.lower()}.pdb")
                 mol1 = Molecule(pdbfile)
                 mol2 = Molecule(ciffile)
 
