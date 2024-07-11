@@ -12,6 +12,11 @@ except Exception:
 pyproject = toml.load("pyproject.toml")
 deps = pyproject["project"]["dependencies"]
 
+# Fix msgpack pypi package which exists as msgpack-python in conda
+for i in range(len(deps)):
+    if deps[i].startswith("msgpack"):
+        deps[i] = "msgpack-python"
+
 # Fix conda meta.yaml
 with open("package/moleculekit/meta.yaml", "r") as f:
     text = f.read()

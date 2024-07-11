@@ -9,7 +9,7 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Operating System :: POSIX :: Linux",
 ]
-dependencies = ["numpy>=1.18.5", "pandas>=1.1.2", "networkx", "tqdm"]
+dependencies = ["numpy>=1.18.5", "pandas>=1.1.2", "networkx", "tqdm", "msgpack"]
 
 [project.urls]
 "Homepage" = "https://github.com/Acellera/moleculekit"
