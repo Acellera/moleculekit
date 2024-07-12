@@ -2869,9 +2869,16 @@ def BCIFread(
     from moleculekit.home import home
     from moleculekit.pdbx.reader.BinaryCifReader import BinaryCifReader
 
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+
     if len(filename) == 4 and not os.path.isfile(filename):
-        if "GITHUB_ACTIONS" in os.environ:
-            filename = os.path.join(home(dataDir="pdb"), f"{filename.lower()}.bcif.gz")
+        localpdb = os.path.join(home(dataDir="pdb"), f"{filename.lower()}.bcif.gz")
+        if (
+            os.path.isfile(localpdb)
+            and ("GITHUB_ACTIONS" in os.environ)
+            and (repo == "Acellera/moleculekit")
+        ):
+            filename = localpdb
         else:
             filename = uri.format(pdbid=filename.lower())
 
