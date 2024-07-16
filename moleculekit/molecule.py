@@ -1197,7 +1197,9 @@ class Molecule(object):
         """
         self._invalidate_box()
         if abs(np.linalg.det(M) - 1) > 1e-5:
-            logger.warning(f"Suspicious non-unitary determinant: {np.linalg.det(M)}")
+            raise RuntimeError(
+                f"Rotation matrix has suspicious non-unitary determinant: {np.linalg.det(M)}"
+            )
         coords = self.get("coords", sel=sel)
         newcoords = coords - center
         newcoords = np.dot(newcoords, np.transpose(M)) + center
