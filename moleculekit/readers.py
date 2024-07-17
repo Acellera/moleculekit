@@ -2113,7 +2113,9 @@ def GROTOPread(filename, frame=None, topoloc=None):
 #             topo.crystalinfo = crystalinfo
 
 
-def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
+def CIFread(
+    filename, frame=None, topoloc=None, zerowarning=True, data=None, covalentonly=True
+):
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader
     from collections import defaultdict
 
@@ -2249,7 +2251,7 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
         for i in range(struct_conn_site.getRowCount()):
             row = struct_conn_site.getRow(i)
             conn_type_id = row[struct_conn_site.getAttributeIndex("conn_type_id")]
-            if conn_type_id not in (
+            if covalentonly and conn_type_id not in (
                 "covale",
                 "covale_base",
                 "covale_phosphate",
@@ -2885,6 +2887,7 @@ def BCIFread(
     topoloc=None,
     zerowarning=True,
     uri="https://models.rcsb.org/{pdbid}.bcif.gz",
+    covalentonly=True,
 ):
     from moleculekit.home import home
     from moleculekit.pdbx.reader.BinaryCifReader import BinaryCifReader
@@ -2911,6 +2914,7 @@ def BCIFread(
         frame=frame,
         topoloc=topoloc,
         zerowarning=zerowarning,
+        covalentonly=covalentonly,
     )
 
 
@@ -3887,7 +3891,7 @@ class _TestReaders(unittest.TestCase):
                 ciffile = os.path.join(home(dataDir="pdb"), f"{pdbid.lower()}.bcif.gz")
                 pdbfile = os.path.join(home(dataDir="pdb"), f"{pdbid.lower()}.pdb")
                 mol1 = Molecule(pdbfile)
-                mol2 = Molecule(ciffile)
+                mol2 = Molecule(ciffile, covalentonly=False)
 
                 # Comparing just the intersection of bonds of mol1 and 2 because PDB has much fewer
                 keep_bonds = []
