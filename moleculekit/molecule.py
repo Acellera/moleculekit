@@ -2688,6 +2688,7 @@ def mol_equal(
     exceptFields=None,
     fieldPrecision=None,
     dtypes=False,
+    uqBonds=False,
     _logger=True,
 ):
     """Compare two Molecules for equality.
@@ -2706,6 +2707,8 @@ def mol_equal(
         A dictionary of `field`, `precision` key-value pairs which defines the numerical precision of the value comparisons of two arrays
     dtypes : bool
         Set to True to also compare datatypes of the fields
+    uqBonds : bool
+        Set to True to compare unique bonds instead of all bonds
     _logger : bool
         Set to False to disable the printing of the differences in the two Molecules
 
@@ -2754,10 +2757,21 @@ def mol_equal(
             ):
                 continue
 
-        if not np.array_equal(
-            mol1.__getattribute__(field1), mol2.__getattribute__(field2)
-        ):
-            difffields += [field]
+        if field == "bonds" and uqBonds:
+            mol1bonds, _ = calculateUniqueBonds(mol1.bonds, [])
+            mol2bonds, _ = calculateUniqueBonds(mol2.bonds, [])
+            if not np.array_equal(mol1bonds, mol2bonds):
+                difffields += [field]
+        elif field == "bondtype" and uqBonds:
+            _, mol1bondtype = calculateUniqueBonds(mol1.bonds, mol1.bondtype)
+            _, mol2bondtype = calculateUniqueBonds(mol2.bonds, mol2.bondtype)
+            if not np.array_equal(mol1bondtype, mol2bondtype):
+                difffields += [field]
+        else:
+            if not np.array_equal(
+                mol1.__getattribute__(field1), mol2.__getattribute__(field2)
+            ):
+                difffields += [field]
 
         if dtypes:
             attr1 = mol1.__getattribute__(field1)
