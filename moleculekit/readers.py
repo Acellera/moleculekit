@@ -2248,8 +2248,23 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
         struct_conn_site = dataObj.getObj("struct_conn")
         for i in range(struct_conn_site.getRowCount()):
             row = struct_conn_site.getRow(i)
-            chain1 = row[struct_conn_site.getAttributeIndex("ptnr1_auth_asym_id")]
-            chain2 = row[struct_conn_site.getAttributeIndex("ptnr2_auth_asym_id")]
+            conn_type_id = row[struct_conn_site.getAttributeIndex("conn_type_id")]
+            if conn_type_id not in (
+                "covale",
+                "covale_base",
+                "covale_phosphate",
+                "covale_sugar",
+                "modres",
+            ):
+                # Skip non-covalent bonds like disulfide and metal coordination
+                # For types check here: https://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v40.dic/Items/_struct_conn_type.id.html
+                continue
+            chain1 = fixDefault(
+                row[struct_conn_site.getAttributeIndex("ptnr1_auth_asym_id")], str
+            )
+            chain2 = fixDefault(
+                row[struct_conn_site.getAttributeIndex("ptnr2_auth_asym_id")], str
+            )
             resid1 = int(row[struct_conn_site.getAttributeIndex("ptnr1_auth_seq_id")])
             resid2 = int(row[struct_conn_site.getAttributeIndex("ptnr2_auth_seq_id")])
             name1 = row[struct_conn_site.getAttributeIndex("ptnr1_label_atom_id")]
@@ -2260,9 +2275,14 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
             insertion2 = fixDefault(
                 row[struct_conn_site.getAttributeIndex("pdbx_ptnr2_PDB_ins_code")], str
             )
+            bondtype = row[struct_conn_site.getAttributeIndex("pdbx_value_order")]
+            if bondtype == "?":
+                bondtype = "un"
+            else:
+                bondtype = bondtype_mapping.get(bondtype.upper(), bondtype.upper())
             id1 = (resid1, insertion1, chain1, name1)
             id2 = (resid2, insertion2, chain2, name2)
-            struct_conn[id1].append(id2)
+            struct_conn[id1].append((id2, bondtype))
             all_struct_conn_atoms += [id1, id2]
     all_struct_conn_atoms = set(all_struct_conn_atoms)
 
@@ -2419,10 +2439,10 @@ def CIFread(filename, frame=None, topoloc=None, zerowarning=True, data=None):
     # Add the inter-residue bonds
     if len(struct_conn):
         for atm1 in struct_conn:
-            for atm2 in struct_conn[atm1]:
+            for atm2, bt in struct_conn[atm1]:
                 if atm1 in bond_atoms_idx and atm2 in bond_atoms_idx:
                     topo.bonds.append([bond_atoms_idx[atm1], bond_atoms_idx[atm2]])
-                    topo.bondtype.append("un")
+                    topo.bondtype.append(bt)
 
     if len(coords) != 0:
         allcoords.append(coords)

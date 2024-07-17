@@ -962,7 +962,9 @@ def MDTRAJwrite(mol, filename):
         raise ValueError(f'MDtraj writer failed for file {filename} with error "{e}"')
 
 
-def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None, return_data=False):
+def CIFwrite(
+    mol, filename, explicitbonds=None, chemcomp=None, return_data=False, writebonds=True
+):
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
     from moleculekit.molecule import _originalResname
     import re
@@ -985,8 +987,12 @@ def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None, return_data=False
         "group_PDB": "record",
         "id": "serial",
         "type_symbol": "element",
+        "label_atom_id": "name",
         "label_alt_id": "altloc",
+        "label_comp_id": "resname",
+        "label_asym_id": "chain",
         "label_entity_id": "segid",
+        "label_seq_id": "resid",
         "pdbx_PDB_ins_code": "insertion",
         "Cartn_x": "coords",
         "Cartn_y": "coords",
@@ -999,7 +1005,6 @@ def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None, return_data=False
         "auth_asym_id": "chain",
         "auth_atom_id": "name",
         "pdbx_PDB_model_num": "frame",
-        "label_comp_id": "resname",
     }
     chem_comp_mapping = {
         "comp_id": "resname",
@@ -1088,26 +1093,65 @@ def CIFwrite(mol, filename, explicitbonds=None, chemcomp=None, return_data=False
             aCat.append(data)
         curContainer.append(aCat)
 
-        if single_mol:
+        if len(mol.bonds) and writebonds:
             bonds = mol.bonds
             bondtype = mol.bondtype
             if explicitbonds is not None:
                 bonds = explicitbonds[0]
                 bondtype = explicitbonds[1]
 
+            uqresid = sequenceID((mol.resid, mol.insertion, mol.chain))
+
             bCat = DataCategory("chem_comp_bond")
             for at in ["comp_id", "atom_id_1", "atom_id_2", "value_order"]:
                 bCat.appendAttribute(at)
-            for i in range(mol.bonds.shape[0]):
-                bCat.append(
-                    [
-                        mol.resname[0],
-                        atomnames[bonds[i][0]],
-                        atomnames[bonds[i][1]],
-                        bondtype_map[bondtype[i]],
-                    ]
-                )
+
+            written_bonds = set()
+            for i in range(bonds.shape[0]):
+                bond = bonds[i]
+                if uqresid[bond[0]] != uqresid[bond[1]]:
+                    continue
+                key = (mol.resname[bond[0]], atomnames[bond[0]], atomnames[bond[1]])
+                if key in written_bonds:
+                    continue
+                written_bonds.add(key)
+                bCat.append([*key, bondtype_map[bondtype[i]]])
             curContainer.append(bCat)
+
+            if not single_mol:
+                bCat = DataCategory("struct_conn")
+                for at in [
+                    "conn_type_id",
+                    "ptnr1_auth_asym_id",
+                    "ptnr1_auth_seq_id",
+                    "ptnr1_label_atom_id",
+                    "pdbx_ptnr1_PDB_ins_code",
+                    "ptnr2_auth_asym_id",
+                    "ptnr2_auth_seq_id",
+                    "ptnr2_label_atom_id",
+                    "pdbx_ptnr2_PDB_ins_code",
+                    "pdbx_value_order",
+                ]:
+                    bCat.appendAttribute(at)
+                for i in range(bonds.shape[0]):
+                    bond = bonds[i]
+                    if uqresid[bond[0]] == uqresid[bond[1]]:
+                        continue
+                    bCat.append(
+                        [
+                            "covale",
+                            mol.chain[bond[0]],
+                            mol.resid[bond[0]],
+                            mol.name[bond[0]],
+                            mol.insertion[bond[0]],
+                            mol.chain[bond[1]],
+                            mol.resid[bond[1]],
+                            mol.name[bond[1]],
+                            mol.insertion[bond[1]],
+                            bondtype_map[bondtype[i]],
+                        ]
+                    )
+                curContainer.append(bCat)
 
         myDataList.append(curContainer)
         if return_data:
@@ -1538,6 +1582,23 @@ class _TestWriters(unittest.TestCase):
                         exceptFields=("fileloc"),
                         fieldPrecision={"coords": 3e-6, "box": 3e-6},
                     )
+
+    def test_cif_roundtrip(self):
+        from moleculekit.molecule import Molecule, mol_equal
+        import tempfile
+
+        mol = Molecule(os.path.join(self.testfolder, "triala_capped.cif"))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            outfile = os.path.join(tmpdir, "triala_capped.cif")
+            mol.write(outfile)
+            mol2 = Molecule(outfile)
+            assert mol_equal(
+                mol,
+                mol2,
+                checkFields=Molecule._all_fields,
+                uqBonds=True,
+                exceptFields=("fileloc"),
+            )
 
 
 if __name__ == "__main__":
