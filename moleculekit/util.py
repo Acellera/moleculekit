@@ -787,6 +787,38 @@ def opm(pdbid, keep=False, keepaltloc="A", validateElements=True):
     )
 
 
+def rotation_matrix_from_vectors(vec1, vec2):
+    """Find the rotation matrix that aligns vec1 to vec2
+
+    Taken from: https://stackoverflow.com/a/67767180
+
+    Parameters
+    ----------
+    vec1 : np.ndarray
+        A 3d "source" vector
+    vec2 : np.ndarray
+        A 3d "destination" vector
+
+    Returns
+    -------
+    mat : np.ndarray
+        A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
+    """
+    import numpy as np
+
+    a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (
+        vec2 / np.linalg.norm(vec2)
+    ).reshape(3)
+    v = np.cross(a, b)
+    if any(v):  # if not all zeros then
+        c = np.dot(a, b)
+        s = np.linalg.norm(v)
+        kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+        return np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s**2))
+    else:
+        return np.eye(3)  # cross of all zeros only occurs on identical directions
+
+
 if __name__ == "__main__":
     import unittest
 

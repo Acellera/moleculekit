@@ -1196,10 +1196,13 @@ class Molecule(object):
         >>> mol.rotateBy(rotationMatrix([0, 1, 0], 1.57))
         """
         self._invalidate_box()
+
+        # Give it some slack for numerical errors
         if abs(np.linalg.det(M) - 1) > 1e-5:
             raise RuntimeError(
                 f"Rotation matrix has suspicious non-unitary determinant: {np.linalg.det(M)}"
             )
+
         coords = self.get("coords", sel=sel)
         newcoords = coords - center
         newcoords = np.dot(newcoords, np.transpose(M)) + center
