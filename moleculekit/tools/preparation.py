@@ -741,7 +741,7 @@ def systemPrepare(
         residue_smiles=residue_smiles,
     )
 
-    nonpept = None
+    nonpept = []
     if hold_nonpeptidic_bonds:
         nonpept = _detect_nonpeptidic_bonds(mol_in)
 
