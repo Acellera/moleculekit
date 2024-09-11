@@ -40,7 +40,7 @@ jobs:
       - name: Install moleculekit conda deps. Force rdkit version for tests
         run: |
           mamba install -y -q --file extra_requirements.txt python=${{ matrix.python-version }} -c acellera -c conda-forge
-          mamba install -y rdkit=2024.03.5
+          mamba install -y rdkit=2024.03.4
           # scikit-learn, joblib, biopython are only used for rarely-used functions in smallmol
           mamba install -y -q scikit-learn joblib biopython -c conda-forge
 
