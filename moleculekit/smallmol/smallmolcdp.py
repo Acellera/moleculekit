@@ -1,9 +1,14 @@
 import numpy as np
 import logging
 import unittest
-import platform
 
 logger = logging.getLogger(__name__)
+
+cdp_installed = True
+try:
+    import CDPL
+except ImportError:
+    cdp_installed = False
 
 
 class SmallMolCDP:
@@ -238,9 +243,7 @@ class SmallMolCDP:
 
 
 class _Test_SmallMolCDP(unittest.TestCase):
-    @unittest.skipUnless(
-        platform.system() == "Linux", "CDPKit only works on Linux. Skipping test."
-    )
+    @unittest.skipUnless(cdp_installed, "CDPKit not installed. Skipping test.")
     def test_smallmolcdp(self):
         from moleculekit.home import home
 
