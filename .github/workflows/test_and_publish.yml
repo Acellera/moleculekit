@@ -37,9 +37,10 @@ jobs:
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      - name: Install moleculekit conda deps
+      - name: Install moleculekit conda deps. rdkit version is just set high for tests to pass
         run: |
           mamba install -y -q --file extra_requirements.txt python=${{ matrix.python-version }} -c acellera -c conda-forge
+          mamba install -y -q rdkit=2023.09.6 -c conda-forge
           # scikit-learn, joblib, biopython are only used for rarely-used functions in smallmol
           mamba install -y -q scikit-learn joblib biopython -c conda-forge
 
