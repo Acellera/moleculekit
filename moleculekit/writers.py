@@ -1083,6 +1083,8 @@ def CIFwrite(
                     data.append(1)
                 elif mapping[at] == "name":
                     data.append(atomnames[i])
+                elif mapping[at] == "serial":
+                    data.append(i + 1)
                 elif at == "label_comp_id":
                     if mol.resname[i] not in _originalResname:
                         data.append(mol.resname[i])
