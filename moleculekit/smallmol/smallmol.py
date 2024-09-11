@@ -234,9 +234,11 @@ class SmallMol(object):
     def _name(self):
         return np.array(
             [
-                a.GetProp("_Name")
-                if (a.HasProp("_Name") and a.GetProp("_Name") != "")
-                else f"{a.GetSymbol()}{a.GetIdx()}"
+                (
+                    a.GetProp("_Name")
+                    if (a.HasProp("_Name") and a.GetProp("_Name") != "")
+                    else f"{a.GetSymbol()}{a.GetIdx()}"
+                )
                 for a in self._mol.GetAtoms()
             ],
             dtype=SmallMol._dtypes["name"],
@@ -246,9 +248,11 @@ class SmallMol(object):
     def _charge(self):
         return np.array(
             [
-                a.GetPropsAsDict()["_TriposPartialCharge"]
-                if a.HasProp("_TriposPartialCharge")
-                else 0.0
+                (
+                    a.GetPropsAsDict()["_TriposPartialCharge"]
+                    if a.HasProp("_TriposPartialCharge")
+                    else 0.0
+                )
                 for a in self._mol.GetAtoms()
             ],
             dtype=SmallMol._dtypes["charge"],
@@ -353,9 +357,11 @@ class SmallMol(object):
     def _atomtype(self):
         return np.array(
             [
-                a.GetPropsAsDict()["_TriposAtomType"]
-                if a.HasProp("_TriposAtomType")
-                else ""
+                (
+                    a.GetPropsAsDict()["_TriposAtomType"]
+                    if a.HasProp("_TriposAtomType")
+                    else ""
+                )
                 for a in self._mol.GetAtoms()
             ],
             dtype=object,
