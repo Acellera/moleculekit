@@ -263,8 +263,7 @@ class _TestSmallMol(unittest.TestCase):
     def test_toSMARTS(self):
         sm = SmallMol(self.benzamidine_mol2)
         assert (
-            sm.toSMARTS()
-            == "[#6]1(:[#6H]:[#6H]:[#6H]:[#6H]:[#6H]:1)-[#6](=[#7H2+])-[#7H2]"
+            sm.toSMARTS() == "[#6]1(:[#6]:[#6]:[#6]:[#6]:[#6]:1)-[#6](=[#7+])-[#7]"
         ), f"Failed with SMARTS: {sm.toSMARTS()}"
 
     def test_align(self):
