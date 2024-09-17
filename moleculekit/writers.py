@@ -887,7 +887,7 @@ def INPCRDwrite(mol, filename):
         f.write(f"  {mol.numAtoms}\n")
         for i in range(mol.numAtoms):
             f.write(
-                f"  {mol.coords[i, 0, mol.frame]:10.7f}  {mol.coords[i, 1, mol.frame]:10.7f}  {mol.coords[i, 2, mol.frame]:10.7f}"
+                f" {mol.coords[i, 0, mol.frame]:11.7f} {mol.coords[i, 1, mol.frame]:11.7f} {mol.coords[i, 2, mol.frame]:11.7f}"
             )
             if i % 2 == 1:  # Add a newline every two atoms
                 f.write("\n")
@@ -896,7 +896,7 @@ def INPCRDwrite(mol, filename):
         box = mol.box[:, mol.frame]
         angles = mol.boxangles[:, mol.frame]
         f.write(
-            f"  {box[0]:10.7f}  {box[1]:10.7f}  {box[2]:10.7f}  {angles[0]:10.7f}  {angles[1]:10.7f}  {angles[2]:10.7f}"
+            f" {box[0]:11.7f} {box[1]:11.7f} {box[2]:11.7f} {angles[0]:11.7f} {angles[1]:11.7f} {angles[2]:11.7f}"
         )
         f.write("\n")
 
