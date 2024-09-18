@@ -199,9 +199,7 @@ class MolFactory(object):
         trajs = ensurelist(trajs)
         if len(topos) != len(trajs):
             raise RuntimeError(
-                "Different number of topologies ({}) and trajectories ({}) were read from {}".format(
-                    len(topos), len(trajs), filename
-                )
+                f"Different number of topologies ({len(topos)}) and trajectories ({len(trajs)}) were read from {filename}"
             )
 
         mols = []
@@ -246,9 +244,7 @@ class MolFactory(object):
                 raise RuntimeError(f"No atoms were read from file {filename}.")
             if len(natoms) != 1:
                 raise TopologyInconsistencyError(
-                    "Different number of atoms read from file {} for different fields: {}.".format(
-                        filename, natoms
-                    )
+                    f"Different number of atoms read from file {filename} for different fields: {natoms}."
                 )
             toponatoms = natoms[0]
         if traj is not None and len(traj.coords):
