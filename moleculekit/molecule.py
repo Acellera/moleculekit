@@ -623,7 +623,7 @@ class Molecule(object):
             )
         return sel
 
-    def get(self, field, sel=None):
+    def get(self, field, sel=None, fileBonds=True, guessBonds=True):
         """Retrieve a specific PDB field based on the selection
 
         Parameters
@@ -633,6 +633,10 @@ class Molecule(object):
         sel : str
             Atom selection string for which atoms we want to get the field from. Default all.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+        fileBonds : bool
+            If True will use bonds read from files.
+        guessBonds : bool
+            If True will use guessed bonds. Both fileBonds and guessBonds can be combined.
 
         Returns
         -------
@@ -651,7 +655,7 @@ class Molecule(object):
         """
         if field != "index" and field not in self._atom_and_coord_fields:
             raise RuntimeError(f"Invalid field '{field}'")
-        s = self.atomselect(sel)
+        s = self.atomselect(sel, fileBonds=fileBonds, guessBonds=guessBonds)
         if field == "coords":
             cc = np.squeeze(self.coords[s, :, self.frame])
             if cc.ndim == 1:
