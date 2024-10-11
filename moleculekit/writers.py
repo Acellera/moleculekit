@@ -1027,6 +1027,7 @@ def CIFwrite(
         "4": "QUAD",
         "ar": "AROM",
         "am": "SING",
+        "un": "SING",  # Default to single for unknown bond type
     }
     xyz_map = {
         "Cartn_x": 0,
