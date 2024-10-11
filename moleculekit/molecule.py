@@ -513,7 +513,7 @@ class Molecule(object):
             if not isinstance(data2, np.ndarray):
                 data2 = np.array([data2])
             if data1.size == 0:
-                return data2
+                return data2.copy()  # To not insert a reference of second mol
             if data2.size == 0:
                 return data1
             if append:  # TODO: Remove this if numpy insert is as fast as append
@@ -558,7 +558,7 @@ class Molecule(object):
                     self.bondtype = np.append(self.bondtype, mol.bondtype, axis=0)
                 else:
                     self.bonds = newbonds
-                    self.bondtype = mol.bondtype
+                    self.bondtype = mol.bondtype.copy()
 
             for k in self._atom_and_coord_fields:
                 if k == "serial":
@@ -1290,6 +1290,11 @@ class Molecule(object):
             Atom selection string of the atoms whose geometric center we want to center on the `loc` position.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
+        Returns
+        -------
+        translation : np.ndarray
+            3D coordinates of the translation applied to the Molecule
+
         Examples
         --------
         >>> mol=tryp.copy()
@@ -1301,9 +1306,9 @@ class Molecule(object):
             raise RuntimeError(
                 f'Atom selection "{sel}" selected 0 atoms. Cannot center Molecule.'
             )
-        com = np.mean(self.coords[selbool, :, self.frame], 0)
-        self.moveBy(-com)
-        self.moveBy(loc)
+        translation = np.mean(self.coords[selbool, :, self.frame], 0)
+        self.moveBy(-translation + loc)
+        return -translation + loc
 
     def read(
         self,
