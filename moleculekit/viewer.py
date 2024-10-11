@@ -161,8 +161,8 @@ def _monitoringThread(view_fn, get_mols_fn):
 
     while True:
         try:
-            # print("KEYS", curr_mols.keys())
             new_keys = [key for key in viewingMols if key not in curr_mols.keys()]
+            # print("KEYS", curr_mols.keys(), "NEW KEYS", new_keys)
             for unique_id in new_keys:
                 curr_mols[unique_id] = viewingMols[unique_id].copy()
                 view_fn(curr_mols[unique_id], unique_id)
@@ -193,4 +193,6 @@ def _monitoringThread(view_fn, get_mols_fn):
                     del curr_mols[key]
                     del viewingMols[key]
         except Exception:
-            continue
+            import traceback
+
+            print("Failed to view molecule with error:\n", traceback.format_exc())
