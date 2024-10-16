@@ -2481,7 +2481,7 @@ class Molecule(object):
             The center of mass or geometric center of the selection
         """
         sel = self.atomselect(sel)
-        coords = self.coords[sel].squeeze()
+        coords = self.coords[sel, :, self.frame]
         if not com:  # Geometric center
             return np.mean(coords, axis=0)
 
