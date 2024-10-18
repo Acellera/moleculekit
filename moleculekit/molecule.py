@@ -968,12 +968,16 @@ class Molecule(object):
 
         mask = np.atleast_1d(mask)
 
-        if indexes and mask.dtype == bool:
-            return np.array(np.where(mask)[0], dtype=np.int32)
-        if not indexes and mask.dtype != bool:
-            new_mask = np.zeros(self.numAtoms, dtype=bool)
-            new_mask[mask] = True
-            return new_mask
+        if indexes:
+            if mask.dtype == bool:
+                mask = np.array(np.where(mask)[0], dtype=np.uint32)
+            elif mask.dtype != np.uint32:
+                mask = mask.astype(np.uint32)
+        else:
+            if mask.dtype != bool:
+                new_mask = np.zeros(self.numAtoms, dtype=bool)
+                new_mask[mask] = True
+                mask = new_mask
 
         if ast is not None:
             return mask, ast
@@ -3454,6 +3458,11 @@ class _TestMolecule(TestCase):
         traj3.filter(traj3.resid == 10)
         assert mol_equal(traj2, traj3, checkFields=Molecule._all_fields, dtypes=True)
 
+        traj2 = trajmol.copy(sel=np.where(trajmol.resid == 10)[0])
+        traj3 = trajmol.copy()
+        traj3.filter(traj3.resid == 10)
+        assert mol_equal(traj2, traj3, checkFields=Molecule._all_fields, dtypes=True)
+
     def test_connected_components(self):
         from moleculekit.home import home
         import networkx as nx
@@ -3505,6 +3514,48 @@ class _TestMolecule(TestCase):
         mol.wrap("protein and segid P3")
         dims = mol.coords.max(axis=0) - mol.coords.min(axis=0)
         assert np.all(np.abs(dims - mol.box) < 17.5)  # 17.5 A because lipids stick out
+
+    def test_atomselect(self):
+        mol = Molecule("3ptb")
+        sel = mol.atomselect("protein")
+        assert sel.dtype == bool
+        assert sel.sum() == 1629
+
+        sel = mol.atomselect("protein", indexes=True)
+        assert sel.dtype == np.uint32
+        assert np.array_equal(sel, np.arange(1629))
+
+        sel = mol.atomselect(np.arange(10, 20))
+        assert sel.dtype == bool
+        assert sel.sum() == 10
+
+        sel = mol.atomselect(np.arange(10, 20), indexes=True)
+        assert sel.dtype == np.uint32
+        assert np.array_equal(sel, np.arange(10, 20))
+
+        sel = mol.atomselect(mol.resid == 20)
+        assert sel.dtype == bool
+        assert sel.sum() == 12
+
+        sel = mol.atomselect(mol.resid == 20, indexes=True)
+        assert sel.dtype == np.uint32
+        assert np.array_equal(sel, np.arange(23, 35))
+
+        sel = mol.atomselect("all")
+        assert sel.dtype == bool
+        assert np.sum(sel) == mol.numAtoms
+
+        sel = mol.atomselect("all", indexes=True)
+        assert sel.dtype == np.uint32
+        assert np.array_equal(sel, np.arange(mol.numAtoms))
+
+        sel = mol.atomselect(None)
+        assert sel.dtype == bool
+        assert np.sum(sel) == mol.numAtoms
+
+        sel = mol.atomselect(None, indexes=True)
+        assert sel.dtype == np.uint32
+        assert np.array_equal(sel, np.arange(mol.numAtoms))
 
 
 if __name__ == "__main__":
