@@ -947,9 +947,9 @@ class Molecule(object):
 
         ast = None
         if sel is None or (isinstance(sel, str) and sel == "all"):
-            s = np.ones(self.numAtoms, dtype=bool)
+            mask = np.ones(self.numAtoms, dtype=bool)
         elif isinstance(sel, str):
-            s = atomselect(
+            mask = atomselect(
                 self,
                 sel,
                 bonds=self._getBonds(fileBonds, guessBonds),
@@ -957,23 +957,27 @@ class Molecule(object):
                 _debug=_debug,
             )
             if _debug:
-                s, ast = s
+                mask, ast = mask
 
-            if np.sum(s) == 0 and strict:
+            if np.sum(mask) == 0 and strict:
                 raise RuntimeError(
                     f'No atoms were selected with atom selection "{sel}".'
                 )
         else:
-            s = sel
+            mask = sel
 
-        s = np.atleast_1d(s)
+        mask = np.atleast_1d(mask)
 
-        if indexes and s.dtype == bool:
-            return np.array(np.where(s)[0], dtype=np.int32)
-        else:
-            if ast is not None:
-                return s, ast
-            return s
+        if indexes and mask.dtype == bool:
+            return np.array(np.where(mask)[0], dtype=np.int32)
+        if not indexes and mask.dtype != bool:
+            new_mask = np.zeros(self.numAtoms, dtype=bool)
+            new_mask[mask] = True
+            return new_mask
+
+        if ast is not None:
+            return mask, ast
+        return mask
 
     def copy(self, frames=None, sel=None):
         """Create a copy of the Molecule object
@@ -2382,8 +2386,8 @@ class Molecule(object):
         if hasb:
             self.bondtype[oldidx] = btype
         else:
-            self.bonds = np.vstack((self.bonds, [idx1, idx2]))
-            self.bondtype = np.hstack((self.bondtype, [btype]))
+            self.bonds = np.vstack((self.bonds, [idx1, idx2])).astype(np.uint32).copy()
+            self.bondtype = np.hstack((self.bondtype, [btype])).astype(object).copy()
 
     def removeBond(self, idx1, idx2):
         """Remove an existing bond between a pair of atoms
