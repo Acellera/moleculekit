@@ -102,6 +102,15 @@ python3 -m http.server
 
 If you get an error at building about numpy missing, check this issue https://github.com/pyodide/pyodide/issues/4347
 
+#### Debugging segmentation faults in Cython part
+
+1. Put a reproducible script in a file like `segfault.py`
+2. Modify setup.py to have `-g` as compile flag instead of `-O3`
+3. Recompile extensions with `python setup.py build_ext --inplace`
+4. Execute script with gdb like `gdb --args python segfault.py`
+5. Execute `run` and then `bt 10` to show the backtrace
+6. Have fun
+
 ## Citing MoleculeKit
 
 If you use this software in your publication please cite:
