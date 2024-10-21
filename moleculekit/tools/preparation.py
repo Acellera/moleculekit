@@ -450,20 +450,24 @@ def _check_frozen_histidines(mol_in, _no_prot):
 
 
 def _prepare_nucleics(mol):
+    resnames = ("T", "U", "G", "C", "A", "DG", "DC", "DA", "DT", "RU", "RG", "RC", "RA")
     # Renames residues to the names expected by PARSE. Fixes issues with 5' atoms.
-    nucl_mask = mol.atomselect("nucleic")
+    nucleic_sel = f"nucleic and resname {' '.join(resnames)}"
+    nucl_mask = mol.atomselect(nucleic_sel)
     uq_resn = mol.resname[nucl_mask]
 
-    # Clean 5' dangling P atom
-    for ch in np.unique(mol.get("chain", "nucleic")):
-        # First residue of that chain
-        resid = mol.resid[(mol.chain == ch) & mol.atomselect("nucleic")][0]
-        remsel = (
-            (mol.chain == ch)
-            & (mol.resid == resid)
-            & np.isin(mol.name, ("P", "OP1", "OP2"))
-        )
-        mol.remove(remsel, _logger=False)
+    if len(set(mol.resid[nucl_mask])) > 2:
+        # Need at least two nucleic residues to apply fixes
+        # Clean 5' dangling P atom
+        for ch in np.unique(mol.get("chain", nucleic_sel)):
+            # First residue of that chain
+            resid = mol.resid[(mol.chain == ch) & mol.atomselect(nucleic_sel)][0]
+            remsel = (
+                (mol.chain == ch)
+                & (mol.resid == resid)
+                & np.isin(mol.name, ("P", "OP1", "OP2"))
+            )
+            mol.remove(remsel, _logger=False)
 
     mapping = {
         "T": "DT",
@@ -1458,6 +1462,21 @@ class _TestPreparation(unittest.TestCase):
         self._compare_results(
             os.path.join(test_home, "4TOT_E_prepared.pdb"),
             os.path.join(test_home, "4TOT_E_prepared.csv"),
+            pmol,
+            df,
+        )
+
+    def test_nucleiclike_ligand(self):
+        # The nucleic preparation of systemPrepare was accidentally removing the P atom from the ligand
+        # since it looked like a terminal nucleic acid phosphate. This test checks that the P atom is still there
+        test_home = os.path.join(self.home, "3U5S")
+        mol = Molecule(os.path.join(test_home, "3U5S.pdb"))
+
+        pmol, df = systemPrepare(mol, return_details=True)
+
+        self._compare_results(
+            os.path.join(test_home, "3U5S_prepared.pdb"),
+            os.path.join(test_home, "3U5S_prepared.csv"),
             pmol,
             df,
         )
