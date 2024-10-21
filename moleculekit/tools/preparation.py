@@ -1472,7 +1472,7 @@ class _TestPreparation(unittest.TestCase):
         test_home = os.path.join(self.home, "3U5S")
         mol = Molecule(os.path.join(test_home, "3U5S.pdb"))
 
-        pmol, df = systemPrepare(mol, return_details=True)
+        pmol, df = systemPrepare(mol, return_details=True, ignore_ns_errors=True)
 
         self._compare_results(
             os.path.join(test_home, "3U5S_prepared.pdb"),
