@@ -95,6 +95,12 @@ def analyze(mol: Molecule, bonds, _profile=False):
         masses.append(periodictable[el].mass)
     masses = np.array(masses, dtype=np.float32)
 
+    if bonds.max() >= mol.numAtoms:
+        raise ValueError(
+            "Bonds array contains atoms which are not in the molecule. "
+            f"The maximum atom index in the bonds array is {bonds.max()} while the molecule contains {mol.numAtoms} atoms."
+        )
+
     if not _profile:
         analyze_molecule(
             mol.numAtoms,
