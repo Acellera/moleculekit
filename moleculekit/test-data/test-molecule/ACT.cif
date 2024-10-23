@@ -1,0 +1,46 @@
+data_ACT
+#
+#
+_chem_comp.id                  ACT
+_chem_comp.type                NON-POLYMER
+_chem_comp.pdbx_formal_charge  0
+##
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+ACT  O   za  O  0  -0.2544   0.000  -1.327   0.002   0.000  -1.327   0.002  
+ACT  C   zb  C  0   0.3705   0.000  -0.113   0.001   0.000  -0.113   0.001  
+ACT  C0  c3  C  0  -0.2681   1.290   0.689  -0.000   1.290   0.689  -0.000  
+ACT  C1  c3  C  0  -0.2681  -1.290   0.689  -0.000  -1.290   0.689  -0.000  
+ACT  H   hc  H  0     0.07   1.331   1.345  -0.887   1.331   1.345  -0.887  
+ACT  H0  hc  H  0     0.07   1.331   1.348   0.884   1.331   1.348   0.884  
+ACT  H1  hc  H  0     0.07   2.152   0.010   0.001   2.152   0.010   0.001  
+ACT  H2  hc  H  0     0.07  -2.152   0.009   0.001  -2.152   0.009   0.001  
+ACT  H3  hc  H  0     0.07  -1.332   1.344  -0.887  -1.332   1.344  -0.887  
+ACT  H4  hc  H  0     0.07  -1.332   1.348   0.884  -1.332   1.348   0.884  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+ACT  O   C   DOUB  
+ACT  C   C0  SING  
+ACT  C   C1  SING  
+ACT  C0  H   SING  
+ACT  C0  H0  SING  
+ACT  C0  H1  SING  
+ACT  C1  H2  SING  
+ACT  C1  H3  SING  
+ACT  C1  H4  SING  
+##

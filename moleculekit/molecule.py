@@ -481,7 +481,15 @@ class Molecule(object):
 
         return len(np.unique(sequenceID((self.resid, self.insertion, self.chain))))
 
-    def insert(self, mol, index, collisions=0, coldist=1.3, removesel="all"):
+    def insert(
+        self,
+        mol,
+        index,
+        collisions=False,
+        coldist=1.3,
+        removesel="all",
+        invertcollisions=False,
+    ):
         """Insert the atoms of one molecule into another at a specific index.
 
         Parameters
@@ -495,7 +503,10 @@ class Molecule(object):
         coldist : float
             Collision distance in Angstrom between atoms of the two molecules. Anything closer will be considered a collision.
         removesel : str
-            Atomselection for atoms to be removed from the passed molecule in case of collisions.
+            Atomselection for atoms to be removed from the molecule in case of collisions.
+        invertcollisions : bool
+            If invertcollisions is set to True it will remove residues of this Molecule which collide
+            with atoms of the passed `mol` molecule.
 
         Example
         -------
@@ -506,6 +517,9 @@ class Molecule(object):
         >>> mol.numAtoms
         3402
         """
+
+        if mol.numAtoms == 0:
+            return
 
         def insertappend(index, data1, data2, append):
             if not isinstance(data1, np.ndarray):
@@ -521,25 +535,41 @@ class Molecule(object):
             else:
                 return np.insert(data1, index, data2, axis=0)
 
-        append = index == self.numAtoms
-
-        if collisions and self.numAtoms > 0:
-            idx2 = _detectCollisions(
-                self.coords[:, :, self.frame],
-                mol.coords[:, :, mol.frame],
-                coldist,
-                mol.atomselect(removesel, indexes=True),
-            )
-            if len(idx2):
-                torem, numres = _getResidueIndexesByAtom(mol, idx2)
-                mol = mol.copy()
-                logger.info(
-                    f"Removed {numres} residues from appended Molecule due to collisions."
-                )
-                mol.remove(torem, _logger=False)
-
         backup = self.copy()
+
         try:
+            if collisions and self.numAtoms > 0:
+                if not invertcollisions:
+                    idx2 = _detectCollisions(
+                        self.coords[:, :, self.frame],
+                        mol.coords[:, :, mol.frame],
+                        coldist,
+                        mol.atomselect(removesel, indexes=True),
+                    )
+                    if len(idx2):
+                        torem, numres = _getResidueIndexesByAtom(mol, idx2)
+                        mol = mol.copy()
+                        logger.info(
+                            f"Removed {numres} residues from appended Molecule due to collisions."
+                        )
+                        mol.remove(torem, _logger=False)
+                else:
+                    idx2 = _detectCollisions(
+                        mol.coords[:, :, mol.frame],
+                        self.coords[:, :, self.frame],
+                        coldist,
+                        self.atomselect(removesel, indexes=True),
+                    )
+                    if len(idx2):
+                        torem, numres = _getResidueIndexesByAtom(self, idx2)
+                        logger.info(
+                            f"Removed {numres} residues from parent Molecule due to collisions."
+                        )
+                        self.remove(torem, _logger=False)
+                        # Update the insertion position index after removing atoms
+                        before = np.count_nonzero(torem[:index])
+                        index -= before
+
             mol.coords = np.atleast_3d(mol.coords)  # Ensuring 3D coords for appending
             if np.size(self.coords) != 0 and (
                 np.size(self.coords, 2) != np.size(mol.coords, 2) != 1
@@ -566,7 +596,9 @@ class Molecule(object):
                 data2 = mol.__dict__[k]
                 if data2 is None or np.size(data2) == 0:
                     data2 = self._empty(mol.numAtoms, k)
-                self.__dict__[k] = insertappend(index, self.__dict__[k], data2, append)
+                self.__dict__[k] = insertappend(
+                    index, self.__dict__[k], data2, index == self.numAtoms
+                )
             self.serial = np.arange(1, self.numAtoms + 1)
 
             if (
@@ -850,7 +882,14 @@ class Molecule(object):
         else:
             self.coords = aligns[0].coords.copy()
 
-    def append(self, mol, collisions=False, coldist=1.3, removesel="all"):
+    def append(
+        self,
+        mol,
+        collisions=False,
+        coldist=1.3,
+        removesel="all",
+        invertcollisions=False,
+    ):
         """Append a molecule at the end of the current molecule
 
         Parameters
@@ -863,6 +902,9 @@ class Molecule(object):
             Collision distance in Angstrom between atoms of the two molecules. Anything closer will be considered a collision.
         removesel : str
             Atomselection for atoms to be removed from the passed molecule in case of collisions.
+        invertcollisions : bool
+            If invertcollisions is set to True it will remove residues of this Molecule which collide
+            with atoms of the passed `mol` molecule.
 
         Example
         -------
@@ -880,6 +922,7 @@ class Molecule(object):
             collisions=collisions,
             coldist=coldist,
             removesel=removesel,
+            invertcollisions=invertcollisions,
         )
 
     def _getBonds(self, fileBonds=True, guessBonds=True):
@@ -3356,7 +3399,7 @@ class _TestMolecule(TestCase):
         from moleculekit.home import home
 
         mol = self.mol3PTB.copy()
-        mapping = mol.renumberResidues(returnMapping=True)
+        _ = mol.renumberResidues(returnMapping=True)
         refres = np.load(
             os.path.join(home(dataDir="test-molecule"), "renumberedresidues.npy"),
             allow_pickle=True,
@@ -3413,6 +3456,58 @@ class _TestMolecule(TestCase):
         newmol.append(rest)
         newmol.insert(lig, insertidx)
         assert mol_equal(self.trajmol, newmol)
+
+    def test_append_inverse_collisions(self):
+        from moleculekit.molecule import Molecule
+        from moleculekit.home import home
+        import numpy as np
+
+        homedir = home(dataDir="test-molecule")
+
+        mol = Molecule(os.path.join(homedir, "memb_with_water.pdb"))
+        n_waters = int(np.sum(mol.resname == "TIP3") / 3)
+        n_lipids = np.sum(mol.resname == "POPC")
+        popc_n_atoms = 134
+        acetone = Molecule(os.path.join(homedir, "ACT.cif"))
+
+        water_index = 46331
+        acetone.center()
+        acetone.moveBy(mol.coords[water_index])
+
+        mol.append(acetone, collisions=True, invertcollisions=True)
+        # Check that all atoms exist
+        assert np.sum(mol.resname == "ACT") == acetone.numAtoms
+        # Check that only waters were deleted
+        assert np.sum(mol.resname == "TIP3") % 3 == 0
+        new_n_waters = int(np.sum(mol.resname == "TIP3") / 3)
+        new_n_lipids = np.sum(mol.resname == "POPC")
+        assert new_n_waters == (n_waters - 4)  # Removed 4 waters
+        assert new_n_lipids == n_lipids
+
+        acetone.center()
+        acetone.moveBy(mol.coords[58189])
+        mol.insert(acetone, 58189, collisions=True, invertcollisions=True)
+        # Check that all atoms exist
+        assert np.sum(mol.resname == "ACT") == 2 * acetone.numAtoms
+        # Check that only waters were deleted
+        assert np.sum(mol.resname == "TIP3") % 3 == 0
+        new_n_waters = int(np.sum(mol.resname == "TIP3") / 3)
+        new_n_lipids = np.sum(mol.resname == "POPC")
+        assert new_n_waters == (n_waters - 6)  # Removed total 6 waters
+        assert new_n_lipids == n_lipids
+
+        # Try to insert now in the lipids
+        acetone.center()
+        acetone.moveBy(mol.coords[7700])
+        mol.insert(acetone, 7700, collisions=True, invertcollisions=True)
+        # Check that all atoms exist
+        assert np.sum(mol.resname == "ACT") == 3 * acetone.numAtoms
+        # Check that only waters were deleted
+        assert np.sum(mol.resname == "TIP3") % 3 == 0
+        new_n_waters = int(np.sum(mol.resname == "TIP3") / 3)
+        new_n_lipids = np.sum(mol.resname == "POPC")
+        assert new_n_waters == (n_waters - 6)  # No waters were killed
+        assert (n_lipids - new_n_lipids) == 1 * popc_n_atoms  # 1 lipid removed
 
     def test_wrapping(self):
         from moleculekit.home import home
