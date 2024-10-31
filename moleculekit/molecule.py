@@ -1822,7 +1822,7 @@ class Molecule(object):
         s = np.delete(s, remidx)
         self.set("resname", newres, sel=s)
 
-    def wrap(self, wrapsel="all", fileBonds=True, guessBonds=False):
+    def wrap(self, wrapsel="all", fileBonds=True, guessBonds=False, wrapcenter=None):
         """Wraps the coordinates of the molecule into the simulation box
 
         It assumes that all bonded groups are sequential in Molecule. I.e. you don't have a molecule B
@@ -1834,6 +1834,14 @@ class Molecule(object):
         wrapsel : str
             Atom selection string of atoms on which to center the wrapping box.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+        fileBonds : bool
+            Whether to use the bonds read from the file or to guess them
+        guessBonds : bool
+            Whether to guess the bonds. If fileBonds is True these will get appended
+        wrapcenter : array_like, optional
+            The center around which to wrap. If not provided, it will be calculated from the atoms in `wrapsel`.
+            Normally you want to use the `wrapsel` option and not the wrapcenter as the coordinates of the
+            selection can change during a simulation and `wrapsel` will keep that selection in the center for all frames.
 
         Examples
         --------
@@ -1854,7 +1862,14 @@ class Molecule(object):
             )
             guessAtomSelBonds = True
 
-        centersel = self.atomselect(wrapsel, indexes=True, guessBonds=guessAtomSelBonds)
+        centersel = np.array([], dtype=np.uint32)
+        if wrapcenter is None:
+            centersel = self.atomselect(
+                wrapsel, indexes=True, guessBonds=guessAtomSelBonds
+            )
+            wrapcenter = np.array([0, 0, 0], dtype=np.float32)
+        else:
+            wrapcenter = np.array(wrapcenter, dtype=np.float32)
 
         if np.all(self.box == 0):
             raise RuntimeError(
@@ -1869,7 +1884,13 @@ class Molecule(object):
 
         bonds = self._getBonds(fileBonds, guessBonds)
         groups, _ = getBondedGroups(self, bonds)
-        wrapping.calculate(groups, self.coords, self.box, centersel.astype(np.uint32))
+        wrapping.calculate(
+            groups,
+            self.coords,
+            self.box,
+            centersel.astype(np.uint32),
+            wrapcenter.astype(np.float32),
+        )
 
     def _emptyTopo(self, numAtoms):
         for field in Molecule._atom_fields:
@@ -3520,6 +3541,14 @@ class _TestMolecule(TestCase):
         refmol = Molecule(os.path.join(homedir, "structure.prmtop"))
         refmol.read(os.path.join(homedir, "output_wrapped.xtc"))
         assert np.allclose(mol.coords, refmol.coords, atol=1e-2)
+
+        # Test wrapping around a specific center coordinate
+        mol = Molecule(os.path.join(homedir, "6X18.psf"))
+        mol.read(os.path.join(homedir, "6X18.xtc"))
+        newcenter = np.array([94.64, 3.69, 1.11])
+        assert np.linalg.norm(mol.coords[:, :, 0].mean(axis=0) - newcenter) > 100
+        mol.wrap(wrapcenter=newcenter)
+        assert np.linalg.norm(mol.coords[:, :, 0].mean(axis=0) - newcenter) < 1
 
     def test_advanced_copy(self):
         from moleculekit.home import home

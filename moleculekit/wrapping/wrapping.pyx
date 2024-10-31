@@ -98,6 +98,7 @@ def calculate(
         np.ndarray[FLOAT32_t, ndim=3] coords, 
         np.ndarray[FLOAT32_t, ndim=2] box,
         np.ndarray[UINT32_t, ndim=1] centersel, 
+        np.ndarray[FLOAT32_t, ndim=1] center,
     ):
     cdef int f, i, g, a, start_idx, end_idx, k, n
     cdef int n_atoms = coords.shape[0]
@@ -109,14 +110,19 @@ def calculate(
     cdef FLOAT32_t[:] grp_center = np.zeros(3, dtype=FLOAT32)
     cdef FLOAT32_t translation, diff
 
+    if n_centersel == 0:
+        for i in range(3):
+            box_center[i] = center[i]
+
     # Wrap the coordinates
     for f in range(n_frames):
         # Calculate the geometric box center as the average of the selection atoms. Numerically stable average
-        for i in range(3):
-            box_center[i] = 0
-        for n in range(n_centersel):
+        if n_centersel > 0:
             for i in range(3):
-                box_center[i] = box_center[i] + (coords[centersel[n], i, f] - box_center[i]) / (n + 1)
+                box_center[i] = 0
+            for n in range(n_centersel):
+                for i in range(3):
+                    box_center[i] = box_center[i] + (coords[centersel[n], i, f] - box_center[i]) / (n + 1)
 
         for i in range(3):
             half_box[i] = box[i, f] / 2
