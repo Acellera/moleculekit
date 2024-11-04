@@ -29,13 +29,11 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: 3.9
-          mamba-version: "*"
-          miniforge-variant: Mambaforge
           channels: acellera,conda-forge,defaults
 
       - name: Install conda deps
         run: |
-          mamba install -y -q --file extra_requirements.txt nbconvert sphinx=6.1.3 python=3.9
+          conda install -y -q --file extra_requirements.txt nbconvert sphinx=6.1.3 python=3.9
           pip install pydata-sphinx-theme==0.13.1 sphinx-argparse sphinx-notfound-page sphinx-sitemap
           pip install .
 

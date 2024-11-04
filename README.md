@@ -78,9 +78,9 @@ python setup.py build_ext --inplace
 Install `emscripten` https://emscripten.org/docs/getting_started/downloads.html
 
 ```
-mamba create -n pyodide-build
-mamba activate pyodide-build
-mamba install python=3.11
+conda create -n pyodide-build
+conda activate pyodide-build
+conda install python=3.11
 pip install pyodide-build==0.25.1
 
 # Activate the emscripten environment

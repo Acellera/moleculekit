@@ -25,8 +25,6 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: ${{ matrix.python-version }}
-          mamba-version: "*"
-          miniforge-variant: Mambaforge
           channels: acellera,conda-forge,defaults
 
       - name: Lint with flake8
@@ -39,10 +37,10 @@ jobs:
 
       - name: Install moleculekit conda deps. Force rdkit version for tests
         run: |
-          mamba install -y -q --file extra_requirements.txt python=${{ matrix.python-version }} -c acellera -c conda-forge
-          mamba install -y rdkit=2024.03.4
+          conda install -y -q --file extra_requirements.txt python=${{ matrix.python-version }} -c acellera -c conda-forge
+          conda install -y rdkit=2024.03.4
           # scikit-learn, joblib, biopython are only used for rarely-used functions in smallmol
-          mamba install -y -q scikit-learn joblib biopython -c conda-forge
+          conda install -y -q scikit-learn joblib biopython -c conda-forge
 
       # - name: Install cdpkit
       #   if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -58,7 +56,7 @@ jobs:
           python setup.py build_ext --inplace
 
       - name: List conda environment
-        run: mamba list
+        run: conda list
 
       - name: Test
         run: |
