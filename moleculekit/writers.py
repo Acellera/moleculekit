@@ -963,7 +963,13 @@ def MDTRAJwrite(mol, filename):
 
 
 def CIFwrite(
-    mol, filename, explicitbonds=None, chemcomp=None, return_data=False, writebonds=True
+    mol,
+    filename,
+    explicitbonds=None,
+    chemcomp=None,
+    return_data=False,
+    writebonds=True,
+    fp_precision=3,
 ):
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
     from moleculekit.molecule import _originalResname
@@ -1079,7 +1085,9 @@ def CIFwrite(
             data = []
             for at in mapping:
                 if mapping[at] == "coords":
-                    data.append(f"{mol.coords[i, xyz_map[at], mol.frame]:.3f}")
+                    data.append(
+                        f"{mol.coords[i, xyz_map[at], mol.frame]:.{fp_precision}f}"
+                    )
                 elif mapping[at] == "frame":
                     data.append(1)
                 elif mapping[at] == "name":
