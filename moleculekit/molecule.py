@@ -2537,6 +2537,16 @@ class Molecule(object):
             result[field] = val
         return result
 
+    @staticmethod
+    def fromDict(moldict):
+        mol = Molecule()
+        for field in moldict:
+            data = moldict[field]
+            if field in Molecule._dtypes:
+                data = np.array(data, dtype=Molecule._dtypes[field])
+            setattr(mol, field, data)
+        return mol
+
     def getCenter(self, sel="all", com=False):
         """Get the center of an atom selection
 

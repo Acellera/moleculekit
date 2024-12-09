@@ -3086,6 +3086,22 @@ def BINPOSread(filename, frame=None, topoloc=None, stride=None, atom_indices=Non
     return MolFactory.construct(None, Trajectory(coords=xyz), filename, frame)
 
 
+def JSONread(filename, frame=None, topoloc=None, stride=None, atom_indices=None):
+    from moleculekit.molecule import Molecule
+    import json
+
+    with open(filename, "r") as f:
+        data = json.load(f)
+
+    if "moleculekit_version" not in data:
+        raise ValueError(f"This file {filename} is not a MoleculeKit JSON file")
+    del data["moleculekit_version"]
+
+    mol = Molecule.fromDict(data)
+    mol.topoloc = filename
+    return mol
+
+
 # Register here all readers with their extensions
 _TOPOLOGY_READERS = {
     "prmtop": PRMTOPread,
@@ -3107,6 +3123,7 @@ _TOPOLOGY_READERS = {
     "mmtf": MMTFread,
     "alphafold": ALPHAFOLDread,
     "bcif": BCIFread,
+    "json": JSONread,
     # "cifnew": CIFread_new,
 }
 

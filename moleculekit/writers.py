@@ -1373,6 +1373,18 @@ def MMTFwrite(mol, filename):
     return enc
 
 
+def JSONwrite(mol, filename):
+    from moleculekit.molecule import Molecule
+    from moleculekit import __version__
+    import json
+
+    mol_dict = mol.toDict(fields=Molecule._all_fields)
+    mol_dict["moleculekit_version"] = __version__
+
+    with open(filename, "w") as f:
+        json.dump(mol_dict, f)
+
+
 _WRITERS = {
     "psf": PSFwrite,
     "pdb": PDBwrite,
@@ -1397,6 +1409,7 @@ _WRITERS = {
     # "bcif": BCIFwrite,
     "inpcrd": INPCRDwrite,
     "crd": INPCRDwrite,
+    "json": JSONwrite,
 }
 
 
