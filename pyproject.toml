@@ -9,7 +9,7 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Operating System :: POSIX :: Linux",
 ]
-dependencies = ["numpy>=1.18.5", "pandas>=1.1.2", "networkx", "tqdm", "msgpack"]
+dependencies = ["numpy>=1.23.5", "pandas>=1.1.2", "networkx", "tqdm", "msgpack"]
 
 [project.urls]
 "Homepage" = "https://github.com/Acellera/moleculekit"
@@ -23,7 +23,7 @@ namespaces = false
 [build-system]
 requires = [
   "setuptools",
-  "numpy>=1.18.5",
+  "numpy>=2.0.0rc1",
   "Cython>=0.29.21",
   "toml",
   "versioneer[toml]==0.28",
