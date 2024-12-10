@@ -122,6 +122,7 @@ class MetricSasa(Projection):
         radii = getMolProp("radii")
         atom_mapping = getMolProp("atom_mapping")
         filtersel = getMolProp("filtersel")
+        sel = getMolProp("sel")
         tokeep = getMolProp("tokeep")
         tokeep = np.unique(atom_mapping[tokeep])
 
@@ -137,9 +138,20 @@ class MetricSasa(Projection):
                 "To calculate SASA you need to install mdtraj with `conda install mdtraj -c conda-forge`"
             )
 
-        out = np.zeros((mol.numFrames, atom_mapping.max() + 1), dtype=np.float32)
-        sasa(xyz, radii, int(self._numSpherePoints), atom_mapping, out)
-        return out[:, tokeep] * 100  # Convert from square nm to square A
+        out = np.full((mol.numFrames, atom_mapping.max() + 1), -1, dtype=np.float32)
+        out[:, tokeep] = 0
+
+        sasa(
+            xyz,
+            radii,
+            int(self._numSpherePoints),
+            atom_mapping,
+            sel[filtersel].astype(np.int32).copy(),
+            out,
+        )
+        out = out[:, tokeep] * 100  # Convert from square nm to square A
+        assert not np.any(out == -1), "Some atoms are not excluded"
+        return out
 
     def getMapping(self, mol):
         """Returns the description of each projected dimension.
@@ -210,7 +222,9 @@ class _TestMetricSasa(unittest.TestCase):
         sasaA_ref = np.load(
             path.join(home(dataDir="test-projections"), "metricsasa", "sasa_atom.npy")
         )
-        assert np.allclose(sasaA, sasaA_ref, atol=0.1), f"Failed with max diff {np.abs(sasaA-sasaA_ref).max()}"
+        assert np.allclose(
+            sasaA, sasaA_ref, atol=0.1
+        ), f"Failed with max diff {np.abs(sasaA-sasaA_ref).max()}"
 
     def test_sasa_residue(self):
         from os import path
@@ -223,7 +237,9 @@ class _TestMetricSasa(unittest.TestCase):
                 home(dataDir="test-projections"), "metricsasa", "sasa_residue.npy"
             )
         )
-        assert np.allclose(sasaR, sasaR_ref, atol=0.3), f"Failed with max diff {np.abs(sasaR-sasaR_ref).max()}"
+        assert np.allclose(
+            sasaR, sasaR_ref, atol=0.3
+        ), f"Failed with max diff {np.abs(sasaR-sasaR_ref).max()}"
 
     def test_set_diff_error(self):
         try:
