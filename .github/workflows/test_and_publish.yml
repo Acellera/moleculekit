@@ -49,9 +49,9 @@ jobs:
 
       - name: Install moleculekit
         run: |
-          pip install .
-          pip install "versioneer==0.28"
-          python setup.py build_ext --inplace
+          pip install build
+          python -m build
+          python -m pip install dist/*.whl
 
       - name: List conda environment
         run: conda list
@@ -86,7 +86,7 @@ jobs:
 
       - name: Build PyPI 📦
         run: |
-          pip install numpy>=1.18.5 Cython>=0.29.21 build
+          pip install build
           python -m build --sdist --outdir dist/ .
 
       - name: Publish distribution 📦 to PyPI
