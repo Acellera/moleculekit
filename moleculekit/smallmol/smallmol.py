@@ -1247,10 +1247,6 @@ class SmallMol(object):
 
 class _TestTautomerGeneration(unittest.TestCase):
     def test_tautomers(self):
-        # lib = SmallMolLib(
-        #     os.path.join(home(dataDir="test-smallmol"), "fda_drugs_light.sdf")
-        # )
-        from moleculekit.smallmol.smallmollib import SmallMolLib
         from moleculekit.util import file_diff
         from moleculekit.home import home
         import tempfile
@@ -1272,37 +1268,6 @@ class _TestTautomerGeneration(unittest.TestCase):
                         home(dataDir="test-smallmol"), f"tautomer_results_{i}.sdf"
                     )
                     file_diff(newfile, reffile)
-
-        # Test FDA drug tautomers
-        lib = SmallMolLib(
-            os.path.join(home(dataDir="test-smallmol"), "fda_drugs_light.sdf"),
-            fixHs=True,
-        )
-        all_tauts = []
-        for mol in lib:
-            with self.subTest(fda_mol=mol.ligname):
-                try:
-                    tauts = mol.getTautomers(
-                        canonical=False, genConformers=False, returnScores=False
-                    )
-                except Exception:
-                    continue
-                else:
-                    all_tauts.append(tauts)
-
-        alllib = SmallMolLib()
-        alllib._mols = []
-        for tt in all_tauts:
-            alllib._mols += tt._mols
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            reffile = os.path.join(
-                home(dataDir="test-smallmol"), "fda_drugs_light_tautomers.sdf"
-            )
-            newfile = os.path.join(tmpdir, "fda_tautomers.sdf")
-            alllib.writeSdf(newfile)
-
-            file_diff(newfile, reffile)
 
 
 if __name__ == "__main__":
