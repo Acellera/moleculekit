@@ -92,7 +92,11 @@ def openbabelConvert(input_file, input_format, output_format, extra_args=()):
             universal_newlines=True,
         )
     except subprocess.CalledProcessError as exc:
-        print("Failed to call openbabel with error", exc.returncode, exc.output)
+        print(
+            "Failed to call openbabel with error. You might need to install openbabel with `conda install openbabel -c conda-forge`",
+            exc.returncode,
+            exc.output,
+        )
     else:
         print(output)
 

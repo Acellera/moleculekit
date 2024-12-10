@@ -10,7 +10,6 @@ from rdkit import Chem
 from rdkit.Chem.rdchem import HybridizationType, BondType
 from collections import defaultdict
 from moleculekit.smallmol.util import _depictMol, convertToString
-from moleculekit.tools.obabel_tools import openbabelConvert
 import unittest
 import logging
 
@@ -167,6 +166,7 @@ class SmallMol(object):
             The smallMol object if SmallMol was passed
         """
         from moleculekit.molecule import Molecule
+        from moleculekit.tools.obabel_tools import openbabelConvert
 
         _mol = None
         if isinstance(mol, Chem.Mol):
