@@ -3,7 +3,7 @@ name = "moleculekit"
 description = "A molecule reading/writing and manipulation package."
 authors = [{ name = "Stefan Doerr", email = "s.doerr@acellera.com" }]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dynamic = ["version"]
 classifiers = [
   "Programming Language :: Python :: 3",
