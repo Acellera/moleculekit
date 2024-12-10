@@ -1446,6 +1446,7 @@ class _TestWriters(unittest.TestCase):
     def test_writers(self):
         from moleculekit.util import tempname
         from moleculekit.home import home
+        from moleculekit.molecule import mol_equal, Molecule
 
         # Skip file-comparing binary filetypes
         # TODO: Remove SDF. Currently skipping it due to date in second line
@@ -1489,14 +1490,24 @@ class _TestWriters(unittest.TestCase):
                     continue
 
                 print("Testing file", reffile, tmpfile)
-                with open(reffile, "r") as f:
-                    reflines = f.readlines()
-                    if ext == "sdf":
-                        reflines = reflines[2:]
+                if ext == "json":  # The precision is too high to compare files directly
+                    assert mol_equal(
+                        self.mol,
+                        Molecule(tmpfile),
+                        checkFields=Molecule._all_fields,
+                        exceptFields=("fileloc"),
+                    )
+                else:
+                    with open(reffile, "r") as f:
+                        reflines = f.readlines()
+                        if ext == "sdf":
+                            reflines = reflines[2:]
 
-                self.assertEqual(
-                    filelines, reflines, msg=f"Failed comparison of {reffile} {tmpfile}"
-                )
+                    self.assertEqual(
+                        filelines,
+                        reflines,
+                        msg=f"Failed comparison of {reffile} {tmpfile}",
+                    )
 
     def test_sdf_writer(self):
         from moleculekit.molecule import Molecule
