@@ -45,7 +45,7 @@ jobs:
         # if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           # for testing CDPKit SmallMol
-          pip install CDPKit==1.2.0.dev3
+          pip install CDPKit==1.2.0.dev1
 
       - name: Install moleculekit
         run: |
