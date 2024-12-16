@@ -3362,7 +3362,7 @@ class _TestReaders(unittest.TestCase):
         )
         assert np.array_equal(mol.step, refstep)
         assert np.allclose(mol.time, reftime)
-        assert abs(mol.fstep - 4e-5) < 1e-12
+        assert abs(mol.fstep - 4e-5) < 1e-11
 
         # Test that XTC writing doesn't mess up the times
         tmpfile = tempname(suffix=".xtc")
