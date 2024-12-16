@@ -13,11 +13,20 @@ except ImportError:
 
 class SmallMolCDP:
     def __init__(self, filename):
+        from moleculekit.molecule import Molecule
         import CDPL.Chem as Chem
+        import tempfile
+        import os
 
         self._mol = Chem.BasicMolecule()
-        reader = Chem.MoleculeReader(filename)
-        reader.read(self._mol)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            if isinstance(filename, Molecule):
+                filename.write(os.path.join(tmpdir, "tmp.sdf"))
+                filename = os.path.join(tmpdir, "tmp.sdf")
+
+            reader = Chem.MoleculeReader(filename)
+            reader.read(self._mol)
 
     def generateConformers(
         self, num_confs=1, timeout=3600, min_rmsd=0.5, e_window=20.0
