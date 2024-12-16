@@ -398,16 +398,16 @@ def hbonds_calculate(
         donors = np.unique(donors[:, 0])[:, None]
 
     hb = hbonds.calculate(
-        donors,
-        acceptors,
-        mol.coords,
-        mol.box,
-        sel1,
-        sel2,
-        dist_threshold=dist_threshold,
-        angle_threshold=angle_threshold,
-        intra=intra,
-        ignore_hs=ignore_hs,
+        donors.astype(np.uint32),
+        acceptors.astype(np.uint32),
+        mol.coords.astype(np.float32),
+        mol.box.astype(np.float32),
+        sel1.astype(np.uint32),
+        sel2.astype(np.uint32),
+        dist_threshold=float(dist_threshold),
+        angle_threshold=float(angle_threshold),
+        intra=bool(intra),
+        ignore_hs=bool(ignore_hs),
     )
 
     hbond_list = []
