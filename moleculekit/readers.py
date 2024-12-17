@@ -1725,9 +1725,8 @@ def XSCread(filename, frame=None, topoloc=None):
         None,
         Trajectory(
             box=box,
-            step=[
-                step,
-            ],
+            boxangles=np.array([90, 90, 90], dtype=np.float32),
+            step=[step],
             time=np.zeros(1, dtype=np.float32),
         ),
         filename,
