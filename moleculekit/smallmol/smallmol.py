@@ -662,7 +662,13 @@ class SmallMol(object):
         return coords.mean(axis=0).astype(np.float32)
 
     def generateConformers(
-        self, num_confs=400, optimizemode="mmff", align=True, append=True
+        self,
+        num_confs=400,
+        optimizemode="mmff",
+        align=True,
+        append=True,
+        pruneRmsThresh=1.0,
+        maxAttempts=10000,
     ):
         """
         Generates ligand conformers
@@ -673,14 +679,14 @@ class SmallMol(object):
            Number of conformers to generate.
         optimizemode: str
             The optimizemode to use. Can be  'uff', 'mmff'
-            Default: 'mmff'
         align: bool
             If True, the conformer are aligned to the first one
-            Default: True
         append: bool
             If False, the current conformers are deleted
-            Default: True
-
+        pruneRmsThresh: float
+            The RMSD threshold for pruning conformers
+        maxAttempts: int
+            The maximum number of attempts to generate conformers
         """
         from rdkit.Chem.AllChem import (
             UFFOptimizeMolecule,
@@ -702,8 +708,8 @@ class SmallMol(object):
             mol,
             clearConfs=False,
             numConfs=num_confs,
-            pruneRmsThresh=1.0,
-            maxAttempts=10000,
+            pruneRmsThresh=pruneRmsThresh,
+            maxAttempts=maxAttempts,
         )
         if optimizemode not in ["uff", "mmff"]:
             raise ValueError('Unknown optimizemode. Should be  "uff", "mmff"')
