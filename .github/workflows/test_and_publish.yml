@@ -134,7 +134,7 @@ jobs:
       - name: Upload to conda
         shell: bash -l {0}
         run: |
-          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.tar.bz2
+          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
 
   deploy_osx_win:
     if: startsWith(github.event.ref, 'refs/tags/')
@@ -174,4 +174,4 @@ jobs:
       - name: Upload to conda
         shell: bash -l {0}
         run: |
-          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.tar.bz2
+          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
