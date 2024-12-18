@@ -1,7 +1,6 @@
 # MoleculeKit
 
 [![Conda](https://anaconda.org/acellera/moleculekit/badges/version.svg)](https://anaconda.org/acellera/moleculekit)
-[![codecov](https://codecov.io/gh/Acellera/moleculekit/branch/master/graph/badge.svg)](https://codecov.io/gh/Acellera/moleculekit)
 
 A molecule manipulation library
 
