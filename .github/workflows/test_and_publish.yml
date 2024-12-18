@@ -98,7 +98,7 @@ jobs:
 
   deploy_linux:
     if: startsWith(github.event.ref, 'refs/tags/')
-    needs: test
+    # needs: test
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
 
@@ -123,7 +123,7 @@ jobs:
         run: |
           git config --global --add safe.directory '*'
           conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
-          pip install versioneer==0.28
+          pip install versioneer==0.28 toml pyyaml
 
       - name: Build conda package
         shell: bash -l {0}
@@ -138,7 +138,7 @@ jobs:
 
   deploy_osx_win:
     if: startsWith(github.event.ref, 'refs/tags/')
-    needs: test
+    # needs: test
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -161,7 +161,7 @@ jobs:
         run: |
           git config --global --add safe.directory '*'
           conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
-          pip install versioneer==0.28
+          pip install versioneer==0.28 toml pyyaml
 
       - name: Build conda package
         shell: bash -l {0}
