@@ -122,7 +122,7 @@ jobs:
         shell: bash -l {0}
         run: |
           git config --global --add safe.directory '*'
-          conda install anaconda-client rattler-build python=${{ matrix.python-version }}
+          conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
           pip install versioneer==0.28
 
       - name: Build conda package
@@ -160,7 +160,7 @@ jobs:
         shell: bash -l {0}
         run: |
           git config --global --add safe.directory '*'
-          conda install anaconda-client rattler-build python=${{ matrix.python-version }}
+          conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
           pip install versioneer==0.28
 
       - name: Build conda package
