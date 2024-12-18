@@ -1,0 +1,40 @@
+package:
+  name: moleculekit
+  version:
+
+source:
+  path: ../..
+
+build:
+  script:
+    - pip install . -vv
+
+requirements:
+  host:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - cython >=0.29.21
+    - pip
+    - python
+    - versioneer==0.29
+    - setuptools
+    - python-build
+    - numpy >=2.0.0rc1
+  run:
+    - python
+
+tests:
+  - python:
+      imports:
+        - moleculekit
+      pip_check: false
+
+about:
+  homepage: https://software.acellera.com/moleculekit/
+  license: LicenseRef-HTMD
+  license_file: LICENSE
+  summary: A molecule reading/writing and manipulation package.
+
+extra:
+  recipe-maintainers:
+    - stefdoerr

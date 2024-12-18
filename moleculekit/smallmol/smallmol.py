@@ -667,8 +667,11 @@ class SmallMol(object):
         optimizemode="mmff",
         align=True,
         append=True,
-        pruneRmsThresh=1.0,
+        pruneRmsThresh=0.5,
         maxAttempts=10000,
+        seed=None,
+        numThreads=1,
+        useRandomCoords=True,
     ):
         """
         Generates ligand conformers
@@ -687,13 +690,29 @@ class SmallMol(object):
             The RMSD threshold for pruning conformers
         maxAttempts: int
             The maximum number of attempts to generate conformers
+        seed: int
+            The seed for the random number generator
+        numThreads: int
+            The number of threads to use when embedding multiple conformations
+        useRandomCoords: bool
+            Start the embedding from random coordinates instead of using eigenvalues of the distance matrix
         """
         from rdkit.Chem.AllChem import (
             UFFOptimizeMolecule,
             MMFFOptimizeMolecule,
             EmbedMultipleConfs,
+            ETKDGv3,
         )
         from rdkit.Chem.rdMolAlign import AlignMolConformers
+
+        ps = ETKDGv3()
+        if seed is not None:
+            ps.randomSeed = seed
+        ps.numThreads = numThreads
+        ps.useRandomCoords = useRandomCoords
+        ps.pruneRmsThresh = pruneRmsThresh
+        ps.maxAttempts = maxAttempts
+        ps.clearConfs = False
 
         if not append:
             self.dropFrames(np.arange(self.numFrames))
@@ -704,13 +723,7 @@ class SmallMol(object):
         mol = Chem.AddHs(mol)
 
         # generating conformations
-        ids = EmbedMultipleConfs(
-            mol,
-            clearConfs=False,
-            numConfs=num_confs,
-            pruneRmsThresh=pruneRmsThresh,
-            maxAttempts=maxAttempts,
-        )
+        ids = EmbedMultipleConfs(mol, num_confs, ps)
         if optimizemode not in ["uff", "mmff"]:
             raise ValueError('Unknown optimizemode. Should be  "uff", "mmff"')
         # optimizing conformations depends on the optimizemode passed

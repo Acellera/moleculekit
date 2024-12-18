@@ -33,7 +33,7 @@ extentions.append(
         sources=[
             "moleculekit/fileformats/xtc/src/xdrfile_xtc.cpp",
             "moleculekit/fileformats/xtc/src/xdrfile.cpp",
-            "moleculekit/fileformats/xtc/src/xtc.cpp",
+            "moleculekit/fileformats/xtc/src/xtc_src.cpp",
             "moleculekit/fileformats/xtc/xtc.pyx",
         ],
         include_dirs=[

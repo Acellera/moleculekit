@@ -1,6 +1,7 @@
 import toml
 import traceback
 import versioneer
+import yaml
 
 try:
     __version__ = versioneer.get_version()
@@ -18,15 +19,11 @@ for i in range(len(deps)):
         deps[i] = "msgpack-python"
 
 # Fix conda meta.yaml
-with open("package/moleculekit/meta.yaml", "r") as f:
-    text = f.read()
+with open("package/moleculekit/recipe_template.yaml", "r") as f:
+    recipe = yaml.load(f, Loader=yaml.FullLoader)
 
-text = text.replace("BUILD_VERSION_PLACEHOLDER", __version__)
+recipe["package"]["version"] = __version__
+recipe["requirements"]["run"] += deps
 
-text = text.replace(
-    "DEPENDENCY_PLACEHOLDER",
-    "".join(["    - {}\n".format(dep.strip()) for dep in deps]),
-)
-
-with open("package/moleculekit/meta.yaml", "w") as f:
-    f.write(text)
+with open("package/moleculekit/recipe.yaml", "w") as f:
+    yaml.dump(recipe, f)
