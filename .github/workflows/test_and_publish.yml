@@ -194,8 +194,10 @@ jobs:
           activate-environment: ../deploy-env
           python-version: ${{ matrix.python-version }}
 
-      # - name: Add msbuild to PATH
-      #   uses: microsoft/setup-msbuild@v2
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: "[14.16, 14.17)"
 
       - uses: ilammy/msvc-dev-cmd@v1
         with:
