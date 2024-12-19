@@ -66,15 +66,123 @@ jobs:
   #     # - name: Upload coverage to Codecov
   #     #   uses: codecov/codecov-action@v3
 
-  deploypypi:
-    if: startsWith(github.event.ref, 'refs/tags/')
-    # needs: test
+  # deploypypi:
+  #   if: startsWith(github.event.ref, 'refs/tags/')
+  #   needs: test
+  #   runs-on: ${{ matrix.os }}
+
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: ["ubuntu-latest"]
+  #       python-version: ["3.10"]
+
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - uses: conda-incubator/setup-miniconda@v3
+  #       with:
+  #         activate-environment: deploy
+  #         python-version: ${{ matrix.python-version }}
+
+  #     - name: Build PyPI 📦
+  #       run: |
+  #         pip install numpy>=1.23.5 Cython>=0.29.21 build
+  #         python -m build --sdist --outdir dist/ .
+
+  #     - name: Publish distribution 📦 to PyPI
+  #       uses: pypa/gh-action-pypi-publish@release/v1
+  #       with:
+  #         password: ${{ secrets.PUBLIC_PYPI_API_TOKEN }}
+  #         skip_existing: true
+
+  # deploy_linux:
+  #   if: startsWith(github.event.ref, 'refs/tags/')
+  #   needs: test
+  #   runs-on: ${{ matrix.os }}
+  #   container: ${{ matrix.container }}
+
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: ["ubuntu-latest"]
+  #       python-version: ["3.10"]
+  #       container: ["quay.io/pypa/manylinux_2_28_x86_64"]
+
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - uses: conda-incubator/setup-miniconda@v2
+  #       with:
+  #         miniconda-version: "latest"
+  #         activate-environment: ../deploy-env
+  #         python-version: ${{ matrix.python-version }}
+
+  #     - name: Install build deps
+  #       shell: bash -l {0}
+  #       run: |
+  #         git config --global --add safe.directory '*'
+  #         conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
+  #         pip install versioneer==0.28 toml pyyaml
+
+  #     - name: Build conda package
+  #       shell: bash -l {0}
+  #       run: |
+  #         python package/moleculekit/insert_placeholder_values.py
+  #         rattler-build build --recipe ./package/moleculekit/recipe.yaml --output-dir ../pkg/ --no-include-recipe -c acellera -c conda-forge
+
+  #     - name: Upload to conda
+  #       shell: bash -l {0}
+  #       run: |
+  #         anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
+
+  # deploy_osx_win:
+  #   if: startsWith(github.event.ref, 'refs/tags/')
+  #   needs: test
+  #   runs-on: ${{ matrix.os }}
+
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: ["macos-latest", "macos-13", "windows-2019"]
+  #       python-version: ["3.10"]
+
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - uses: ilammy/msvc-dev-cmd@v1
+
+  #     - uses: conda-incubator/setup-miniconda@v3
+  #       with:
+  #         miniconda-version: "latest"
+  #         activate-environment: ../deploy-env
+  #         python-version: ${{ matrix.python-version }}
+
+  #     - name: Install build deps
+  #       shell: bash -l {0}
+  #       run: |
+  #         git config --global --add safe.directory '*'
+  #         conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
+  #         pip install versioneer==0.28 toml pyyaml
+
+  #     - name: Build conda package
+  #       shell: bash -l {0}
+  #       run: |
+  #         python package/moleculekit/insert_placeholder_values.py
+  #         rattler-build build --recipe ./package/moleculekit/recipe.yaml --output-dir ../pkg/ --no-include-recipe -c acellera -c conda-forge
+
+  #     - name: Upload to conda
+  #       shell: bash -l {0}
+  #       run: |
+  #         anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
+
+  windows_build:
     runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest"]
+        os: ["windows-2019"]
         python-version: ["3.10"]
 
     steps:
@@ -82,41 +190,12 @@ jobs:
 
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          activate-environment: deploy
-          python-version: ${{ matrix.python-version }}
-
-      - name: Build PyPI 📦
-        run: |
-          pip install numpy>=1.23.5 Cython>=0.29.21 build
-          python -m build --sdist --outdir dist/ .
-
-      - name: Publish distribution 📦 to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PUBLIC_PYPI_API_TOKEN }}
-          skip_existing: true
-
-  deploy_linux:
-    if: startsWith(github.event.ref, 'refs/tags/')
-    # needs: test
-    runs-on: ${{ matrix.os }}
-    container: ${{ matrix.container }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest"]
-        python-version: ["3.10"]
-        container: ["quay.io/pypa/manylinux_2_28_x86_64"]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: conda-incubator/setup-miniconda@v2
-        with:
           miniconda-version: "latest"
           activate-environment: ../deploy-env
           python-version: ${{ matrix.python-version }}
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
 
       - name: Install build deps
         shell: bash -l {0}
@@ -130,48 +209,3 @@ jobs:
         run: |
           python package/moleculekit/insert_placeholder_values.py
           rattler-build build --recipe ./package/moleculekit/recipe.yaml --output-dir ../pkg/ --no-include-recipe -c acellera -c conda-forge
-
-      - name: Upload to conda
-        shell: bash -l {0}
-        run: |
-          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
-
-  deploy_osx_win:
-    if: startsWith(github.event.ref, 'refs/tags/')
-    # needs: test
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["macos-latest", "macos-13", "windows-2019"]
-        python-version: ["3.10"]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: ilammy/msvc-dev-cmd@v1
-
-      - uses: conda-incubator/setup-miniconda@v3
-        with:
-          miniconda-version: "latest"
-          activate-environment: ../deploy-env
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install build deps
-        shell: bash -l {0}
-        run: |
-          git config --global --add safe.directory '*'
-          conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
-          pip install versioneer==0.28 toml pyyaml
-
-      - name: Build conda package
-        shell: bash -l {0}
-        run: |
-          python package/moleculekit/insert_placeholder_values.py
-          rattler-build build --recipe ./package/moleculekit/recipe.yaml --output-dir ../pkg/ --no-include-recipe -c acellera -c conda-forge
-
-      - name: Upload to conda
-        shell: bash -l {0}
-        run: |
-          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
