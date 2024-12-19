@@ -197,6 +197,8 @@ jobs:
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v2
 
+      - uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install build deps
         shell: bash -l {0}
         run: |
