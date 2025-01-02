@@ -1,12 +1,8 @@
 # cython: cdivision=True
 
 import numpy as np
-from math import sqrt
 cimport numpy as np
-from libcpp.vector cimport vector
-from libcpp cimport bool
-from libc.math cimport round, sqrt, acos, floor, fabs
-from cython.parallel import prange
+from libc.math cimport round, fabs
 
 # We now need to fix a datatype for our arrays. I've used the variable
 # DTYPE for this, which is assigned to the usual NumPy runtime
@@ -44,7 +40,6 @@ def disjoint_set_find(
         return parent[x]
     else:
         return x
-    return x
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
@@ -77,7 +72,7 @@ def get_bonded_groups(
         UINT32_t[:] parent,
         UINT32_t[:] size,
     ):
-    cdef int i, j, k
+    cdef int i
     cdef int n_bonds = bonds.shape[0]
 
     # Iterate over the bonds
@@ -101,7 +96,6 @@ def calculate(
         np.ndarray[FLOAT32_t, ndim=1] center,
     ):
     cdef int f, i, g, a, start_idx, end_idx, k, n
-    cdef int n_atoms = coords.shape[0]
     cdef int n_frames = coords.shape[2]
     cdef int n_groups = groups.shape[0]
     cdef int n_centersel = centersel.shape[0]
