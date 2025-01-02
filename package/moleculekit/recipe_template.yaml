@@ -7,7 +7,7 @@ source:
 
 build:
   script:
-    - python -m pip install . --no-build-isolation -vv
+    - pip install . -vv
 
 requirements:
   build:
