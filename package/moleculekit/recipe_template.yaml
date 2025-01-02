@@ -10,9 +10,10 @@ build:
     - python -m pip install . --no-build-isolation -vv
 
 requirements:
-  host:
+  build:
     - ${{ compiler('c') }}
     - ${{ compiler('cxx') }}
+  host:
     - cython >=0.29.21
     - pip
     - python
