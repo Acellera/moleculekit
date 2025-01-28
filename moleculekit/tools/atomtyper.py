@@ -432,7 +432,7 @@ def _getOccupancy(elements):
 
 
 def _getMetals(atypes):
-    return np.in1d(atypes, metal_atypes)
+    return np.isin(atypes, metal_atypes)
 
 
 def getFeatures(mol):

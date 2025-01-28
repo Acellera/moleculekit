@@ -1168,9 +1168,9 @@ class Molecule(object):
         if len(sel) == 0:  # If none are selected do nothing
             return
         if inter:
-            todel = np.in1d(self.bonds[:, 0], sel) | np.in1d(self.bonds[:, 1], sel)
+            todel = np.isin(self.bonds[:, 0], sel) | np.isin(self.bonds[:, 1], sel)
         else:
-            todel = np.in1d(self.bonds[:, 0], sel) & np.in1d(self.bonds[:, 1], sel)
+            todel = np.isin(self.bonds[:, 0], sel) & np.isin(self.bonds[:, 1], sel)
         idx = np.where(todel)[0]
         self.bonds = np.delete(self.bonds, idx, axis=0)
         self.bondtype = np.delete(self.bondtype, idx)

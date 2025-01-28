@@ -125,8 +125,8 @@ def get_donors_acceptors(mol, exclude_water=True, exclude_backbone=False):
 
     donor_elements = ("N", "O")
     acceptor_elements = ("N", "O")
-    potential_donors = np.in1d(mol.element, donor_elements)
-    potential_acceptors = np.in1d(mol.element, acceptor_elements)
+    potential_donors = np.isin(mol.element, donor_elements)
+    potential_acceptors = np.isin(mol.element, acceptor_elements)
 
     if not np.any(potential_donors) and not np.any(potential_acceptors):
         logger.warning("Could not find any [N, O] elements in the molecule")
