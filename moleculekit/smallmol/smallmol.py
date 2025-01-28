@@ -994,13 +994,15 @@ class SmallMol(object):
             _mol.AddConformer(conf, assignId=True)
 
         # print(Chem.MolToSmiles(_mol))
-        if kwargs.get("sanitize", True):
-            Chem.SanitizeMol(_mol)  # , Chem.SANITIZE_ALL ^ Chem.SANITIZE_ADJUSTHS)
-        if kwargs.get("kekulize", True):
+        if kwargs.get("sanitize", False):
+            Chem.SanitizeMol(_mol)
+        if kwargs.get("kekulize", False):
             Chem.Kekulize(_mol)
+
+        Chem.AssignStereochemistryFrom3D(_mol)
         if _logger:
             logger.info(
-                f"Converted Molecule to SmallMol with SMILES: {Chem.MolToSmiles(_mol)}"
+                f"Converted Molecule to SmallMol with SMILES: {Chem.MolToSmiles(_mol, kekuleSmiles=True)}"
             )
 
         if mol.numAtoms != _mol.GetNumAtoms():
