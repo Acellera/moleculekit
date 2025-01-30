@@ -2495,13 +2495,20 @@ class Molecule(object):
     def _ix(self, resid, name):
         return np.where((self.name == name) & (self.resid == resid))[0][0]
 
-    def toOpenFFMolecule(self):
+    def toOpenFFMolecule(self, sanitize=False, kekulize=False, assignStereo=True):
         from moleculekit.smallmol.smallmol import SmallMol
         from openff.toolkit.topology import Molecule as OFFMolecule
         from openff.units import unit
 
-        sm = SmallMol(self, fixHs=False, removeHs=False, _logger=False)
-        sm.assignStereoChemistry(from3D=True)
+        sm = SmallMol(
+            self,
+            fixHs=False,
+            removeHs=False,
+            _logger=False,
+            sanitize=sanitize,
+            kekulize=kekulize,
+            assignStereo=assignStereo,
+        )
 
         offmol = OFFMolecule.from_rdkit(sm._mol, hydrogens_are_explicit=True)
         offmol.partial_charges = self.charge * unit.e

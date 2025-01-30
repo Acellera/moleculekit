@@ -998,8 +998,9 @@ class SmallMol(object):
             Chem.SanitizeMol(_mol)
         if kwargs.get("kekulize", False):
             Chem.Kekulize(_mol)
+        if kwargs.get("assignStereo", True):
+            Chem.AssignStereochemistryFrom3D(_mol)
 
-        Chem.AssignStereochemistryFrom3D(_mol)
         if _logger:
             logger.info(
                 f"Converted Molecule to SmallMol with SMILES: {Chem.MolToSmiles(_mol, kekuleSmiles=True)}"
