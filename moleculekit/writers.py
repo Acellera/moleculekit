@@ -294,12 +294,12 @@ def BINCOORwrite(mol, filename):
     f.close()
 
 
-def PSFwrite(m, filename, explicitbonds=None):
+def PSFwrite(mol, filename, explicitbonds=None):
     import string
     from moleculekit.periodictable import periodictable
 
     segments = np.array(
-        [segid if segid != "" else chain for segid, chain in zip(m.segid, m.chain)]
+        [segid if segid != "" else chain for segid, chain in zip(mol.segid, mol.chain)]
     )
     used_segids = set(segments)
     # Letters to be used for default segids, if free: 0123456789abcd...ABCD..., minus chain symbols already used
@@ -308,12 +308,12 @@ def PSFwrite(m, filename, explicitbonds=None):
     segments[segments == ""] = available_segids[0]
 
     fs = {
-        "serial": max(len(str(np.max(m.serial))), 10),
+        "serial": max(len(str(np.max(mol.serial))), 10),
         "segid": max(len(max(segments, key=len)), 8),
-        "resid": max(len(str(np.max(m.resid))) + len(max(m.insertion, key=len)), 8),
-        "resname": max(len(max(m.resname, key=len)), 8),
-        "name": max(len(max(m.name, key=len)), 8),
-        "atomtype": max(len(max(m.atomtype, key=len)), 7),
+        "resid": max(len(str(np.max(mol.resid))) + len(max(mol.insertion, key=len)), 8),
+        "resname": max(len(max(mol.resname, key=len)), 8),
+        "name": max(len(max(mol.name, key=len)), 8),
+        "atomtype": max(len(max(mol.atomtype, key=len)), 7),
     }
 
     f = open(filename, "w", encoding="ascii")
@@ -321,24 +321,24 @@ def PSFwrite(m, filename, explicitbonds=None):
         "PSF NAMD\n", file=f
     )  # Write NAMD in the header so that VMD will read it as space delimited format instead of FORTRAN
     print("%8d !NTITLE\n" % (0), file=f)
-    print("%8d !NATOM" % (len(m.serial)), file=f)
-    for i in range(len(m.serial)):
+    print("%8d !NATOM" % (len(mol.serial)), file=f)
+    for i in range(len(mol.serial)):
         # Defaults. PSF readers will fail if any are empty since it's a space delimited format
-        resname = m.resname[i] if m.resname[i] != "" else "MOL"
-        atomtype = m.atomtype[i] if m.atomtype[i] != "" else "NULL"
+        resname = mol.resname[i] if mol.resname[i] != "" else "MOL"
+        atomtype = mol.atomtype[i] if mol.atomtype[i] != "" else "NULL"
         # If mass is not defined take it from the element
-        mass = m.masses[i]
-        if mass == 0 and len(m.element[i]):
-            mass = periodictable[m.element[i]].mass
+        mass = mol.masses[i]
+        if mass == 0 and len(mol.element[i]):
+            mass = periodictable[mol.element[i]].mass
 
         string_format = (
-            f"{m.serial[i]:>{fs['serial']}} "
+            f"{mol.serial[i]:>{fs['serial']}} "
             f"{segments[i]:<{fs['segid']}} "
-            f"{str(m.resid[i]) + str(m.insertion[i]):<{fs['resid']}} "
+            f"{str(mol.resid[i]) + str(mol.insertion[i]):<{fs['resid']}} "
             f"{resname:<{fs['resname']}} "
-            f"{m.name[i]:<{fs['name']}} "
+            f"{mol.name[i]:<{fs['name']}} "
             f"{atomtype:<{fs['atomtype']}} "
-            f"{m.charge[i]:>9.6f} "
+            f"{mol.charge[i]:>9.6f} "
             f"{mass:>13.4f} "
             f"{0:>11} "
         )
@@ -347,7 +347,7 @@ def PSFwrite(m, filename, explicitbonds=None):
     if explicitbonds is not None:
         bonds, _ = explicitbonds
     else:
-        bonds = m.bonds
+        bonds = mol.bonds
 
     fieldlen = max(len(str(np.max(bonds))), 10) if bonds.shape[0] != 0 else 10
     print("\n\n", file=f)
@@ -358,46 +358,46 @@ def PSFwrite(m, filename, explicitbonds=None):
         vals = bonds[i] + 1
         print(f"{vals[0]:{fieldlen}d}{vals[1]:{fieldlen}d}", file=f, end="")
 
-    if hasattr(m, "angles"):
-        fieldlen = max(len(str(np.max(m.angles))), 10) if m.angles.shape[0] != 0 else 10
+    if hasattr(mol, "angles"):
+        fieldlen = max(len(str(np.max(mol.angles))), 10) if mol.angles.shape[0] != 0 else 10
         print("\n\n", file=f)
-        print(f"{m.angles.shape[0]:{fieldlen}d} !NTHETA: angles", file=f)
-        for i in range(m.angles.shape[0]):
+        print(f"{mol.angles.shape[0]:{fieldlen}d} !NTHETA: angles", file=f)
+        for i in range(mol.angles.shape[0]):
             if i and not (i % 3):
                 print("", file=f)
-            vals = m.angles[i] + 1
+            vals = mol.angles[i] + 1
             print(
                 f"{vals[0]:{fieldlen}d}{vals[1]:{fieldlen}d}{vals[2]:{fieldlen}d}",
                 file=f,
                 end="",
             )
 
-    if hasattr(m, "dihedrals"):
+    if hasattr(mol, "dihedrals"):
         fieldlen = (
-            max(len(str(np.max(m.dihedrals))), 10) if m.dihedrals.shape[0] != 0 else 10
+            max(len(str(np.max(mol.dihedrals))), 10) if mol.dihedrals.shape[0] != 0 else 10
         )
         print("\n\n", file=f)
-        print(f"{m.dihedrals.shape[0]:{fieldlen}d} !NPHI: dihedrals", file=f)
-        for i in range(m.dihedrals.shape[0]):
+        print(f"{mol.dihedrals.shape[0]:{fieldlen}d} !NPHI: dihedrals", file=f)
+        for i in range(mol.dihedrals.shape[0]):
             if i and not (i % 2):
                 print("", file=f)
-            vals = m.dihedrals[i] + 1
+            vals = mol.dihedrals[i] + 1
             print(
                 f"{vals[0]:{fieldlen}d}{vals[1]:{fieldlen}d}{vals[2]:{fieldlen}d}{vals[3]:{fieldlen}d}",
                 file=f,
                 end="",
             )
 
-    if hasattr(m, "impropers"):
+    if hasattr(mol, "impropers"):
         fieldlen = (
-            max(len(str(np.max(m.impropers))), 10) if m.impropers.shape[0] != 0 else 10
+            max(len(str(np.max(mol.impropers))), 10) if mol.impropers.shape[0] != 0 else 10
         )
         print("\n\n", file=f)
-        print(f"{m.impropers.shape[0]:{fieldlen}d} !NIMPHI: impropers", file=f)
-        for i in range(m.impropers.shape[0]):
+        print(f"{mol.impropers.shape[0]:{fieldlen}d} !NIMPHI: impropers", file=f)
+        for i in range(mol.impropers.shape[0]):
             if i and not (i % 2):
                 print("", file=f)
-            vals = m.impropers[i] + 1
+            vals = mol.impropers[i] + 1
             print(
                 f"{vals[0]:{fieldlen}d}{vals[1]:{fieldlen}d}{vals[2]:{fieldlen}d}{vals[3]:{fieldlen}d}",
                 file=f,
