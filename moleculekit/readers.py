@@ -94,6 +94,7 @@ class Topology(object):
         self.atomtype = []
         self.bondtype = []
         self.formalcharge = []
+        self.virtualsite = []
         self.crystalinfo = None
 
         if pandasdata is not None:
@@ -126,6 +127,7 @@ class Topology(object):
             "charge",
             "masses",
             "atomtype",
+            "virtualsite",
         ]
 
     def fromMolecule(self, mol):
@@ -1031,7 +1033,7 @@ def pdbGuessElementByName(elements, names, onlymissing=True):
             elem = elem.strip()
         if elem is not None and len(elem) != 0 and elem not in periodictable:
             logger.warning(
-                f'Element guessing failed for atom with name {name} as the guessed element "{elem}" was not found in '
+                f'Element guessing failed for atom with name "{name}" as the guessed element "{elem}" was not found in '
                 "the periodic table. Check for incorrect column alignment in the PDB file or report "
                 "to moleculekit issue tracker."
             )
@@ -1341,7 +1343,7 @@ def PDBread(
         raise RuntimeError(f"No atoms could be read from PDB file {filename}")
 
     # Before stripping guess elements from atomname as the spaces are significant
-    if mode == "pdb":
+    if mode == "pdb" and validateElements:
         idx, newelem = pdbGuessElementByName(topo.element, topo.name)
         for i, ix in enumerate(idx):
             topo.element[ix] = newelem[i]
@@ -1429,7 +1431,7 @@ def PDBQTread(filename, frame=None, topoloc=None):
     return PDBread(filename, mode="pdbqt", frame=frame, topoloc=topoloc)
 
 
-def PRMTOPread(filename, frame=None, topoloc=None, validateElements=True):
+def PRMTOPread(filename, frame=None, topoloc=None, validateElements=False):
     with open(filename, "r") as f:
         topo = Topology()
         uqresnames = []
@@ -1585,13 +1587,13 @@ def PRMTOPread(filename, frame=None, topoloc=None, validateElements=True):
             topo.impropers.append(atoms)
 
     # Elements from masses
-    topo.element = elements_from_masses(topo.masses)
+    topo.element, topo.virtualsite = elements_from_masses(topo.masses)
     return MolFactory.construct(
         topo, None, filename, frame, validateElements=validateElements
     )
 
 
-def PSFread(filename, frame=None, topoloc=None, validateElements=True):
+def PSFread(filename, frame=None, topoloc=None, validateElements=False):
     import re
 
     residinsertion = re.compile(r"(\d+)([a-zA-Z])")
@@ -1668,7 +1670,7 @@ def PSFread(filename, frame=None, topoloc=None, validateElements=True):
                 mode = "improper"
 
     # Elements from masses
-    topo.element = elements_from_masses(topo.masses)
+    topo.element, topo.virtualsite = elements_from_masses(topo.masses)
     return MolFactory.construct(
         topo, None, filename, frame, validateElements=validateElements
     )

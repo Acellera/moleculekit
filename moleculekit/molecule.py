@@ -323,6 +323,7 @@ class Molecule(object):
         "masses",
         "atomtype",
         "formalcharge",
+        "virtualsite"
     )
     _connectivity_fields = ("bonds", "bondtype", "angles", "dihedrals", "impropers")
     _topo_fields = tuple(
@@ -363,6 +364,7 @@ class Molecule(object):
         "box": np.float32,
         "boxangles": np.float32,
         "formalcharge": np.int32,
+        "virtualsite": bool,
     }
 
     _dims = {
@@ -390,6 +392,7 @@ class Molecule(object):
         "box": (3, 0),
         "boxangles": (3, 0),
         "formalcharge": (0,),
+        "virtualsite": (0,),
     }
 
     def __init__(self, filename=None, name=None, **kwargs):

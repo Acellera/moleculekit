@@ -328,7 +328,7 @@ def PSFwrite(mol, filename, explicitbonds=None):
         atomtype = mol.atomtype[i] if mol.atomtype[i] != "" else "NULL"
         # If mass is not defined take it from the element
         mass = mol.masses[i]
-        if mass == 0 and len(mol.element[i]):
+        if mass == 0 and len(mol.element[i]) and not mol.virtualsite[i]:
             mass = periodictable[mol.element[i]].mass
 
         string_format = (

@@ -320,6 +320,7 @@ def elements_from_masses(masses):
     from moleculekit.distance import cdist
 
     masses = np.array(ensurelist(masses))
+    virtualsites = np.zeros(masses.shape, dtype=bool)
     if np.any(masses > 140):
         logger.warning(
             "Guessing element for atoms with mass > 140. This can lead to inaccurate element guesses."
@@ -330,11 +331,11 @@ def elements_from_masses(masses):
 
     # Fix for zero masses. Should not guess hydrogens.
     elements[masses == 0] = ""
-
+    virtualsites[masses == 0] = True
     elements = elements.tolist()
     if len(elements) == 1:
         return elements[0]
-    return elements
+    return elements, virtualsites
 
 
 import unittest
@@ -345,9 +346,9 @@ class _TestPeriodicTable(unittest.TestCase):
         # Only test lower masses. The high ones are not very exact
         masses_to_test = _all_masses[_all_masses < 140]
         elements_to_test = _all_elements[_all_masses < 140]
-        assert np.array_equal(elements_to_test, elements_from_masses(masses_to_test))
+        assert np.array_equal(elements_to_test, elements_from_masses(masses_to_test)[0])
         assert np.array_equal(
-            elements_to_test, elements_from_masses(masses_to_test + 0.05)
+            elements_to_test, elements_from_masses(masses_to_test + 0.05)[0]
         )
 
 
