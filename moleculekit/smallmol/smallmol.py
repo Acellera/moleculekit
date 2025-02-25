@@ -101,6 +101,7 @@ class SmallMol(object):
         "bondtype",
         "coords",
         "chiraltags",
+        "virtualsite",
     ]
 
     _mol_fields = ["ligname", "_mol"]
@@ -118,6 +119,7 @@ class SmallMol(object):
         "coords": np.float32,
         "chiraltags": object,
         "bonds": np.uint32,
+        "virtualsite": bool,
     }
 
     def __init__(
@@ -366,7 +368,12 @@ class SmallMol(object):
             ],
             dtype=object,
         )
-
+    
+    @property
+    def _virtualsite(self):
+        # TODO: Not implemented yet. Not sure if rdkit supports virtual sites
+        return np.zeros(self.numAtoms, dtype=SmallMol._dtypes["virtualsite"])
+    
     @property
     def frame(self):
         if self._frame < 0 or self._frame >= self.numFrames:
