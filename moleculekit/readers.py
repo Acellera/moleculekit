@@ -3087,6 +3087,45 @@ def BINPOSread(filename, frame=None, topoloc=None, stride=None, atom_indices=Non
     return MolFactory.construct(None, Trajectory(coords=xyz), filename, frame)
 
 
+def INPCRDread(filename, frame=None, topoloc=None, stride=None, atom_indices=None):
+    with open(filename, "r", encoding="ascii") as f:
+        # Skip title
+        f.readline()
+        # Read number of atoms
+        natoms = int(f.readline().strip())
+
+        # Read coordinates
+        coords = []
+        while len(coords) < natoms * 3:  # Read until we have all coordinates
+            line = f.readline()
+            # Each value uses 12.7f format
+            for i in range(0, len(line), 12):
+                if i + 12 <= len(line):
+                    coords.append(float(line[i : i + 12]))
+
+        coords = np.array(coords).reshape(natoms, 3)
+
+        # Try to read box information if it exists
+        box = None
+        boxangles = None
+        line = f.readline().strip()
+        if line:  # If there's an extra line, it contains box info
+            boxinfo = [float(line[i : i + 12]) for i in range(0, len(line), 12)]
+            if len(boxinfo) == 6:  # Should contain 3 lengths and 3 angles
+                box = np.array(boxinfo[:3])
+                boxangles = np.array(boxinfo[3:])
+
+    # Add singleton dimension for frames
+    coords = coords.reshape(natoms, 3, 1)
+    if box is not None:
+        box = box.reshape(3, 1)
+        boxangles = boxangles.reshape(3, 1)
+
+    return MolFactory.construct(
+        None, Trajectory(coords=coords, box=box, boxangles=boxangles), filename, frame
+    )
+
+
 def JSONread(filename, frame=None, topoloc=None, stride=None, atom_indices=None):
     from moleculekit.molecule import Molecule
     import json
@@ -3154,7 +3193,7 @@ _TRAJECTORY_READERS = {
     "lh5": MDTRAJread,
 }
 
-_COORDINATE_READERS = {"crd": CRDread, "coor": BINCOORread}
+_COORDINATE_READERS = {"crd": CRDread, "coor": BINCOORread, "inpcrd": INPCRDread}
 
 
 _ALL_READERS = {}
@@ -3936,6 +3975,19 @@ class _TestReaders(unittest.TestCase):
                         "bondtype",
                     ],
                 )
+
+    def test_inpcrd(self):
+        import tempfile
+
+        mol = Molecule(os.path.join(self.testfolder(), "dialanine", "structure.prmtop"))
+        mol.read(os.path.join(self.testfolder(), "dialanine", "traj.dcd"))
+        mol.dropFrames(keep=mol.numFrames - 1)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filename = os.path.join(tmpdir, "test.inpcrd")
+            mol.write(filename)
+            mol2 = Molecule(filename)
+            assert mol_equal(mol, mol2, checkFields=["coords", "box", "boxangles"])
 
 
 if __name__ == "__main__":
