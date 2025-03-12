@@ -323,7 +323,7 @@ class Molecule(object):
         "masses",
         "atomtype",
         "formalcharge",
-        "virtualsite"
+        "virtualsite",
     )
     _connectivity_fields = ("bonds", "bondtype", "angles", "dihedrals", "impropers")
     _topo_fields = tuple(
@@ -483,6 +483,22 @@ class Molecule(object):
         from moleculekit.util import sequenceID
 
         return len(np.unique(sequenceID((self.resid, self.insertion, self.chain))))
+
+    @property
+    def boxvectors(self):
+        """The box vectors of the Molecule"""
+        from moleculekit.unitcell import lengths_and_angles_to_box_vectors
+
+        vecs = lengths_and_angles_to_box_vectors(
+            self.box[0].astype(np.float64),
+            self.box[1].astype(np.float64),
+            self.box[2].astype(np.float64),
+            self.boxangles[0].astype(np.float64),
+            self.boxangles[1].astype(np.float64),
+            self.boxangles[2].astype(np.float64),
+        )
+
+        return np.stack(vecs, axis=1).T.astype(np.float32).copy()
 
     def insert(
         self,

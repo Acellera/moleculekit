@@ -359,7 +359,9 @@ def PSFwrite(mol, filename, explicitbonds=None):
         print(f"{vals[0]:{fieldlen}d}{vals[1]:{fieldlen}d}", file=f, end="")
 
     if hasattr(mol, "angles"):
-        fieldlen = max(len(str(np.max(mol.angles))), 10) if mol.angles.shape[0] != 0 else 10
+        fieldlen = (
+            max(len(str(np.max(mol.angles))), 10) if mol.angles.shape[0] != 0 else 10
+        )
         print("\n\n", file=f)
         print(f"{mol.angles.shape[0]:{fieldlen}d} !NTHETA: angles", file=f)
         for i in range(mol.angles.shape[0]):
@@ -374,7 +376,9 @@ def PSFwrite(mol, filename, explicitbonds=None):
 
     if hasattr(mol, "dihedrals"):
         fieldlen = (
-            max(len(str(np.max(mol.dihedrals))), 10) if mol.dihedrals.shape[0] != 0 else 10
+            max(len(str(np.max(mol.dihedrals))), 10)
+            if mol.dihedrals.shape[0] != 0
+            else 10
         )
         print("\n\n", file=f)
         print(f"{mol.dihedrals.shape[0]:{fieldlen}d} !NPHI: dihedrals", file=f)
@@ -390,7 +394,9 @@ def PSFwrite(mol, filename, explicitbonds=None):
 
     if hasattr(mol, "impropers"):
         fieldlen = (
-            max(len(str(np.max(mol.impropers))), 10) if mol.impropers.shape[0] != 0 else 10
+            max(len(str(np.max(mol.impropers))), 10)
+            if mol.impropers.shape[0] != 0
+            else 10
         )
         print("\n\n", file=f)
         print(f"{mol.impropers.shape[0]:{fieldlen}d} !NIMPHI: impropers", file=f)
@@ -668,22 +674,11 @@ def BINPOSwrite(mol, filename):
 
 def TRRwrite(mol, filename):
     from moleculekit.trr import TRRTrajectoryFile
-    from moleculekit.readers import lengths_and_angles_to_box_vectors
 
     xyz = np.transpose(mol.coords, (2, 0, 1)) / 10  # Convert Angstrom to nm
-    box = mol.box / 10  # Convert Angstrom to nm
-    boxangles = mol.boxangles
-    v1, v2, v3 = lengths_and_angles_to_box_vectors(
-        box[0],  # a
-        box[1],  # b
-        box[2],  # c
-        boxangles[0],  # alpha
-        boxangles[1],  # beta
-        boxangles[2],  # gamma
-    )
-    boxvectors = np.swapaxes(np.dstack((v1, v2, v3)), 1, 2)
     time = mol.time / 1000  # Convert fs to ps
     step = mol.step
+    boxvectors = np.transpose(mol.boxvectors, (2, 1, 0)) / 10  # Angstrom to nm
     with TRRTrajectoryFile(filename, "w") as fh:
         fh.write(xyz, time=time, step=step, box=boxvectors, lambd=None)
 
