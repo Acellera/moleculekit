@@ -202,6 +202,7 @@ class SmallMol(object):
                 # assuming it is a smile
                 psmile = Chem.SmilesParserParams()
                 psmile.removeHs = False
+                psmile.sanitize = False
                 _mol = Chem.MolFromSmiles(mol, psmile)
 
         if _mol is None and not ignore_errors:
