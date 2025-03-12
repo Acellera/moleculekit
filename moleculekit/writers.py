@@ -830,7 +830,7 @@ def NETCDFwrite(mol, filename):
     # deposit the data
     try:
         ncfile.variables["coordinates"][frame_slice, :, :] = coordinates
-        if time is not None:
+        if time is not None and set_time:
             ncfile.variables["time"][frame_slice] = time
         if cell_lengths is not None:
             ncfile.variables["cell_lengths"][frame_slice, :] = cell_lengths
@@ -1644,7 +1644,7 @@ class _TestWriters(unittest.TestCase):
         mol.step = np.array([0], dtype=np.int32)
         mol.box = np.array([[25], [11], [8]], dtype=np.float32)
 
-        for ext in ["xsc", "trr"]:
+        for ext in ["xsc", "trr", "dcd", "netcdf", "inpcrd"]:
             for ang in angles:
                 with self.subTest(ext=ext, ang=ang):
                     mol.boxangles = np.array(
@@ -1661,7 +1661,7 @@ class _TestWriters(unittest.TestCase):
         mol.coords = np.tile(mol.coords, (1, 1, 2))
         mol.time = np.tile(mol.time, 2)
         mol.step = np.tile(mol.step, 2)
-        for ext in ["xsc", "trr"]:
+        for ext in ["xsc", "trr", "dcd", "netcdf", "inpcrd"]:
             for ang in angles:
                 with self.subTest(ext=ext, ang=ang, multiple_frames=True):
                     mol.boxangles = np.array(
