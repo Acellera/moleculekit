@@ -141,7 +141,7 @@ class _TestSmallMol(unittest.TestCase):
 
     def test_isChiral(self):
         smi = CHIRAL_SMI
-        sm = SmallMol(smi)
+        sm = SmallMol(smi, sanitize=True)
         ischiral, details = sm.isChiral(returnDetails=True)
         self.assertListEqual(
             details,

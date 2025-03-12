@@ -130,6 +130,7 @@ class SmallMol(object):
         fixHs=True,
         removeHs=False,
         verbose=True,
+        sanitize=True,
         _logger=True,
         **kwargs,
     ):
@@ -137,8 +138,12 @@ class SmallMol(object):
         _logger = _logger & verbose
 
         self._mol = self._initializeMolObj(
-            mol, force_reading, ignore_errors, _logger, **kwargs
+            mol, force_reading, ignore_errors, sanitize, _logger, **kwargs
         )
+        if sanitize:
+            if _logger:
+                logger.info("Sanitizing molecule")
+            self.sanitize()
         if removeHs:
             if _logger:
                 logger.info("Removing hydrogens (removeHs=True)")
@@ -148,7 +153,9 @@ class SmallMol(object):
                 logger.info("Adding any missing hydrogens (fixHs=True)")
             self.addHs(addCoords=True)
 
-    def _initializeMolObj(self, mol, force_reading, ignore_errors, _logger, **kwargs):
+    def _initializeMolObj(
+        self, mol, force_reading, ignore_errors, sanitize, _logger, **kwargs
+    ):
         """
         Read the input and tries to convert it into a rdkit.Chem.rdchem.Mol obj
 
@@ -180,13 +187,13 @@ class SmallMol(object):
                 name_suffix = os.path.splitext(mol)[-1]
                 # load mol2 file
                 if name_suffix == ".mol2":
-                    _mol = Chem.MolFromMol2File(mol, removeHs=False)
+                    _mol = Chem.MolFromMol2File(mol, removeHs=False, sanitize=False)
                 # load pdb file
                 elif name_suffix == ".pdb":
-                    _mol = Chem.MolFromPDBFile(mol, removeHs=False)
+                    _mol = Chem.MolFromPDBFile(mol, removeHs=False, sanitize=False)
                 # load single-molecule sdf file
                 elif name_suffix == ".sdf":
-                    sms = Chem.SDMolSupplier(mol, removeHs=False)
+                    sms = Chem.SDMolSupplier(mol, removeHs=False, sanitize=False)
                     if len(sms) != 1:
                         logger.warning(
                             f"More than one molecules found in {mol}. SmallMol will only read the first. If you want to read them all use the SmallMolLib class."
@@ -202,7 +209,7 @@ class SmallMol(object):
                 # assuming it is a smile
                 psmile = Chem.SmilesParserParams()
                 psmile.removeHs = False
-                psmile.sanitize = False
+                psmile.sanitize = sanitize
                 _mol = Chem.MolFromSmiles(mol, psmile)
 
         if _mol is None and not ignore_errors:
@@ -369,12 +376,12 @@ class SmallMol(object):
             ],
             dtype=object,
         )
-    
+
     @property
     def _virtualsite(self):
         # TODO: Not implemented yet. Not sure if rdkit supports virtual sites
         return np.zeros(self.numAtoms, dtype=SmallMol._dtypes["virtualsite"])
-    
+
     @property
     def frame(self):
         if self._frame < 0 or self._frame >= self.numFrames:
@@ -645,7 +652,7 @@ class SmallMol(object):
 
         idxs = np.where(_chirals != "")[0]
         if len(idxs) == 0:
-            return False
+            return False, None
         if returnDetails:
             idxs = idxs.astype(str)
             idxs_str = " ".join(idxs)
@@ -654,7 +661,7 @@ class SmallMol(object):
 
             return True, [(a, c) for a, c in zip(names, chirals)]
 
-        return True
+        return True, None
 
     def getAtoms(self):
         """
@@ -1193,6 +1200,9 @@ class SmallMol(object):
 
     def removeHs(self):
         self._mol = Chem.RemoveHs(self._mol)
+
+    def sanitize(self):
+        Chem.SanitizeMol(self._mol)
 
     def getTautomers(
         self,
