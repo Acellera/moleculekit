@@ -1549,6 +1549,8 @@ def XTCread(filename, frame=None, topoloc=None):
 
 
 def XSCread(filename, frame=None, topoloc=None):
+    from moleculekit.unitcell import box_vectors_to_lengths_and_angles
+
     with open(filename, "r") as f:
         for line in f:
             if line.startswith("#"):
@@ -1560,18 +1562,18 @@ def XSCread(filename, frame=None, topoloc=None):
                 )
             pieces = np.array(list(map(float, pieces)))
 
-            if np.any(pieces[[2, 3, 4, 6, 7, 8]] != 0):
-                raise RuntimeError(
-                    "Simulation box has to be rectangular for moleculekit to read it"
-                )
             step = pieces[0]
-            box = pieces[[1, 5, 9]]
+            bx, by, bz, alpha, beta, gamma = box_vectors_to_lengths_and_angles(
+                pieces[1:4], pieces[4:7], pieces[7:10]
+            )
+            box = np.array([bx, by, bz], dtype=np.float32)
+            boxangles = np.array([alpha, beta, gamma], dtype=np.float32)
 
     return MolFactory.construct(
         None,
         Trajectory(
             box=box,
-            boxangles=np.array([90, 90, 90], dtype=np.float32),
+            boxangles=boxangles,
             step=[step],
             time=np.zeros(1, dtype=np.float32),
         ),

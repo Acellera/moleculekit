@@ -403,8 +403,8 @@ class Molecule(object):
         self.ssbonds = []
         self._frame = 0
         self.fileloc = []
-        self.time = []
-        self.step = []
+        self.time = np.array([], dtype=np.float32)
+        self.step = np.array([], dtype=np.int32)
         self.crystalinfo = None
 
         self.reps = Representations(self)
@@ -489,6 +489,11 @@ class Molecule(object):
         """The box vectors of the Molecule"""
         from moleculekit.unitcell import lengths_and_angles_to_box_vectors
 
+        assert self.box.ndim == 2
+        assert self.boxangles.ndim == 2
+        assert self.box.shape[0] == 3
+        assert self.boxangles.shape[0] == 3
+
         vecs = lengths_and_angles_to_box_vectors(
             self.box[0].astype(np.float64),
             self.box[1].astype(np.float64),
@@ -498,7 +503,7 @@ class Molecule(object):
             self.boxangles[2].astype(np.float64),
         )
 
-        return np.stack(vecs, axis=1).T.astype(np.float32).copy()
+        return np.transpose(np.stack(vecs, axis=1), (1, 2, 0)).astype(np.float32).copy()
 
     def insert(
         self,
