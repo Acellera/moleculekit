@@ -2047,11 +2047,11 @@ def CIFread(
 
     # Parsing CRYST1 data
     cryst = dataObj.getObj("cell")
+    crystalinfo = {}
     if cryst is not None and cryst.getRowCount() == 1:
         row = cryst.getRow(0)
         attrs = cryst.getAttributeList()
 
-        crystalinfo = {}
         for source_field, target in cryst1_mapping.items():
             if source_field not in attrs:
                 continue
@@ -2317,7 +2317,18 @@ def CIFread(
 
     if not macromolecule:
         topo.record = ["HETATM"] * len(topo.name)
-    return MolFactory.construct(topo, Trajectory(coords=coords), filename, frame)
+
+    box = None
+    boxangles = None
+    if "a" in crystalinfo and "b" in crystalinfo and "c" in crystalinfo:
+        box = np.array([crystalinfo["a"], crystalinfo["b"], crystalinfo["c"]])
+    if "alpha" in crystalinfo and "beta" in crystalinfo and "gamma" in crystalinfo:
+        boxangles = np.array(
+            [crystalinfo["alpha"], crystalinfo["beta"], crystalinfo["gamma"]]
+        )
+    return MolFactory.construct(
+        topo, Trajectory(coords=coords, box=box, boxangles=boxangles), filename, frame
+    )
 
 
 _ATOM_TYPE_REG_EX = re.compile(r"^\S+x\d+$")
@@ -3819,6 +3830,11 @@ class _TestReaders(unittest.TestCase):
                     mol2.bonds = np.zeros((0, 2), dtype=np.uint32)
                     mol2.bondtype = np.zeros((0,), dtype=object)
 
+                extra_except = []
+                if pdbid == "6a5j":
+                    # The CIF file is missing crystal info
+                    extra_except = ["box", "boxangles"]
+
                 assert mol_equal(
                     mol1,
                     mol2,
@@ -3829,7 +3845,8 @@ class _TestReaders(unittest.TestCase):
                         "segid",
                         "serial",
                         "bondtype",
-                    ],
+                    ]
+                    + extra_except,
                 )
 
     def test_inpcrd(self):
