@@ -504,7 +504,7 @@ class Molecule(object):
             self.boxangles[2].astype(np.float64),
         )
 
-        return np.transpose(np.stack(vecs, axis=1), (1, 2, 0)).astype(np.float32).copy()
+        return np.transpose(np.stack(vecs, axis=1), (1, 2, 0)).copy()
 
     def insert(
         self,
