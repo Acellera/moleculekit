@@ -131,10 +131,14 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode="pdb"):
 
     checkTruncations(mol)
     box = None
+    boxangles = None
     if mol.numFrames != 0:
         coords = np.atleast_3d(mol.coords[:, :, frames])
         if hasattr(mol, "box") and mol.box.shape[1] != 0:
             box = mol.box[:, frames[0]]
+            boxangles = [90, 90, 90]
+        if hasattr(mol, "boxangles") and mol.boxangles.shape[1] != 0:
+            boxangles = mol.boxangles[:, frames[0]]
     else:  # If Molecule only contains topology, PDB requires some coordinates so give it zeros
         coords = np.zeros((mol.numAtoms, 3, 1), dtype=np.float32)
 
@@ -166,10 +170,10 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode="pdb"):
     else:
         fh = open(filename, "w", encoding="ascii")
 
-    if box is not None and not np.all(mol.box == 0):
+    if box is not None and not np.all(box == 0):
         fh.write(
             "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f P 1           1 \n"
-            % (box[0], box[1], box[2], 90, 90, 90)
+            % (box[0], box[1], box[2], boxangles[0], boxangles[1], boxangles[2])
         )
 
     if mode == "pdb":

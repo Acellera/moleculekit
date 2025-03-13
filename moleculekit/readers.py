@@ -1259,8 +1259,17 @@ def PDBread(
     if tempfile:
         os.unlink(filename)
 
+    box = None
+    boxangles = None
+    if "a" in crystalinfo and "b" in crystalinfo and "c" in crystalinfo:
+        box = np.array([crystalinfo["a"], crystalinfo["b"], crystalinfo["c"]])
+    if "alpha" in crystalinfo and "beta" in crystalinfo and "gamma" in crystalinfo:
+        boxangles = np.array(
+            [crystalinfo["alpha"], crystalinfo["beta"], crystalinfo["gamma"]]
+        )
+
     topo.crystalinfo = crystalinfo
-    traj = Trajectory(coords=coords)
+    traj = Trajectory(coords=coords, box=box, boxangles=boxangles)
     return MolFactory.construct(
         topo,
         traj,
