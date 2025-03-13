@@ -30,7 +30,9 @@ import numpy as np
 ##############################################################################
 
 
-def lengths_and_angles_to_box_vectors(a_length, b_length, c_length, alpha, beta, gamma):
+def lengths_and_angles_to_box_vectors(
+    a_length, b_length, c_length, alpha, beta, gamma, reduced=False
+):
     """Convert from the lengths/angles of the unit cell to the box
     vectors (Bravais vectors). The angles should be in degrees.
 
@@ -105,6 +107,12 @@ def lengths_and_angles_to_box_vectors(a_length, b_length, c_length, alpha, beta,
     a[np.logical_and(a > -tol, a < tol)] = 0.0
     b[np.logical_and(b > -tol, b < tol)] = 0.0
     c[np.logical_and(c > -tol, c < tol)] = 0.0
+
+    if reduced:
+        # Make sure they're in the reduced form required by OpenMM.
+        c = c - b * np.round(c[1] / b[1])
+        c = c - a * np.round(c[0] / a[0])
+        b = b - a * np.round(b[0] / a[0])
 
     return a.T, b.T, c.T
 
