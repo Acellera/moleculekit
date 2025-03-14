@@ -59,6 +59,7 @@ jobs:
       - name: Test
         run: |
           pytest ./moleculekit
+          pytest ./tests/
         env:
           GITHUB_ACTIONS: 1
 
