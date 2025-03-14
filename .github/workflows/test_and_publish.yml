@@ -49,9 +49,8 @@ jobs:
 
       - name: Install moleculekit
         run: |
-          pip install "numpy>=1.23.5" "Cython>=0.29.21"
+          pip install "numpy>=1.23.5" "Cython>=0.29.21" setuptools-scm>=8
           pip install .
-          pip install "versioneer==0.28"
           python setup.py build_ext --inplace
 
       - name: List conda environment
@@ -123,7 +122,7 @@ jobs:
         run: |
           git config --global --add safe.directory '*'
           conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
-          pip install versioneer==0.28 toml pyyaml
+          pip install setuptools-scm>=8 toml pyyaml
 
       - name: Build conda package
         shell: bash -l {0}
@@ -163,7 +162,7 @@ jobs:
         run: |
           git config --global --add safe.directory '*'
           conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
-          pip install versioneer==0.28 toml pyyaml
+          pip install setuptools-scm>=8 toml pyyaml
 
       - name: Build conda package
         shell: bash -l {0}
@@ -205,7 +204,7 @@ jobs:
         run: |
           git config --global --add safe.directory '*'
           conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
-          pip install versioneer==0.28 toml pyyaml
+          pip install setuptools-scm>=8 toml pyyaml
 
       - name: Build conda package
         shell: bash -l {0}
