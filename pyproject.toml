@@ -27,13 +27,15 @@ where = [""]
 include = ["moleculekit*"]
 namespaces = false
 
+[tool.setuptools_scm]
+
 [build-system]
 requires = [
   "setuptools",
   "numpy>=2.0.0rc1",
   "Cython>=0.29.21",
   "toml",
-  "versioneer[toml]==0.28",
+  "setuptools-scm>=8",
 ]
 build-backend = "setuptools.build_meta"
 

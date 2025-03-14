@@ -5,10 +5,6 @@ package:
 source:
   path: ../..
 
-build:
-  script:
-    - pip install . -vv
-
 requirements:
   build:
     - ${{ compiler('c') }}
@@ -17,9 +13,9 @@ requirements:
     - cython >=0.29.21
     - pip
     - python
-    - versioneer==0.29
     - setuptools
     - python-build
+    - setuptools-scm>=8
     - numpy >=2.0.0rc1
   run:
     - python

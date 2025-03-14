@@ -6,9 +6,12 @@
 from moleculekit.home import home as __home
 import os
 import logging.config
-from moleculekit import _version
+from importlib.metadata import version, PackageNotFoundError
 
-__version__ = _version.get_versions()["version"]
+try:
+    __version__ = version("moleculekit")
+except PackageNotFoundError:
+    pass
 
 try:
     logging.config.fileConfig(
@@ -18,4 +21,5 @@ except Exception:
     print("MoleculeKit: Logging setup failed")
 
 from . import _version
-__version__ = _version.get_versions()['version']
+
+__version__ = _version.get_versions()["version"]

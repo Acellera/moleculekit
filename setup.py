@@ -1,6 +1,5 @@
 from setuptools import setup, Extension
 from Cython.Build import cythonize
-import versioneer
 import numpy
 import os
 
@@ -108,9 +107,4 @@ extentions.append(
     )
 )
 
-setup(
-    version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
-    zip_safe=False,
-    ext_modules=cythonize(extentions, language_level="3"),
-)
+setup(zip_safe=False, ext_modules=cythonize(extentions, language_level="3"))
