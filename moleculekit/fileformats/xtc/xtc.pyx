@@ -37,14 +37,14 @@ def read_xtc(char* filename):
     cdef int nframes = get_xtc_nframes(filename)
 
     cdef FLOAT32_t[:, :, ::1] coords = np.zeros((natoms, 3, nframes), dtype=np.float32)
-    cdef FLOAT32_t[:, ::1] box = np.zeros((3, nframes), dtype=np.float32)
+    cdef FLOAT32_t[:, :, ::1] box = np.zeros((3, 3, nframes), dtype=np.float32)
     cdef FLOAT32_t[::1] time = np.zeros(nframes, dtype=np.float32)
     cdef int[::1] step = np.zeros(nframes, dtype=np.int32)
 
     xtclib.xtc_read_new(
         filename, 
         &coords[0, 0, 0], 
-        &box[0, 0], 
+        &box[0, 0, 0], 
         &time[0], 
         &step[0], 
         natoms, 
@@ -62,7 +62,7 @@ def read_xtc_frames(char* filename, int[:] frames):
     cdef int f = 0
 
     cdef FLOAT32_t[:, :, ::1] coords = np.zeros((traj_natoms, 3, nframes), dtype=np.float32)
-    cdef FLOAT32_t[:, ::1] box = np.zeros((3, nframes), dtype=np.float32)
+    cdef FLOAT32_t[:, :, ::1] box = np.zeros((3, 3, nframes), dtype=np.float32)
     cdef FLOAT32_t[::1] time = np.zeros(nframes, dtype=np.float32)
     cdef int[::1] step = np.zeros(nframes, dtype=np.int32)
 
@@ -70,7 +70,7 @@ def read_xtc_frames(char* filename, int[:] frames):
         xtclib.xtc_read_frame(
             filename, 
             &coords[0, 0, 0], 
-            &box[0, 0], 
+            &box[0, 0, 0], 
             &time[0], 
             &step[0], 
             traj_natoms, 
@@ -83,7 +83,7 @@ def read_xtc_frames(char* filename, int[:] frames):
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-def write_xtc(char* filename, float[:, :, :] coords, float[:, :] box, float[:] time, int[:] step):
+def write_xtc(char* filename, float[:, :, :] coords, float[:, :, :] box, float[:] time, int[:] step):
     cdef int natoms = coords.shape[0]
     cdef int nframes = coords.shape[2]
     xtclib.xtc_write(
@@ -93,5 +93,5 @@ def write_xtc(char* filename, float[:, :, :] coords, float[:, :] box, float[:] t
         &step[0], 
         &time[0],
         &coords[0, 0, 0],
-        &box[0, 0]
+        &box[0, 0, 0]
     )

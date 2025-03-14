@@ -244,9 +244,9 @@ def XTCwrite(mol, filename):
     coords = mol.coords
     nframes = mol.numFrames
 
-    box = np.zeros((3, nframes), dtype=np.float32)
+    box = np.zeros((3, 3, nframes), dtype=np.float32)
     if hasattr(mol, "box"):
-        box = mol.box
+        box = mol.boxvectors
     time = np.zeros(nframes)
     if hasattr(mol, "time"):
         time = mol.time
@@ -254,8 +254,8 @@ def XTCwrite(mol, filename):
     if hasattr(mol, "step"):
         step = mol.step
 
-    if np.size(box, 1) != nframes:  # Box should have as many frames as trajectory
-        box = np.tile(box, (1, nframes))
+    if np.size(box, 2) != nframes:  # Box should have as many frames as trajectory
+        box = np.tile(box, (1, 1, nframes))
     if np.size(time) != nframes:
         time = np.zeros(nframes)
     if np.size(step) != nframes:
@@ -1587,7 +1587,7 @@ class _TestWriters(unittest.TestCase):
             )
 
     def test_traj_writers(self):
-        from moleculekit.molecule import Molecule, mol_equal
+        from moleculekit.molecule import Molecule
         from moleculekit.home import home
         import tempfile
 
@@ -1680,6 +1680,31 @@ class _TestWriters(unittest.TestCase):
 
                         assert np.allclose(molc.box, mol2.box, atol=1e-5)
                         assert np.allclose(molc.boxangles, mol2.boxangles, atol=1e-5)
+
+    def test_non_square_box(self):
+        from moleculekit.molecule import Molecule
+        from moleculekit.home import home
+        import tempfile
+
+        datadir = os.path.join(home(dataDir="molecule-readers"), "dodecahedral_box")
+        mol = Molecule(os.path.join(datadir, "3ptb_dodecahedron.pdb"))
+        mol.read(os.path.join(datadir, "output.xtc"))
+
+        assert np.all(mol.boxangles[0, :] == 120)
+        assert np.all(mol.boxangles[1, :] == 120)
+        assert np.all(mol.boxangles[2, :] == 90)
+        refbox = np.array(
+            [[71.419, 69.688385], [71.419, 69.688385], [71.419, 69.688385]],
+            dtype=np.float32,
+        )
+        assert np.array_equal(mol.box[:, :2], refbox)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mol.write(os.path.join(tmpdir, "3ptb_dodecahedron.xtc"))
+            mol2 = Molecule(os.path.join(tmpdir, "3ptb_dodecahedron.xtc"))
+
+        assert np.allclose(mol.box, mol2.box, atol=1e-5)
+        assert np.allclose(mol.boxangles, mol2.boxangles, atol=1e-5)
 
 
 if __name__ == "__main__":

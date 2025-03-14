@@ -37,7 +37,7 @@ extern "C"
 
   struct XTC_frame
   {
-    float box[3];
+    float box[3][3];
     int natoms;
     unsigned long step;
     double time;

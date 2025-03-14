@@ -227,9 +227,11 @@ void xtc_read_new(char *filename, float *coords_arr, float *box_arr, float *time
 		time_arr[fidx] = time;
 		step_arr[fidx] = step;
 
-		box_arr[fidx] = box[0][0];
-		box_arr[fidx + nframes] = box[1][1];
-		box_arr[fidx + 2 * nframes] = box[2][2];
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				box_arr[fidx + nframes * (j + 3*i)] = box[i][j];
+			}
+		}
 
 		for (aidx = 0; aidx < natoms; aidx++)
 		{
@@ -334,9 +336,11 @@ struct XTC_frame *xtc_read(char *filename, int *natoms, int *nframes, double *dt
 		//		printf( "XTC: %f %d\n", time, step );
 		frames[*nframes].time = time;
 		frames[*nframes].step = step;
-		frames[*nframes].box[0] = box[0][0];
-		frames[*nframes].box[1] = box[1][1];
-		frames[*nframes].box[2] = box[2][2];
+		for (int i=0; i < 3; i++){
+			for (int j=0; j < 3; j++){
+				frames[*nframes].box[i][j] = box[i][j];
+			}
+		}
 		frames[*nframes].pos = (float *)malloc(sizeof(float) * 3 * *natoms);
 
 		if (!(frames[*nframes].pos))
@@ -435,17 +439,11 @@ int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, 
 
 	for (f = 0; f < nframes; f++)
 	{
-		b[0][0] = box[0 * nframes + f];
-		b[0][1] = 0.;
-		b[0][2] = 0.;
-
-		b[1][0] = 0.;
-		b[1][1] = box[1 * nframes + f];
-		b[1][2] = 0.;
-
-		b[2][0] = 0.;
-		b[2][1] = 0.;
-		b[2][2] = box[2 * nframes + f];
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				b[i][j] = box[(i * 3 + j) * nframes + f];
+			}
+		}
 		// printf("Boxes: %f %f %f\n", b[0][0], b[1][1], b[2][2]);
 
 		for (i = 0; i < natoms; i++)
@@ -535,9 +533,11 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 			}
 			time_arr[fidx] = frames[frame].time;
 			step_arr[fidx] = frames[frame].step;
-			box_arr[fidx] = frames[frame].box[0];
-			box_arr[fidx + nframes] = frames[frame].box[1];
-			box_arr[fidx + 2 * nframes] = frames[frame].box[2];
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					box_arr[fidx + nframes * (j + 3*i)] = frames[frame].box[i][j];
+				}
+			}
 			for (aidx = 0; aidx < natoms; aidx++)
 			{
 				xidx = Xf(aidx, fidx, nframes);
@@ -604,9 +604,11 @@ void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *ti
 		{
 			time_arr[fidx] = time;
 			step_arr[fidx] = step;
-			box_arr[fidx] = box[0][0];
-			box_arr[fidx + nframes] = box[1][1];
-			box_arr[fidx + 2 * nframes] = box[2][2];
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					box_arr[fidx + nframes * (j + 3*i)] = box[i][j];
+				}
+			}
 			for (aidx = 0; aidx < natoms; aidx++)
 			{
 				xidx = Xf(aidx, fidx, nframes);

@@ -1531,11 +1531,12 @@ def PSFread(filename, frame=None, topoloc=None, validateElements=False):
 
 def XTCread(filename, frame=None, topoloc=None):
     from moleculekit.xtc import read_xtc, read_xtc_frames
+    from moleculekit.unitcell import box_vectors_to_lengths_and_angles
 
     if frame is None:
-        coords, box, time, step = read_xtc(filename.encode("UTF-8"))
+        coords, boxvectors, time, step = read_xtc(filename.encode("UTF-8"))
     else:
-        coords, box, time, step = read_xtc_frames(
+        coords, boxvectors, time, step = read_xtc_frames(
             filename.encode("UTF-8"), np.array(ensurelist(frame), dtype=np.int32)
         )
 
@@ -1545,15 +1546,24 @@ def XTCread(filename, frame=None, topoloc=None):
         raise RuntimeError(f"Malformed XTC file. No atoms read from: {filename}")
 
     coords *= 10.0  # Convert from nm to Angstrom
-    box *= 10.0  # Convert from nm to Angstrom
+    boxvectors *= 10.0  # Convert from nm to Angstrom
     time *= 1e3  # Convert from ps to fs. This seems to be ACEMD3 specific. GROMACS writes other units in time
     nframes = coords.shape[2]
     if len(step) != nframes or np.sum(step) == 0:
         step = np.arange(nframes)
     if len(time) != nframes or np.sum(time) == 0:
         time = np.zeros(nframes, dtype=np.float32)
+
+    bx, by, bz, alpha, beta, gamma = box_vectors_to_lengths_and_angles(
+        boxvectors[0].T, boxvectors[1].T, boxvectors[2].T
+    )
+    box = np.stack([bx, by, bz], axis=0)
+    boxangles = np.stack([alpha, beta, gamma], axis=0)
     return MolFactory.construct(
-        None, Trajectory(coords=coords, box=box, step=step, time=time), filename, frame
+        None,
+        Trajectory(coords=coords, box=box, boxangles=boxangles, step=step, time=time),
+        filename,
+        frame,
     )
 
 
