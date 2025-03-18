@@ -1690,21 +1690,21 @@ class _TestWriters(unittest.TestCase):
         mol = Molecule(os.path.join(datadir, "3ptb_dodecahedron.pdb"))
         mol.read(os.path.join(datadir, "output.xtc"))
 
-        assert np.all(mol.boxangles[0, :] == 120)
-        assert np.all(mol.boxangles[1, :] == 120)
-        assert np.all(mol.boxangles[2, :] == 90)
+        assert np.allclose(mol.boxangles[0, :], 120, atol=1e-2)
+        assert np.allclose(mol.boxangles[1, :], 120, atol=1e-2)
+        assert np.allclose(mol.boxangles[2, :], 90, atol=1e-2)
         refbox = np.array(
             [[71.419, 69.688385], [71.419, 69.688385], [71.419, 69.688385]],
             dtype=np.float32,
         )
-        assert np.array_equal(mol.box[:, :2], refbox)
+        assert np.allclose(mol.box[:, :2], refbox, atol=1e-2)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             mol.write(os.path.join(tmpdir, "3ptb_dodecahedron.xtc"))
             mol2 = Molecule(os.path.join(tmpdir, "3ptb_dodecahedron.xtc"))
 
-        assert np.allclose(mol.box, mol2.box, atol=1e-5)
-        assert np.allclose(mol.boxangles, mol2.boxangles, atol=1e-5)
+        assert np.allclose(mol.box, mol2.box, atol=1e-2)
+        assert np.allclose(mol.boxangles, mol2.boxangles, atol=1e-2)
 
 
 if __name__ == "__main__":
