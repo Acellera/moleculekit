@@ -2985,9 +2985,9 @@ def INPCRDread(filename, frame=None, topoloc=None, stride=None, atom_indices=Non
         # Try to read box information if it exists
         box = None
         boxangles = None
-        line = f.readline().strip()
+        line = f.readline()
         if line:  # If there's an extra line, it contains box info
-            boxinfo = [float(line[i : i + 12]) for i in range(0, len(line), 12)]
+            boxinfo = [float(line[i : i + 12]) for i in range(0, len(line) - 1, 12)]
             if len(boxinfo) == 6:  # Should contain 3 lengths and 3 angles
                 box = np.array(boxinfo[:3])
                 boxangles = np.array(boxinfo[3:])
