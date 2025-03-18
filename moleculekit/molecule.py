@@ -1847,7 +1847,14 @@ class Molecule(object):
         s = np.delete(s, remidx)
         self.set("resname", newres, sel=s)
 
-    def wrap(self, wrapsel="all", fileBonds=True, guessBonds=False, wrapcenter=None):
+    def wrap(
+        self,
+        wrapsel="all",
+        fileBonds=True,
+        guessBonds=False,
+        wrapcenter=None,
+        unitcell="rectangular",
+    ):
         """Wraps the coordinates of the molecule into the simulation box
 
         It assumes that all bonded groups are sequential in Molecule. I.e. you don't have a molecule B
@@ -1867,6 +1874,14 @@ class Molecule(object):
             The center around which to wrap. If not provided, it will be calculated from the atoms in `wrapsel`.
             Normally you want to use the `wrapsel` option and not the wrapcenter as the coordinates of the
             selection can change during a simulation and `wrapsel` will keep that selection in the center for all frames.
+        unitcell : str
+            This option can be used for choosing between different unit cell representations of triclinic boxes.
+            It doesn't have any effect on rectangular boxes.
+            The wrapping of a triclinic cell can be "rectangular", "triclinic" or "compact".
+            Rectangular wrapping is the default and it wraps the box into a parallelepiped.
+            Triclinic wrapping wraps the box into a triclinic box.
+            Compact wrapping wraps the box into a shape that has the minimum volume.
+            This can be useful for visualizing e.g. truncated octahedra or rhombic dodecahedra.
 
         Examples
         --------
@@ -1875,6 +1890,12 @@ class Molecule(object):
         >>> mol.wrap('protein')
         """
         from moleculekit import wrapping
+
+        unitcell = unitcell.lower()
+        if unitcell not in ["rectangular", "triclinic", "compact"]:
+            raise ValueError(
+                f"Invalid unit cell type: {unitcell}. Must be one of: rectangular, triclinic, compact"
+            )
 
         nbonds = self.bonds.shape[0]
         guessAtomSelBonds = guessBonds
@@ -1909,13 +1930,43 @@ class Molecule(object):
 
         bonds = self._getBonds(fileBonds, guessBonds)
         groups, _ = getBondedGroups(self, bonds)
-        wrapping.calculate(
-            groups,
-            self.coords,
-            self.box,
-            centersel.astype(np.uint32),
-            wrapcenter.astype(np.float32),
-        )
+
+        is_triclinic = np.any(self.boxangles != 90)
+        if not is_triclinic:
+            wrapping.wrap_box(
+                groups,
+                self.coords,
+                self.box,
+                centersel.astype(np.uint32),
+                wrapcenter.astype(np.float32),
+            )
+        else:
+            if unitcell == "triclinic":
+                wrapping.wrap_triclinic_unitcell(
+                    groups,
+                    self.coords,
+                    self.boxvectors,
+                    centersel.astype(np.uint32),
+                    wrapcenter.astype(np.float32),
+                )
+            elif unitcell == "compact":
+                wrapping.wrap_compact_unitcell(
+                    groups,
+                    self.coords,
+                    self.boxvectors,
+                    centersel.astype(np.uint32),
+                    wrapcenter.astype(np.float32),
+                    1,  # compact wrapping
+                )
+            elif unitcell == "rectangular":
+                wrapping.wrap_compact_unitcell(
+                    groups,
+                    self.coords,
+                    self.boxvectors,
+                    centersel.astype(np.uint32),
+                    wrapcenter.astype(np.float32),
+                    0,  # rectangular wrapping
+                )
 
     def _emptyTopo(self, numAtoms):
         for field in Molecule._atom_fields:
