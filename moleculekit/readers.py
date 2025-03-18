@@ -159,15 +159,19 @@ class Trajectory(object):
             if box is None:
                 self.box = np.zeros((3, nframes), np.float32)
             if boxangles is None:
-                self.boxangles = np.ones((3, nframes), np.float32) * 90
+                self.boxangles = np.zeros((3, nframes), np.float32)
             if step is None:
                 self.step = np.arange(nframes, dtype=int)
             if time is None:
                 self.time = np.zeros(nframes, dtype=np.float32)
         if box is not None:
             self.box = box
+            if boxangles is None:
+                raise ValueError("boxangles must be provided if box is provided")
         if boxangles is not None:
             self.boxangles = boxangles
+            if box is None:
+                raise ValueError("box must be provided if boxangles is provided")
         if fileloc is not None:
             self.fileloc = fileloc
         if step is not None:
