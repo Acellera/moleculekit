@@ -159,7 +159,7 @@ class Trajectory(object):
             if box is None:
                 self.box = np.zeros((3, nframes), np.float32)
             if boxangles is None:
-                self.boxangles = np.zeros((3, nframes), np.float32)
+                self.boxangles = np.ones((3, nframes), np.float32) * 90
             if step is None:
                 self.step = np.arange(nframes, dtype=int)
             if time is None:
