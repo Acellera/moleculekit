@@ -3623,7 +3623,7 @@ class _TestMolecule(TestCase):
         assert new_n_waters == (n_waters - 6)  # No waters were killed
         assert (n_lipids - new_n_lipids) == 1 * popc_n_atoms  # 1 lipid removed
 
-    def test_wrapping(self):
+    def test_orthogonal_wrapping(self):
         from moleculekit.home import home
 
         homedir = home(dataDir="test-wrapping")
