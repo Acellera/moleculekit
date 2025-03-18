@@ -493,6 +493,10 @@ class Molecule(object):
         assert self.boxangles.ndim == 2
         assert self.box.shape[0] == 3
         assert self.boxangles.shape[0] == 3
+
+        if np.all(self.boxangles == 0) and np.all(self.box == 0):
+            return np.zeros((3, 3, self.numFrames), dtype=np.float64)
+
         assert np.all(self.boxangles != 0), "Box angles should not be 0"
 
         vecs = lengths_and_angles_to_box_vectors(
