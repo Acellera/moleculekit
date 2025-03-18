@@ -269,6 +269,7 @@ def wrap_compact_unitcell(
         np.ndarray[FLOAT64_t, ndim=3] boxvectors,
         np.ndarray[UINT32_t, ndim=1] centersel,
         np.ndarray[FLOAT32_t, ndim=1] center,
+        int mode,
     ):
     # Based on GROMACS pbc.cpp put_atoms_in_triclinic_unitcell function
     cdef int f, i, g, a, start_idx, end_idx, k, n
@@ -335,7 +336,7 @@ def wrap_compact_unitcell(
                     grp_center[i] = grp_center[i] + (coords[a, i, f] - grp_center[i]) / (n + 1)
                 n = n + 1
 
-            pbc_dx(grp_center, box_middle, box, hbox_diag, tric_vec, max_cutoff2, ntric_vec, 1, dx)
+            pbc_dx(grp_center, box_middle, box, hbox_diag, tric_vec, max_cutoff2, ntric_vec, mode, dx)
 
             for a in range(start_idx, end_idx):
                 for i in range(3):
@@ -461,6 +462,7 @@ cdef pbc_dx(
     int mode,
     FLOAT64_t[:] dx,
 ):
+    # Based on GROMACS pbc.cpp pbc_dx function
     cdef int i, j, k
     cdef FLOAT64_t[3] dx_start
     cdef FLOAT64_t[3] trial
@@ -497,9 +499,3 @@ cdef pbc_dx(
                             dx[j] = trial[j]
                         d2min = d2trial
                     k += 1
-
-                        
-
-
-# TODO: Make a single wrap entry point where I also validate the box dimensions
-#       and then call the appropriate wrap function based on the box type
