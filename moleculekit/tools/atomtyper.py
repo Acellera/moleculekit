@@ -463,38 +463,3 @@ def parallel(func, listobj, n_cpus=-1, *args):
 
     results = Parallel(n_jobs=n_cpus)(delayed(func)(ob, *args) for ob in tqdm(listobj))
     return results
-
-
-class _TestAtomTyper(unittest.TestCase):
-    def test_preparation(self):
-        from moleculekit.home import home
-        from moleculekit.molecule import Molecule, mol_equal
-        from os import path
-
-        mol = Molecule(path.join(home(dataDir="test-atomtyper"), "1ATL.pdb"))
-        mol.remove('resname "0QI"')
-        ref = Molecule(path.join(home(dataDir="test-atomtyper"), "1ATL_prepared.pdb"))
-        mol2 = prepareProteinForAtomtyping(mol, pH=7.0, verbose=False)
-
-        assert mol_equal(mol2, ref, exceptFields=("coords",))
-
-    @unittest.skipIf(
-        sys.platform.startswith("win"), "Windows OBabel fails at atom typing"
-    )
-    def test_obabel_atomtyping(self):
-        from moleculekit.home import home
-        from moleculekit.molecule import Molecule
-        from os import path
-
-        mol = Molecule(path.join(home(dataDir="test-voxeldescriptors"), "3K4X.pdb"))
-        at, ch = getPDBQTAtomTypesAndCharges(mol, validitychecks=False)
-        atref, chref = np.load(
-            path.join(home(dataDir="test-voxeldescriptors"), "3K4X_atomtypes.npy"),
-            allow_pickle=True,
-        )
-        assert np.array_equal(at, atref)
-        assert np.array_equal(ch, chref)
-
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
