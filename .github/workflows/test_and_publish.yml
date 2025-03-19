@@ -58,8 +58,7 @@ jobs:
 
       - name: Test
         run: |
-          pytest ./moleculekit
-          pytest ./tests/
+          pytest ./tests/ --durations=20
         env:
           LOCAL_PDB_REPO: ./tests/pdb/
 
