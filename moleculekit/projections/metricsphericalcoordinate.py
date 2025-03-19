@@ -87,7 +87,7 @@ class MetricSphericalCoordinate(Projection):
         targetcom = np.mean(mol.coords[getMolProp("targetcom"), :, :], axis=0)
         xyz = targetcom - refcom
 
-        r = np.sqrt(np.sum(xyz ** 2, axis=0))
+        r = np.sqrt(np.sum(xyz**2, axis=0))
         theta = np.arccos(xyz[2, :] / r)
         phi = np.arctan2(xyz[1, :], xyz[0, :])
 
@@ -142,38 +142,3 @@ class MetricSphericalCoordinate(Projection):
         return DataFrame(
             {"type": types, "atomIndexes": indexes, "description": description}
         )
-
-
-import unittest
-
-
-class _TestMetricSphericalCoordinate(unittest.TestCase):
-    def test_metricsphericalcoordinate(self):
-        from moleculekit.molecule import Molecule
-        from moleculekit.home import home
-        from os import path
-
-        mol = Molecule(
-            path.join(home(dataDir="test-projections"), "trajectory", "filtered.pdb")
-        )
-        ref = mol.copy()
-        mol.read(path.join(home(dataDir="test-projections"), "trajectory", "traj.xtc"))
-        mol.bonds = mol._guessBonds()
-
-        res = MetricSphericalCoordinate(
-            ref, "resname MOL", "within 8 of resid 98"
-        ).project(mol)
-        _ = MetricSphericalCoordinate(
-            ref, "resname MOL", "within 8 of resid 98"
-        ).getMapping(mol)
-
-        ref_array = np.load(
-            path.join(
-                home(dataDir="test-projections"), "metricsphericalcoordinate", "res.npy"
-            )
-        )
-        assert np.allclose(res, ref_array, rtol=0, atol=1e-04)
-
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
