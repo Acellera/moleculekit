@@ -1,7 +1,6 @@
 from moleculekit.molecule import Molecule
 from tqdm import tqdm
 import tempfile
-import unittest
 import logging
 import shutil
 import json

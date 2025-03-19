@@ -24,7 +24,7 @@ def _test_orthogonal_wrapping():
 
 
 def _test_triclinic_wrapping():
-    refdir = os.path.join(curr_dir, "dodecahedral_box")
+    refdir = os.path.join(curr_dir, "test_readers", "dodecahedral_box")
     mol = Molecule(os.path.join(refdir, "3ptb_dodecahedron.psf"))
 
     mol.read(os.path.join(refdir, "output.xtc"))

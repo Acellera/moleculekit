@@ -3,8 +3,9 @@ from moleculekit.opm import blastp, align_to_opm
 from moleculekit.molecule import Molecule
 
 
-@pytest.skipIf(
-    not blastp, "Cannot run test without blastp and makeblastdb executables in PATH"
+@pytest.mark.skipif(
+    not blastp,
+    reason="Cannot run test without blastp and makeblastdb executables in PATH",
 )
 def _test_align_opm():
     mol = Molecule("7y89")
