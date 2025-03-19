@@ -249,23 +249,3 @@ class SmallMolCDP:
 
     def view(self, *args, **kwargs):
         self.toMolecule().view(*args, **kwargs)
-
-
-class _Test_SmallMolCDP(unittest.TestCase):
-    @unittest.skipUnless(cdp_installed, "CDPKit not installed. Skipping test.")
-    def test_smallmolcdp(self):
-        from moleculekit.home import home
-
-        sm = SmallMolCDP(home("test-smallmol/Imatinib.sdf"))
-        sm.generateConformers(10)
-        assert sm.coords.shape == (68, 3, 10)
-
-        mol = sm.toMolecule()
-        assert mol.coords.shape == (68, 3, 10)
-        assert mol.bonds.shape == (72, 2)
-        assert mol.bondtype.shape == (72,)
-        assert np.sum(mol.bondtype == "2") == 13
-
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)

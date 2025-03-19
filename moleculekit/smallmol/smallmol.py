@@ -10,7 +10,6 @@ from rdkit import Chem
 from rdkit.Chem.rdchem import HybridizationType, BondType
 from collections import defaultdict
 from moleculekit.smallmol.util import _depictMol, convertToString
-import unittest
 import logging
 
 logger = logging.getLogger(__name__)
@@ -1285,31 +1284,6 @@ class SmallMol(object):
         return rep
 
 
-class _TestTautomerGeneration(unittest.TestCase):
-    def test_tautomers(self):
-        from moleculekit.util import file_diff
-        from moleculekit.home import home
-        import tempfile
-
-        smiles = {
-            "Oc1c(cccc3)c3nc2ccncc12": 3,
-            "CN=c1nc[nH]cc1": 3,
-            "CC=CO": 2,
-        }
-        for i, sm in enumerate(smiles):
-            with self.subTest(mol=sm):
-                mol = SmallMol(sm, fixHs=False)
-                tauts, scores = mol.getTautomers(canonical=False, genConformers=False)
-                assert len(tauts) == smiles[sm]
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    newfile = os.path.join(tmpdir, "tautomers.sdf")
-                    tauts.writeSdf(os.path.join(tmpdir, "tautomers.sdf"))
-                    reffile = os.path.join(
-                        home(dataDir="test-smallmol"), f"tautomer_results_{i}.sdf"
-                    )
-                    file_diff(newfile, reffile)
-
-
 if __name__ == "__main__":
     import doctest
     from moleculekit.home import home
@@ -1320,5 +1294,3 @@ if __name__ == "__main__":
     )
     sm = SmallMol(os.path.join(home(dataDir="test-smallmol"), "benzamidine.mol2"))
     doctest.testmod(extraglobs={"lib": lib.copy(), "sm": sm.copy()})
-
-    unittest.main(verbosity=2)
