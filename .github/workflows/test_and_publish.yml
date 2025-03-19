@@ -49,6 +49,7 @@ jobs:
 
       - name: Install moleculekit
         run: |
+          pip install build
           python -m build
           pip install dist/moleculekit-*.whl
 
