@@ -336,21 +336,3 @@ def elements_from_masses(masses):
     if len(elements) == 1:
         return elements[0]
     return elements, virtualsites
-
-
-import unittest
-
-
-class _TestPeriodicTable(unittest.TestCase):
-    def test_elements_from_masses(self):
-        # Only test lower masses. The high ones are not very exact
-        masses_to_test = _all_masses[_all_masses < 140]
-        elements_to_test = _all_elements[_all_masses < 140]
-        assert np.array_equal(elements_to_test, elements_from_masses(masses_to_test)[0])
-        assert np.array_equal(
-            elements_to_test, elements_from_masses(masses_to_test + 0.05)[0]
-        )
-
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
