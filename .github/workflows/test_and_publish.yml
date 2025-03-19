@@ -49,9 +49,8 @@ jobs:
 
       - name: Install moleculekit
         run: |
-          pip install "numpy>=1.23.5" "Cython>=0.29.21" setuptools-scm>=8
-          pip install .
-          python setup.py build_ext --inplace
+          python -m build
+          pip install dist/moleculekit-*.whl
 
       - name: List conda environment
         run: conda list
