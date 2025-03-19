@@ -435,7 +435,6 @@ def reconstructContactMap(
     To use it with distances instead of contacts pass ones as the concat vector
     >>> reconstructContactMap(np.ones(dists.shape, dtype=bool), mapping, colors=dists)
     """
-    from copy import deepcopy
     from matplotlib import cm as colormaps
 
     if np.ndim(vector) != 1:
