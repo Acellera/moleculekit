@@ -10,9 +10,6 @@ import os
 logger = logging.getLogger(__name__)
 
 blastp = shutil.which("blastp", mode=os.X_OK)
-NO_BLAST = False
-if not blastp:
-    NO_BLAST = True
 
 
 def _filter_opm_pdb(lines, keep_dum=False):
@@ -255,21 +252,3 @@ def align_to_opm(mol, molsel="all", maxalignments=3, opmid=None, macrotype="prot
             {"hsps": alignedstructs, "pdbid": pdbid, "thickness": thickness}
         )
     return all_aligned_structs
-
-
-class _TestOPM(unittest.TestCase):
-    @unittest.skipIf(
-        NO_BLAST, "Cannot run test without blastp and makeblastdb executables in PATH"
-    )
-    def test_align_opm(self):
-        mol = Molecule("7y89")
-        res = align_to_opm(mol)
-        assert len(res) == 3
-        assert res[0]["pdbid"] == "6DDE"
-        assert res[0]["thickness"] == 31.4
-        molaln = res[0]["hsps"][0]["aligned_mol"]
-        assert molaln.numAtoms == 8641
-
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)

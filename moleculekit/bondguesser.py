@@ -1,6 +1,5 @@
 import numpy as np
 from moleculekit.bondguesser_utils import make_grid_neighborlist_nonperiodic, grid_bonds
-import unittest
 import logging
 
 logger = logging.getLogger(__name__)
@@ -278,63 +277,3 @@ def bond_grid_search(
     if len(result_list) == 0:
         return np.zeros((0, 2), dtype=np.uint32)
     return np.vstack(result_list).astype(np.uint32)
-
-
-class _TestBondGuesser(unittest.TestCase):
-    def test_bond_guessing(self):
-        from moleculekit.molecule import Molecule, calculateUniqueBonds
-        from moleculekit.home import home
-        import os
-
-        pdbids = [
-            "3ptb",
-            "3hyd",
-            "6a5j",
-            "5vbl",
-            "7q5b",
-            "1unc",
-            "3zhi",
-            "1a25",
-            "1u5u",
-            "1gzm",
-            "6va1",
-            "1bna",
-            "3wbm",
-            "1awf",
-            "5vav",
-        ]
-
-        for pi in pdbids:
-            with self.subTest(pdb=pi):
-                mol = Molecule(pi)
-                bonds = guess_bonds(mol)
-                bonds, _ = calculateUniqueBonds(bonds.astype(np.uint32), [])
-
-                reff = os.path.join(home(dataDir="test-bondguesser"), f"{pi}.csv")
-                bondsref = np.loadtxt(reff, delimiter=",").astype(np.uint32)
-
-                # with open(reff, "w") as f:
-                #     for b in range(bondsref.shape[0]):
-                #         f.write(f"{bondsref[b, 0]},{bondsref[b, 1]}\n")
-
-                assert np.array_equal(bonds, bondsref)
-
-    def test_solvated_bond_guessing(self):
-        from moleculekit.molecule import Molecule, calculateUniqueBonds
-        from moleculekit.home import home
-        import os
-
-        mol = Molecule(
-            os.path.join(home(dataDir="test-bondguesser"), "3ptb_solvated.pdb")
-        )
-        bonds = guess_bonds(mol)
-        bonds, _ = calculateUniqueBonds(bonds.astype(np.uint32), [])
-
-        reff = os.path.join(home(dataDir="test-bondguesser"), "3ptb_solvated.csv")
-        bondsref = np.loadtxt(reff, delimiter=",").astype(np.uint32)
-
-        assert np.array_equal(bonds, bondsref)
-
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
