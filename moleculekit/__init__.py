@@ -6,6 +6,7 @@
 import os
 import logging.config
 from importlib.metadata import version, PackageNotFoundError
+from importlib.resources import files
 
 try:
     __version__ = version("moleculekit")
@@ -13,7 +14,7 @@ except PackageNotFoundError:
     pass
 
 __curr_dir = os.path.dirname(os.path.abspath(__file__))
-__share_dir = os.path.join(__curr_dir, "share")
+__share_dir = str(files("moleculekit.share").joinpath(""))
 
 try:
     logging.config.fileConfig(
