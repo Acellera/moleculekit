@@ -23,9 +23,11 @@ dependencies = [
 "Bug Tracker" = "https://github.com/Acellera/moleculekit/issues"
 
 [tool.setuptools.packages.find]
-where = [""]
 include = ["moleculekit*"]
 namespaces = false
+
+[tool.setuptools.package-data]
+"moleculekit.share" = ["*"]
 
 [tool.setuptools_scm]
 
@@ -34,7 +36,6 @@ requires = [
   "setuptools",
   "numpy>=2.0.0rc1",
   "Cython>=0.29.21",
-  "toml",
   "setuptools-scm>=8",
 ]
 build-backend = "setuptools.build_meta"

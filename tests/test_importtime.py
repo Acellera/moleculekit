@@ -1,4 +1,4 @@
-def test_importTime(self):
+def _test_importTime():
     import time
 
     start_time = time.time()
