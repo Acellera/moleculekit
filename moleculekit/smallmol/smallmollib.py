@@ -138,8 +138,7 @@ class SmallMolLib(object):
     Example
     -------
     >>> import os
-    >>> from moleculekit.home import home
-    >>> lib = SmallMolLib(os.path.join(home(dataDir='test-smallmol'), 'fda_drugs_light.sdf'))
+    >>> lib = SmallMolLib('fda_drugs_light.sdf')
     >>> lib.numMols
     100
 
@@ -414,7 +413,6 @@ class SmallMolLib(object):
         highlightAtoms=None,
         mols_perrow=3,
     ):
-
         """
         Depicts the molecules into a grid. It is possible to save it into an svg file and also generates a
         jupiter-notebook rendering
@@ -518,12 +516,3 @@ class SmallMolLib(object):
 
 
 SmallMolStack = SmallMolLib
-
-if __name__ == "__main__":
-    import doctest
-    from moleculekit.home import home
-
-    lib = SmallMolLib(
-        os.path.join(home(dataDir="test-smallmol"), "fda_drugs_light.sdf")
-    )
-    doctest.testmod(extraglobs={"lib": lib})

@@ -259,35 +259,3 @@ def _build_hexagon(molunit, hexagonal_molunit):
         )
         cellunit.rotateBy(rot_mat)
         hexagonal_molunit.append(cellunit)
-
-
-# class _TestCrystalPacking(unittest.TestCase):
-#     def test_crystalpacking_visualization(self):
-#         from moleculekit.vmdviewer import getCurrentViewer
-
-#         viewer = getCurrentViewer(dispdev="text")
-#         generateCrystalPacking("3ptb", visualize=True, viewerhandle=viewer)
-
-#     def test_crystalpacking_asymmetric_unit(self):
-#         from moleculekit.home import home
-#         from os.path import join
-#         from moleculekit.molecule import mol_equal
-
-#         mol = generateCrystalPacking("2hhb")
-#         refmol = Molecule(join(home(dataDir="test-crystalpacking"), "2hhb_packing.pdb"))
-#         assert mol_equal(mol, refmol, fieldPrecision={"coords": 1e-3})
-
-#     def test_crystalpacking_biological_unit(self):
-#         from moleculekit.home import home
-#         from os.path import join
-#         from moleculekit.molecule import mol_equal
-
-#         mol = generateCrystalPacking("1out")
-#         refmol = Molecule(join(home(dataDir="test-crystalpacking"), "1out_packing.pdb"))
-#         assert mol_equal(mol, refmol, fieldPrecision={"coords": 1e-3})
-
-
-# if __name__ == "__main__":
-#     import unittest
-
-#     unittest.main(verbosity=2)

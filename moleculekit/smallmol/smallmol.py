@@ -69,11 +69,10 @@ class SmallMol(object):
     Examples
     --------
     >>> import os
-    >>> from moleculekit.home import home
     >>> from moleculekit.smallmol.smallmol import SmallMol
     >>> SmallMol('CCO')  # doctest: +SKIP
-    >>> SmallMol(os.path.join(home(dataDir='test-smallmol'), 'ligand.pdb'), fixHs=False, removeHs=True )  # doctest: +SKIP
-    >>> sm = SmallMol(os.path.join(home(dataDir='test-smallmol'), 'benzamidine.mol2'))
+    >>> SmallMol('ligand.pdb', fixHs=False, removeHs=True )  # doctest: +SKIP
+    >>> sm = SmallMol('benzamidine.mol2')
     >>> print(sm)                                     # doctest: +ELLIPSIS
     SmallMol with 18 atoms and 1 conformers
     Atom field - bondtype
@@ -1282,15 +1281,3 @@ class SmallMol(object):
             rep += formatstr(j, self.__dict__[j])
 
         return rep
-
-
-if __name__ == "__main__":
-    import doctest
-    from moleculekit.home import home
-    from moleculekit.smallmol.smallmollib import SmallMolLib
-
-    lib = SmallMolLib(
-        os.path.join(home(dataDir="test-smallmol"), "fda_drugs_light.sdf")
-    )
-    sm = SmallMol(os.path.join(home(dataDir="test-smallmol"), "benzamidine.mol2"))
-    doctest.testmod(extraglobs={"lib": lib.copy(), "sm": sm.copy()})
