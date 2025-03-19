@@ -44,3 +44,9 @@ python_files = "*.py"
 python_classes = "_Test"
 python_functions = "_test*"
 norecursedirs = "test-data"
+
+
+[tool.cibuildwheel]
+skip = ["pp*"]  # Disable PyPy builds due to Cython
+test-requires = "pytest"
+test-command = "pytest tests/"
