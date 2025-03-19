@@ -40,7 +40,7 @@ def _testReadSFDataFile():
     if catObj is None:
         return False
 
-    nRows = catObj.getRowCount()
+    _ = catObj.getRowCount()
     #
     # Get column name index.
     #
