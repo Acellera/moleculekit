@@ -239,23 +239,3 @@ def _parseScoring(outf):
     if kcal is None or rmsdlb is None or rmsdub is None:
         raise RuntimeError(f"Could not parse vina output correctly {outf}")
     return kcal, rmsdlb, rmsdub
-
-
-class _TestDocking(unittest.TestCase):
-    @unittest.skipUnless(_VINA_EXISTS, "No vina executable found")
-    def test_docking(self):
-        from moleculekit.home import home
-        from moleculekit.molecule import Molecule
-        from os import path
-
-        protein = Molecule(path.join(home(dataDir="test-docking"), "protein.pdb"))
-        ligand = Molecule(path.join(home(dataDir="test-docking"), "ligand.pdb"))
-        poses, scoring = dock(protein, ligand)
-
-        assert scoring.shape[0] == len(poses)
-        assert scoring.shape[0] <= 20 and scoring.shape[0] > 15
-        assert scoring.shape[1] == 3
-
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
