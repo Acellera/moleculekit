@@ -12,7 +12,6 @@ import numpy as np
 import copy
 from tqdm import tqdm
 import logging
-import unittest
 
 logger = logging.getLogger(__name__)
 
