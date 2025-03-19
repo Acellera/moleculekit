@@ -3,7 +3,6 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
-from moleculekit.home import home as __home
 import os
 import logging.config
 from importlib.metadata import version, PackageNotFoundError
@@ -13,9 +12,11 @@ try:
 except PackageNotFoundError:
     pass
 
+__curr_dir = os.path.dirname(os.path.abspath(__file__))
+
 try:
     logging.config.fileConfig(
-        os.path.join(__home(), "logging.ini"), disable_existing_loggers=False
+        os.path.join(__curr_dir, "logging.ini"), disable_existing_loggers=False
     )
 except Exception:
     print("MoleculeKit: Logging setup failed")
