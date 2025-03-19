@@ -31,7 +31,7 @@ def _getTempDirName(prefix=""):
 def _plumedExists():
     try:
         _getPlumedRoot()
-    except:
+    except Exception:
         return False
     return True
 

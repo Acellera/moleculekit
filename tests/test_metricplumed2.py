@@ -1,8 +1,11 @@
+import pytest
 import os
+from moleculekit.projections.metricplumed2 import _plumedExists
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
+@pytest.mark.skipif(not _plumedExists(), reason="Plumed not found")
 def _test_metricplumed2():
     import os
     import numpy as np

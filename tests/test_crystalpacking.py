@@ -1,15 +1,18 @@
 import os
-
+import pytest
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
+CI = os.environ.get("CI", "false").lower() == "true"
 
+
+@pytest.mark.skipif(CI, reason="Can't open VMD in CI")
 def _test_crystalpacking_visualization():
     from moleculekit.vmdviewer import getCurrentViewer
     from moleculekit.tools.crystalpacking import generateCrystalPacking
 
     viewer = getCurrentViewer(dispdev="text")
-    generateCrystalPacking("3ptb", visualize=True, viewerhandle=viewer)
+    generateCrystalPacking("3ptb", visualize=False, viewerhandle=viewer)
 
 
 def _test_crystalpacking_asymmetric_unit():
