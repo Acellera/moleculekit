@@ -61,7 +61,7 @@ jobs:
           pytest ./moleculekit
           pytest ./tests/
         env:
-          GITHUB_ACTIONS: 1
+          LOCAL_PDB_REPO: ./tests/pdb/
 
       # - name: Upload coverage to Codecov
       #   uses: codecov/codecov-action@v3

@@ -800,17 +800,24 @@ def MAEread(fname, frame=None, topoloc=None):
     return MolFactory.construct(topo, traj, fname, frame)
 
 
+def _getLocalPDB(fname):
+    if "LOCAL_PDB_REPO" in os.environ and os.path.isfile(
+        os.path.join(os.environ["LOCAL_PDB_REPO"], fname)
+    ):
+        filepath = os.path.join(os.environ["LOCAL_PDB_REPO"], fname)
+        logger.info(f"Using local copy for {fname}: {filepath}")
+        return filepath
+    return None
+
+
 def _getPDB(pdbid):
     from moleculekit.util import string_to_tempfile
-    from moleculekit.home import home
 
     # Try loading it from the pdb data directory
     tempfile = False
-    localpdb = os.path.join(home(dataDir="pdb"), pdbid.lower() + ".pdb")
-    if os.path.isfile(localpdb) and "GITHUB_ACTIONS" in os.environ:
-        logger.info(f"Using local copy for {pdbid}: {localpdb}")
-        filepath = localpdb
-    else:
+
+    filepath = _getLocalPDB(pdbid.lower() + ".pdb")
+    if filepath is None:
         # or the PDB website
         from moleculekit.rcsb import _getRCSBtext
 
@@ -2630,17 +2637,14 @@ def get_raw_data_from_url(pdb_id, reduced=False):
 
 def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
     from mmtf.api import default_api
-    from moleculekit.home import home
 
     # Monkey-patch the function to fix bug in data = response.read() which should not have read()
     default_api.get_raw_data_from_url = get_raw_data_from_url
     from mmtf import fetch, parse_gzip, parse
 
-    repo = os.environ.get("GITHUB_REPOSITORY", "")
-
     if len(filename) == 4 and not os.path.isfile(filename):
-        if ("GITHUB_ACTIONS" in os.environ) and (repo == "Acellera/moleculekit"):
-            localpdb = os.path.join(home(dataDir="pdb"), f"{filename.lower()}.mmtf.gz")
+        localpdb = _getLocalPDB(f"{filename.lower()}.mmtf.gz")
+        if localpdb is not None:
             data = parse_gzip(localpdb)
         else:
             data = fetch(filename)
@@ -2766,18 +2770,11 @@ def BCIFread(
     uri="https://models.rcsb.org/{pdbid}.bcif.gz",
     covalentonly=True,
 ):
-    from moleculekit.home import home
     from moleculekit.pdbx.reader.BinaryCifReader import BinaryCifReader
 
-    repo = os.environ.get("GITHUB_REPOSITORY", "")
-
     if len(filename) == 4 and not os.path.isfile(filename):
-        localpdb = os.path.join(home(dataDir="pdb"), f"{filename.lower()}.bcif.gz")
-        if (
-            os.path.isfile(localpdb)
-            and ("GITHUB_ACTIONS" in os.environ)
-            and (repo == "Acellera/moleculekit")
-        ):
+        localpdb = _getLocalPDB(f"{filename.lower()}.bcif.gz")
+        if localpdb is not None:
             filename = localpdb
         else:
             filename = uri.format(pdbid=filename.lower())
