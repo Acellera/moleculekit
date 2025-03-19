@@ -7,7 +7,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def _mol():
     mol = Molecule(
         os.path.join(curr_dir, "test_projections", "trajectory", "filtered.pdb")
@@ -16,7 +16,7 @@ def _mol():
     return mol
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def _mol_skipped():
     mol = Molecule(
         os.path.join(curr_dir, "test_projections", "trajectory", "filtered.pdb")

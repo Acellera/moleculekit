@@ -104,12 +104,16 @@ _PDBIDS = [
     "5vav",
     "2p09",
 ]
-_PDBMOLS = {pdbid: Molecule(pdbid) for pdbid in _PDBIDS}
+
+
+@pytest.fixture(scope="module")
+def _pdbmols():
+    return {pdbid: Molecule(pdbid) for pdbid in _PDBIDS}
 
 
 @pytest.mark.parametrize("pdbid", _PDBIDS)
 @pytest.mark.parametrize("sel", _SELECTIONS)
-def _test_atomselect(pdbid, sel):
+def _test_atomselect(pdbid, sel, _pdbmols):
     from moleculekit.atomselect.analyze import analyze
     from moleculekit.atomselect.atomselect import atomselect
     import pickle
@@ -129,7 +133,7 @@ def _test_atomselect(pdbid, sel):
 
     results = {}
 
-    mol = _PDBMOLS[pdbid]
+    mol = _pdbmols[pdbid]
     mol.serial[10] = -88
     mol.beta[:] = 0
     mol.beta[1000:] = -1
