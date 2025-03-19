@@ -245,7 +245,7 @@ def detectEquivalentAtoms(molecule):
     >>> from moleculekit.tools.detect import detectEquivalentAtoms
 
     Get benzamidine
-    >>> molFile = os.path.join(home('test-detect'), 'benzamidine.mol2')
+    >>> molFile = 'benzamidine.mol2'
     >>> mol = Molecule(molFile)
 
     Find the equivalent atoms of benzamidine
@@ -258,7 +258,7 @@ def detectEquivalentAtoms(molecule):
     [0, 1, 2, 3, 2, 1, 4, 5, 6, 7, 6, 5, 8, 8, 9, 9, 9, 9]
 
     Get dicarbothioic acid
-    >>> molFile = os.path.join(home('test-detect'), 'dicarbothioic_acid.mol2')
+    >>> molFile = 'dicarbothioic_acid.mol2'
     >>> mol = Molecule(molFile)
 
     Find the equivalent atoms of dicarbothioic acid
@@ -525,19 +525,19 @@ def detectParameterizableDihedrals(
     >>> from moleculekit.tools.detect import detectParameterizableDihedrals
 
     Find the parameterizable dihedrals of glycol
-    >>> molFile = os.path.join(home('test-detect'), 'glycol.mol2')
+    >>> molFile = 'glycol.mol2'
     >>> mol = Molecule(molFile, guess=('bonds', 'angles', 'dihedrals'))
     >>> detectParameterizableDihedrals(mol)
     [[(0, 1, 2, 3)], [(1, 2, 3, 9), (2, 1, 0, 4)]]
 
     Find the parameterizable dihedrals of ethanolamine
-    >>> molFile = os.path.join(home('test-detect'), 'ethanolamine.mol2')
+    >>> molFile = 'ethanolamine.mol2'
     >>> mol = Molecule(molFile, guess=('bonds', 'angles', 'dihedrals'))
     >>> detectParameterizableDihedrals(mol)
     [[(0, 1, 2, 3)], [(1, 2, 3, 9), (1, 2, 3, 10)], [(2, 1, 0, 4)]]
 
     Find the parameterizable dihedrals of benzamidine
-    >>> molFile = os.path.join(home('test-detect'), 'benzamidine.mol2')
+    >>> molFile = 'benzamidine.mol2'
     >>> mol = Molecule(molFile, guess=('bonds', 'angles', 'dihedrals'))
     >>> detectParameterizableDihedrals(mol)
     [[(0, 6, 12, 16), (0, 6, 12, 17), (0, 6, 13, 14), (0, 6, 13, 15)], [(1, 0, 6, 12), (1, 0, 6, 13), (5, 0, 6, 12), (5, 0, 6, 13)]]
@@ -545,13 +545,13 @@ def detectParameterizableDihedrals(
     # Check if the atom swapping does not affect results
 
     Find the parameterizable dihedrals of chlorethene
-    >>> molFile = os.path.join(home('test-detect'), 'chlorethene_1.mol2')
+    >>> molFile = 'chlorethene_1.mol2'
     >>> mol = Molecule(molFile, guess=('bonds', 'angles', 'dihedrals'))
     >>> detectParameterizableDihedrals(mol)
     [[(2, 1, 0, 4), (2, 1, 0, 5)]]
 
     Find the parameterizable dihedrals of chlorethene (with swapped atoms)
-    >>> molFile = os.path.join(home('test-detect'), 'chlorethene_2.mol2')
+    >>> molFile = 'chlorethene_2.mol2'
     >>> mol = Molecule(molFile, guess=('bonds', 'angles', 'dihedrals'))
     >>> detectParameterizableDihedrals(mol)
     [[(3, 1, 0, 4), (3, 1, 0, 5)]]
@@ -559,7 +559,7 @@ def detectParameterizableDihedrals(
     # Check if triple bonds are skipped
 
     Find the parameterizable dihedrals of 4-hexinenitrile
-    >>> molFile = os.path.join(home('test-detect'), '4-hexinenitrile.mol2')
+    >>> molFile = '4-hexinenitrile.mol2'
     >>> mol = Molecule(molFile, guess=('bonds', 'angles', 'dihedrals'))
     >>> detectParameterizableDihedrals(mol)
     [[(2, 3, 4, 5)]]
@@ -567,19 +567,19 @@ def detectParameterizableDihedrals(
     # Check the scoring function
 
     Find the parameterizable dihedrals of dicarbothioic acid
-    >>> molFile = os.path.join(home('test-detect'), 'dicarbothioic_acid.mol2')
+    >>> molFile = 'dicarbothioic_acid.mol2'
     >>> mol = Molecule(molFile, guess=('bonds', 'angles', 'dihedrals'))
     >>> detectParameterizableDihedrals(mol)
     [[(0, 1, 3, 5)], [(1, 3, 5, 7)], [(3, 1, 0, 6)]]
 
     Find the parameterizable dihedrals of 2-hydroxypyridine
-    >>> molFile = os.path.join(home('test-detect'), '2-hydroxypyridine.mol2')
+    >>> molFile = '2-hydroxypyridine.mol2'
     >>> mol = Molecule(molFile, guess=('bonds', 'angles', 'dihedrals'))
     >>> detectParameterizableDihedrals(mol)
     [[(6, 1, 0, 7)]]
 
     Find the parameterizable dihedrals of fluorchlorcyclopronol
-    >>> molFile = os.path.join(home('test-detect'), 'fluorchlorcyclopronol.mol2')
+    >>> molFile = 'fluorchlorcyclopronol.mol2'
     >>> mol = Molecule(molFile, guess=('bonds', 'angles', 'dihedrals'))
     >>> detectParameterizableDihedrals(mol)
     [[(2, 4, 5, 9)]]
@@ -663,16 +663,3 @@ def detectParameterizableDihedrals(
         equivalent_dihedrals = equivalent_dihedrals.values()
 
     return sorted(equivalent_dihedrals)
-
-
-if __name__ == "__main__":
-    import sys
-    import doctest
-
-    # Prevent HTMD importing inside doctest to fail if importing gives text output
-    from moleculekit.home import home
-
-    home()
-
-    if doctest.testmod().failed:
-        sys.exit(1)

@@ -1,10 +1,10 @@
 from moleculekit.molecule import Molecule
-from moleculekit.home import home
+from moleculekit import __share_dir
 import numpy as np
 import json
 import os
 
-_sel = os.path.join(home(shareDir="atomselect"), "atomselect.json")
+_sel = os.path.join(__share_dir, "atomselect", "atomselect.json")
 with open(_sel, "r") as f:
     _sel = json.load(f)
 

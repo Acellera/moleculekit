@@ -13,6 +13,7 @@ except PackageNotFoundError:
     pass
 
 __curr_dir = os.path.dirname(os.path.abspath(__file__))
+__share_dir = os.path.join(__curr_dir, "share")
 
 try:
     logging.config.fileConfig(

@@ -197,11 +197,11 @@ def align_to_opm(mol, molsel="all", maxalignments=3, opmid=None, macrotype="prot
         sequence alignments of the query on the same hit protein.
 
     """
-    from moleculekit.home import home
+    from moleculekit import __share_dir
     from moleculekit.align import molTMalign
     import numpy as np
 
-    with open(os.path.join(home(shareDir=""), "opm_sequences.json"), "r") as f:
+    with open(os.path.join(__share_dir, "opm_sequences.json"), "r") as f:
         sequences = json.load(f)
 
     if opmid is not None:

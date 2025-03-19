@@ -1187,10 +1187,10 @@ def BCIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
 
     if mmcif_api is None:
         from mmcif.io.IoAdapterPy import IoAdapterPy as IoAdapter
-        from moleculekit.home import home
+        from moleculekit import __share_dir
 
         myIo = IoAdapter(raiseExceptions=True)
-        dict_path = os.path.join(home(shareDir="mmcif"), "mmcif_pdbx_v5_next.dic")
+        dict_path = os.path.join(__share_dir, "mmcif", "mmcif_pdbx_v5_next.dic")
         cl = myIo.readFile(inputFilePath=dict_path)
         mmcif_api = DictionaryApi(cl, consolidate=True)
 

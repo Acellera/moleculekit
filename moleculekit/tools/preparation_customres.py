@@ -4,7 +4,7 @@
 # No redistribution in whole or part
 #
 from moleculekit.molecule import Molecule
-from moleculekit.home import home
+from moleculekit import __share_dir
 from pdb2pqr.aa import Amino
 import numpy as np
 import os
@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 # PDB2PQR is quite finicky about the backbone coordinates so I copy them from ALA
-backbone = Molecule(os.path.join(home(shareDir="backbone.cif")), zerowarning=False)
-alanine = Molecule(os.path.join(home(shareDir="ALA.cif")), zerowarning=False)
+backbone = Molecule(os.path.join(__share_dir, "backbone.cif"), zerowarning=False)
+alanine = Molecule(os.path.join(__share_dir, "ALA.cif"), zerowarning=False)
 
 
 # def _template_residue_from_mol(molc: Molecule, template: Molecule, res: str):
@@ -337,14 +337,13 @@ def _get_custom_ff(user_ff=None, molkit_ff=True):
     import pdb2pqr
     import pdb2pqr.aa
     import tempfile
-    from moleculekit.home import home
     import shutil
     from glob import glob
 
     original = os.path.join(os.path.dirname(pdb2pqr.__file__), "dat")
     try:
-        molkitcustom = home(shareDir=os.path.join("pdb2pqr", "residues"))
-    except Exception as e:
+        molkitcustom = os.path.join(__share_dir, "pdb2pqr", "residues")
+    except Exception:
         molkitcustom = None
 
     custom_xml = []
