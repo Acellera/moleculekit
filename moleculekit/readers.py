@@ -7,10 +7,8 @@ import numpy as np
 from moleculekit.util import sequenceID
 from moleculekit.periodictable import elements_from_masses
 from moleculekit.util import ensurelist
-from moleculekit.molecule import Molecule, mol_equal
+from moleculekit.molecule import Molecule
 from contextlib import contextmanager
-from glob import glob
-import unittest
 import os
 import re
 import logging
@@ -1039,7 +1037,7 @@ def PDBread(
     27 - 31        Integer        serial       Serial number of bonded atom
     """
     bondcolspecs = [(6, 11), (11, 16), (16, 21), (21, 26), (26, 31)]
-    bondnames = ("serial1", "serial2", "serial3", "serial4", "serial5")
+    # bondnames = ("serial1", "serial2", "serial3", "serial4", "serial5")
 
     """
     COLUMNS       DATA  TYPE    FIELD          DEFINITION

@@ -5,10 +5,8 @@
 #
 import numpy as np
 import os
-from moleculekit.home import home
 import tempfile
 import logging
-from unittest import TestCase
 
 
 logger = logging.getLogger(__name__)
@@ -423,8 +421,8 @@ def readCube(fname):
     """
 
     def _get(f):
-        l = f.readline().strip().split()
-        return int(l[0]), map(float, l[1:])
+        ll = f.readline().strip().split()
+        return int(ll[0]), map(float, ll[1:])
 
     meta = {}
     with open(fname, "r") as f:

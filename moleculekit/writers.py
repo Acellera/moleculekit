@@ -5,7 +5,6 @@
 #
 import numpy as np
 import os
-from moleculekit.molecule import mol_equal
 from moleculekit.util import ensurelist, sequenceID
 import logging
 import numbers

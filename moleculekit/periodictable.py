@@ -5,6 +5,7 @@
 #
 from collections import namedtuple
 import logging
+import numpy as np
 
 logger = logging.getLogger(__file__)
 
@@ -307,8 +308,6 @@ periodictable = {
 periodictable_by_number = {
     periodictable[el].number: val for el, val in periodictable.items()
 }
-
-import numpy as np
 
 # This of course fails for exotic elements like Bk-Cm Db-Lr Mc-Fl Og-Ts which have similar masses
 _all_elements = np.array([el for el in periodictable])
