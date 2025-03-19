@@ -6,7 +6,6 @@
 import numpy as np
 import logging
 from moleculekit.molecule import Molecule
-import unittest
 
 logger = logging.getLogger(__name__)
 
@@ -195,41 +194,13 @@ def sequenceStructureAlignment(
         alignments = pairwise2.align.globalxx(seqref, seqmol)
 
     alignedstructs, masks = _align_by_sequence_alignment(
-        mol, molidx, ref, refidx, segment_type, alignments, maxalignments, nalignfragment
+        mol,
+        molidx,
+        ref,
+        refidx,
+        segment_type,
+        alignments,
+        maxalignments,
+        nalignfragment,
     )
     return alignedstructs, masks
-
-
-
-class _TestSequenceStructuralAlignment(unittest.TestCase):
-    @classmethod
-    def setUpClass(self):
-        from moleculekit.home import home
-
-        self.home = home(dataDir="test-sequence-alignment")
-
-    def test_align_protein(self):
-        import os
-
-        mol1 = Molecule(os.path.join(self.home, "4OBE.pdb"))
-        mol2 = Molecule(os.path.join(self.home, "6OB2.pdb"))
-        refmol = Molecule(os.path.join(self.home, "4OBE_aligned.pdb"))
-        mol3, _ = sequenceStructureAlignment(
-            mol1, mol2, molsel="protein", refsel="protein"
-        )
-
-        assert np.allclose(refmol.coords, mol3[0].coords, atol=1e-3)
-
-    def test_align_rna(self):
-        import os
-
-        mol1 = Molecule(os.path.join(self.home, "5C45.pdb"))
-        mol2 = Molecule(os.path.join(self.home, "5C45_sim.pdb"))
-        refmol = Molecule(os.path.join(self.home, "5C45_aligned.pdb"))
-        mol3, _ = sequenceStructureAlignment(mol1, mol2)
-
-        assert np.allclose(refmol.coords, mol3[0].coords, atol=1e-3)
-
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)

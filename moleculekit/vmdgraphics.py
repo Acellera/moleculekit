@@ -5,7 +5,6 @@
 #
 import moleculekit.vmdviewer
 import io
-import unittest
 from moleculekit.vmdviewer import getCurrentViewer
 
 

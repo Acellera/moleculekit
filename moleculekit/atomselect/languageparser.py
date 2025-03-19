@@ -1,6 +1,5 @@
 import moleculekit.ply.lex as lex
 import moleculekit.ply.yacc as yacc
-import unittest
 
 # molecule types
 reserved = [

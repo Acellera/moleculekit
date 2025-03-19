@@ -4,7 +4,6 @@
 # No redistribution in whole or part
 #
 import numpy as np
-import unittest
 
 
 def _pp_measure_fit(P, Q):

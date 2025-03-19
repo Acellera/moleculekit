@@ -1,6 +1,3 @@
-import unittest
-
-
 def cdist(coords1, coords2):
     from moleculekit.distance_utils import cdist
     import numpy as np

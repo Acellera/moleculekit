@@ -5,7 +5,6 @@
 #
 import networkx as nx
 import numpy as np
-import unittest
 from moleculekit.tools.moleculechecks import isProteinProtonated, proteinHasBonds
 import logging
 

@@ -10,9 +10,7 @@ except ImportError:
         "Could not import networkx which is necessary for graph alignment. You can install it with `conda install networkx`."
     )
 from moleculekit.util import ensurelist
-from unittest import TestCase
 import numpy as np
-import os
 import logging
 
 logger = logging.getLogger(__name__)

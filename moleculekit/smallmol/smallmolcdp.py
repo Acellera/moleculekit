@@ -1,14 +1,7 @@
 import numpy as np
 import logging
-import unittest
 
 logger = logging.getLogger(__name__)
-
-cdp_installed = True
-try:
-    import CDPL
-except ImportError:
-    cdp_installed = False
 
 
 class SmallMolCDP:

@@ -5,7 +5,6 @@
 #
 from moleculekit.projections.projection import Projection
 import numpy as np
-import unittest
 import logging
 
 logger = logging.getLogger(__name__)

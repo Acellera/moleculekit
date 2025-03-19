@@ -1,10 +1,15 @@
 import pytest
 import os
 import numpy as np
-from moleculekit.smallmol.smallmolcdp import cdp_installed
 from moleculekit.smallmol.smallmol import SmallMol
 from moleculekit.molecule import Molecule
 from glob import glob
+
+cdp_installed = True
+try:
+    import CDPL
+except ImportError:
+    cdp_installed = False
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 

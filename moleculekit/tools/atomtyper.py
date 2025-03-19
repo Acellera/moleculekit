@@ -5,8 +5,6 @@
 #
 import numpy as np
 import logging
-import unittest
-import sys
 
 
 logger = logging.getLogger(__name__)

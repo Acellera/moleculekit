@@ -7,7 +7,6 @@ import numpy as np
 from os import path
 import os
 import shutil
-import unittest
 from subprocess import call
 from moleculekit.util import tempname, natsorted
 from moleculekit.molecule import Molecule

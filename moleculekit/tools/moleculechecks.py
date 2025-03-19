@@ -3,8 +3,6 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
-import unittest
-
 from numpy import pi
 
 

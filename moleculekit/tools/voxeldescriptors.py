@@ -5,9 +5,6 @@
 #
 from moleculekit.util import boundingBox
 import numpy as np
-import os
-import sys
-import unittest
 from functools import lru_cache
 import logging
 

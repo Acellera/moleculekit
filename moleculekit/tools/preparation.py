@@ -4,13 +4,10 @@
 # No redistribution in whole or part
 #
 import logging
-import unittest
 import tempfile
 import numpy as np
-import pandas as pd
 import os
-from moleculekit.molecule import Molecule, mol_equal, UniqueResidueID
-from moleculekit.tools.autosegment import autoSegment2
+from moleculekit.molecule import Molecule, UniqueResidueID
 from moleculekit.util import sequenceID
 
 
