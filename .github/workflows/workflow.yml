@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   test:
-    if: {{ !startsWith(github.event.ref, 'refs/tags/v') }}
+    if: ${{ ! startsWith(github.event.ref, 'refs/tags/v') }}
     uses: ./.github/workflows/test.yml
     secrets: inherit
 
