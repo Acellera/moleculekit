@@ -271,7 +271,7 @@ def _test_mindistances_skip(_mol_skipped):
     ), "Minimum distance calculation with skipping is broken"
 
 
-def _test_reconstruct_contact_map(_mol):
+def _test_reconstruct_contact_map():
     from moleculekit.util import tempname
     from moleculekit.molecule import Molecule
     from moleculekit.projections.metricdistance import (
