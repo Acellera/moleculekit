@@ -16,6 +16,13 @@ dependencies = [
   "tqdm",
   "msgpack",
   "requests",
+  "matplotlib",
+  "rdkit>=2020.09.5",
+  "mdtraj",
+  "propka",
+  # "openbabel>=3.1.1",
+  "pdb2pqr>=3.5.3",
+  "biopython"
 ]
 
 [project.urls]
@@ -52,4 +59,4 @@ norecursedirs = "test-data"
 [tool.cibuildwheel]
 skip = ["pp*"]  # Disable PyPy builds due to Cython
 test-requires = "pytest"
-test-command = "pytest tests/"
+test-command = "pytest {project}/tests"

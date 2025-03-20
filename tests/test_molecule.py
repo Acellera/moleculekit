@@ -99,12 +99,6 @@ def _test_appendingBondsBondtypes():
     assert newmol.bonds.shape[0] == len(newmol.bondtype)
 
 
-def _test_mdtrajWriter(tmp_path):
-    # Testing MDtraj writer
-    m = MOL3PTB.copy()
-    m.write(os.path.join(tmp_path, "test.h5"), "name CA")
-
-
 def _test_uniqueAtomID():
     mol = MOL3PTB.copy()
     uqid = UniqueAtomID.fromMolecule(mol, "resid 20 and name CA")

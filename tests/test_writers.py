@@ -58,6 +58,8 @@ def _test_writers(ext):
 
     if ext == "mmtf":
         pytest.skip("Not supported in tests due to deprecation")
+    if ext == "h5":
+        pytest.skip("Requires mdtraj and extra 'tables' package")
 
     # Skip file-comparing binary filetypes
     # TODO: Remove SDF. Currently skipping it due to date in second line

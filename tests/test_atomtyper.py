@@ -5,6 +5,13 @@ import os
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
+try:
+    from openbabel import pybel
+except ImportError:
+    HAS_OPENBABEL = False
+else:
+    HAS_OPENBABEL = True
+
 
 def _test_preparation():
     from moleculekit.molecule import Molecule, mol_equal
@@ -19,6 +26,7 @@ def _test_preparation():
     assert mol_equal(mol2, ref, exceptFields=("coords",))
 
 
+@pytest.mark.skipif(not HAS_OPENBABEL, reason="Openbabel is not installed")
 @pytest.mark.skipif(
     sys.platform.startswith("win"), reason="Windows OBabel fails at atom typing"
 )
