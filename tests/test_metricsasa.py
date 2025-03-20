@@ -2,6 +2,7 @@ from moleculekit.projections.metricsasa import MetricSasa
 from moleculekit.molecule import Molecule
 import numpy as np
 import pytest
+import sys
 import os
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
@@ -51,6 +52,10 @@ def _test_set_diff_error(_mol):
         )
 
 
+@pytest.mark.skipif(
+    sys.platform.startswith("win"),
+    reason="On Windows the SASA calculation occasionally fails to produce consistent results. Seems like a bug in mdtraj",
+)
 def _test_selection_and_filtering(_mol):
     metr = MetricSasa(mode="atom")
     sasaA_ref = metr.project(_mol.copy())
