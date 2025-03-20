@@ -43,8 +43,8 @@ jobs:
 
       - name: Install moleculekit
         run: |
-          pip install build pytest pytest-xdist uv
-          uv build
+          pip install build pytest pytest-xdist
+          python -m build
           pip install dist/moleculekit-*.whl
 
       - name: List conda environment
@@ -52,7 +52,7 @@ jobs:
 
       - name: Test
         run: |
-          pytest -n 2 ./tests/ --durations=20
+          pytest -n auto ./tests/ --durations=20
         env:
           LOCAL_PDB_REPO: ./tests/pdb/
           SKIP_SPEED_TESTS: True

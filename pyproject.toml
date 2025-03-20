@@ -57,7 +57,7 @@ norecursedirs = "test-data"
 
 
 [tool.cibuildwheel]
-skip = ["pp*"]  # Disable PyPy builds due to Cython
+skip = ["pp*", "win32*"]  # Disable PyPy builds due to Cython. Disable Windows 32 builds due to rdkit not existing
 test-requires = ["pytest", "pytest-xdist"]
 test-command = "pytest -n auto {project}/tests"
-build-frontend = "build[uv]"
+# build-frontend = "build[uv]"
