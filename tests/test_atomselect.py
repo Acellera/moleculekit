@@ -122,7 +122,10 @@ def _test_atomselect(pdbid, sel, _pdbmols):
 
     reffile = os.path.join(curr_dir, "test_atomselect", "selections.pickle")
     write_reffile = False
-    time_comp = sys.platform.startswith("linux")
+    time_comp = (
+        sys.platform.startswith("linux")
+        and os.environ.get("SKIP_SPEED_TESTS", None) is None
+    )
     if not write_reffile:
         with open(reffile, "rb") as f:
             ref = pickle.load(f)

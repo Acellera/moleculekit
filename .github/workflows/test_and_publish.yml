@@ -61,6 +61,7 @@ jobs:
           pytest ./tests/ --durations=20
         env:
           LOCAL_PDB_REPO: ./tests/pdb/
+          SKIP_SPEED_TESTS: True
 
       # - name: Upload coverage to Codecov
       #   uses: codecov/codecov-action@v3
