@@ -1,6 +1,8 @@
-name: Test code and publish package
+name: Test code
 
-on: [push]
+on:
+  workflow_dispatch:
+  workflow_call:
 
 jobs:
   test:

@@ -1,6 +1,8 @@
-name: Build
+name: Build, test and publish
 
-on: [push, pull_request]
+on:
+  workflow_dispatch:
+  workflow_call:
 
 jobs:
   build_wheels:
@@ -34,7 +36,7 @@ jobs:
           LOCAL_PDB_REPO: ./tests/pdb/
           SKIP_SPEED_TESTS: True
 
-      # - uses: actions/upload-artifact@v4
-      #   with:
-      #     name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
-      #     path: ./wheelhouse/*.whl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl

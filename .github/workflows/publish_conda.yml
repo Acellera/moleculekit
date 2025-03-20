@@ -1,0 +1,128 @@
+name: Build conda package
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  deploy_linux:
+    if: startsWith(github.event.ref, 'refs/tags/')
+    needs: test
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.10"]
+        container: ["quay.io/pypa/manylinux_2_28_x86_64"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: "latest"
+          activate-environment: ../deploy-env
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install build deps
+        shell: bash -l {0}
+        run: |
+          git config --global --add safe.directory '*'
+          conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
+          pip install setuptools-scm>=8 toml pyyaml
+
+      - name: Build conda package
+        shell: bash -l {0}
+        run: |
+          python package/moleculekit/insert_placeholder_values.py
+          rattler-build build --recipe ./package/moleculekit/recipe.yaml --output-dir ../pkg/ --no-include-recipe -c acellera -c conda-forge
+
+      - name: Upload to conda
+        shell: bash -l {0}
+        run: |
+          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
+
+  deploy_osx:
+    if: startsWith(github.event.ref, 'refs/tags/')
+    needs: test
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["macos-latest", "macos-13"]
+        python-version: ["3.10"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniconda-version: "latest"
+          activate-environment: ../deploy-env
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install build deps
+        shell: bash -l {0}
+        run: |
+          git config --global --add safe.directory '*'
+          conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
+          pip install setuptools-scm>=8 toml pyyaml
+
+      - name: Build conda package
+        shell: bash -l {0}
+        run: |
+          python package/moleculekit/insert_placeholder_values.py
+          rattler-build build --recipe ./package/moleculekit/recipe.yaml --output-dir ../pkg/ --no-include-recipe -c acellera -c conda-forge
+
+      - name: Upload to conda
+        shell: bash -l {0}
+        run: |
+          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
+
+  windows_build:
+    if: startsWith(github.event.ref, 'refs/tags/')
+    needs: test
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["windows-2019"]
+        python-version: ["3.10"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniconda-version: "latest"
+          activate-environment: ../deploy-env
+          python-version: ${{ matrix.python-version }}
+
+      - name: Add compiler to PATH
+        run: |
+          echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\MSVC\14.16.27023\bin\HostX64\x64\" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+
+      - name: Install build deps
+        shell: bash -l {0}
+        run: |
+          git config --global --add safe.directory '*'
+          conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
+          pip install setuptools-scm>=8 toml pyyaml
+
+      - name: Build conda package
+        shell: bash -l {0}
+        run: |
+          python package/moleculekit/insert_placeholder_values.py
+          rattler-build build --recipe ./package/moleculekit/recipe.yaml --output-dir ../pkg/ --no-include-recipe -c acellera -c conda-forge
+
+      - name: Upload to conda
+        shell: bash -l {0}
+        run: |
+          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
