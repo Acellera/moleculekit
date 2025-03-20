@@ -15,7 +15,6 @@ jobs:
 
   publish_conda:
     if: startsWith(github.event.ref, 'refs/tags/v')
-    needs: publish
     uses: ./.github/workflows/publish_conda.yml
     secrets: inherit
 
