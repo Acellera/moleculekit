@@ -60,3 +60,4 @@ norecursedirs = "test-data"
 skip = ["pp*"]  # Disable PyPy builds due to Cython
 test-requires = ["pytest", "pytest-xdist"]
 test-command = "pytest -n auto {project}/tests"
+build-frontend = "build[uv]"
