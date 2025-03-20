@@ -434,15 +434,11 @@ def _test_connected_components():
 
     mol = Molecule(os.path.join(curr_dir, "test_wrapping", "6X18.psf"))
 
-    g = mol.toGraph()
-    conn_comp = list(nx.connected_components(g))
-
     _, group_mask = getBondedGroups(mol)
-    groups = [set(np.where(group_mask == x)[0]) for x in range(group_mask.max() + 1)]
-    assert len(groups) == len(conn_comp)
-
-    for cc in conn_comp:
-        assert cc in groups
+    expected = np.load(
+        os.path.join(curr_dir, "test_wrapping", "6X18_expected_group_mask.npy")
+    )
+    assert np.array_equal(group_mask, expected)
 
     mol.read(os.path.join(curr_dir, "test_wrapping", "6X18.xtc"))
     mol.wrap("protein and segid P3")
