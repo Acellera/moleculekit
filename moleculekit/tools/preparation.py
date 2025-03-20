@@ -266,7 +266,7 @@ def _pdb2pqr(
         pdblist = drop_water_func(pdblist)
 
     biomolecule, definition, ligand = setup_molecule(pdblist, definition, ligand)
-    biomolecule.set_termini(neutraln, neutralc)
+    biomolecule.set_termini(neutraln=neutraln, neutralc=neutralc)
     biomolecule.update_bonds()
     if clean:
         return None, None, biomolecule
