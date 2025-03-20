@@ -6,8 +6,6 @@ on:
 
 jobs:
   deploy_linux:
-    if: startsWith(github.event.ref, 'refs/tags/')
-    needs: test
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
 
@@ -46,8 +44,6 @@ jobs:
           anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
 
   deploy_osx:
-    if: startsWith(github.event.ref, 'refs/tags/')
-    needs: test
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -86,8 +82,6 @@ jobs:
           anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
 
   windows_build:
-    if: startsWith(github.event.ref, 'refs/tags/')
-    needs: test
     runs-on: ${{ matrix.os }}
 
     strategy:
