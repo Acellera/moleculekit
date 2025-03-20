@@ -1,10 +1,11 @@
-include LICENSE
-include moleculekit/logging.ini
-include moleculekit/vmd_wrapper
-
-recursive-include moleculekit/tmalign/include *.h
-recursive-include moleculekit/fileformats/xtc/include *.h
-recursive-include moleculekit/fileformats/dcd/include *.h
-recursive-include moleculekit/fileformats/binpos/include *.h
-
+prune doc
+prune docker
+prune molkitten
 prune package
+prune tests
+prune test_wasm
+prune tutorials
+exclude update_license_header.py
+exclude Makefile
+exclude extra_requirements.txt
+exclude codecov.yml

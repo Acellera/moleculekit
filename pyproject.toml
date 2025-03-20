@@ -24,10 +24,12 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 include = ["moleculekit*"]
-namespaces = false
 
 [tool.setuptools.package-data]
 "moleculekit.share" = ["*"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["*.c", "*.cpp", "*.h", "*.pyx", "*.pxd", ".gitignore"]
 
 [tool.setuptools_scm]
 
