@@ -60,4 +60,6 @@ norecursedirs = "test-data"
 skip = ["pp*", "*win32"]  # Disable PyPy builds due to Cython. Disable Windows 32 builds due to rdkit not existing
 test-requires = ["pytest", "pytest-xdist"]
 test-command = "pytest -n auto {project}/tests"
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
 # build-frontend = "build[uv]"
