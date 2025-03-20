@@ -1,0 +1,61 @@
+name: Test code and publish package
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "macos-latest", "macos-13", "windows-2019"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    defaults: # Needed for conda
+      run:
+        shell: bash -l {0}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: true
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+          channels: acellera,conda-forge,defaults
+
+      - name: Lint with flake8
+        run: |
+          pip install flake8 coverage
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      # - name: Install cdpkit
+      #   # if: ${{ matrix.os == 'ubuntu-latest' }}
+      #   run: |
+      #     # for testing CDPKit SmallMol
+      #     pip install CDPKit
+
+      - name: Install moleculekit
+        run: |
+          pip install build pytest pytest-xdist
+          python -m build
+          pip install dist/moleculekit-*.whl
+
+      - name: List conda environment
+        run: conda list
+
+      - name: Test
+        run: |
+          pytest -n auto ./tests/ --durations=20
+        env:
+          LOCAL_PDB_REPO: ./tests/pdb/
+          SKIP_SPEED_TESTS: True
+
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v3
