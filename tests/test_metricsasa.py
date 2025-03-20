@@ -59,7 +59,7 @@ def _test_selection_and_filtering(_mol):
     sasaA = metr.project(_mol.copy())
     assert np.allclose(
         sasaA, sasaA_ref[:, [20]], atol=1e-2
-    ), "SASA atom selection failed to give same results as without selection"
+    ), f"SASA atom selection failed to give same results as without selection. Max diff: {np.abs(sasaA-sasaA_ref[:, [20]]).max()}"
 
     metr = MetricSasa(
         mode="atom", sel="index 20", filtersel="index 20"
