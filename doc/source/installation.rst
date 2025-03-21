@@ -2,18 +2,17 @@ Installation
 ============
 
 You can install MoleculeKit either using pip or conda.
-Various methods of MoleculeKit have additional dependencies which are not installed by default to keep the package
-lighter and keep it installable by pip. If you encounter errors with missing libraries you can install these manually to resolve the issues.
 
-We generally advise to use a conda installation regardless if installing MoleculeKit over pip or conda
-as well as creating a separate conda environment for the installation to avoid conflicts with other libraries
-or python version. If you however prefer to install it to your system python you can ignore the following two steps
-related to conda installation and environments at your own risk.
+We generally advise to use a conda or `uv` installation regardless if installing MoleculeKit over pip or conda
+as well as creating a separate environment for the installation to avoid conflicts with other libraries
+or python versions. 
+If you however prefer to install MoleculeKit to your system python you can ignore the following steps
+related to Miniforge/UV installation and environments at your own risk.
 
-Downloading miniconda
----------------------
-Miniconda is a lightweight installer of conda containing just a few basic python libraries.
-Download miniconda from the following URL https://docs.conda.io/en/latest/miniconda.html
+Installing Miniforge
+--------------------
+Miniforge is a lightweight installer of the conda package manager.
+Download Miniforge from the following URL https://github.com/conda-forge/miniforge?tab=readme-ov-file#install
 and install it following the given instructions.
 
 Create a conda environment
@@ -32,6 +31,29 @@ Install moleculekit with conda
 ------------------------------
 ::
 
-   conda install moleculekit python=3.9 -c acellera -c conda-forge
+   conda install moleculekit -c acellera -c conda-forge
 
-This will install moleculekit alongside python 3.9 version which is the currently developed version of moleculekit.
+
+Install moleculekit with pip
+------------------------------
+::
+
+   conda install python=3.10
+   pip install moleculekit
+
+
+Using MoleculeKit with uv
+-------------------------
+
+Alternatively you can install `uv` to manage your python installations and environments.
+Follow the installation instructions at https://github.com/astral-sh/uv?tab=readme-ov-file#installation
+
+`uv` environments are stored in the filesystem in project directories. Let's create here a project directory 
+called `myproject` and install moleculekit within it with the following commands::
+
+::
+
+   uv init myproject
+   cd myproject
+   uv add moleculekit ipython
+   uv run ipython

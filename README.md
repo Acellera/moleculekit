@@ -6,45 +6,30 @@ A molecule manipulation library
 
 # Getting started
 
-We recommend installing Miniconda on your machine to better manage python packages and environments.
-
-You can install moleculekit either in the "base" conda environment or in a new conda environment. We recommend the second.
-
 ### Install it into the base conda environment
+
+#### With pip
+
+```
+pip install moleculekit
+```
 
 #### With conda
 
 [Installation Instructions](https://software.acellera.com/moleculekit/installation.html)
 
-#### With pip
-
-The pip version of moleculekit is VERY limited and not officially supported. Use at your own risk.
-
-```
-(base) user@computer:~$ pip install moleculekit
-```
-
-### Optional dependencies of moleculekit
-
-Moleculekit has a small number of optional dependencies which are needed for some of it's functionalities. They were not added to the default dependencies to keep moleculekit a fast and small installation and to avoid unnecessary conflicts with other software. However if you want to leverage all of it's functionality you can install the rest of the dependencies with the following command:
-
-```
-(moleculekit) user@computer:~$ wget https://raw.githubusercontent.com/Acellera/moleculekit/master/extra_requirements.txt
-(moleculekit) user@computer:~$ conda install --file extra_requirements.txt -c acellera
-```
-
 ### Using moleculekit in ipython
 
-Install ipython in the correct conda enviroment using the following command. If you have installed the extra dependencies as above, you can skip this step since it already installs ipython.
+Install ipython in the correct conda enviroment using the following command.
 
 ```
-(moleculekit) user@computer:~$ conda install ipython
+pip install ipython
 ```
 
 Now you can start an ipython console with
 
 ```
-(moleculekit) user@computer:~$ ipython
+ipython
 ```
 
 In the ipython console you can now import any of the modules of moleculekit and use it as normal.

@@ -18,6 +18,11 @@ jobs:
     uses: ./.github/workflows/publish_conda.yml
     secrets: inherit
 
+  publish_pyodide:
+    if: startsWith(github.event.ref, 'refs/tags/v')
+    uses: ./.github/workflows/pyodide_build.yml
+    secrets: inherit
+
   docs:
     if: startsWith(github.event.ref, 'refs/tags/')
     needs: publish
