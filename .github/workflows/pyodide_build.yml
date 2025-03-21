@@ -26,23 +26,31 @@ jobs:
           path: ./wheelhouse/*.whl
           if-no-files-found: error
 
-  # Push to https://anaconda.org/scientific-python-nightly-wheels/numpy
-  # WARNING: this job will overwrite any existing WASM wheels.
   upload-wheels:
-    name: Upload WASM wheels to PyPI
+    name: Upload WASM wheels to Anaconda
     runs-on: ubuntu-22.04
     permissions: {}
     needs: [build-wasm-emscripten]
 
     steps:
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniconda-version: "latest"
+          activate-environment: ../deploy-env
+          python-version: "3.13"
+
+      - name: Install anaconda-client
+        shell: bash -l {0}
+        run: |
+          conda install anaconda-client -c conda-forge
+
       - name: Download all the dists
         uses: actions/download-artifact@v4
         with:
           path: dist/
           merge-multiple: true
 
-      - name: Publish distribution 📦 to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PUBLIC_PYPI_API_TOKEN }}
-          skip_existing: true
+      - name: Upload wheel to conda
+        shell: bash -l {0}
+        run: |
+          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera dist/moleculekit-*.whl
