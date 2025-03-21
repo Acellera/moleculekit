@@ -1,2 +1,2 @@
 %PYTHON% -m build -v -w --no-isolation
-%PYTHON% -m pip install %SRC_DIR%\dist\moleculekit-*.whl
+for %%F in (dist\*.whl) do %PYTHON% -m pip install "%%F"
