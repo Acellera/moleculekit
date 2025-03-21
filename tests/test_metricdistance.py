@@ -6,6 +6,13 @@ import os
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
+try:
+    import matplotlib
+except ImportError:
+    HAS_MATPLOTLIB = False
+else:
+    HAS_MATPLOTLIB = True
+
 
 @pytest.fixture(scope="module")
 def _mol():
@@ -271,6 +278,7 @@ def _test_mindistances_skip(_mol_skipped):
     ), "Minimum distance calculation with skipping is broken"
 
 
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason="Matplotlib is not installed")
 def _test_reconstruct_contact_map():
     from moleculekit.util import tempname
     from moleculekit.molecule import Molecule

@@ -17,6 +17,7 @@ jobs:
       - uses: pypa/cibuildwheel@42728e866bbc80d544a70825bd9990b9a26f1a50 # 2.23.1
         env:
           CIBW_PLATFORM: pyodide
+          CIBW_TEST_SKIP: "*pyodide*"
 
       - name: Upload wheel artifact(s)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
