@@ -6,7 +6,7 @@ A molecule manipulation library
 
 # Getting started
 
-### Install it into the base conda environment
+### Installing moleculekit
 
 #### With pip
 
