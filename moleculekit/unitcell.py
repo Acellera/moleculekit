@@ -174,6 +174,17 @@ def box_vectors_to_lengths_and_angles(a, b, c):
             "vectors must be 1d or 2d (for a vectorized "
             "operation on multiple frames)",
         )
+    if np.all(a == 0) or np.all(b == 0) or np.all(c == 0):
+        nf = a.shape[:-1]
+        return (
+            np.zeros(nf),
+            np.zeros(nf),
+            np.zeros(nf),
+            np.full(nf, 90.0),
+            np.full(nf, 90.0),
+            np.full(nf, 90.0),
+        )
+
     last_dim = a.ndim - 1
 
     a_length = np.sqrt(np.sum(a * a, axis=last_dim))
