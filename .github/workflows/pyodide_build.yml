@@ -47,6 +47,7 @@ jobs:
       - name: Download all the dists
         uses: actions/download-artifact@v4
         with:
+          pattern: "*_wasm32"
           path: dist/
           merge-multiple: true
 
