@@ -2887,14 +2887,15 @@ def NETCDFread(
             "variables in the file were %s" % _handle.variables.keys()
         )
 
+    time = None
     step = None
+    if "step" in _handle.variables:
+        step = _handle.variables["step"][frame_slice]
     if "time" in _handle.variables:
         time = _handle.variables["time"][frame_slice]
-        if len(time) > 1:
+        if len(time) > 1 and step is None:
             timestep = time[1] - time[0]
             step = time / timestep
-    else:
-        time = None
 
     if "cell_lengths" in _handle.variables:
         cell_lengths = _handle.variables["cell_lengths"][frame_slice].T
@@ -2957,7 +2958,7 @@ def DCDread(filename, frame=None, topoloc=None, stride=None, atom_indices=None):
         istart, nsavc, delta = f.read_header()
         # Timestep conversion factor found in OpenMM
         delta = np.round(delta * 0.04888821, decimals=8)
-        steps = np.arange(istart, (nsavc * xyz.shape[0]) + 1, nsavc)
+        steps = np.arange(istart, (nsavc * xyz.shape[0]) + istart, nsavc)
         if stride is not None:
             steps = steps[::stride]
 
@@ -3004,8 +3005,7 @@ def TRRread(filename, frame=None, topoloc=None, stride=None, atom_indices=None):
     box = np.vstack((a_length, b_length, c_length)) * 10  # nm to Angstroms
     boxangles = np.vstack((alpha, beta, gamma))
 
-    step = None
-    if len(time) > 1:
+    if len(time) > 1 and (step is None or len(step) != len(time)):
         timestep = time[1] - time[0]
         step = time / timestep
     time *= 1000  # ps to fs

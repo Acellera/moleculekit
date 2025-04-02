@@ -738,6 +738,16 @@ def NETCDFwrite(mol, filename):
         warn_on_cast=False,
         add_newaxis_on_deficient_ndim=True,
     )
+    step = ensure_type(
+        mol.step,
+        np.int32,
+        1,
+        "step",
+        length=n_frames,
+        can_be_none=True,
+        warn_on_cast=False,
+        add_newaxis_on_deficient_ndim=True,
+    )
     cell_lengths = ensure_type(
         mol.box.T,
         np.float64,
@@ -832,6 +842,8 @@ def NETCDFwrite(mol, filename):
         # Define coordinates and snapshot times.
         frame_times = ncfile.createVariable("time", "f", ("frame",))
         setattr(frame_times, "units", "picosecond")
+        frame_steps = ncfile.createVariable("step", "i", ("frame",))
+        setattr(frame_steps, "units", "step")
 
     frame_coordinates = ncfile.createVariable(
         "coordinates", "f", ("frame", "atom", "spatial")
@@ -852,6 +864,8 @@ def NETCDFwrite(mol, filename):
         ncfile.variables["coordinates"][frame_slice, :, :] = coordinates
         if time is not None and set_time:
             ncfile.variables["time"][frame_slice] = time
+        if step is not None and set_time:
+            ncfile.variables["step"][frame_slice] = step
         if cell_lengths is not None:
             ncfile.variables["cell_lengths"][frame_slice, :] = cell_lengths
         if cell_angles is not None:
@@ -866,6 +880,8 @@ def NETCDFwrite(mol, filename):
     missing = None
     if time is None and "time" in ncfile.variables:
         missing = "time"
+    elif step is None and "step" in ncfile.variables:
+        missing = "step"
     elif cell_angles is None and "cell_angles" in ncfile.variables:
         missing = "cell_angles"
     elif cell_lengths is None and "cell_lengths" in ncfile.variables:
