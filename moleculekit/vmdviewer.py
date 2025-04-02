@@ -10,7 +10,6 @@ import platform
 import queue
 import time
 import os
-import sys
 from moleculekit.util import string_to_tempfile
 import numpy as np
 import tempfile
@@ -24,7 +23,7 @@ _viewers = np.empty(0, dtype=object)
 
 def _enqueue_output(obj, vmd, queue):
     while vmd.poll() is None:
-        line = vmd.stdout.readline()
+        _ = vmd.stdout.readline()
     # print("READIN: [" + line.decode("ascii") + "]", end="" );
     # 			queue.put(line.decode("ascii"))
     # 	print( "Process finished" )

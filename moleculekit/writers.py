@@ -608,7 +608,7 @@ def SDFwrite(mol, filename):
 
         for i in range(mol.bonds.shape[0]):
             fh.write(
-                f"{mol.bonds[i, 0]+1:>3}{mol.bonds[i, 1]+1:>3}  {bondmap[mol.bondtype[i]]}  0  0  0  0\n"
+                f"{mol.bonds[i, 0] + 1:>3}{mol.bonds[i, 1] + 1:>3}  {bondmap[mol.bondtype[i]]}  0  0  0  0\n"
             )
 
         if len(charges):
