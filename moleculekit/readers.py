@@ -2523,15 +2523,14 @@ def SDFread(filename, frame=None, topoloc=None, mol_idx=None):
             "MoleculeKit will only read the first molecule from the SDF file."
         )
 
+    v3000 = False
     with openFileOrStringIO(filename, "r") as f:
         curr_mol = 0
         lines = []
         for line in f:
             lines.append(line)
             if "V3000" in line:
-                raise RuntimeError(
-                    "Moleculekit does not support parsing V3000 SDF files yet."
-                )
+                v3000 = True
             if line.strip() == "$$$$":
                 if curr_mol == mol_idx:
                     break
@@ -2544,59 +2543,117 @@ def SDFread(filename, frame=None, topoloc=None, mol_idx=None):
                 f"SDF file contains only {curr_mol} molecules. Cannot read the requested mol_idx {mol_idx}"
             )
 
-        topo = Topology()
-        coords = []
-        mol_start = 0
-
-        molname = lines[0].strip().split()
-        if len(molname):
-            molname = molname[0]
-        if len(molname) == 3:
-            resname = molname[:3].upper()
+        if v3000:
+            topo, coords = parseV3000SDF(lines, chargemap, bondmap)
         else:
-            resname = "MOL"
+            topo = Topology()
+            coords = []
+            mol_start = 0
 
-        n_atoms = int(lines[mol_start + 3][:3])
-        n_bonds = int(lines[mol_start + 3][3:6])
+            molname = lines[0].strip().split()
+            if len(molname):
+                molname = molname[0]
+            if len(molname) == 3:
+                resname = molname[:3].upper()
+            else:
+                resname = "MOL"
 
-        coord_start = mol_start + 4
-        bond_start = coord_start + n_atoms
-        bond_end = bond_start + n_bonds
-        for n in range(coord_start, bond_start):
-            line = lines[n]
-            coords.append(
-                [
-                    float(line[:10].strip()),
-                    float(line[10:20].strip()),
-                    float(line[20:30].strip()),
-                ]
-            )
-            atom_symbol = line[31:34].strip()
-            topo.record.append("HETATM")
-            topo.element.append(atom_symbol)
-            topo.name.append(atom_symbol)
-            topo.serial.append(n - coord_start)
-            topo.formalcharge.append(chargemap[line[36:39].strip()])
-            topo.resname.append(resname)
+            n_atoms = int(lines[mol_start + 3][:3])
+            n_bonds = int(lines[mol_start + 3][3:6])
 
-        for n in range(bond_start, bond_end):
-            line = lines[n]
-            idx1 = line[:3].strip()
-            idx2 = line[3:6].strip()
-            bond_type = line[6:9].strip()
-            topo.bonds.append([int(idx1) - 1, int(idx2) - 1])
-            topo.bondtype.append(bondmap[bond_type])
+            coord_start = mol_start + 4
+            bond_start = coord_start + n_atoms
+            bond_end = bond_start + n_bonds
+            for n in range(coord_start, bond_start):
+                line = lines[n]
+                coords.append(
+                    [
+                        float(line[:10].strip()),
+                        float(line[10:20].strip()),
+                        float(line[20:30].strip()),
+                    ]
+                )
+                atom_symbol = line[31:34].strip()
+                topo.record.append("HETATM")
+                topo.element.append(atom_symbol)
+                topo.name.append(atom_symbol)
+                topo.serial.append(n - coord_start)
+                topo.formalcharge.append(chargemap[line[36:39].strip()])
+                topo.resname.append(resname)
 
-        for line in lines[bond_end:]:
-            if line.strip() == "$$$$":
-                break
-            if line.startswith("M  CHG"):  # These charges are more correct
-                pairs = line.strip().split()[3:]
-                for cc in range(0, len(pairs), 2):
-                    topo.formalcharge[int(pairs[cc]) - 1] = int(pairs[cc + 1])
+            for n in range(bond_start, bond_end):
+                line = lines[n]
+                idx1 = line[:3].strip()
+                idx2 = line[3:6].strip()
+                bond_type = line[6:9].strip()
+                topo.bonds.append([int(idx1) - 1, int(idx2) - 1])
+                topo.bondtype.append(bondmap[bond_type])
+
+            for line in lines[bond_end:]:
+                if line.strip() == "$$$$":
+                    break
+                if line.startswith("M  CHG"):  # These charges are more correct
+                    pairs = line.strip().split()[3:]
+                    for cc in range(0, len(pairs), 2):
+                        topo.formalcharge[int(pairs[cc]) - 1] = int(pairs[cc + 1])
 
     traj = Trajectory(coords=np.vstack(coords))
     return MolFactory.construct(topo, traj, filename, frame)
+
+
+def parseV3000SDF(lines, chargemap, bondmap):
+    topo = Topology()
+    coords = []
+
+    molname = lines[0].strip().split()
+    if len(molname):
+        molname = molname[0]
+    if len(molname) == 3:
+        resname = molname[:3].upper()
+    else:
+        resname = "MOL"
+
+    section = None
+    for line in lines[4:]:
+        line = line.strip()
+        if line == "$$$$":
+            break
+        if "v30 end" in line.lower() or "m  end" in line.lower():
+            section = None
+            continue
+        if "begin ctab" in line.lower():
+            section = "ctab"
+            continue
+        if "begin atom" in line.lower():
+            section = "atom"
+            continue
+        if "begin bond" in line.lower():
+            section = "bond"
+            continue
+
+        if section is None:
+            continue
+        if section == "ctab":
+            # M  V30 COUNTS 49 53 0 0 0
+            if "v30 counts" in line.lower():
+                n_atoms, n_bonds = map(int, line.split()[3:5])
+        if section == "atom":
+            # M  V30 1 C 42.4990 45.8550 38.9350 0
+            pieces = line.split()[2:]
+            topo.record.append("HETATM")
+            topo.element.append(pieces[1])
+            topo.name.append(pieces[1])
+            topo.serial.append(int(pieces[0]))
+            topo.formalcharge.append(chargemap[pieces[5]])
+            topo.resname.append(resname)
+            coords.append([float(pieces[2]), float(pieces[3]), float(pieces[4])])
+        if section == "bond":
+            # M  V30 bond_idx bond_type atom1 atom2
+            pieces = line.split()[3:]
+            topo.bonds.append([int(pieces[1]) - 1, int(pieces[2]) - 1])
+            topo.bondtype.append(bondmap[pieces[0]])
+
+    return topo, coords
 
 
 def sdf_generator(sdffile):
@@ -2884,29 +2941,40 @@ def NETCDFread(
 
 
 def DCDread(filename, frame=None, topoloc=None, stride=None, atom_indices=None):
-    from moleculekit.dcd import load_dcd
+    from moleculekit.fileformats.utils import cast_indices
+    from moleculekit.dcd import DCDTrajectoryFile
 
-    xyz, cell_lengths, cell_angles = load_dcd(
-        filename, stride=stride, atom_indices=atom_indices, frame=frame
-    )
+    atom_indices = cast_indices(atom_indices)
+    with DCDTrajectoryFile(str(filename)) as f:
+        if frame is not None:
+            f.seek(frame)
+            n_frames = 1
+        else:
+            n_frames = None
+        xyz, cell_lengths, cell_angles = f.read(
+            n_frames=n_frames, stride=stride, atom_indices=atom_indices
+        )
+        istart, nsavc, delta = f.read_header()
+        # Timestep conversion factor found in OpenMM
+        delta = np.round(delta * 0.04888821, decimals=8)
+        steps = np.arange(istart, (nsavc * xyz.shape[0]) + 1, nsavc)
+        if stride is not None:
+            steps = steps[::stride]
+
     xyz = np.transpose(xyz, (1, 2, 0))
     if cell_lengths is not None:
         cell_lengths = cell_lengths.T
     if cell_angles is not None:
         cell_angles = cell_angles.T
 
-    if stride is None:
-        stride = 1
-    initial = 0
-    time = (stride * np.arange(xyz.shape[2])) + initial
     return MolFactory.construct(
         None,
         Trajectory(
             coords=xyz,
             box=cell_lengths,
             boxangles=cell_angles,
-            step=range(xyz.shape[2]),
-            time=time * 1000,  # ps to fs
+            step=steps,
+            time=steps * delta * 1000,  # ps to fs
         ),
         filename,
         frame,

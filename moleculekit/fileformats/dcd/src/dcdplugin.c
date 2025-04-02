@@ -1144,13 +1144,11 @@ void close_file_read(dcdhandle *v)
 }
 
 dcdhandle *open_dcd_write(const char *path, const char *filetype, const int natoms,
-                          const int with_unitcell)
+                          const int with_unitcell, const int istart, const int nsavc, const double delta)
 {
   dcdhandle *dcd;
   fio_fd fd;
   int rc;
-  int istart, nsavc;
-  double delta;
   int charmm;
 
   if (fio_open(path, FIO_WRITE, &fd) < 0)
@@ -1162,10 +1160,6 @@ dcdhandle *open_dcd_write(const char *path, const char *filetype, const int nato
   dcd = (dcdhandle *)malloc(sizeof(dcdhandle));
   memset(dcd, 0, sizeof(dcdhandle));
   dcd->fd = fd;
-
-  istart = 0;  /* starting timestep of DCD file                  */
-  nsavc = 1;   /* number of timesteps between written DCD frames */
-  delta = 1.0; /* length of a timestep                           */
 
   charmm = DCD_IS_CHARMM; /* charmm-formatted DCD file                */
   if (with_unitcell)

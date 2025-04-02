@@ -201,7 +201,20 @@ cdef class DCDTrajectoryFile:
         free(self.filename)
         self.close()
 
-    def _initialize_write(self, int n_atoms, int with_unitcell):
+    def read_header(self):
+        """
+        Returns
+        -------
+        istart : int
+            The starting step
+        nsavc : int
+            The number of steps between each saved frame
+        delta : float
+            The timestep of the simulation
+        """
+        return self.fh.istart, self.fh.nsavc, self.fh.delta
+
+    def _initialize_write(self, int n_atoms, int with_unitcell, int istart, int nsavc, double delta):
         """We don't actually want to open the dcd file during write mode
         until we know how many atoms the user wants to save. so this
         is delayed until the first call to write()
@@ -210,7 +223,7 @@ cdef class DCDTrajectoryFile:
 
         self.n_atoms = n_atoms
         self.with_unitcell = with_unitcell
-        self.fh = open_dcd_write(self.filename, "dcd", self.n_atoms, with_unitcell)
+        self.fh = open_dcd_write(self.filename, "dcd", self.n_atoms, with_unitcell, istart, nsavc, delta)
         if self.fh is NULL:
             raise IOError('There was an error opening the file: %s' % self.filename)
         self.is_open = True
@@ -435,7 +448,7 @@ cdef class DCDTrajectoryFile:
         # If we got some other status, thats a "real" error.
         raise IOError("Error: %s", ERROR_MESSAGES(status))
 
-    def write(self, xyz, cell_lengths=None, cell_angles=None):
+    def write(self, xyz, cell_lengths=None, cell_angles=None, istart=0, nsavc=1, delta=1.0):
         """write(xyz, cell_lengths=None, cell_angles=None)
 
         Write one or more frames of data to the DCD file
@@ -453,6 +466,12 @@ cdef class DCDTrajectoryFile:
             Organized analogously to cell_lengths. Gives the alpha, beta and
             gamma angles respectively. By convention for
             this trajectory format, the angles should be in units of degrees.
+        istart : int, optional
+            The starting step
+        nsavc : int, optional
+            The number of steps between written frames
+        delta : float, optional
+            The time-step of the simulation.
         """
         if str(self.mode) != 'w':
             raise ValueError('write() is only available when the file is opened in mode="w"')
@@ -478,7 +497,7 @@ cdef class DCDTrajectoryFile:
                                   warn_on_cast=False)
 
         if self._needs_write_initialization:
-            self._initialize_write(xyz.shape[1], (cell_lengths is not None) and (cell_angles is not None))
+            self._initialize_write(xyz.shape[1], (cell_lengths is not None) and (cell_angles is not None), istart, nsavc, delta)
         else:
             if not self.n_atoms == xyz.shape[1]:
                 raise ValueError('Number of atoms doesnt match')

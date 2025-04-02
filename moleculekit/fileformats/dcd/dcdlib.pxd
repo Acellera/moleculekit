@@ -23,7 +23,7 @@ cdef extern from "include/dcdplugin.h":
     int read_next_timestep(dcdhandle *v, int natoms, molfile_timestep_t *ts)
     void close_file_read(dcdhandle *v)
 
-    dcdhandle* open_dcd_write(const char *path, const char *filetype, const int natoms, const int with_unitcell)
+    dcdhandle* open_dcd_write(const char *path, const char *filetype, const int natoms, const int with_unitcell, const int istart, const int nsavc, const double delta)
     int write_timestep(dcdhandle *v, molfile_timestep_t *ts)
     void close_file_write(dcdhandle *v)
     int dcd_nsets(dcdhandle* v)

@@ -666,8 +666,25 @@ def DCDwrite(mol, filename):
     else:
         boxangles = np.zeros((n_frames, 3), dtype=np.float32)
 
+    try:
+        istart = int(mol.step[0])
+        nsavc = int(mol.step[1] - mol.step[0])
+        fstep = mol.fstep * 1000  # ns to ps
+        delta = fstep / nsavc / 0.04888821  # Conversion factor found in OpenMM
+    except Exception:
+        istart = 0
+        nsavc = 1
+        delta = 1.0
+
     with DCDTrajectoryFile(filename, "w") as fh:
-        fh.write(xyz, cell_lengths=box, cell_angles=boxangles)
+        fh.write(
+            xyz,
+            cell_lengths=box,
+            cell_angles=boxangles,
+            istart=istart,
+            nsavc=nsavc,
+            delta=delta,
+        )
 
 
 def BINPOSwrite(mol, filename):
