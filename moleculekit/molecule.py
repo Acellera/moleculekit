@@ -364,7 +364,7 @@ class Molecule(object):
         "boxangles": np.float32,
         "formalcharge": np.int32,
         "virtualsite": bool,
-        "step": np.uint32,
+        "step": np.uint64,
         "time": np.float64,
     }
 
