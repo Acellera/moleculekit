@@ -1558,7 +1558,7 @@ def XTCread(filename, frame=None, topoloc=None):
     if np.size(coords, 0) == 0:
         raise RuntimeError(f"Malformed XTC file. No atoms read from: {filename}")
 
-    time = np.array(time, dtype=Molecule._dtypes["time"])
+    time = time.astype(Molecule._dtypes["time"])
     coords *= 10.0  # Convert from nm to Angstrom
     boxvectors *= 10.0  # Convert from nm to Angstrom
     time *= 1e3  # Convert from ps to fs. This seems to be ACEMD3 specific. GROMACS writes other units in time
@@ -2946,7 +2946,8 @@ def NETCDFread(
     _handle.close()  # Close NETCDF file handler
 
     # Convert to float64 before multiplying by 1000 to avoid precision loss
-    time = time.astype(np.float64)
+    if time is not None:
+        time = time.astype(np.float64) * 1000  # ps to fs
     return MolFactory.construct(
         None,
         Trajectory(
@@ -2954,7 +2955,7 @@ def NETCDFread(
             box=cell_lengths,
             boxangles=cell_angles,
             step=step,
-            time=time * 1000 if time is not None else time,  # ps to fs
+            time=time,
         ),
         filename,
         frame,

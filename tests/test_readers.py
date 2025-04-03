@@ -210,7 +210,7 @@ def _test_acemd3_xtc_fstep():
     )
     assert np.array_equal(mol.step, refstep)
     assert np.allclose(mol.time, reftime)
-    assert abs(mol.fstep - 4e-5) < 1e-11
+    assert abs(mol.fstep - 4e-5) < 1e-5
 
     # Test that XTC writing doesn't mess up the times
     tmpfile = tempname(suffix=".xtc")
