@@ -487,3 +487,10 @@ def _test_atomselect():
     sel = mol.atomselect(None, indexes=True)
     assert sel.dtype == np.uint32
     assert np.array_equal(sel, np.arange(mol.numAtoms))
+
+
+def _test_large_time_fstep():
+    mol = Molecule().empty(10)
+    mol.time = np.arange(1e15, 1.000000001e15, 4, dtype=Molecule._dtypes["time"])
+    mol.fileloc = ["x"] * mol.time.shape[0]
+    assert mol.fstep == 4e-6

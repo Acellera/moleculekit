@@ -155,27 +155,27 @@ class Trajectory(object):
 
             nframes = self.numFrames
             if box is None:
-                self.box = np.zeros((3, nframes), np.float32)
+                self.box = np.zeros((3, nframes), Molecule._dtypes["box"])
             if boxangles is None:
-                self.boxangles = np.zeros((3, nframes), np.float32)
+                self.boxangles = np.zeros((3, nframes), Molecule._dtypes["boxangles"])
             if step is None:
-                self.step = np.arange(nframes, dtype=int)
+                self.step = np.arange(nframes, dtype=Molecule._dtypes["step"])
             if time is None:
-                self.time = np.zeros(nframes, dtype=np.float32)
+                self.time = np.zeros(nframes, dtype=Molecule._dtypes["time"])
         if box is not None:
-            self.box = box
+            self.box = np.array(box, dtype=Molecule._dtypes["box"])
             if boxangles is None:
                 raise ValueError("boxangles must be provided if box is provided")
         if boxangles is not None:
-            self.boxangles = boxangles
+            self.boxangles = np.array(boxangles, dtype=Molecule._dtypes["boxangles"])
             if box is None:
                 raise ValueError("box must be provided if boxangles is provided")
         if fileloc is not None:
             self.fileloc = fileloc
         if step is not None:
-            self.step = step
+            self.step = np.array(step, dtype=Molecule._dtypes["step"])
         if time is not None:
-            self.time = time
+            self.time = np.array(time, dtype=Molecule._dtypes["time"])
 
     @property
     def numFrames(self):
@@ -410,25 +410,27 @@ class MolFactory(object):
                 setattr(traj, field, np.ascontiguousarray(getattr(traj, field)))
 
         if len(traj.coords):
-            mol.coords = traj.coords
+            mol.coords = np.array(traj.coords, dtype=Molecule._dtypes["coords"])
 
         if traj.box is None:
             mol.box = np.zeros((3, 1), dtype=Molecule._dtypes["box"])
         else:
-            mol.box = np.array(traj.box)
+            mol.box = np.array(traj.box, dtype=Molecule._dtypes["box"])
             if mol.box.ndim == 1:
                 mol.box = mol.box[:, np.newaxis]
 
         if traj.boxangles is None:
             mol.boxangles = np.zeros((3, 1), dtype=Molecule._dtypes["boxangles"])
         else:
-            mol.boxangles = np.array(traj.boxangles)
+            mol.boxangles = np.array(
+                traj.boxangles, dtype=Molecule._dtypes["boxangles"]
+            )
             if mol.boxangles.ndim == 1:
                 mol.boxangles = mol.boxangles[:, np.newaxis]
 
         # mol.fileloc = traj.fileloc
-        mol.step = np.hstack(traj.step).astype(int)
-        mol.time = np.hstack(traj.time)
+        mol.step = np.hstack(traj.step).astype(Molecule._dtypes["step"])
+        mol.time = np.hstack(traj.time).astype(Molecule._dtypes["time"])
 
         if ext in _TRAJECTORY_READERS and frame is None and len(traj.coords):
             # Writing hidden index file containing number of frames in trajectory file
@@ -1251,7 +1253,7 @@ def PDBread(
         ]
 
     if len(topo.bonds):
-        topo.bonds = np.array(topo.bonds, dtype=np.uint32)
+        topo.bonds = np.array(topo.bonds, dtype=Molecule._dtypes["bonds"])
         badidx = ~np.all(np.isin(topo.bonds, topo.serial), axis=1)
         if np.any(badidx):
             # Some PDBs have bonds to non-existing serials... go figure
@@ -1259,7 +1261,9 @@ def PDBread(
             logger.info(
                 f"Discarded {np.sum(badidx)} bonds to non-existing indexes in the PDB file."
             )
-        topo.bonds = np.array(mapserials[topo.bonds[:]], dtype=np.uint32)
+        topo.bonds = np.array(
+            mapserials[topo.bonds[:]], dtype=Molecule._dtypes["bonds"]
+        )
 
     # If no segid was read, use the TER rows to define segments
     if len(topo.segid) and np.all(np.array(topo.segid) == "") and currter != 0:
@@ -1559,9 +1563,9 @@ def XTCread(filename, frame=None, topoloc=None):
     time *= 1e3  # Convert from ps to fs. This seems to be ACEMD3 specific. GROMACS writes other units in time
     nframes = coords.shape[2]
     if len(step) != nframes or np.sum(step) == 0:
-        step = np.arange(nframes)
+        step = np.arange(nframes, dtype=Molecule._dtypes["step"])
     if len(time) != nframes or np.sum(time) == 0:
-        time = np.zeros(nframes, dtype=np.float32)
+        time = np.zeros(nframes, dtype=Molecule._dtypes["time"])
 
     bx, by, bz, alpha, beta, gamma = box_vectors_to_lengths_and_angles(
         boxvectors[0].T, boxvectors[1].T, boxvectors[2].T
@@ -1594,8 +1598,8 @@ def XSCread(filename, frame=None, topoloc=None):
             bx, by, bz, alpha, beta, gamma = box_vectors_to_lengths_and_angles(
                 pieces[1:4], pieces[4:7], pieces[7:10]
             )
-            box = np.array([bx, by, bz], dtype=np.float32)
-            boxangles = np.array([alpha, beta, gamma], dtype=np.float32)
+            box = np.array([bx, by, bz])
+            boxangles = np.array([alpha, beta, gamma])
 
     return MolFactory.construct(
         None,
@@ -1603,7 +1607,7 @@ def XSCread(filename, frame=None, topoloc=None):
             box=box,
             boxangles=boxangles,
             step=[step],
-            time=np.zeros(1, dtype=np.float32),
+            time=[0],
         ),
         filename,
         frame,
@@ -1710,7 +1714,9 @@ def BINCOORread(filename, frame=None, topoloc=None):
         dat = f.read(natoms * 3 * 8)
         fmt = "d" * (natoms * 3)
         coords = struct.unpack(fmt, dat)
-        coords = np.array(coords, dtype=np.float32).reshape((natoms, 3, 1))
+        coords = np.array(coords, dtype=Molecule._dtypes["coords"]).reshape(
+            (natoms, 3, 1)
+        )
     return MolFactory.construct(None, Trajectory(coords=coords), filename, frame)
 
 
@@ -1772,7 +1778,10 @@ def MDTRAJTOPOread(filename, frame=None, topoloc=None, validateElements=True):
     for k in table.keys():
         topo.__dict__[translate[k]] = table[k].tolist()
 
-    coords = np.array(mdstruct.xyz.swapaxes(0, 1).swapaxes(1, 2) * 10, dtype=np.float32)
+    coords = np.array(
+        mdstruct.xyz.swapaxes(0, 1).swapaxes(1, 2) * 10,
+        dtype=Molecule._dtypes["coords"],
+    )
     topo.bonds = bonds[:, :2]
     return MolFactory.construct(
         topo,
@@ -2322,9 +2331,11 @@ def CIFread(
     if len(ideal_coords) != 0:
         ideal_allcoords.append(ideal_coords)
 
-    allcoords = np.stack(allcoords, axis=2).astype(np.float32)
+    allcoords = np.stack(allcoords, axis=2).astype(Molecule._dtypes["coords"])
     if len(ideal_allcoords):
-        ideal_allcoords = np.stack(ideal_allcoords, axis=2).astype(np.float32)
+        ideal_allcoords = np.stack(ideal_allcoords, axis=2).astype(
+            Molecule._dtypes["coords"]
+        )
 
     coords = allcoords
     if np.any(np.all(allcoords == 0, axis=1)) and len(ideal_allcoords):
@@ -2423,10 +2434,12 @@ def RTFread(filename, frame=None, topoloc=None):
     topo.element = np.array(
         [element_by_type[t].capitalize() for t in topo.atomtype], dtype=object
     )
-    topo.masses = np.array([mass_by_type[t] for t in topo.atomtype], dtype=np.float32)
-    topo.bonds = np.vstack(bonds)
+    topo.masses = np.array(
+        [mass_by_type[t] for t in topo.atomtype], dtype=Molecule._dtypes["masses"]
+    )
+    topo.bonds = np.vstack(bonds).astype(Molecule._dtypes["bonds"])
 
-    improper_indices = np.array(improper_indices).astype(np.uint32)
+    improper_indices = np.array(improper_indices).astype(Molecule._dtypes["impropers"])
     if improper_indices.ndim == 1:
         improper_indices = improper_indices[:, np.newaxis]
     topo.impropers = improper_indices
@@ -2483,7 +2496,7 @@ def PREPIread(filename, frame=None, topoloc=None):
                     continue
                 impropers.append([names.index(impn) for impn in impropernames])
 
-    impropers = np.array(impropers).astype(np.uint32)
+    impropers = np.array(impropers).astype(Molecule._dtypes["impropers"])
     if impropers.ndim == 1:
         impropers = impropers[:, np.newaxis]
 
@@ -2496,7 +2509,7 @@ def PREPIread(filename, frame=None, topoloc=None):
     topo = Topology()
     topo.name = np.array(names, dtype=object)
     topo.atomtype = np.array(atomtypes, dtype=object)
-    topo.charge = np.array(charges, dtype=np.float32)
+    topo.charge = np.array(charges, dtype=Molecule._dtypes["charge"])
     topo.impropers = impropers
 
     return MolFactory.construct(topo, None, filename, frame)

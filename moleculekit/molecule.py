@@ -364,6 +364,8 @@ class Molecule(object):
         "boxangles": np.float32,
         "formalcharge": np.int32,
         "virtualsite": bool,
+        "step": np.uint32,
+        "time": np.float64,
     }
 
     _dims = {
@@ -392,6 +394,8 @@ class Molecule(object):
         "boxangles": (3, 0),
         "formalcharge": (0,),
         "virtualsite": (0,),
+        "step": (0,),
+        "time": (0,),
     }
 
     def __init__(self, filename=None, name=None, **kwargs):
@@ -402,8 +406,6 @@ class Molecule(object):
         self.ssbonds = []
         self._frame = 0
         self.fileloc = []
-        self.time = np.array([], dtype=np.float32)
-        self.step = np.array([], dtype=np.int32)
         self.crystalinfo = None
 
         self.reps = Representations(self)
@@ -968,16 +970,16 @@ class Molecule(object):
         bonds : np.ndarray
             An array of bonds
         """
-        bonds = np.empty((0, 2), dtype=np.uint32)
+        bonds = np.empty((0, 2), dtype=Molecule._dtypes["bonds"])
         if fileBonds:
             if (
                 len(self.bonds) == 0
             ):  # This is a patch for the other readers not returning correct empty dimensions
-                self.bonds = np.empty((0, 2), dtype=np.uint32)
+                self.bonds = np.empty((0, 2), dtype=Molecule._dtypes["bonds"])
             bonds = np.vstack((bonds, self.bonds))
         if guessBonds:
             bonds = np.vstack((bonds, self._guessBonds()))
-        return bonds.astype(np.uint32)
+        return bonds.astype(Molecule._dtypes["bonds"])
 
     def atomselect(
         self,
@@ -1176,7 +1178,9 @@ class Molecule(object):
             tempdata[:] = map[tempdata[:]]
             stays = np.invert(np.any(tempdata == -1, axis=1))
             # Delete bonds/angles/dihedrals between non-existent atoms
-            self.__dict__[field] = tempdata[stays, ...].astype(np.uint32).copy()
+            self.__dict__[field] = (
+                tempdata[stays, ...].astype(Molecule._dtypes[field]).copy()
+            )
             if field == "bonds" and len(self.bondtype):
                 self.bondtype = self.bondtype[stays]
 
@@ -1915,7 +1919,7 @@ class Molecule(object):
         if wrapcenter is None:
             centersel = self.atomselect(
                 wrapsel, indexes=True, guessBonds=guessAtomSelBonds
-            )
+            ).astype(np.uint32)
             wrapcenter = np.array([0, 0, 0], dtype=np.float32)
         else:
             wrapcenter = np.array(wrapcenter, dtype=np.float32)
@@ -1936,39 +1940,19 @@ class Molecule(object):
 
         is_triclinic = np.any(self.boxangles != 90)
         if not is_triclinic:
-            wrapping.wrap_box(
-                groups,
-                self.coords,
-                self.box,
-                centersel.astype(np.uint32),
-                wrapcenter.astype(np.float32),
-            )
+            wrapping.wrap_box(groups, self.coords, self.box, centersel, wrapcenter)
         else:
             if unitcell == "triclinic":
                 wrapping.wrap_triclinic_unitcell(
-                    groups,
-                    self.coords,
-                    self.boxvectors,
-                    centersel.astype(np.uint32),
-                    wrapcenter.astype(np.float32),
+                    groups, self.coords, self.boxvectors, centersel, wrapcenter
                 )
             elif unitcell == "compact":
                 wrapping.wrap_compact_unitcell(
-                    groups,
-                    self.coords,
-                    self.boxvectors,
-                    centersel.astype(np.uint32),
-                    wrapcenter.astype(np.float32),
-                    1,  # compact wrapping
+                    groups, self.coords, self.boxvectors, centersel, wrapcenter, 1
                 )
             elif unitcell == "rectangular":
                 wrapping.wrap_compact_unitcell(
-                    groups,
-                    self.coords,
-                    self.boxvectors,
-                    centersel.astype(np.uint32),
-                    wrapcenter.astype(np.float32),
-                    0,  # rectangular wrapping
+                    groups, self.coords, self.boxvectors, centersel, wrapcenter, 0
                 )
 
     def _emptyTopo(self, numAtoms):
@@ -1976,8 +1960,16 @@ class Molecule(object):
             self.__dict__[field] = self._empty(numAtoms, field)
 
     def _emptyTraj(self, numAtoms):
-        self.coords = self._empty(numAtoms, "coords")
-        self.box = np.zeros(self._dims["box"], dtype=np.float32)
+        for field in Molecule._traj_fields:
+            if field == "fileloc":
+                continue
+            if field == "coords":
+                self.coords = self._empty(numAtoms, field)
+            else:
+                self.__dict__[field] = np.zeros(
+                    self._dims[field], dtype=Molecule._dtypes[field]
+                )
+        self.fileloc = []
 
     def empty(self, numAtoms):
         """Creates an empty molecule of `numAtoms` atoms.
@@ -2533,8 +2525,16 @@ class Molecule(object):
         if hasb:
             self.bondtype[oldidx] = btype
         else:
-            self.bonds = np.vstack((self.bonds, [idx1, idx2])).astype(np.uint32).copy()
-            self.bondtype = np.hstack((self.bondtype, [btype])).astype(object).copy()
+            self.bonds = (
+                np.vstack((self.bonds, [idx1, idx2]))
+                .astype(Molecule._dtypes["bonds"])
+                .copy()
+            )
+            self.bondtype = (
+                np.hstack((self.bondtype, [btype]))
+                .astype(Molecule._dtypes["bondtype"])
+                .copy()
+            )
 
     def removeBond(self, idx1, idx2):
         """Remove an existing bond between a pair of atoms
@@ -3024,8 +3024,8 @@ def calculateUniqueBonds(bonds, bondtype):
                 )
             )
         )
-        bonds = unique_sorted[:, :2].astype(np.uint32)
-        bondtypes = unique_sorted[:, 2].astype(object)
+        bonds = unique_sorted[:, :2].astype(Molecule._dtypes["bonds"])
+        bondtypes = unique_sorted[:, 2].astype(Molecule._dtypes["bondtype"])
         # Sort both arrays for prettiness by the first then second bond index
         sortidx = np.lexsort((bonds[:, 1], bonds[:, 0]))
         return bonds[sortidx].copy(), bondtypes[sortidx].copy()
@@ -3033,14 +3033,13 @@ def calculateUniqueBonds(bonds, bondtype):
         bonds = np.array(list(set(tuple(bb) for bb in np.sort(bonds, axis=1).tolist())))
         # Sort both arrays for prettiness by the first then second bond index
         sortidx = np.lexsort((bonds[:, 1], bonds[:, 0]))
-        return (
-            bonds[sortidx].astype(np.uint32).copy(),
-            (
-                None
-                if not len(bondtype)
-                else np.array([bondtype[0]] * bonds.shape[0], dtype=object)
-            ),
-        )
+        if len(bondtype):
+            bondtype = np.array(
+                [bondtype[0]] * bonds.shape[0], dtype=Molecule._dtypes["bondtype"]
+            )
+        else:
+            bondtype = None
+        return (bonds[sortidx].astype(Molecule._dtypes["bonds"]).copy(), bondtype)
 
 
 def getBondedGroups(mol, bonds=None):

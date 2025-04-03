@@ -512,21 +512,22 @@ def calculateAnglesAndDihedrals(bonds, cyclicdih=False):
     Calculate all angles and dihedrals from a set of bonds.
     """
     from moleculekit.cython_utils import calculateAnglesAndDihedrals as _calculate
+    from moleculekit.molecule import Molecule
 
     _, angles, dihedrals = _calculate(bonds, cyclicdih, np.max(bonds) + 1)
 
     angles = sorted([sorted([angle, angle[::-1]])[0] for angle in angles])
-    angles = np.array(angles, dtype=np.uint32)
+    angles = np.array(angles, dtype=Molecule._dtypes["angles"])
 
     dihedrals = sorted(
         [sorted([dihedral, dihedral[::-1]])[0] for dihedral in dihedrals]
     )
-    dihedrals = np.array(dihedrals, dtype=np.uint32)
+    dihedrals = np.array(dihedrals, dtype=Molecule._dtypes["dihedrals"])
 
     if len(dihedrals) == 0:
-        dihedrals = np.zeros((0, 4), dtype=np.uint32)
+        dihedrals = np.zeros((0, 4), dtype=Molecule._dtypes["dihedrals"])
     if len(angles) == 0:
-        angles = np.zeros((0, 3), dtype=np.uint32)
+        angles = np.zeros((0, 3), dtype=Molecule._dtypes["angles"])
 
     return angles, dihedrals
 
