@@ -31,6 +31,37 @@ _rename_elements = {('SOD', 'SO'): 'Na'}
 # fmt: on
 
 
+def _format_large_time(mol, ext):
+    step = mol.step
+    time = mol.time
+    nframes = mol.numFrames
+
+    if len(step) == 1:
+        trajfreq = step[0]
+    else:
+        trajfreq = step[1] - step[0]
+
+    if step[-1] != step[-1].astype(np.uint32):
+        logger.warning(
+            f"Molecule.step contains values too large to be written to a {ext} file. They will be renumbered starting from 1."
+        )
+        step = np.arange(1, nframes + 1, dtype=np.uint32)
+    else:
+        step = step.astype(np.uint32)
+
+    time = time / 1e3  # convert from fs to ps
+    if time[-1] != time[-1].astype(np.float32):
+        logger.warning(
+            f"Molecule.time contains values too large to be written to a {ext} file. They will be renumbered starting from 0."
+        )
+        if trajfreq == 0:
+            raise AssertionError("The trajectory step should not be 0")
+        timestep = (mol.fstep / trajfreq) / 1e-6
+        time = (mol.time - ((mol.step[0] - trajfreq) * timestep)) / 1e3
+
+    return step, time
+
+
 def _format_pdb_name(name, resname, element=None):
     name = name[:4]
     first_col = f"{name:<4}"
@@ -263,9 +294,10 @@ def XTCwrite(mol, filename):
     if os.path.isfile(filename):
         os.unlink(filename)
 
+    step, time = _format_large_time(mol, "XTC")
+
     box = box.astype(np.float32) * 0.1
-    step = step.astype(np.int32)
-    time = time.astype(np.float32) / 1e3  # Convert from fs to ps
+    time = time.astype(np.float32)
     coords = coords.astype(np.float32) * 0.1  # Convert from A to nm
     if not box.flags["C_CONTIGUOUS"]:
         box = np.ascontiguousarray(box)
@@ -671,6 +703,16 @@ def DCDwrite(mol, filename):
         nsavc = int(mol.step[1] - mol.step[0])
         fstep = mol.fstep * 1000  # ns to ps
         delta = fstep / nsavc / 0.04888821  # Conversion factor found in OpenMM
+        if mol.step[0] != mol.step[0].astype(np.int32):
+            logger.warning(
+                "Molecule.step contains values too large to be written to DCD file. They will be renumbered starting from 1."
+            )
+            istart //= nsavc
+            delta *= nsavc
+            nsavc = 1
+        # If it's still too large just start from 1
+        if istart != np.array(istart).astype(np.int32):
+            istart = 1
     except Exception:
         istart = 0
         nsavc = 1
@@ -699,8 +741,7 @@ def TRRwrite(mol, filename):
     from moleculekit.trr import TRRTrajectoryFile
 
     xyz = np.transpose(mol.coords, (2, 0, 1)) / 10  # Convert Angstrom to nm
-    time = mol.time / 1000  # Convert fs to ps
-    step = mol.step
+    step, time = _format_large_time(mol, "TRR")
     boxvectors = np.transpose(mol.boxvectors, (2, 0, 1)) / 10  # Angstrom to nm
     with TRRTrajectoryFile(filename, "w") as fh:
         fh.write(xyz, time=time, step=step, box=boxvectors, lambd=None)
@@ -728,8 +769,10 @@ def NETCDFwrite(mol, filename):
     )
     n_frames, n_atoms = coordinates.shape[0], coordinates.shape[1]
 
+    step, time = _format_large_time(mol, "NETCDF")
+
     time = ensure_type(
-        mol.time / 1000,  # Convert from fs to ps
+        time,  # In ps
         np.float32,
         1,
         "time",
@@ -739,7 +782,7 @@ def NETCDFwrite(mol, filename):
         add_newaxis_on_deficient_ndim=True,
     )
     step = ensure_type(
-        mol.step,
+        step,
         np.int32,
         1,
         "step",
@@ -984,7 +1027,7 @@ def MDTRAJwrite(mol, filename):
             traj = Trajectory(
                 xyz=np.transpose(mol.coords, (2, 0, 1)) / 10,  # Ang to nm
                 topology=traj.topology,
-                time=time,
+                time=time.astype(np.float32),
                 unitcell_lengths=box,
                 unitcell_angles=boxangles,
             )

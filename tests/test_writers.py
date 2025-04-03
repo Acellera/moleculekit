@@ -185,17 +185,40 @@ def _test_cif_mol2_atom_renaming():
         assert filelines == reflines, f"Failed comparison of {reffile2} {tmpfile}"
 
 
-@pytest.mark.parametrize("ext", ("netcdf", "trr", "binpos", "dcd", "xyz", "xyz.gz"))
-def _test_traj_writers(ext):
+@pytest.mark.parametrize(
+    "ext", ("xtc", "netcdf", "trr", "binpos", "dcd", "xyz", "xyz.gz")
+)
+@pytest.mark.parametrize("maxtime", [1e9, 1e15])
+def _test_traj_writers(ext, maxtime):
     from moleculekit.molecule import Molecule
     import tempfile
 
     mol = Molecule(os.path.join(curr_dir, "test_readers", "1N09", "structure.prmtop"))
     mol.read(os.path.join(curr_dir, "test_readers", "1N09", "output.dcd"))
+    # 1e9 fs = 1us. Test if the trajectories can write steps of 100ps over 1us trajectories
+    trajfreq = 25000
+    timestep = 4
+    timefreq = trajfreq * timestep
+    mol.time[:] = np.arange(
+        maxtime,
+        maxtime + mol.numFrames * timefreq,
+        timefreq,
+        dtype=Molecule._dtypes["time"],
+    )
+    mol.step[:] = np.arange(
+        maxtime / timestep,
+        maxtime / timestep + (mol.numFrames * trajfreq),
+        trajfreq,
+        dtype=Molecule._dtypes["step"],
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         mol.write(os.path.join(tmpdir, f"output.{ext}"))
         molc = Molecule(os.path.join(tmpdir, f"output.{ext}"))
+
+    if maxtime > 1e10:
+        mol.time -= (mol.step[0] - trajfreq) * timestep
+        mol.step[:] = range(1, mol.numFrames + 1)
 
     if ext == "binpos":
         assert np.allclose(mol.coords, molc.coords, atol=1e-6)
@@ -207,12 +230,14 @@ def _test_traj_writers(ext):
             fieldPrecision={"coords": 2e-5},
         )
     else:
+        coor_prec = 3e-6 if ext != "xtc" else 1e-2
+        assert abs(mol.fstep - molc.fstep) < 1e-2
         assert mol_equal(
             mol,
             molc,
             checkFields=Molecule._traj_fields,
             exceptFields=("fileloc"),
-            fieldPrecision={"coords": 3e-6, "box": 3e-6},
+            fieldPrecision={"coords": coor_prec, "box": 3e-6, "time": 1e-3},
         )
 
 
