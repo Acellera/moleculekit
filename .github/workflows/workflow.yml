@@ -14,18 +14,20 @@ jobs:
     secrets: inherit
 
   publish_conda:
+    needs: publish
     if: startsWith(github.event.ref, 'refs/tags/v')
     uses: ./.github/workflows/publish_conda.yml
     secrets: inherit
 
   publish_pyodide:
+    needs: publish
     if: startsWith(github.event.ref, 'refs/tags/v')
     uses: ./.github/workflows/pyodide_build.yml
     secrets: inherit
 
   docs:
-    if: startsWith(github.event.ref, 'refs/tags/')
     needs: publish
+    if: startsWith(github.event.ref, 'refs/tags/')
     uses: ./.github/workflows/docs.yml
     secrets: inherit
 
