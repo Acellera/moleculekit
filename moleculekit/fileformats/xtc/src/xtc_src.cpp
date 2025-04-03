@@ -407,7 +407,7 @@ struct XTC_frame *xtc_read(char *filename, int *natoms, int *nframes, double *dt
 	return frames;
 }
 
-int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, float *pos, float *box)
+int xtc_write(char *filename, int natoms, int nframes, unsigned int *step, float *timex, float *pos, float *box)
 {
 	XDRFILE *xd = NULL;
 	rvec *p = NULL;

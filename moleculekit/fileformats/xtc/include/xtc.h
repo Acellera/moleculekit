@@ -30,7 +30,7 @@ extern "C"
   // struct XTC_frame *xtc_read_frame(char *filename, int *natoms, int frame);
   void xtc_read_frame(char *filename, float *coords_arr, float *box_arr, float *time_arr, int *step_arr, int natoms, int frame, int nframes, int fidx);
 
-  int xtc_write(char *filename, int natoms, int nframes, int *step, float *timex, float *pos, float *box);
+  int xtc_write(char *filename, int natoms, int nframes, unsigned int *step, float *timex, float *pos, float *box);
   // int xtc_write( char *filename, int natoms, int step, float time, float *pos, float*  box ) ;
 
   int xtc_truncate_to_step(char *infile, unsigned long maxstep);

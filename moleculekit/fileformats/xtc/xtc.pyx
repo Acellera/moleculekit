@@ -83,7 +83,7 @@ def read_xtc_frames(char* filename, int[:] frames):
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-def write_xtc(char* filename, float[:, :, :] coords, float[:, :, :] box, float[:] time, int[:] step):
+def write_xtc(char* filename, float[:, :, :] coords, float[:, :, :] box, float[:] time, unsigned int[:] step):
     cdef int natoms = coords.shape[0]
     cdef int nframes = coords.shape[2]
     xtclib.xtc_write(
