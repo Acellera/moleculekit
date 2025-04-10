@@ -782,6 +782,9 @@ def systemPrepare(
         )
 
     mol_out.box = mol_in.box
+    mol_out.boxangles = mol_in.boxangles
+    mol_out.time = mol_in.time
+    mol_out.step = mol_in.step
     _fixup_water_names(mol_out)
 
     df = _create_table(mol_orig, mol_out, pka_df)
