@@ -1129,6 +1129,10 @@ def CIFwrite(
 
     atomnames = mol.name
     if single_mol:
+        if len(np.unique(mol.resid)) != 1:
+            raise RuntimeError(
+                "CIF files don't support multiple residues with different resid and same resname"
+            )
         # Guarantee unique atom names for each unique residue
         atomnames = _uniquify_atomnames(mol.name, mol.resname)
         if len(np.unique(atomnames)) != mol.numAtoms:
