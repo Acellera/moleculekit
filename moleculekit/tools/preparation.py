@@ -147,8 +147,13 @@ def _generate_nonstandard_residues_ff(
                 if residue_smiles is not None and res in residue_smiles:
                     smiles = residue_smiles[res]
 
-                tmol = _template_residue_from_smiles(molc, res, smiles=smiles)
-                cres = _process_custom_residue(tmol, res)
+                if smiles is not None and os.path.isfile(smiles):
+                    tmol = Molecule(smiles)
+                else:
+                    tmol = _template_residue_from_smiles(molc, res, smiles=smiles)
+                cres = _process_custom_residue(tmol)
+                # Rename to correct resname
+                cres.resname[:] = res
 
                 _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
                 _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
@@ -542,6 +547,7 @@ def systemPrepare(
     _molkit_ff=True,
     outdir=None,
     residue_smiles=None,
+    ignore_ns=False,
 ):
     """Prepare molecular systems through protonation and h-bond optimization.
 
@@ -732,15 +738,16 @@ def systemPrepare(
     _fix_protonation_resnames(mol_in)
 
     definition, forcefield = _get_custom_ff(molkit_ff=_molkit_ff)
-    definition, forcefield = _generate_nonstandard_residues_ff(
-        mol_in,
-        definition,
-        forcefield,
-        _molkit_ff,
-        outdir,
-        ignore_ns_errors=ignore_ns_errors,
-        residue_smiles=residue_smiles,
-    )
+    if not ignore_ns:
+        definition, forcefield = _generate_nonstandard_residues_ff(
+            mol_in,
+            definition,
+            forcefield,
+            _molkit_ff,
+            outdir,
+            ignore_ns_errors=ignore_ns_errors,
+            residue_smiles=residue_smiles,
+        )
 
     nonpept = []
     if hold_nonpeptidic_bonds:

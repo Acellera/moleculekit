@@ -71,7 +71,7 @@ def _compare_results(refpdb, refdf_f, pmol: Molecule, df):
     pmol.filter("not water", _logger=False)
     assert mol_equal(
         refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
-    )
+    ), f"Failed comparison of {refpdb} vs {pmol.fileloc}"
 
 
 @pytest.mark.parametrize("pdb", ["3PTB", "1A25", "1U5U", "1UNC", "6A5J"])
@@ -179,8 +179,8 @@ def _test_auto_freezing_and_force():
         ("2QRV.pdb", "2QRV_prepared"),
     ),
 )
-def _test_nonstandard_residues(files):
-    from moleculekit.tools.preparation import autoSegment2
+def _test_nonstandard_residues(tmp_path, files):
+    from moleculekit.tools.autosegment import autoSegment2
 
     inf, outf = files
     test_home = os.path.join(
@@ -204,6 +204,8 @@ def _test_nonstandard_residues(files):
         hold_nonpeptidic_bonds=True,
         residue_smiles=res_smiles,
     )
+    pmol.fileloc.append(os.path.join(tmp_path, "prepared.pdb"))
+    pmol.write(pmol.fileloc[0])
 
     _compare_results(
         os.path.join(test_home, f"{outf}.pdb"),
@@ -213,6 +215,8 @@ def _test_nonstandard_residues(files):
     )
 
     pmol, df = systemPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
+    pmol.fileloc.append(os.path.join(tmp_path, "prepared.pdb"))
+    pmol.write(pmol.fileloc[0])
 
     _compare_results(
         os.path.join(test_home, f"{outf}.pdb"),
@@ -307,7 +311,7 @@ def _test_nucleiclike_ligand():
     test_home = os.path.join(curr_dir, "test_systemprepare", "3U5S")
     mol = Molecule(os.path.join(test_home, "3U5S.pdb"))
 
-    pmol, df = systemPrepare(mol, return_details=True, ignore_ns_errors=True)
+    pmol, df = systemPrepare(mol, return_details=True, ignore_ns=True)
 
     _compare_results(
         os.path.join(test_home, "3U5S_prepared.pdb"),

@@ -105,19 +105,50 @@ def _template_residue_from_smiles(inmol: Molecule, nsres: str, smiles=None):
     return mol
 
 
-def _get_idx(mol, name):
-    res = np.where(mol.name == name)
+def _reorder_residue_atoms(mol, resid):
+    # Reorder atoms. AMBER order is: N H CA HA [sidechain] C O
+    # the H atom will get added later
+    first_bbatoms = [_get_idx(mol, x, resid) for x in ["N", "CA", "HA"]]
+    first_bbatoms = [x for x in first_bbatoms if x is not None]
+    last_bbatoms = [_get_idx(mol, x, resid) for x in ["C", "O"]]
+    last_bbatoms = [x for x in last_bbatoms if x is not None]
+    other_idx = np.setdiff1d(
+        np.where(mol.resid == resid)[0], first_bbatoms + last_bbatoms
+    ).tolist()
+    prev_res = np.where(mol.resid == resid)[0][0]
+    if prev_res > 0:
+        prev_res = list(range(prev_res))
+    else:
+        prev_res = []
+    next_res = np.where(mol.resid == resid)[0][-1] + 1
+    if next_res < mol.numAtoms:
+        next_res = list(range(next_res, mol.numAtoms))
+    else:
+        next_res = []
+    mol.reorderAtoms(prev_res + first_bbatoms + other_idx + last_bbatoms + next_res)
+
+
+def _get_idx(mol, name, resid=None):
+    sel = mol.name == name
+    if resid is not None:
+        sel &= mol.resid == resid
+    res = np.where(sel)
     if len(res) == 0 or len(res[0]) == 0:
         return None
+    assert len(res[0]) == 1
     return res[0][0]
 
 
-def _process_custom_residue(mol: Molecule, resname: str):
+def _process_custom_residue(mol: Molecule, resid: int = None, align: bool = True):
     import networkx as nx
 
+    if resid is None:
+        resid = mol.resid[0]
+    resname = mol.resname[mol.resid == resid][0]
+
     gg = mol.toGraph()
-    n_idx = _get_idx(mol, "N")
-    c_idx = _get_idx(mol, "C")
+    n_idx = _get_idx(mol, "N", resid)
+    c_idx = _get_idx(mol, "C", resid)
     if n_idx is None or c_idx is None:
         raise RuntimeError(
             f"Residue {resname} does not contain N or C atoms. List of atoms: {mol.name}"
@@ -130,7 +161,7 @@ def _process_custom_residue(mol: Molecule, resname: str):
         )
 
     # Fix hydrogen names for CA / N
-    ca_idx = _get_idx(mol, "CA")
+    ca_idx = _get_idx(mol, "CA", resid)
     ca_hs = [nn for nn in gg.neighbors(ca_idx) if gg.nodes[nn]["element"] == "H"]
     if len(ca_hs) > 1:
         raise RuntimeError("Found more than 1 hydrogen on CA atom!")
@@ -139,7 +170,7 @@ def _process_custom_residue(mol: Molecule, resname: str):
 
     # Remove all N terminal hydrogens
     gg = mol.toGraph()
-    n_idx = _get_idx(mol, "N")
+    n_idx = _get_idx(mol, "N", resid)
     n_neighbours = list(gg.neighbors(n_idx))
     n_hs = [nn for nn in n_neighbours if gg.nodes[nn]["element"] == "H"]
     n_heavy = len(n_neighbours) - len(n_hs)
@@ -148,7 +179,7 @@ def _process_custom_residue(mol: Molecule, resname: str):
 
     # Remove all hydrogens attached to terminal C
     gg = mol.toGraph()
-    idx = _get_idx(mol, "C")
+    idx = _get_idx(mol, "C", resid)
     neighbours = list(gg.neighbors(idx))
     hs = [nn for nn in neighbours if gg.nodes[nn]["element"] == "H"]
     if len(hs):
@@ -156,7 +187,7 @@ def _process_custom_residue(mol: Molecule, resname: str):
 
     # Remove all hydrogens attached to C-terminal O
     gg = mol.toGraph()
-    idx = _get_idx(mol, "O")
+    idx = _get_idx(mol, "O", resid)
     neighbours = list(gg.neighbors(idx))
     hs = [nn for nn in neighbours if gg.nodes[nn]["element"] == "H"]
     if len(hs):
@@ -166,40 +197,43 @@ def _process_custom_residue(mol: Molecule, resname: str):
     hydr = mol.name == "X_H"
     mol.name[hydr] = [f"H{i}" for i in range(10, sum(hydr) + 10)]
 
-    # Reorder atoms. AMBER order is: N H CA HA [sidechain] C O
-    bbatoms = [x for x in ["N", "H", "CA", "HA", "C", "O"] if x in mol.name]
-    ordered_idx = [_get_idx(mol, nn) for nn in bbatoms]
-    other_idx = np.setdiff1d(range(mol.numAtoms), ordered_idx)
-    mol.reorderAtoms(ordered_idx[:4] + other_idx.tolist() + ordered_idx[4:])
+    _reorder_residue_atoms(mol, resid)
 
-    # Align to reference BB for pdb2pqr
-    mol.align("name N CA C", refmol=backbone)
+    if align:
+        # Align to reference BB for pdb2pqr
+        mol.align("name N CA C", refmol=backbone)
 
     if n_heavy == 1 and "N" in mol.name:
         # Add the H atom if N is only bonded to CA.
         # This is necessary to add it in the right position for pdb2pqr
         nmol = backbone.copy()
+        if not align and resid is not None:
+            nmol.align(
+                "name N CA C", refsel=f"name N CA C and resid {resid}", refmol=mol
+            )
         nmol.filter("name H", _logger=False)
-        mol.insert(nmol, 1)
-        mol.bonds = np.vstack((mol.bonds, [0, 1]))
-        mol.bondtype = np.hstack((mol.bondtype, "1"))
+        nmol.resname[:] = resname
+        nmol.resid[:] = resid
+        insert_idx = np.where(mol.resid == resid)[0][0] + 1
+        mol.insert(nmol, insert_idx)
+        mol.addBond(insert_idx - 1, insert_idx, "1")
 
-    # Rename to correct resname
-    mol.resname[:] = resname
     return mol
 
 
-def _prepare_for_parameterize(mol):
+def _prepare_for_parameterize(mol, resid=None):
     # Add OXT HXT HN2 atoms to convert it to RCSB-like structures and pass it to parameterize
     import networkx as nx
 
     mol = mol.copy()
-    resname = mol.resname[0]
+    if resid is None:
+        resid = mol.resid[0]
+    resname = mol.resname[mol.resid == resid][0]
 
     gg = mol.toGraph()
-    bb = nx.shortest_path(gg, _get_idx(mol, "N"), _get_idx(mol, "C"))
+    bb = nx.shortest_path(gg, _get_idx(mol, "N", resid), _get_idx(mol, "C", resid))
 
-    n_idx = _get_idx(mol, "N")
+    n_idx = _get_idx(mol, "N", resid)
     mol.formalcharge[n_idx] = 0
     n_neighbours = list(gg.neighbors(n_idx))
     if len(n_neighbours) == 2:
@@ -208,15 +242,22 @@ def _prepare_for_parameterize(mol):
         align_idx = [n_idx, bb[1], non_bb_idx[0]]
         nterm = alanine.copy()
         nterm.align(
-            [_get_idx(nterm, n) for n in ("N", "CA", "H")], refmol=mol, refsel=align_idx
+            [_get_idx(nterm, n) for n in ("N", "CA", "H")],
+            refmol=mol,
+            refsel=align_idx,
         )
         nterm.filter("name H2", _logger=False)
         nterm.name[0] = "HN2"
-        mol.append(nterm)
-        mol.bonds = np.vstack((mol.bonds, [n_idx, mol.numAtoms - 1]))
-        mol.bondtype = np.hstack((mol.bondtype, "1"))
+        nterm.resname[:] = resname
+        nterm.resid[:] = resid
+        insert_idx = np.where(mol.resid == resid)[0][0] + 1  # Second position
+        mol.insert(nterm, insert_idx)
+        mol.addBond(n_idx, insert_idx, "1")
 
-    c_idx = _get_idx(mol, "C")
+    gg = mol.toGraph()
+    bb = nx.shortest_path(gg, _get_idx(mol, "N", resid), _get_idx(mol, "C", resid))
+
+    c_idx = _get_idx(mol, "C", resid)
     mol.formalcharge[c_idx] = 0
     c_neighbours = list(gg.neighbors(c_idx))
     if len(c_neighbours) == 2:
@@ -225,21 +266,19 @@ def _prepare_for_parameterize(mol):
         align_idx = [bb[-2], c_idx, non_bb_idx[0]]
         cterm = alanine.copy()
         cterm.align(
-            [_get_idx(cterm, n) for n in ("CA", "C", "O")], refmol=mol, refsel=align_idx
+            [_get_idx(cterm, n) for n in ("CA", "C", "O")],
+            refmol=mol,
+            refsel=align_idx,
         )
         cterm.filter("name OXT HXT", _logger=False)
-        mol.append(cterm)
-        mol.bonds = np.vstack((mol.bonds, [c_idx, mol.numAtoms - 2]))
-        mol.bondtype = np.hstack((mol.bondtype, "1"))
-
-    # Rename to correct resname
-    mol.resname[:] = resname
+        cterm.resname[:] = resname
+        cterm.resid[:] = resid
+        insert_idx = np.where(mol.resid == resid)[0][-1] + 1  # End
+        mol.insert(cterm, insert_idx)
+        mol.addBond(c_idx, insert_idx, "1")
 
     # Reorder atoms. AMBER order is: N H CA HA [sidechain] C O
-    bbatoms = [x for x in ["N", "H", "CA", "HA", "C", "O"] if x in mol.name]
-    ordered_idx = [_get_idx(mol, nn) for nn in bbatoms]
-    other_idx = np.setdiff1d(range(mol.numAtoms), ordered_idx)
-    mol.reorderAtoms(ordered_idx[:4] + other_idx.tolist() + ordered_idx[4:])
+    _reorder_residue_atoms(mol, resid)
 
     return mol
 
@@ -280,7 +319,9 @@ def _convert_amber_prepi_to_pdb2pqr_residue(prepi, outdir, name=None):
             )
         mol.element[:] = sdf.element[:]
 
-        pmol = _process_custom_residue(mol, name)
+        pmol = _process_custom_residue(mol)
+        # Rename to correct resname
+        pmol.resname[:] = name
 
         _mol_to_xml_def(pmol, os.path.join(outdir, f"{name}.xml"))
         _mol_to_dat_def(pmol, os.path.join(outdir, f"{name}.dat"))
