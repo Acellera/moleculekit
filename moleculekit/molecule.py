@@ -416,9 +416,12 @@ class Molecule(object):
             self.read(filename, **kwargs)
 
     @staticmethod
-    def _empty(numAtoms, field):
+    def _empty(numAtoms, field, numFrames=0):
         dims = list(Molecule._dims[field])
-        dims[0] = numAtoms
+        if field in Molecule._atom_fields or field == "coords":
+            dims[0] = numAtoms
+        if field in Molecule._traj_fields and numFrames > 0:
+            dims[-1] = numFrames
         data = np.zeros(dims, dtype=Molecule._dtypes[field])
         if Molecule._dtypes[field] is object:
             data[:] = ""
@@ -1959,32 +1962,29 @@ class Molecule(object):
         for field in Molecule._atom_fields:
             self.__dict__[field] = self._empty(numAtoms, field)
 
-    def _emptyTraj(self, numAtoms):
+    def _emptyTraj(self, numAtoms, numFrames=0):
         for field in Molecule._traj_fields:
             if field == "fileloc":
                 continue
-            if field == "coords":
-                self.coords = self._empty(numAtoms, field)
-            else:
-                self.__dict__[field] = np.zeros(
-                    self._dims[field], dtype=Molecule._dtypes[field]
-                )
+            self.__dict__[field] = self._empty(numAtoms, field, numFrames)
         self.fileloc = []
 
-    def empty(self, numAtoms):
+    def empty(self, numAtoms, numFrames=0):
         """Creates an empty molecule of `numAtoms` atoms.
 
         Parameters
         ----------
         numAtoms : int
             Number of atoms to create in the molecule.
+        numFrames : int, optional
+            Number of empty trajectory frames to create in the molecule. Default is 0.
 
         Example
         -------
         >>> newmol = Molecule().empty(100)
         """
         self._emptyTopo(numAtoms)
-        self._emptyTraj(numAtoms)
+        self._emptyTraj(numAtoms, numFrames)
         return self
 
     def sequence(
@@ -3011,6 +3011,9 @@ def calculateUniqueBonds(bonds, bondtype):
     >>> mol = Molecule('3PTB')
     >>> mol.bonds, mol.bondtype = calculateUniqueBonds(mol.bonds, mol.bondtype)  # Overwrite the bonds and bondtypes with the unique ones
     """
+    if len(bonds) == 0:
+        return np.empty((0, 2), dtype=np.uint32), np.empty(0, dtype=object)
+
     if bondtype is not None and len(bondtype) and len(np.unique(bondtype)) > 1:
         assert len(bondtype) == bonds.shape[0]
         # First sort all rows of the bonds array, then combine with bond types and find the unique rows [idx1, idx2, bondtype]
