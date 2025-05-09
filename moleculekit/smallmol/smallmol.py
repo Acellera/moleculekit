@@ -1060,7 +1060,7 @@ class SmallMol(object):
             raise ValueError("The argument ids should be a list of confomer ids")
 
         mol = Molecule()
-        mol.empty(self.numAtoms)
+        mol.empty(self.numAtoms, numFrames=len(ids))
         mol.record[:] = "HETATM"
         mol.resname[:] = self.ligname[:3]
         mol.resid[:] = self._resid
@@ -1069,7 +1069,6 @@ class SmallMol(object):
         mol.element[:] = self._element
         mol.formalcharge[:] = self._formalcharge
         mol.charge[:] = self._charge
-        mol.box = np.zeros((3, self.numFrames), dtype=np.float32)
         mol.viewname = self.ligname
         mol.bonds = self._bonds
         mol.bondtype = self._bondtype
