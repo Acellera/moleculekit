@@ -568,3 +568,29 @@ def _test_toRDKitMol(file):
         exceptFields=["crystalinfo", "fileloc", "chain", "segid", "resid"],
         uqBonds=True,
     )
+
+
+def _test_templatingNonStandardResidues():
+    test_home = os.path.join(
+        curr_dir, "test_systemprepare", "test-nonstandard-residues"
+    )
+    mol = Molecule(os.path.join(test_home, "1A4W.pdb"))
+    mol.templateResidueFromSmiles(
+        "resname TYS",
+        "c1cc(ccc1C[C@@H](CO)N)OS(=O)(=O)O",
+        addHs=True,
+        guessBonds=True,
+        onlyOnAtoms="not backbone",
+    )
+
+    refmol = Molecule(
+        os.path.join(curr_dir, "test_molecule", "test_templating", "TYS_templated.cif")
+    )
+    assert mol_equal(
+        mol.copy(sel="resname TYS"),
+        refmol,
+        checkFields=Molecule._all_fields,
+        exceptFields=["crystalinfo", "fileloc", "serial"],
+        uqBonds=True,
+        fieldPrecision={"coords": 1e-3},
+    )

@@ -2866,8 +2866,8 @@ class Molecule(object):
             If True the SMILES string will be sanitized
         addHs : bool
             If True the residue will be protonated
-        onlyOnAtoms : list
-            If not None, only the atoms in this list will be protonated
+        onlyOnAtoms : str
+            If not None, only the atoms in this atom selection will be protonated
         guessBonds : bool
             Set to True to guess bonds for the residue we are templating
         _logger : bool
@@ -2946,6 +2946,9 @@ class Molecule(object):
 
         # Protonate the residue according to the SMILES template
         if addHs:
+            if onlyOnAtoms is not None:
+                onlyOnAtoms = residue.atomselect(onlyOnAtoms, indexes=True).tolist()
+
             # Don't sanitize to not lose bond orders
             rmol = Chem.RemoveHs(rmol, sanitize=True)
             rmol = Chem.AddHs(rmol, addCoords=True, onlyOnAtoms=onlyOnAtoms)
