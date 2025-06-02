@@ -1,0 +1,78 @@
+data_1A4W_pdb
+#
+#
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+HETATM   1  N  N    .  TYS  I  2  363  .  15.901  2.361  -4.748  0.0  0.0  0  363  TYS  I  N    1  
+HETATM   2  C  CA   .  TYS  I  2  363  .  16.482  2.005  -3.448  0.0  0.0  0  363  TYS  I  CA   1  
+HETATM   3  C  CB   .  TYS  I  2  363  .  15.434  1.805  -2.340  0.0  0.0  0  363  TYS  I  CB   1  
+HETATM   4  C  CG   .  TYS  I  2  363  .  14.580  3.049  -2.234  0.0  0.0  0  363  TYS  I  CG   1  
+HETATM   5  C  CD1  .  TYS  I  2  363  .  15.156  4.304  -2.015  0.0  0.0  0  363  TYS  I  CD1  1  
+HETATM   6  C  CD2  .  TYS  I  2  363  .  13.219  2.924  -2.545  0.0  0.0  0  363  TYS  I  CD2  1  
+HETATM   7  C  CE1  .  TYS  I  2  363  .  14.343  5.432  -2.005  0.0  0.0  0  363  TYS  I  CE1  1  
+HETATM   8  C  CE2  .  TYS  I  2  363  .  12.411  4.063  -2.563  0.0  0.0  0  363  TYS  I  CE2  1  
+HETATM   9  C  CZ   .  TYS  I  2  363  .  12.986  5.299  -2.287  0.0  0.0  0  363  TYS  I  CZ   1  
+HETATM  10  O  OH   .  TYS  I  2  363  .  12.107  6.361  -2.265  0.0  0.0  0  363  TYS  I  OH   1  
+HETATM  11  S  S    .  TYS  I  2  363  .  11.153  6.571  -0.919  0.0  0.0  0  363  TYS  I  S    1  
+HETATM  12  O  O1   .  TYS  I  2  363  .  10.528  5.299  -0.666  0.0  0.0  0  363  TYS  I  O1   1  
+HETATM  13  O  O2   .  TYS  I  2  363  .  12.111  7.170  -0.043  0.0  0.0  0  363  TYS  I  O2   1  
+HETATM  14  O  O3   .  TYS  I  2  363  .  10.170  7.609  -1.318  0.0  0.0  0  363  TYS  I  O3   1  
+HETATM  15  C  C    .  TYS  I  2  363  .  17.330  0.734  -3.630  0.0  0.0  0  363  TYS  I  C    1  
+HETATM  16  O  O    .  TYS  I  2  363  .  18.126  0.587  -2.682  0.0  0.0  0  363  TYS  I  O    1  
+HETATM  17  H  H1   .  TYS  I  2  363  .  14.798  0.942  -2.586  0.0  0.0  0  363  TYS  I  H1   1  
+HETATM  18  H  H2   .  TYS  I  2  363  .  15.940  1.621  -1.381  0.0  0.0  0  363  TYS  I  H2   1  
+HETATM  19  H  H3   .  TYS  I  2  363  .  16.240  4.398  -1.852  0.0  0.0  0  363  TYS  I  H3   1  
+HETATM  20  H  H4   .  TYS  I  2  363  .  12.791  1.937  -2.773  0.0  0.0  0  363  TYS  I  H4   1  
+HETATM  21  H  H5   .  TYS  I  2  363  .  14.768  6.420  -1.776  0.0  0.0  0  363  TYS  I  H5   1  
+HETATM  22  H  H6   .  TYS  I  2  363  .  11.338  3.984  -2.792  0.0  0.0  0  363  TYS  I  H6   1  
+HETATM  23  H  H7   .  TYS  I  2  363  .   9.779  8.022  -0.508  0.0  0.0  0  363  TYS  I  H7   1  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+TYS  N    CA   SING  
+TYS  CA   CB   SING  
+TYS  CA   C    SING  
+TYS  CB   CG   SING  
+TYS  CG   CD1  DOUB  
+TYS  CG   CD2  SING  
+TYS  CD1  CE1  SING  
+TYS  CD2  CE2  DOUB  
+TYS  CE1  CZ   DOUB  
+TYS  CE2  CZ   SING  
+TYS  CZ   OH   SING  
+TYS  OH   S    SING  
+TYS  S    O1   DOUB  
+TYS  S    O2   DOUB  
+TYS  S    O3   SING  
+TYS  C    O    SING  
+TYS  CB   H1   SING  
+TYS  CB   H2   SING  
+TYS  CD1  H3   SING  
+TYS  CD2  H4   SING  
+TYS  CE1  H5   SING  
+TYS  CE2  H6   SING  
+TYS  O3   H7   SING  
+##
