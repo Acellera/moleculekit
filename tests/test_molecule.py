@@ -5,6 +5,7 @@ from moleculekit.molecule import (
     UniqueAtomID,
     getBondedGroups,
 )
+import pytest
 import numpy as np
 import os
 
@@ -550,3 +551,20 @@ def _test_templateResidueFromSmiles():
     mol = Molecule(start_file)
     mol.templateResidueFromSmiles(sel, smiles, addHs=True, guessBonds=True)
     _cmp(mol, ref_mol)
+
+
+@pytest.mark.parametrize("file", ("1STP_BTN.cif", "BEN_pH7.4.cif"))
+def _test_toRDKitMol(file):
+    testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
+    mol = Molecule(os.path.join(testdir, file))
+    rmol = mol.toRDKitMol()
+
+    # Roundtrip conversion test
+    mol2 = Molecule.fromRDKitMol(rmol)
+    assert mol_equal(
+        mol,
+        mol2,
+        checkFields=Molecule._all_fields,
+        exceptFields=["crystalinfo", "fileloc", "chain", "segid", "resid"],
+        uqBonds=True,
+    )
