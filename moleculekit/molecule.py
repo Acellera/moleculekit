@@ -2664,6 +2664,23 @@ class Molecule(object):
 
     @staticmethod
     def fromRDKitMol(rmol):
+        """Converts an RDKit molecule to a Molecule object
+
+        Parameters
+        ----------
+        rmol : rdkit.Chem.rdchem.Mol
+            The RDKit molecule to convert
+
+        Examples
+        --------
+        >>> from rdkit import Chem
+        >>> from rdkit.Chem import AllChem
+        >>> rmol = Chem.MolFromSmiles("C1CCCCC1")
+        >>> rmol = Chem.AddHs(rmol)
+        >>> AllChem.EmbedMolecule(rmol)
+        >>> AllChem.MMFFOptimizeMolecule(rmol)
+        >>> mol = Molecule.fromRDKitMol(rmol)
+        """
         from rdkit.Chem.rdchem import BondType
         from collections import defaultdict
 
@@ -2731,10 +2748,30 @@ class Molecule(object):
         guessBonds=False,
         _logger=True,
     ):
+        """Converts the Molecule to an RDKit molecule
+
+        Parameters
+        ----------
+        sanitize : bool
+            If True the molecule will be sanitized
+        kekulize : bool
+            If True the molecule will be kekulized
+        assignStereo : bool
+            If True the molecule will have stereochemistry assigned from its 3D coordinates
+        guessBonds : bool
+            If True the molecule will have bonds guessed
+        _logger : bool
+            If True the logger will be used to print information
+        """
         from moleculekit.molecule import calculateUniqueBonds
         from rdkit.Chem.rdchem import BondType
         from rdkit.Chem.rdchem import Conformer
         from rdkit import Chem
+
+        if len(set(self.resid)) != 1:
+            raise RuntimeError(
+                "The molecule has multiple residues. Please filter it to a single residue first."
+            )
 
         bondtype_map = {
             "1": BondType.SINGLE,
