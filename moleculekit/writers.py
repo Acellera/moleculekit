@@ -225,7 +225,7 @@ def PDBwrite(mol, filename, frames=None, writebonds=True, mode="pdb"):
                 mol.altloc[i],
                 mol.resname[i],
                 mol.chain[i],
-                mol.resid[i],
+                str(mol.resid[i])[-4:],
                 mol.insertion[i],
                 f"{coords[i, 0, f]:8.3f}"[:8],
                 f"{coords[i, 1, f]:8.3f}"[:8],
