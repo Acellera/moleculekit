@@ -179,7 +179,12 @@ class SmallMol(object):
         if isinstance(mol, Chem.Mol):
             _mol = mol
         elif isinstance(mol, Molecule):
-            _mol = self._fromMolecule(mol, _logger, **kwargs)
+            _mol = mol.toRDKitMol(
+                sanitize=kwargs.get("sanitize", False),
+                kekulize=kwargs.get("kekulize", False),
+                assignStereo=kwargs.get("assignStereo", True),
+                _logger=_logger,
+            )
         elif isinstance(mol, str):
             if os.path.isfile(mol):
                 name_suffix = os.path.splitext(mol)[-1]
@@ -964,69 +969,6 @@ class SmallMol(object):
             smi = Chem.MolToSmiles(rmol, isomericSmiles=True)
 
         return smi
-
-    def _fromMolecule(self, mol, _logger, **kwargs):
-        """
-        Returns the rdkit.Chem.rdchem.Mol object from an moleculekit.molecule.Molecule one
-
-        Parameters
-        ----------
-        mol: moleculekit.molecule.Molecule
-            The moleculekit Molecule object
-
-        Returns
-        -------
-        rmol: rdkit.Chem.rdchem.Mol
-            The rdkit molecule object
-        """
-        from moleculekit.molecule import calculateUniqueBonds
-        from rdkit.Chem.rdchem import Conformer
-
-        _mol = Chem.rdchem.RWMol()
-        for i in range(mol.numAtoms):
-            atm = Chem.rdchem.Atom(mol.element[i])
-            atm.SetNoImplicit(True)  # Stop rdkit from adding implicit hydrogens
-            atm.SetProp("_Name", mol.name[i])
-            atm.SetFormalCharge(int(mol.formalcharge[i]))
-            atm.SetProp("_TriposAtomType", mol.atomtype[i])
-            atm.SetDoubleProp("_TriposPartialCharge", float(mol.charge[i]))
-            _mol.AddAtom(atm)
-
-        bonds, bondtypes = calculateUniqueBonds(mol.bonds, mol.bondtype)
-        for i in range(bonds.shape[0]):
-            _mol.AddBond(
-                int(bonds[i, 0]),
-                int(bonds[i, 1]),
-                _bondtypes_StringToType[bondtypes[i]],
-            )
-
-        for f in range(mol.numFrames):
-            conf = Conformer(mol.numAtoms)
-            for i in range(mol.numAtoms):
-                conf.SetAtomPosition(i, mol.coords[i, :, f].tolist())
-            _mol.AddConformer(conf, assignId=True)
-
-        # print(Chem.MolToSmiles(_mol))
-        if kwargs.get("sanitize", False):
-            Chem.SanitizeMol(_mol)
-        if kwargs.get("kekulize", False):
-            Chem.Kekulize(_mol)
-        if kwargs.get("assignStereo", True):
-            Chem.AssignStereochemistryFrom3D(_mol)
-
-        if _logger:
-            logger.info(
-                f"Converted Molecule to SmallMol with SMILES: {Chem.MolToSmiles(_mol, kekuleSmiles=True)}"
-            )
-
-        if mol.numAtoms != _mol.GetNumAtoms():
-            raise RuntimeError(
-                "Number of atoms changed while converting to rdkit molecule"
-            )
-        _mol.SetProp("_Name", mol.resname[0])
-
-        # Return non-editable version
-        return Chem.Mol(_mol)
 
     def toMolecule(self, ids=None):
         """

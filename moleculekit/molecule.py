@@ -2662,6 +2662,267 @@ class Molecule(object):
         masses = np.expand_dims(masses, list(range(1, coords.ndim)))
         return (coords * masses).sum(axis=0) / masses.sum()
 
+    @staticmethod
+    def fromRDKitMol(rmol):
+        from rdkit.Chem.rdchem import BondType
+        from collections import defaultdict
+
+        bondtype_map = defaultdict(lambda: "un")
+        bondtype_map.update(
+            {
+                BondType.SINGLE: "1",
+                BondType.DOUBLE: "2",
+                BondType.TRIPLE: "3",
+                BondType.QUADRUPLE: "4",
+                BondType.QUINTUPLE: "5",
+                BondType.HEXTUPLE: "6",
+                BondType.AROMATIC: "ar",
+            }
+        )
+
+        mol = Molecule()
+        mol.empty(rmol.GetNumAtoms(), numFrames=rmol.GetNumConformers())
+        mol.record[:] = "HETATM"
+        mol.resname[:] = rmol.GetProp("_Name") if rmol.HasProp("_Name") else "UNK"
+        mol.resid[:] = 1
+        mol.viewname = mol.resname[0]
+
+        if rmol.GetNumConformers() != 0:
+            mol.coords = np.array(
+                np.stack([cc.GetPositions() for cc in rmol.GetConformers()], axis=2),
+                dtype=Molecule._dtypes["coords"],
+            )
+
+        def get_atomname(mol, element):
+            i = 1
+            while True:
+                name = f"{element}{i}"
+                if name not in mol.name:
+                    return name
+                i += 1
+
+        for i, atm in enumerate(rmol.GetAtoms()):
+            mol.name[i] = f"{atm.GetSymbol()}_X"  # Rename later
+            if atm.HasProp("_Name") and atm.GetProp("_Name") != "":
+                mol.name[i] = atm.GetProp("_Name")
+            mol.element[i] = atm.GetSymbol()
+            mol.formalcharge[i] = atm.GetFormalCharge()
+            if atm.HasProp("_TriposPartialCharge"):
+                mol.charge[i] = atm.GetPropsAsDict()["_TriposPartialCharge"]
+            if atm.HasProp("_TriposAtomType"):
+                mol.atomtype[i] = atm.GetPropsAsDict()["_TriposAtomType"]
+
+        for i in range(mol.numAtoms):
+            if mol.name[i].endswith("_X"):
+                mol.name[i] = get_atomname(mol, mol.element[i])
+
+        for bo in rmol.GetBonds():
+            mol.addBond(
+                bo.GetBeginAtomIdx(), bo.GetEndAtomIdx(), bondtype_map[bo.GetBondType()]
+            )
+
+        return mol
+
+    def toRDKitMol(
+        self,
+        sanitize=False,
+        kekulize=False,
+        assignStereo=True,
+        guessBonds=False,
+        _logger=True,
+    ):
+        from moleculekit.molecule import calculateUniqueBonds
+        from rdkit.Chem.rdchem import BondType
+        from rdkit.Chem.rdchem import Conformer
+        from rdkit import Chem
+
+        bondtype_map = {
+            "1": BondType.SINGLE,
+            "2": BondType.DOUBLE,
+            "3": BondType.TRIPLE,
+            "4": BondType.QUADRUPLE,
+            "5": BondType.QUINTUPLE,
+            "6": BondType.HEXTUPLE,
+            "ar": BondType.AROMATIC,
+        }
+
+        _mol = Chem.rdchem.RWMol()
+        for i in range(self.numAtoms):
+            atm = Chem.rdchem.Atom(self.element[i])
+            atm.SetNoImplicit(
+                False
+            )  # Set to True to stop rdkit from adding implicit hydrogens
+            atm.SetProp("_Name", self.name[i])
+            atm.SetFormalCharge(int(self.formalcharge[i]))
+            atm.SetProp("_TriposAtomType", self.atomtype[i])
+            atm.SetDoubleProp("_TriposPartialCharge", float(self.charge[i]))
+            _mol.AddAtom(atm)
+
+        bonds = self.bonds.copy()
+        bondtype = self.bondtype.copy()
+        if guessBonds:
+            bonds, bondtype = self._guessBonds()
+        bondtype[bondtype == "un"] = "1"
+
+        if len(self.bonds) == 0:
+            logger.info(
+                "No bonds found in molecule. If you want your rdkit molecule to have bonds, use guessBonds=True"
+            )
+
+        bonds, bondtypes = calculateUniqueBonds(bonds, bondtype)
+        for i in range(bonds.shape[0]):
+            _mol.AddBond(
+                int(bonds[i, 0]),
+                int(bonds[i, 1]),
+                bondtype_map[bondtypes[i]],
+            )
+
+        for f in range(self.numFrames):
+            conf = Conformer(self.numAtoms)
+            for i in range(self.numAtoms):
+                conf.SetAtomPosition(i, self.coords[i, :, f].tolist())
+            _mol.AddConformer(conf, assignId=True)
+
+        if sanitize:
+            Chem.SanitizeMol(_mol)
+        if kekulize:
+            Chem.Kekulize(_mol)
+        if assignStereo:
+            Chem.AssignStereochemistryFrom3D(_mol)
+
+        if _logger:
+            logger.info(
+                f"Converted Molecule to SmallMol with SMILES: {Chem.MolToSmiles(_mol, kekuleSmiles=True)}"
+            )
+
+        if self.numAtoms != _mol.GetNumAtoms():
+            raise RuntimeError(
+                "Number of atoms changed while converting to rdkit molecule"
+            )
+        _mol.SetProp("_Name", self.resname[0])
+
+        # Return non-editable version
+        return Chem.Mol(_mol)
+
+    def templateResidueFromSmiles(
+        self,
+        sel,
+        smiles,
+        sanitizeSmiles=True,
+        addHs=False,
+        onlyOnAtoms=None,
+        guessBonds=False,
+        _logger=True,
+    ):
+        """Template a residue from a SMILES string
+
+        This function will assign bonds, bond orders and formal charges to a residue according to a corresponding SMILES string.
+        In addition it can also protonate the residue.
+
+        Parameters
+        ----------
+        sel : str
+            The atom selection of the residue which we want to template
+        smiles : str
+            The SMILES string of the template residue
+        sanitizeSmiles : bool
+            If True the SMILES string will be sanitized
+        addHs : bool
+            If True the residue will be protonated
+        onlyOnAtoms : list
+            If not None, only the atoms in this list will be protonated
+        guessBonds : bool
+            Set to True to guess bonds for the residue we are templating
+        _logger : bool
+            If True the logger will be used to print information
+
+        Examples
+        --------
+        >>> mol = Molecule("3ptb")
+        >>> mol.templateResidueFromSmiles("resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True)
+        """
+        from rdkit.Chem import rdFMCS
+        from rdkit import Chem
+
+        selidx = self.atomselect(sel, indexes=True)
+        # Check that indexes are all sequential (no gaps)
+        if not np.all(np.diff(selidx) == 1):
+            raise RuntimeError(
+                "The selection contains gaps in the atom indexes. Please select a single molecule residue only."
+            )
+
+        residue = self.copy(sel=selidx)
+        if guessBonds:
+            residue.guessBonds()
+        for field in ("resname", "chain", "segid", "resid", "insertion"):
+            if len(set(getattr(residue, field))) != 1:
+                raise RuntimeError(
+                    f"The selection contains multiple {field}s. Please select a single molecule residue only."
+                )
+
+        if len(residue.bonds) == 0:
+            raise RuntimeError(
+                "The selection contains no bonds. Please set the bonds of the residue or guess them with guessBonds=True"
+            )
+
+        rmol = residue.toRDKitMol(
+            sanitize=False, kekulize=False, assignStereo=False, _logger=_logger
+        )
+        rmol_smi = Chem.MolFromSmiles(smiles, sanitize=sanitizeSmiles)
+        Chem.Kekulize(rmol_smi)
+
+        res = rdFMCS.FindMCS(
+            [rmol, rmol_smi],
+            bondCompare=rdFMCS.BondCompare.CompareAny,
+            atomCompare=rdFMCS.AtomCompare.CompareElements,
+        )
+        patt = Chem.MolFromSmarts(res.smartsString)
+        at1 = list(rmol.GetSubstructMatch(patt))
+        at2 = list(rmol_smi.GetSubstructMatch(patt))
+        atom_mapping = {j: i for i, j in zip(at1, at2)}
+
+        # Check if any atoms in rmol_smi which are not in at2 are non-hydrogen atoms
+        elem = np.array([a.GetSymbol() for a in rmol_smi.GetAtoms()])
+        non_matched = np.setdiff1d(range(len(elem)), at2)
+        if np.any(elem[non_matched] != "H"):
+            raise RuntimeError(
+                "The SMILES template contains non-hydrogen atoms that are not matched to the residue"
+            )
+
+        # Transfer the formal charge, bonds and bond orders from rmol_smi to rmol
+        for i, j in zip(at1, at2):
+            fch = rmol_smi.GetAtomWithIdx(j).GetFormalCharge()
+            rmol.GetAtomWithIdx(i).SetFormalCharge(fch)
+
+        for bond in rmol_smi.GetBonds():
+            i, j = (
+                atom_mapping[bond.GetBeginAtomIdx()],
+                atom_mapping[bond.GetEndAtomIdx()],
+            )
+            btype = bond.GetBondType()
+            rbond = rmol.GetBondBetweenAtoms(i, j)
+            if rbond is None:
+                raise RuntimeError(
+                    f"Bond between atoms {i} and {j} not found in residue"
+                )
+            rbond.SetBondType(btype)
+
+        # Protonate the residue according to the SMILES template
+        if addHs:
+            # Don't sanitize to not lose bond orders
+            rmol = Chem.RemoveHs(rmol, sanitize=True)
+            rmol = Chem.AddHs(rmol, addCoords=True, onlyOnAtoms=onlyOnAtoms)
+            Chem.Kekulize(rmol)  # Sanitization ruins kekulization
+
+        new_residue = Molecule.fromRDKitMol(rmol)
+        new_residue.resid[:] = residue.resid[0]
+        new_residue.chain[:] = residue.chain[0]
+        new_residue.segid[:] = residue.segid[0]
+        new_residue.insertion[:] = residue.insertion[0]
+
+        self.remove(selidx, _logger=False)
+        self.insert(new_residue, selidx[0])
+
 
 class UniqueAtomID:
     _fields = ("name", "altloc", "resname", "chain", "resid", "insertion", "segid")

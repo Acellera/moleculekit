@@ -494,3 +494,59 @@ def _test_large_time_fstep():
     mol.time = np.arange(1e15, 1.000000001e15, 4, dtype=Molecule._dtypes["time"])
     mol.fileloc = ["x"] * mol.time.shape[0]
     assert mol.fstep == 4e-6
+
+
+def _test_templateResidueFromSmiles():
+    def _cmp(mol, ref_mol):
+        assert mol_equal(
+            mol,
+            ref_mol,
+            checkFields=Molecule._all_fields,
+            exceptFields=["crystalinfo", "fileloc"],
+            uqBonds=True,
+            fieldPrecision={"coords": 1e-3},
+        )
+
+    testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
+    start_file = os.path.join(testdir, "BEN.pdb")
+
+    sel = "resname BEN"
+    smiles = "[NH2+]=C(N)c1ccccc1"
+    ref_mol = Molecule(os.path.join(testdir, "BEN_pH7.4.cif"))
+
+    mol = Molecule(start_file)
+    mol.templateResidueFromSmiles(sel, smiles, addHs=False, guessBonds=True)
+    _cmp(mol, ref_mol.copy(sel="noh"))
+
+    # With addHs=True
+    mol = Molecule(start_file)
+    mol.templateResidueFromSmiles(sel, smiles, addHs=True, guessBonds=True)
+    _cmp(mol, ref_mol)
+
+    # Template inside the original complex
+    mol = Molecule("3ptb")
+    mol.templateResidueFromSmiles(sel, smiles, addHs=True, guessBonds=True)
+    _cmp(mol, Molecule(os.path.join(testdir, "3PTB_BEN_pH7.4.cif")))
+
+    # With RCSB incorrect SMILES
+    smiles = "NC(=N)c1ccccc1"
+    ref_mol = Molecule(os.path.join(testdir, "BEN_RCSB.cif"))
+
+    mol = Molecule(start_file)
+    mol.templateResidueFromSmiles(sel, smiles, addHs=False, guessBonds=True)
+    _cmp(mol, ref_mol.copy(sel="noh"))
+
+    # With addHs=True
+    mol = Molecule(start_file)
+    mol.templateResidueFromSmiles(sel, smiles, addHs=True, guessBonds=True)
+    _cmp(mol, ref_mol)
+
+    # Test 1STP BTN Biotin molecule templating
+    start_file = os.path.join(testdir, "1STP_BTN.pdb")
+    sel = "resname BTN"
+    smiles = "C1[C@H]2[C@@H]([C@@H](S1)CCCCC(=O)O)NC(=O)N2"
+    ref_mol = Molecule(os.path.join(testdir, "1STP_BTN.cif"))
+
+    mol = Molecule(start_file)
+    mol.templateResidueFromSmiles(sel, smiles, addHs=True, guessBonds=True)
+    _cmp(mol, ref_mol)
