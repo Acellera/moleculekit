@@ -100,10 +100,25 @@ def rooted_tree_isomorphism(t1, root1, t2, root2, keyfunc):
         It should take as input the node and return a string
     """
     import numpy as np
-    from networkx.algorithms.isomorphism.tree_isomorphism import (
-        assign_levels,
-        group_by_levels,
-    )
+
+    # figure out the level of each node, with 0 at root
+    def assign_levels(G, root):
+        level = {}
+        level[root] = 0
+        for v1, v2 in nx.bfs_edges(G, root):
+            level[v2] = level[v1] + 1
+
+        return level
+
+    # now group the nodes at each level
+    def group_by_levels(levels):
+        L = {}
+        for n, lev in levels.items():
+            if lev not in L:
+                L[lev] = []
+            L[lev].append(n)
+
+        return L
 
     assert nx.is_tree(t1)
     assert nx.is_tree(t2)

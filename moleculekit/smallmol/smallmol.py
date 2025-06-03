@@ -729,7 +729,7 @@ class SmallMol(object):
         ps.numThreads = numThreads
         ps.useRandomCoords = useRandomCoords
         ps.pruneRmsThresh = pruneRmsThresh
-        ps.maxAttempts = maxAttempts
+        ps.maxIterations = maxAttempts
         ps.clearConfs = False
 
         if not append:
