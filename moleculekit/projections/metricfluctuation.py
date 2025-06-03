@@ -107,9 +107,6 @@ class MetricFluctuation(_MetricCoordinate):
                 or len(self._refmol.box) == 0
                 or np.all(self._refmol.box == 0)
             ):
-                logger.warning(
-                    "refmol doesn't contain periodic box information and will not be wrapped."
-                )
                 _wrapref = False
             refcoords = _MetricCoordinate(
                 atomsel=self._atomsel,
