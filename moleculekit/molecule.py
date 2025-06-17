@@ -615,7 +615,7 @@ class Molecule(object):
                 self.bonds[self.bonds >= index] += mol.numAtoms
             if len(mol.bonds) > 0:
                 newbonds = mol.bonds.copy()
-                newbonds += index
+                newbonds += np.uint32(index)
                 if len(self.bonds) > 0:
                     self.bonds = np.append(self.bonds, newbonds, axis=0)
                     self.bondtype = np.append(self.bondtype, mol.bondtype, axis=0)
