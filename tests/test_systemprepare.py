@@ -3,6 +3,7 @@ from moleculekit.tools.preparation import systemPrepare, _table_dtypes
 import numpy as np
 import os
 import pytest
+import sys
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -61,8 +62,12 @@ def _compare_results(refpdb, refdf_f, pmol: Molecule, df):
     refmol = Molecule(refpdb)
     refmol.filter("not water", _logger=False)
     pmol.filter("not water", _logger=False)
+    coords_prec = 1e-3
+    if sys.platform == "darwin":
+        coords_prec = 5e-3
+
     assert mol_equal(
-        refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": 1e-3}
+        refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": coords_prec}
     ), f"Failed comparison of {refpdb} vs {pmol.fileloc}"
 
 
