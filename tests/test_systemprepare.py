@@ -6,14 +6,6 @@ import pytest
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
-# The below is used for testing only
-try:
-    from aceprep.prepare import rdk_prepare
-except ImportError:
-    ACEPREP_EXISTS = False
-else:
-    ACEPREP_EXISTS = True
-
 
 def _compare_results(refpdb, refdf_f, pmol: Molecule, df):
     from moleculekit.util import tempname
@@ -170,7 +162,6 @@ def _test_auto_freezing_and_force():
     )
 
 
-@pytest.mark.skipif(not ACEPREP_EXISTS, reason="Can only run with aceprep installed")
 @pytest.mark.parametrize(
     "files",
     (
@@ -189,14 +180,15 @@ def _test_nonstandard_residues(tmp_path, files):
 
     res_smiles = {
         "200": "c1cc(ccc1C[C@@H](C(=O)O)N)Cl",
-        "HRG": "C(CCNC(=N)N)C[C@@H](C(=O)O)N",
-        "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C(=O)O",
-        "TYS": "c1cc(ccc1C[C@@H](C(=O)O)N)OS(=O)(=O)O",
+        "HRG": "C(CCNC(=N)N)C[C@@H](CO)N",
+        "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)CO",
+        "TYS": "c1cc(ccc1C[C@@H](CO)N)OS(=O)(=O)O",
         "SAH": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CSCC[C@@H](C(=O)O)N)O)O)N",
     }
     mol = Molecule(os.path.join(test_home, inf))
     if inf == "2QRV.pdb":
         mol = autoSegment2(mol, fields=("chain", "segid"))
+    mol.set("chain", "W", sel="water")
 
     pmol, df = systemPrepare(
         mol,
@@ -214,19 +206,7 @@ def _test_nonstandard_residues(tmp_path, files):
         df,
     )
 
-    pmol, df = systemPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
-    pmol.fileloc.append(os.path.join(tmp_path, "prepared.pdb"))
-    pmol.write(pmol.fileloc[0])
 
-    _compare_results(
-        os.path.join(test_home, f"{outf}.pdb"),
-        os.path.join(test_home, f"{outf}.csv"),
-        pmol,
-        df,
-    )
-
-
-@pytest.mark.skipif(ACEPREP_EXISTS, reason="Can only run WITHOUT aceprep installed")
 def _test_nonstandard_residue_hard_ignore_ns():
     test_home = os.path.join(
         curr_dir, "test_systemprepare", "test-nonstandard-residues"
@@ -238,7 +218,7 @@ def _test_nonstandard_residue_hard_ignore_ns():
         return_details=True,
         hold_nonpeptidic_bonds=True,
         _molkit_ff=False,
-        ignore_ns_errors=True,
+        ignore_ns=True,
     )
     _compare_results(
         os.path.join(test_home, "5VBL_prepared_ignore_ns.pdb"),
@@ -290,12 +270,17 @@ def _test_cyclic_peptides():
     )
 
 
-@pytest.mark.skipif(not ACEPREP_EXISTS, reason="Can only run with aceprep installed")
 def _test_cyclic_peptides_noncanonical():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-cyclic-peptides")
     mol = Molecule(os.path.join(test_home, "4TOT_E.pdb"))
 
-    pmol, df = systemPrepare(mol, return_details=True)
+    smiles = {
+        "33X": "CC(CO)NC",
+        "34E": "CN[C@@H]([C@H](C)CN1CCN(CCOC)CC1)C(O)",
+        "BMT": "C/C=C/C[C@@H](C)[C@H]([C@@H](CO)NC)O",
+        "DAL": "C[C@H](CO)N",
+    }
+    pmol, df = systemPrepare(mol, return_details=True, residue_smiles=smiles)
 
     _compare_results(
         os.path.join(test_home, "4TOT_E_prepared.pdb"),

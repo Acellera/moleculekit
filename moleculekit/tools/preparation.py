@@ -84,19 +84,12 @@ def _check_chain_and_segid(mol, verbose):
 
 
 def _generate_nonstandard_residues_ff(
-    mol,
-    definition,
-    forcefield,
-    _molkit_ff=True,
-    outdir=None,
-    ignore_ns_errors=False,
-    residue_smiles=None,
+    mol, definition, forcefield, _molkit_ff=True, outdir=None, residue_smiles=None
 ):
     import tempfile
     from moleculekit.tools.preparation_customres import _get_custom_ff
     from moleculekit.tools.preparation_customres import (
         _process_custom_residue,
-        _template_residue_from_smiles,
         _mol_to_dat_def,
         _mol_to_xml_def,
         _prepare_for_parameterize,
@@ -111,64 +104,61 @@ def _generate_nonstandard_residues_ff(
     if len(not_in_ff) == 0:
         return definition, forcefield
 
-    try:
-        from aceprep.prepare import rdk_prepare
-    except ImportError:
-        if ignore_ns_errors:
-            return definition, forcefield
+    residue_smiles = residue_smiles or {}
+    missing = np.setdiff1d(not_in_ff, list(residue_smiles.keys()))
+    if len(missing):
         raise RuntimeError(
-            "To protonate non-canonical aminoacids you need the aceprep library. Please contact Acellera info@acellera.com for more information or set ignore_ns_errors=True to ignore non-canonical residues in the protonation (this will leave the residues unprotonated)."
+            f"Missing topology for residues {missing}. "
+            "Please provide their SMILES in the residue_smiles dictionary or remove them from the input structure."
         )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         for res in not_in_ff:
-            try:
-                logger.info(f"Attempting to template non-canonical residue {res}...")
-                # This removes the non-canonical hydrogens from the original mol object
-                mol.remove((mol.resname == res) & (mol.element == "H"), _logger=False)
-                molc = mol.copy()
+            logger.info(f"Attempting to template non-canonical residue {res}...")
+            # This removes the non-canonical hydrogens from the original mol object
+            mol.remove((mol.resname == res) & (mol.element == "H"), _logger=False)
+            molc = mol.copy()
 
-                # Hacky way of getting the first molecule, if there are copies
-                molresn = molc.resname == res
-                firstname = molc.name[molresn][0]
-                lastname = molc.name[molresn][-1]
-                start = np.where(molresn & (molc.name == firstname))[0][0]
-                end = np.where(molresn & (molc.name == lastname))[0][0]
-                # Remove all other stuff
-                molc.filter(f"index {start} to {end}", _logger=False)
-                molc.guessBonds()
+            # Hacky way of getting the first molecule, if there are copies
+            molresn = molc.resname == res
+            firstname = molc.name[molresn][0]
+            lastname = molc.name[molresn][-1]
+            start = np.where(molresn & (molc.name == firstname))[0][0]
+            end = np.where(molresn & (molc.name == lastname))[0][0]
+            # Remove all other stuff
+            molc.filter(f"index {start} to {end}", _logger=False)
+            molc.guessBonds()
 
-                if len(np.unique(molc.name)) != molc.numAtoms:
-                    raise RuntimeError(
-                        f"Residue {res} contains duplicate atom names. Please rename the atoms to have unique names."
-                    )
-
-                smiles = None
-                if residue_smiles is not None and res in residue_smiles:
-                    smiles = residue_smiles[res]
-
-                if smiles is not None and os.path.isfile(smiles):
-                    tmol = Molecule(smiles)
-                else:
-                    tmol = _template_residue_from_smiles(molc, res, smiles=smiles)
-                cres = _process_custom_residue(tmol)
-                # Rename to correct resname
-                cres.resname[:] = res
-
-                _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
-                _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
-                if outdir is not None:
-                    os.makedirs(outdir, exist_ok=True)
-                    pres = _prepare_for_parameterize(cres)
-                    pres.write(os.path.join(outdir, f"{res}.cif"))
-                logger.info(f"Succesfully templated non-canonical residue {res}.")
-            except Exception as e:
-                import traceback
-
-                traceback.print_exc()
+            if len(np.unique(molc.name)) != molc.numAtoms:
                 raise RuntimeError(
-                    f"Failed to protonate non-canonical residue {res}. Please remove it from the protein or mutate it to continue preparation. Detailed error message: {e}"
+                    f"Residue {res} contains duplicate atom names. Please rename the atoms to have unique names."
                 )
+
+            smiles = None
+            if residue_smiles is not None and res in residue_smiles:
+                smiles = residue_smiles[res]
+            if smiles is None:
+                raise RuntimeError(
+                    f"Residue {res} is not in the residue_smiles dictionary. Please add it to the dictionary or remove it from the protein."
+                )
+
+            if os.path.isfile(smiles):
+                molc = Molecule(smiles)
+            else:
+                molc.templateResidueFromSmiles("all", smiles, addHs=True)
+
+            cres = _process_custom_residue(molc)
+            # Rename to correct resname
+            cres.resname[:] = res
+
+            _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
+            _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
+            if outdir is not None:
+                os.makedirs(outdir, exist_ok=True)
+                pres = _prepare_for_parameterize(cres)
+                pres.write(os.path.join(outdir, f"{res}.cif"))
+            logger.info(f"Succesfully templated non-canonical residue {res}.")
+
         definition, forcefield = _get_custom_ff(user_ff=tmpdir, molkit_ff=_molkit_ff)
     return definition, forcefield
 
@@ -542,7 +532,6 @@ def systemPrepare(
     return_details=False,
     hydrophobic_thickness=None,
     plot_pka=None,
-    ignore_ns_errors=False,
     _logger_level="ERROR",
     _molkit_ff=True,
     outdir=None,
@@ -640,14 +629,14 @@ def systemPrepare(
         ignoring the covalent bond, meaning it may break the bonds or add hydrogen atoms between the bonds.
     plot_pka : str
         Provide a file path with .png extension to draw the titration diagram for the system residues.
-    ignore_ns_errors : bool
-        If False systemPrepare will issue an error when it fails to protonate non-canonical residues in the protein.
-        If True it will ignore errors on non-canonical residues leaving them unprotonated.
     outdir : str
         A path where to save custom residue cif files used for building
     residue_smiles : dict
         A dictionary with keys being residue names and values being the SMILES string of the residue. This is used to
-        create protonated versions of non-canonical residues with the help of the aceprep library.
+        create protonated versions of non-canonical residues.
+    ignore_ns : bool
+        If False systemPrepare will issue an error when it fails to protonate non-canonical residues in the protein.
+        If True it will leave non-canonical residues unprotonated.
 
     Returns
     -------
@@ -745,7 +734,6 @@ def systemPrepare(
             forcefield,
             _molkit_ff,
             outdir,
-            ignore_ns_errors=ignore_ns_errors,
             residue_smiles=residue_smiles,
         )
 
