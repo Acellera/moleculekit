@@ -5,81 +5,81 @@ on:
   workflow_call:
 
 jobs:
-  # deploy_linux:
-  #   runs-on: ${{ matrix.os }}
-  #   container: ${{ matrix.container }}
+  deploy_linux:
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
 
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       os: ["ubuntu-latest"]
-  #       python-version: ["3.10"]
-  #       container: ["quay.io/pypa/manylinux_2_28_x86_64"]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.10"]
+        container: ["quay.io/pypa/manylinux_2_28_x86_64"]
 
-  #   steps:
-  #     - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-  #     - uses: conda-incubator/setup-miniconda@v2
-  #       with:
-  #         miniconda-version: "latest"
-  #         activate-environment: ../deploy-env
-  #         python-version: ${{ matrix.python-version }}
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: "latest"
+          activate-environment: ../deploy-env
+          python-version: ${{ matrix.python-version }}
 
-  #     - name: Install build deps
-  #       shell: bash -l {0}
-  #       run: |
-  #         git config --global --add safe.directory '*'
-  #         conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
-  #         pip install setuptools-scm>=8 toml pyyaml
+      - name: Install build deps
+        shell: bash -l {0}
+        run: |
+          git config --global --add safe.directory '*'
+          conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
+          pip install setuptools-scm>=8 toml pyyaml
 
-  #     - name: Build conda package
-  #       shell: bash -l {0}
-  #       run: |
-  #         python package/moleculekit/insert_placeholder_values.py
-  #         rattler-build build --recipe ./package/moleculekit/recipe.yaml --output-dir ../pkg/ --no-include-recipe -c acellera -c conda-forge
+      - name: Build conda package
+        shell: bash -l {0}
+        run: |
+          python package/moleculekit/insert_placeholder_values.py
+          rattler-build build --recipe ./package/moleculekit/recipe.yaml --output-dir ../pkg/ --no-include-recipe -c acellera -c conda-forge
 
-  #     - name: Upload to conda
-  #       shell: bash -l {0}
-  #       run: |
-  #         anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
+      - name: Upload to conda
+        shell: bash -l {0}
+        run: |
+          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
 
-  # deploy_osx:
-  #   runs-on: ${{ matrix.os }}
+  deploy_osx:
+    runs-on: ${{ matrix.os }}
 
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       os: ["macos-latest", "macos-13"]
-  #       python-version: ["3.10"]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["macos-latest", "macos-13"]
+        python-version: ["3.10"]
 
-  #   steps:
-  #     - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-  #     - uses: ilammy/msvc-dev-cmd@v1
+      - uses: ilammy/msvc-dev-cmd@v1
 
-  #     - uses: conda-incubator/setup-miniconda@v3
-  #       with:
-  #         miniconda-version: "latest"
-  #         activate-environment: ../deploy-env
-  #         python-version: ${{ matrix.python-version }}
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniconda-version: "latest"
+          activate-environment: ../deploy-env
+          python-version: ${{ matrix.python-version }}
 
-  #     - name: Install build deps
-  #       shell: bash -l {0}
-  #       run: |
-  #         git config --global --add safe.directory '*'
-  #         conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
-  #         pip install setuptools-scm>=8 toml pyyaml
+      - name: Install build deps
+        shell: bash -l {0}
+        run: |
+          git config --global --add safe.directory '*'
+          conda install anaconda-client rattler-build python=${{ matrix.python-version }} -c conda-forge
+          pip install setuptools-scm>=8 toml pyyaml
 
-  #     - name: Build conda package
-  #       shell: bash -l {0}
-  #       run: |
-  #         python package/moleculekit/insert_placeholder_values.py
-  #         rattler-build build --recipe ./package/moleculekit/recipe.yaml --output-dir ../pkg/ --no-include-recipe -c acellera -c conda-forge
+      - name: Build conda package
+        shell: bash -l {0}
+        run: |
+          python package/moleculekit/insert_placeholder_values.py
+          rattler-build build --recipe ./package/moleculekit/recipe.yaml --output-dir ../pkg/ --no-include-recipe -c acellera -c conda-forge
 
-  #     - name: Upload to conda
-  #       shell: bash -l {0}
-  #       run: |
-  #         anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
+      - name: Upload to conda
+        shell: bash -l {0}
+        run: |
+          anaconda -t ${{ secrets.ANACONDA_TOKEN_BASIC }} upload -u acellera ../pkg/*/moleculekit-*.conda
 
   windows_build:
     runs-on: ${{ matrix.os }}
@@ -98,9 +98,6 @@ jobs:
           miniconda-version: "latest"
           activate-environment: ../deploy-env
           python-version: ${{ matrix.python-version }}
-
-      # - name: Add msbuild to PATH
-      #   uses: microsoft/setup-msbuild@v2
 
       - name: Install build deps
         shell: bash -l {0}
