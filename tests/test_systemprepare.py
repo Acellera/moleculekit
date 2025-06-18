@@ -192,7 +192,7 @@ def _test_nonstandard_residues(tmp_path, files):
     }
     mol = Molecule(os.path.join(test_home, inf))
     if inf == "2QRV.pdb":
-        mol.filter("chain A D K")
+        mol.filter("chain D E K M")
         mol = autoSegment2(mol, fields=("chain", "segid"))
     mol.set("chain", "W", sel="water")
 
@@ -204,7 +204,6 @@ def _test_nonstandard_residues(tmp_path, files):
     )
     pmol.fileloc.append(os.path.join(tmp_path, "prepared.pdb"))
     pmol.write(pmol.fileloc[0])
-
     _compare_results(
         os.path.join(test_home, f"{outf}.pdb"),
         os.path.join(test_home, f"{outf}.csv"),
