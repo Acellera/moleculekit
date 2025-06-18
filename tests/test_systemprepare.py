@@ -63,9 +63,6 @@ def _compare_results(refpdb, refdf_f, pmol: Molecule, df):
     refmol.filter("not water", _logger=False)
     pmol.filter("not water", _logger=False)
     coords_prec = 1e-3
-    if sys.platform == "darwin":
-        coords_prec = 5e-3
-
     assert mol_equal(
         refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": coords_prec}
     ), f"Failed comparison of {refpdb} vs {pmol.fileloc}"
