@@ -99,8 +99,8 @@ jobs:
           activate-environment: ../deploy-env
           python-version: ${{ matrix.python-version }}
 
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v2
+      # - name: Add msbuild to PATH
+      #   uses: microsoft/setup-msbuild@v2
 
       - name: Install build deps
         shell: bash -l {0}
@@ -113,7 +113,7 @@ jobs:
         shell: bash -l {0}
         run: |
           python package/moleculekit/insert_placeholder_values.py
-          rattler-build build --recipe ./package/moleculekit/recipe.yaml --output-dir ../pkg/ --no-include-recipe -c acellera -c conda-forge
+          rattler-build build --recipe ./package/moleculekit/recipe.yaml --variant-config ./package/moleculekit/windows_variants.yaml --output-dir ../pkg/ --no-include-recipe -c acellera -c conda-forge
 
       - name: Upload to conda
         shell: bash -l {0}

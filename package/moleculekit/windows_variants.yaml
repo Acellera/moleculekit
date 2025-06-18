@@ -1,0 +1,14 @@
+c_compiler:
+  - vs2019
+c_stdlib:
+  - vs
+cxx_compiler:
+  - vs2019
+python:
+  - 3.9
+  - 3.10
+  - 3.11
+  - 3.12
+  - 3.13
+target_platform:
+  - win-64
