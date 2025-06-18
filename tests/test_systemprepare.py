@@ -204,6 +204,14 @@ def _test_nonstandard_residues(tmp_path, files):
     pmol.fileloc.append(os.path.join(tmp_path, "prepared.pdb"))
     pmol.write(pmol.fileloc[0])
 
+    if inf == "2QRV.pdb":
+        _ref = Molecule(os.path.join(test_home, f"{outf}.pdb"))
+        print(
+            "DEBUG MAX DIFF",
+            np.max(np.abs(pmol.coords - _ref.coords)),
+        )
+        print("IDX", np.where(np.abs(pmol.coords - _ref.coords) > 5e-3))
+
     _compare_results(
         os.path.join(test_home, f"{outf}.pdb"),
         os.path.join(test_home, f"{outf}.csv"),
