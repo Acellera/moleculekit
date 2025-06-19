@@ -147,6 +147,13 @@ def _generate_nonstandard_residues_ff(
             else:
                 molc.templateResidueFromSmiles("all", smiles, addHs=True)
 
+            # Ensure the H bonded to OXT is named HXT
+            if "OXT" in molc.name:
+                neigh = molc.getNeighbors(np.where(molc.name == "OXT")[0][0])
+                for n in neigh:
+                    if molc.element[n] == "H":
+                        molc.name[n] = "HXT"
+
             molc.chain[:] = ""
             molc.segid[:] = ""
             cres = _process_custom_residue(molc)
