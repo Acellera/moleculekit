@@ -176,9 +176,9 @@ def _test_nonstandard_residues(tmp_path, system):
 
     res_smiles = {
         "200": "c1cc(ccc1C[C@@H](C(=O)O)N)Cl",
-        "HRG": "C(CCNC(=N)N)C[C@@H](CO)N",
-        "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)CO",
-        "TYS": "c1cc(ccc1C[C@@H](CO)N)OS(=O)(=O)O",
+        "HRG": "C(CCNC(=N)N)C[C@@H](C=O)N",
+        "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C=O",
+        "TYS": "c1cc(ccc1C[C@@H](C=O)N)OS(=O)(=O)O",
         "SAH": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CSCC[C@@H](C(=O)O)N)O)O)N",
     }
     mol = Molecule(os.path.join(test_home, f"{system}.pdb"))
@@ -209,14 +209,15 @@ def _test_nonstandard_residues(tmp_path, system):
     )
     for ff in glob.glob(os.path.join(tmp_path, "residue_cifs", "*.cif")):
         cif1 = Molecule(ff)
-        cif2 = Molecule(os.path.join(test_home, "residue_cifs", os.path.basename(ff)))
+        ffref = os.path.join(test_home, "residue_cifs", os.path.basename(ff))
+        cif2 = Molecule(ffref)
         assert mol_equal(
             cif1,
             cif2,
             checkFields=Molecule._all_fields,
             exceptFields=["fileloc"],
             fieldPrecision={"coords": 1e-3},
-        ), f"Failed comparison of {ff} vs {cif2}"
+        ), f"Failed comparison of {ff} vs {ffref}"
 
 
 def _test_nonstandard_residue_hard_ignore_ns():

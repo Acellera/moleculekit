@@ -67,7 +67,7 @@ TYS  OH   S    SING
 TYS  S    O1   DOUB  
 TYS  S    O2   DOUB  
 TYS  S    O3   SING  
-TYS  C    O    SING  
+TYS  C    O    DOUB  
 TYS  CA   HA   SING  
 TYS  CB   H4   SING  
 TYS  CB   H5   SING  

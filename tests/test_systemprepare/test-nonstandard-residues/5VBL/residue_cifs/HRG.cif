@@ -63,7 +63,7 @@ HRG  CD     NE     SING
 HRG  NE     CZ     SING  
 HRG  CZ     NH1    DOUB  
 HRG  CZ     NH2    SING  
-HRG  C      O      SING  
+HRG  C      O      DOUB  
 HRG  CA     HA     SING  
 HRG  CB     H4     SING  
 HRG  CB     H5     SING  

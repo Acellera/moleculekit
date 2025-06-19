@@ -190,6 +190,10 @@ def _prepare_for_parameterize(mol, resid=None):
         mol.insert(cterm, insert_idx)
         mol.addBond(c_idx, insert_idx, "1")
 
+    # Fix C=O bond type
+    _, _, idx = mol.hasBond(_get_idx(mol, "C", resid), _get_idx(mol, "O", resid))
+    mol.bondtype[idx] = "2"
+
     # Reorder atoms. AMBER order is: N H CA HA [sidechain] C O
     _reorder_residue_atoms(mol, resid)
 
