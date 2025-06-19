@@ -224,7 +224,7 @@ def _test_nonstandard_residue_hard_ignore_ns():
     test_home = os.path.join(
         curr_dir, "test_systemprepare", "test-nonstandard-residues"
     )
-    mol = Molecule(os.path.join(test_home, "5VBL.pdb"))
+    mol = Molecule(os.path.join(test_home, "5VBL", "5VBL.pdb"))
 
     pmol, df = systemPrepare(
         mol,
@@ -234,8 +234,8 @@ def _test_nonstandard_residue_hard_ignore_ns():
         ignore_ns=True,
     )
     _compare_results(
-        os.path.join(test_home, "5VBL_prepared_ignore_ns.pdb"),
-        os.path.join(test_home, "5VBL_prepared_ignore_ns.csv"),
+        os.path.join(test_home, "5VBL", "5VBL_prepared_ignore_ns.pdb"),
+        os.path.join(test_home, "5VBL", "5VBL_prepared_ignore_ns.csv"),
         pmol,
         df,
     )
