@@ -1,0 +1,121 @@
+data_SAH
+#
+#
+_chem_comp.id                  SAH
+_chem_comp.type                NON-POLYMER
+_chem_comp.pdbx_formal_charge  0
+##
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+SAH  N      .    N  0  0.0   1.243    0.862   0.000   1.243    0.862   0.000  
+SAH  CA     .    C  0  0.0  -0.004   -0.028   0.000  -0.004   -0.028   0.000  
+SAH  HA     .    H  0  0.0   0.064   -0.640  -0.912   0.064   -0.640  -0.912  
+SAH  HN2    HN2  H  0  0.0   1.870    0.530  -0.779   1.870    0.530  -0.779  
+SAH  H      .    H  0  0.0   1.201    1.847   0.000   1.201    1.847   0.000  
+SAH  CB     .    C  0  0.0  -0.089   -1.017   1.108  -0.089   -1.017   1.108  
+SAH  CG     .    C  0  0.0   1.079   -1.952   1.301   1.079   -1.952   1.301  
+SAH  SD     .    S  0  0.0   0.389   -3.477   1.922   0.389   -3.477   1.922  
+SAH  OXT    .    O  0  0.0  -2.455    0.329  -0.022  -2.455    0.329  -0.022  
+SAH  "C5'"  .    C  0  0.0   1.481   -4.601   1.192   1.481   -4.601   1.192  
+SAH  "C4'"  .    C  0  0.0   0.902   -5.257  -0.134   0.902   -5.257  -0.134  
+SAH  "O4'"  .    O  0  0.0   1.932   -6.230  -0.164   1.932   -6.230  -0.164  
+SAH  "C3'"  .    C  0  0.0  -0.361   -6.071  -0.007  -0.361   -6.071  -0.007  
+SAH  "O3'"  .    O  0  0.0  -1.533   -5.452  -0.604  -1.533   -5.452  -0.604  
+SAH  "C2'"  .    C  0  0.0   0.114   -7.476  -0.566   0.114   -7.476  -0.566  
+SAH  "O2'"  .    O  0  0.0  -0.814   -8.057  -1.478  -0.814   -8.057  -1.478  
+SAH  "C1'"  .    C  0  0.0   1.509   -7.176  -1.157   1.509   -7.176  -1.157  
+SAH  N9     .    N  0  0.0   2.368   -8.182  -1.182   2.368   -8.182  -1.182  
+SAH  C8     .    C  0  0.0   2.772   -9.161  -0.300   2.772   -9.161  -0.300  
+SAH  N7     .    N  0  0.0   3.665   -9.995  -0.768   3.665   -9.995  -0.768  
+SAH  C5     .    C  0  0.0   3.905   -9.549  -2.089   3.905   -9.549  -2.089  
+SAH  C6     .    C  0  0.0   4.770  -10.047  -3.134   4.770  -10.047  -3.134  
+SAH  N6     .    N  0  0.0   5.564  -11.115  -2.990   5.564  -11.115  -2.990  
+SAH  N1     .    N  0  0.0   4.752   -9.339  -4.307   4.752   -9.339  -4.307  
+SAH  C2     .    C  0  0.0   3.958   -8.240  -4.509   3.958   -8.240  -4.509  
+SAH  N3     .    N  0  0.0   3.107   -7.743  -3.540   3.107   -7.743  -3.540  
+SAH  C4     .    C  0  0.0   3.132   -8.439  -2.359   3.132   -8.439  -2.359  
+SAH  H4     .    H  0  0.0  -0.218   -0.453   2.043  -0.218   -0.453   2.043  
+SAH  H5     .    H  0  0.0  -0.929   -1.673   0.833  -0.929   -1.673   0.833  
+SAH  H6     .    H  0  0.0   1.592   -2.126   0.344   1.592   -2.126   0.344  
+SAH  H7     .    H  0  0.0   1.821   -1.532   1.996   1.821   -1.532   1.996  
+SAH  H8     .    H  0  0.0  -3.274    0.885  -0.023  -3.274    0.885  -0.023  
+SAH  H9     .    H  0  0.0   2.414   -4.073   0.943   2.414   -4.073   0.943  
+SAH  H10    .    H  0  0.0   1.650   -5.413   1.914   1.650   -5.413   1.914  
+SAH  H11    .    H  0  0.0   0.676   -4.533  -0.931   0.676   -4.533  -0.931  
+SAH  H12    .    H  0  0.0  -0.759   -6.168   1.014  -0.759   -6.168   1.014  
+SAH  H13    .    H  0  0.0  -1.589   -5.706  -1.559  -1.589   -5.706  -1.559  
+SAH  H14    .    H  0  0.0   0.169   -8.255   0.208   0.169   -8.255   0.208  
+SAH  H15    .    H  0  0.0  -0.341   -8.319  -2.307  -0.341   -8.319  -2.307  
+SAH  H16    .    H  0  0.0   1.469   -6.880  -2.215   1.469   -6.880  -2.215  
+SAH  H17    .    H  0  0.0   2.372   -9.236   0.722   2.372   -9.236   0.722  
+SAH  H18    .    H  0  0.0   6.160  -11.424  -3.771   6.160  -11.424  -3.771  
+SAH  H19    .    H  0  0.0   5.580  -11.629  -2.097   5.580  -11.629  -2.097  
+SAH  H20    .    H  0  0.0   4.000   -7.732  -5.483   4.000   -7.732  -5.483  
+SAH  C      .    C  0  0.0  -1.288    0.894   0.000  -1.288    0.894   0.000  
+SAH  O      .    O  0  0.0  -1.109    2.118   0.019  -1.109    2.118   0.019  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+SAH  N      CA     SING  
+SAH  CA     CB     SING  
+SAH  CA     C      SING  
+SAH  CB     CG     SING  
+SAH  CG     SD     SING  
+SAH  SD     "C5'"  SING  
+SAH  C      O      DOUB  
+SAH  C      OXT    SING  
+SAH  "C5'"  "C4'"  SING  
+SAH  "C4'"  "O4'"  SING  
+SAH  "C4'"  "C3'"  SING  
+SAH  "O4'"  "C1'"  SING  
+SAH  "C3'"  "O3'"  SING  
+SAH  "C3'"  "C2'"  SING  
+SAH  "C2'"  "O2'"  SING  
+SAH  "C2'"  "C1'"  SING  
+SAH  "C1'"  N9     SING  
+SAH  N9     C8     SING  
+SAH  N9     C4     SING  
+SAH  C8     N7     DOUB  
+SAH  N7     C5     SING  
+SAH  C5     C6     DOUB  
+SAH  C5     C4     SING  
+SAH  C6     N6     SING  
+SAH  C6     N1     SING  
+SAH  N1     C2     DOUB  
+SAH  C2     N3     SING  
+SAH  N3     C4     DOUB  
+SAH  CA     HA     SING  
+SAH  CB     H4     SING  
+SAH  CB     H5     SING  
+SAH  CG     H6     SING  
+SAH  CG     H7     SING  
+SAH  OXT    H8     SING  
+SAH  "C5'"  H9     SING  
+SAH  "C5'"  H10    SING  
+SAH  "C4'"  H11    SING  
+SAH  "C3'"  H12    SING  
+SAH  "O3'"  H13    SING  
+SAH  "C2'"  H14    SING  
+SAH  "O2'"  H15    SING  
+SAH  "C1'"  H16    SING  
+SAH  C8     H17    SING  
+SAH  N6     H18    SING  
+SAH  N6     H19    SING  
+SAH  C2     H20    SING  
+SAH  N      H      SING  
+SAH  N      HN2    SING  
+##

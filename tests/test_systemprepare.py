@@ -164,20 +164,14 @@ def _test_auto_freezing_and_force():
     )
 
 
-@pytest.mark.parametrize(
-    "files",
-    (
-        ("1A4W.pdb", "1A4W_prepared"),
-        ("5VBL.pdb", "5VBL_prepared"),
-        ("2QRV.pdb", "2QRV_prepared"),
-    ),
-)
-def _test_nonstandard_residues(tmp_path, files):
+@pytest.mark.parametrize("system", ("1A4W", "5VBL", "2QRV"))
+def _test_nonstandard_residues(tmp_path, system):
     from moleculekit.tools.autosegment import autoSegment2
+    from moleculekit.molecule import mol_equal
+    import glob
 
-    inf, outf = files
     test_home = os.path.join(
-        curr_dir, "test_systemprepare", "test-nonstandard-residues"
+        curr_dir, "test_systemprepare", "test-nonstandard-residues", system
     )
 
     res_smiles = {
@@ -187,8 +181,8 @@ def _test_nonstandard_residues(tmp_path, files):
         "TYS": "c1cc(ccc1C[C@@H](CO)N)OS(=O)(=O)O",
         "SAH": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CSCC[C@@H](C(=O)O)N)O)O)N",
     }
-    mol = Molecule(os.path.join(test_home, inf))
-    if inf == "2QRV.pdb":
+    mol = Molecule(os.path.join(test_home, f"{system}.pdb"))
+    if system == "2QRV":
         mol.filter("chain D E K M")
         mol = autoSegment2(mol, fields=("chain", "segid"))
     mol.set("chain", "W", sel="water")
@@ -198,20 +192,31 @@ def _test_nonstandard_residues(tmp_path, files):
         return_details=True,
         hold_nonpeptidic_bonds=True,
         residue_smiles=res_smiles,
+        outdir=os.path.join(tmp_path, "residue_cifs"),
     )
     pmol.fileloc.append(os.path.join(tmp_path, "prepared.pdb"))
     pmol.write(pmol.fileloc[0])
-    if inf == "2QRV.pdb":
+    if system == "2QRV":
         # The LYS hydrogens are placed differently on Mac/Windows builds of pdb2pqr
         # Remove them to make the test more stable
         _ = pmol.remove("resname LYS and element H")
 
     _compare_results(
-        os.path.join(test_home, f"{outf}.pdb"),
-        os.path.join(test_home, f"{outf}.csv"),
+        os.path.join(test_home, f"{system}_prepared.pdb"),
+        os.path.join(test_home, f"{system}_prepared.csv"),
         pmol,
         df,
     )
+    for ff in glob.glob(os.path.join(tmp_path, "residue_cifs", "*.cif")):
+        cif1 = Molecule(ff)
+        cif2 = Molecule(os.path.join(test_home, "residue_cifs", os.path.basename(ff)))
+        assert mol_equal(
+            cif1,
+            cif2,
+            checkFields=Molecule._all_fields,
+            exceptFields=["fileloc"],
+            fieldPrecision={"coords": 1e-3},
+        ), f"Failed comparison of {ff} vs {cif2}"
 
 
 def _test_nonstandard_residue_hard_ignore_ns():

@@ -147,6 +147,8 @@ def _generate_nonstandard_residues_ff(
             else:
                 molc.templateResidueFromSmiles("all", smiles, addHs=True)
 
+            molc.chain[:] = ""
+            molc.segid[:] = ""
             cres = _process_custom_residue(molc)
             # Rename to correct resname
             cres.resname[:] = res

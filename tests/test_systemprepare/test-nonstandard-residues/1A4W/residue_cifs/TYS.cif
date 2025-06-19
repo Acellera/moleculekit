@@ -1,0 +1,83 @@
+data_TYS
+#
+#
+_chem_comp.id                  TYS
+_chem_comp.type                NON-POLYMER
+_chem_comp.pdbx_formal_charge  0
+##
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+TYS  N    .    N  0  0.0   1.192   0.851  -0.000   1.192   0.851  -0.000  
+TYS  CA   .    C  0  0.0   0.004  -0.011  -0.000   0.004  -0.011  -0.000  
+TYS  HA   .    H  0  0.0   0.039  -0.636  -0.905   0.039  -0.636  -0.905  
+TYS  HN2  HN2  H  0  0.0   1.853   0.525  -0.779   1.853   0.525  -0.779  
+TYS  H    .    H  0  0.0   1.201   1.847   0.000   1.201   1.847   0.000  
+TYS  CB   .    C  0  0.0  -0.038  -1.000   1.177  -0.038  -1.000   1.177  
+TYS  CG   .    C  0  0.0   1.232  -1.821   1.182   1.232  -1.821   1.182  
+TYS  CD1  .    C  0  0.0   1.621  -2.556   0.058   1.621  -2.556   0.058  
+TYS  CD2  .    C  0  0.0   2.092  -1.671   2.279   2.092  -1.671   2.279  
+TYS  CE1  .    C  0  0.0   2.836  -3.232   0.076   2.836  -3.232   0.076  
+TYS  CE2  .    C  0  0.0   3.325  -2.327   2.280   3.325  -2.327   2.280  
+TYS  CZ   .    C  0  0.0   3.675  -3.102   1.180   3.675  -3.102   1.180  
+TYS  OH   .    O  0  0.0   4.879  -3.764   1.290   4.879  -3.764   1.290  
+TYS  S    .    S  0  0.0   4.941  -5.148   2.209   4.941  -5.148   2.209  
+TYS  O1   .    O  0  0.0   4.347  -4.816   3.478   4.347  -4.816   3.478  
+TYS  O2   .    O  0  0.0   4.363  -6.071   1.283   4.363  -6.071   1.283  
+TYS  O3   .    O  0  0.0   6.389  -5.450   2.331   6.389  -5.450   2.331  
+TYS  H4   .    H  0  0.0  -0.120  -0.443   2.123  -0.120  -0.443   2.123  
+TYS  H5   .    H  0  0.0  -0.908  -1.665   1.071  -0.908  -1.665   1.071  
+TYS  H6   .    H  0  0.0   0.973  -2.600  -0.829   0.973  -2.600  -0.829  
+TYS  H7   .    H  0  0.0   1.798  -1.041   3.131   1.798  -1.041   3.131  
+TYS  H8   .    H  0  0.0   3.133  -3.863  -0.775   3.133  -3.863  -0.775  
+TYS  H9   .    H  0  0.0   4.008  -2.232   3.138   4.008  -2.232   3.138  
+TYS  H10  .    H  0  0.0   6.508  -6.402   2.576   6.508  -6.402   2.576  
+TYS  OXT  OXT  O  0  0.0  -1.135   2.094   0.340  -1.135   2.094   0.340  
+TYS  HXT  HXT  H  0  0.0  -1.942   2.595   0.318  -1.942   2.595   0.318  
+TYS  C    .    C  0  0.0  -1.245   0.888  -0.000  -1.245   0.888  -0.000  
+TYS  O    .    O  0  0.0  -2.254   0.252  -0.362  -2.254   0.252  -0.362  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+TYS  N    CA   SING  
+TYS  CA   CB   SING  
+TYS  CA   C    SING  
+TYS  CB   CG   SING  
+TYS  CG   CD1  DOUB  
+TYS  CG   CD2  SING  
+TYS  CD1  CE1  SING  
+TYS  CD2  CE2  DOUB  
+TYS  CE1  CZ   DOUB  
+TYS  CE2  CZ   SING  
+TYS  CZ   OH   SING  
+TYS  OH   S    SING  
+TYS  S    O1   DOUB  
+TYS  S    O2   DOUB  
+TYS  S    O3   SING  
+TYS  C    O    SING  
+TYS  CA   HA   SING  
+TYS  CB   H4   SING  
+TYS  CB   H5   SING  
+TYS  CD1  H6   SING  
+TYS  CD2  H7   SING  
+TYS  CE1  H8   SING  
+TYS  CE2  H9   SING  
+TYS  O3   H10  SING  
+TYS  N    H    SING  
+TYS  N    HN2  SING  
+TYS  HXT  OXT  SING  
+TYS  C    OXT  SING  
+##
