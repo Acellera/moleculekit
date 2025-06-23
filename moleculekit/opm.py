@@ -227,7 +227,7 @@ def align_to_opm(mol, molsel="all", maxalignments=3, opmid=None, macrotype="prot
         )
         ref, thickness = get_opm_pdb(pdbid, validateElements=False)
 
-        seqref, refidx = mol.sequence(noseg=True, return_idx=True, _logger=False)
+        seqref, refidx = ref.sequence(noseg=True, return_idx=True, _logger=False)
         seqref = seqref[macrotype]
         refidx = refidx[macrotype]
 
@@ -237,7 +237,11 @@ def align_to_opm(mol, molsel="all", maxalignments=3, opmid=None, macrotype="prot
             refidx_hsp = np.hstack(refidx[hsp["hit_from"] : hsp["hit_to"]])
             molidx_sel = f"index {' '.join(map(str, molidx_hsp))} and name CA"
             refidx_sel = f"index {' '.join(map(str, refidx_hsp))} and name CA"
-            t0, rmsd, nali, aln, _ = molTMalign(mol, ref, molidx_sel, refidx_sel)
+            try:
+                t0, rmsd, nali, aln, _ = molTMalign(mol, ref, molidx_sel, refidx_sel)
+            except Exception:
+                logger.warning(f"Failed to generate alignment for HSP {j}")
+                continue
             molc = mol.copy()
             molc.coords = aln[0].copy()
             alignedstructs.append(
