@@ -192,7 +192,7 @@ def align_to_opm(mol, molsel="all", maxalignments=3, opmid=None, macrotype="prot
     Returns
     -------
     results : list of dictionaries
-        Returns a number of alignements (maximum `maxalignments`). For each alignment
+        Returns a number of alignments (maximum `maxalignments`). For each alignment
         it might contain a number of HSPs (high-scoring pairs) which correspond to different
         sequence alignments of the query on the same hit protein.
 
@@ -238,12 +238,13 @@ def align_to_opm(mol, molsel="all", maxalignments=3, opmid=None, macrotype="prot
             molidx_sel = f"index {' '.join(map(str, molidx_hsp))} and name CA"
             refidx_sel = f"index {' '.join(map(str, refidx_hsp))} and name CA"
             try:
-                t0, rmsd, nali, aln, _ = molTMalign(mol, ref, molidx_sel, refidx_sel)
+                t0, rmsd, nali, alncoo, _ = molTMalign(mol, ref, molidx_sel, refidx_sel)
             except Exception:
                 logger.warning(f"Failed to generate alignment for HSP {j}")
                 continue
             molc = mol.copy()
-            molc.coords = aln[0].copy()
+
+            molc.coords[:] = alncoo
             alignedstructs.append(
                 {"aligned_mol": molc, "TM-Score": t0[0], "Common RMSD": rmsd[0]}
             )
