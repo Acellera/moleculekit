@@ -43,8 +43,9 @@ jobs:
       #     # for testing CDPKit SmallMol
       #     pip install CDPKit
 
-      - name: Install blast
-        run: conda install -c bioconda blast -y
+      - name: Install blast for OPM tests
+        if: ${{ matrix.os != 'windows-2022' }}
+        run: conda install -c bioconda blast -y -q
 
       - name: Install moleculekit
         run: |
