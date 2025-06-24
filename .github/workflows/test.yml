@@ -43,6 +43,9 @@ jobs:
       #     # for testing CDPKit SmallMol
       #     pip install CDPKit
 
+      - name: Install blast
+        run: conda install -c bioconda blast -y
+
       - name: Install moleculekit
         run: |
           pip install build pytest pytest-xdist
