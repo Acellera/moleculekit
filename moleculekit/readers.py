@@ -721,8 +721,11 @@ def MAEread(fname, frame=None, topoloc=None):
             elif section_data and (row[0] == ":::" or row[0] == "}"):
                 section_data = False
             else:  # It's actual data
-                if section_desc:
+                if section_desc and not row[0].startswith("#"):
                     section_cols.append(row[0])
+
+                if section_data:
+                    row = row[1:]  # Skip the first column which is the row index
 
                 # Reading the data of the atoms section
                 if section == "atoms" and section_data:
@@ -730,10 +733,8 @@ def MAEread(fname, frame=None, topoloc=None):
                     row = np.array(row)
                     if len(row) != len(section_dict):  # TODO: fix the reader
                         raise RuntimeError(
-                            "{} has {} fields in the m_atom section description, but {} fields in the "
-                            "section data. Please check for missing fields in the mae file.".format(
-                                fname, len(section_dict), len(row)
-                            )
+                            f"{fname} has {len(section_dict)} fields in the m_atom section description, but {len(row)} fields in the "
+                            "section data. Please check for missing fields in the mae file."
                         )
                     row[row == "<>"] = 0
                     if "i_pdb_PDB_serial" in section_dict:
@@ -790,10 +791,11 @@ def MAEread(fname, frame=None, topoloc=None):
 
                 # Reading the data of the hetero residue section
                 if section == "hetresidues" and section_data:
-                    heteros.append(row[section_dict["s_pdb_het_name"]].strip())
+                    heteros.append(row[section_dict["s_pdb_het_id"]].strip())
 
-    for h in heteros:
-        topo.record[topo.resname == h] = "HETATM"
+    for i in range(len(topo.resname)):
+        if topo.resname[i] in heteros:
+            topo.record[i] = "HETATM"
 
     coords = np.vstack(coords)[:, :, np.newaxis]
     traj = Trajectory(coords=coords)
