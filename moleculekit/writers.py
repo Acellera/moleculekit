@@ -607,8 +607,6 @@ def MOL2write(mol, filename, explicitbonds=None):
 
 
 def SDFwrite(mol, filename):
-    import datetime
-
     if any(mol.bondtype == "un"):
         raise RuntimeError(
             "Cannot write 'un' bond types to SDF. Please specify the molecule bond orders."
@@ -617,8 +615,8 @@ def SDFwrite(mol, filename):
     bondmap = {"1": 1, "2": 2, "3": 3, "ar": 4, "4": "un"}
     with open(filename, "w", encoding="ascii") as fh:
         fh.write(f"{mol.viewname}\n")
-        currtime = datetime.datetime.now().strftime("%m%d%y%H%M")
-        fh.write(f" -MoleculeKit-{currtime}3D\n")
+        dims = "3D" if np.any(mol.coords[:, 2] != 0) else "2D"
+        fh.write(f"     MoleculeKit    {dims}\n")
         fh.write(" Structure written by MoleculeKit.\n")
         fh.write(
             f"{mol.numAtoms:>3}{mol.bonds.shape[0]:>3}  0  0  0  0  0  0  0  0999 V2000\n"
