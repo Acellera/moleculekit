@@ -546,6 +546,7 @@ def systemPrepare(
     outdir=None,
     residue_smiles=None,
     ignore_ns=False,
+    titrate=None,
 ):
     """Prepare molecular systems through protonation and h-bond optimization.
 
@@ -646,6 +647,9 @@ def systemPrepare(
     ignore_ns : bool
         If False systemPrepare will issue an error when it fails to protonate non-canonical residues in the protein.
         If True it will leave non-canonical residues unprotonated.
+    titrate : list[str]
+        Select which aminoacids can be titrated. For example pass titrate=["HIS", "ARG"] to only allow titration
+        of histidines and arginines. If set to None it will titrate all amino acids in the above table.
 
     Returns
     -------
@@ -724,6 +728,33 @@ def systemPrepare(
         no_prot = ensurelist(no_prot)
     if no_titr is not None:
         no_titr = ensurelist(no_titr)
+    if titrate is not None:
+        titrate = set(ensurelist(titrate))
+        all_aas = {"ASP", "CYS", "GLU", "HIS", "LYS", "TYR", "ARG"}
+        possible_titrations = {
+            "ASP": ("ASP", "ASH"),
+            "CYS": ("CYS", "CYX", "CYM"),
+            "GLU": ("GLU", "GLH"),
+            "HIS": ("HIS", "HID", "HIE", "HIP"),
+            "LYS": ("LYS", "LYN"),
+            "TYR": ("TYR", "TYM"),
+            "ARG": ("ARG", "AR0"),
+        }
+        other = all_aas - titrate
+        no_titr = no_titr or []
+        for aa in other:
+            _idx = mol_in.atomselect(
+                f"resname {' '.join(possible_titrations[aa])}", indexes=True
+            )
+            residues = [
+                (mol_in.resid[i], mol_in.chain[i], mol_in.insertion[i]) for i in _idx
+            ]
+            residues = list(set(residues))
+            for res in residues:
+                _sel = f"resid {res[0]} and chain {res[1]}"
+                if len(res[2]):
+                    _sel += f" and insertion {res[2]}"
+                no_titr.append(_sel)
 
     mol_in = mol_in.copy()
 

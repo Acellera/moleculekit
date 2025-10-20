@@ -317,3 +317,31 @@ def _test_nucleiclike_ligand():
         pmol,
         df,
     )
+
+
+def _test_disabling_titration():
+    test_home = os.path.join(curr_dir, "test_systemprepare", "1AID")
+    mol = Molecule(os.path.join(test_home, "1AID.pdb"))
+    mol.remove("water")
+
+    pmol_ref, df_ref = systemPrepare(mol, return_details=True)
+
+    assert df_ref.protonation[df_ref.resid == 25].iloc[0] == "ASH"
+    assert df_ref.protonation[df_ref.resid == 69].iloc[0] == "HID"
+    assert df_ref.protonation[df_ref.resid == 69].iloc[1] == "HID"
+
+    pmol, df = systemPrepare(mol, return_details=True, titrate="HIS")
+
+    assert df.protonation[df.resid == 25].iloc[0] == "ASP"
+    assert df.protonation[df.resid == 69].iloc[0] == "HID"
+    assert df.protonation[df.resid == 69].iloc[1] == "HID"
+
+    # Delete the resid 25 from both dataframes and compare
+    df_ref = df_ref[df_ref.resid != 25]
+    df = df[df.resid != 25]
+    assert df_ref.equals(df)
+
+    # Delete resid 25 from pmol_ref and pmol and compare
+    pmol_ref.remove("resid 25")
+    pmol.remove("resid 25")
+    assert mol_equal(pmol_ref, pmol, exceptFields=["fileloc"])
