@@ -22,7 +22,7 @@ dependencies = [
   "propka",
   # "openbabel>=3.1.1",
   "pdb2pqr>=3.5.3",
-  "biopython"
+  "biopython",
 ]
 
 [project.urls]
@@ -33,7 +33,7 @@ dependencies = [
 include = ["moleculekit*"]
 
 [tool.setuptools.package-data]
-"moleculekit.share" = ["*"]
+"moleculekit.share" = ["**/*"]
 
 [tool.setuptools.exclude-package-data]
 "*" = ["*.c", "*.cpp", "*.h", "*.pyx", "*.pxd", ".gitignore"]
@@ -60,7 +60,17 @@ norecursedirs = "test-data"
 # Disable PyPy builds due to our Cython code not being compatible with it yet
 # Disable Windows 32 builds, Musllinux builds due to rdkit not building on it
 # Disable i686, ppc64le, s390x, universal2, armv7l due to numpy not building on them
-skip = ["pp*", "*win32", "*armv7l", "*_i686", "*_ppc64le", "*_s390x", "*_universal2", "*musllinux_x86_64", "*musllinux_aarch64"]
+skip = [
+  "pp*",
+  "*win32",
+  "*armv7l",
+  "*_i686",
+  "*_ppc64le",
+  "*_s390x",
+  "*_universal2",
+  "*musllinux_x86_64",
+  "*musllinux_aarch64",
+]
 test-requires = ["pytest", "pytest-xdist"]
 test-command = "pytest -n auto {project}/tests"
 manylinux-x86_64-image = "manylinux_2_28"
