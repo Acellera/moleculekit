@@ -2816,7 +2816,7 @@ def ALPHAFOLDread(
     frame=None,
     topoloc=None,
     validateElements=True,
-    uri="https://alphafold.ebi.ac.uk/files/AF-{uniprot}-F1-model_v3.cif",
+    uri="https://alphafold.ebi.ac.uk/files/AF-{uniprot}-F1-model_v6.cif",
 ):
     import urllib.request
     import tempfile
