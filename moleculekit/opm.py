@@ -142,6 +142,7 @@ def get_opm_pdb(pdbid, keep=False, keepaltloc="A", validateElements=False):
         resp = requests.get(
             f"https://storage.googleapis.com/opm-assets/pdb/{pdbid.lower()}.pdb"
         )
+        resp.raise_for_status()
     except Exception as e:
         raise RuntimeError(f"Failed to fetch OPM with PDB ID {pdbid} with error {e}")
 
