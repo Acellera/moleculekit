@@ -136,10 +136,10 @@ def molTMalign(
     if refsel.sum() == 0:
         raise RuntimeError("No atoms in `refsel`")
 
-    seqx = mol.sequence(noseg=True, sel=molsel, _logger=False)["protein"].encode(
+    seqx = mol.getSequence(dict_key=None, sel=molsel, _logger=False)["protein"].encode(
         "UTF-8"
     )
-    seqy = ref.sequence(noseg=True, sel=refsel, _logger=False)["protein"].encode(
+    seqy = ref.getSequence(dict_key=None, sel=refsel, _logger=False)["protein"].encode(
         "UTF-8"
     )
 

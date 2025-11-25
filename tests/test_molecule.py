@@ -233,14 +233,51 @@ def _test_reorderAtoms():
 
 
 def _test_sequence():
-    seq, seqatms = MOL3PTB.sequence(return_idx=True)
+    seq, seqatms = MOL3PTB.getSequence(return_idx=True)
     refseq = "IVGGYTCGANTVPYQVSLNSGYHFCGGSLINSQWVVSAAHCYKSGIQVRLGEDNINVVEGNEQFISASKSIVHPSYNSNTLNNDIMLIKLKSAASLNSRVASISLPTSCASAGTQCLISGWGNTKSSGTSYPDVLKCLKAPILSDSSCKSAYPGQITSNMFCAGYLEGGKDSCQGDSGGPVVCSGKLQGIVSWGSGCAQKNKPGVYTKVCNYVSWIKQTIASN"
-    assert seq["1"] == refseq
+    assert seq["A"] == refseq
 
     # Ensure that the returned indexes only belong to a single residue
-    for indexes in seqatms["1"]:
+    for indexes in seqatms["A"]:
         assert len(np.unique(MOL3PTB.resname[indexes])) == 1
         assert len(np.unique(MOL3PTB.resid[indexes])) == 1
+
+    seq = MOL3PTB.getSequence(sel="resid 16 to 50")
+    assert seq == {"A": "IVGGYTCGANTVPYQVSLNSGYHFCGGSLINSQ"}
+
+    mol = Molecule("1lkk")
+    seq, idx = mol.getSequence(return_idx=True)
+    assert seq == {
+        "A": "LEPEPWFFKNLSRKDAERQLLAPGNTHGSFLIRESESTAGSFSLSVRDFDQNQGEVVKHYKIRNLDNGGFYISPRITFPGLHELVRHYTNASDGLCTRLSRPCQT",
+        "B": "XEEI",
+    }
+
+    refidx = np.array(
+        [
+            1688,
+            1689,
+            1690,
+            1691,
+            1692,
+            1693,
+            1694,
+            1695,
+            1696,
+            1697,
+            1698,
+            1699,
+            1700,
+            1701,
+            1702,
+        ]
+    )
+    assert np.array_equal(idx["B"][1], refidx)
+    seq = mol.getSequence(dict_key="segid")
+    assert seq == {
+        "1": "LEPEPWFFKNLSRKDAERQLLAPGNTHGSFLIRESESTAGSFSLSVRDFDQNQGEVVKHYKIRNLDNGGFYISPRITFPGLHELVRHYTNASDGLCTRLSRPCQT",
+        "2": "XEEI",
+    }
+    assert mol.getSequence(one_letter=False)["B"] == ["PTR", "GLU", "GLU", "ILE"]
 
 
 def _test_appendFrames():

@@ -49,11 +49,12 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[dependency-groups]
+dev = ["ipython>=8.18.1", "pytest>=8.4.2"]
+
 [tool.pytest.ini_options]
-python_files = "*.py"
-python_classes = "_Test"
 python_functions = "_test*"
-norecursedirs = "test-data"
+testpaths = ["tests"]
 
 
 [tool.cibuildwheel]

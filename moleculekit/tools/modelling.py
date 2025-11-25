@@ -118,7 +118,7 @@ def model_gaps(
         mol_seg = mol.copy(sel=f"segid {segid}")
         mol_seg.write(pdbfile)
 
-        molseq = mol.sequence()[segid]
+        molseq = mol.getSequence(dict_key="segid")[segid]
 
         # -11 is gap creation penalty. -1 is gap extension penalty. Taken from https://www.arabidopsis.org/Blast/BLASToptions.jsp BLASTP options
         alignments = pairwise2.align.globalds(sequence, molseq, blosum62, -11.0, -1.0)

@@ -47,14 +47,14 @@ def generate_opm_sequences(opm_pdbs, outjson):
                     continue
                 sequences[name] = {}
                 if molp.numAtoms:
-                    seq = molp.sequence()
+                    seq = molp.getSequence()
                     for k in list(seq.keys()):
                         if len(seq[k]) < 5 or all([ss == "X" for ss in seq[k]]):
                             del seq[k]
                     if len(seq):
                         sequences[name]["protein"] = seq
                 if moln.numAtoms:
-                    seq = moln.sequence()
+                    seq = moln.getSequence()
                     for k in list(seq.keys()):
                         if len(seq[k]) < 5 or all([ss == "X" for ss in seq[k]]):
                             del seq[k]
@@ -211,8 +211,8 @@ def align_to_opm(mol, molsel="all", maxalignments=3, opmid=None, macrotype="prot
         # Throw away all other sequences
         sequences = {opmid.lower(): sequences[opmid.lower()]}
 
-    seqmol, molidx = mol.sequence(
-        noseg=True, return_idx=True, sel=molsel, _logger=False
+    seqmol, molidx = mol.getSequence(
+        dict_key=None, return_idx=True, sel=molsel, _logger=False
     )
     seqmol = seqmol[macrotype]
     molidx = molidx[macrotype]
@@ -228,7 +228,7 @@ def align_to_opm(mol, molsel="all", maxalignments=3, opmid=None, macrotype="prot
         )
         ref, thickness = get_opm_pdb(pdbid, validateElements=False)
 
-        seqref, refidx = ref.sequence(noseg=True, return_idx=True, _logger=False)
+        seqref, refidx = ref.getSequence(dict_key=None, return_idx=True, _logger=False)
         seqref = seqref[macrotype]
         refidx = refidx[macrotype]
 

@@ -803,12 +803,22 @@ def MAEread(fname, frame=None, topoloc=None):
 
 
 def _getLocalPDB(fname):
-    if "LOCAL_PDB_REPO" in os.environ and os.path.isfile(
-        os.path.join(os.environ["LOCAL_PDB_REPO"], fname)
-    ):
-        filepath = os.path.join(os.environ["LOCAL_PDB_REPO"], fname)
-        logger.info(f"Using local copy for {fname}: {filepath}")
-        return filepath
+    if os.environ.get("LOCAL_PDB_REPO") is not None:
+        if os.path.isfile(os.path.join(os.environ["LOCAL_PDB_REPO"], fname)):
+            filepath = os.path.join(os.environ["LOCAL_PDB_REPO"], fname)
+            logger.info(f"Using local copy for {fname}: {filepath}")
+            return filepath
+        elif len(fname) == 4:
+            fname = fname.lower()
+            filename = os.path.join(os.environ["LOCAL_PDB_REPO"], fname + ".cif")
+            if os.path.isfile(filename):
+                return filename
+            filename = os.path.join(os.environ["LOCAL_PDB_REPO"], fname + ".bcif.gz")
+            if os.path.isfile(filename):
+                return filename
+            filename = os.path.join(os.environ["LOCAL_PDB_REPO"], fname + ".pdb")
+            if os.path.isfile(filename):
+                return filename
     return None
 
 

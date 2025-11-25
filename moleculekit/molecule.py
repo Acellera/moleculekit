@@ -1987,17 +1987,25 @@ class Molecule(object):
         self._emptyTraj(numAtoms, numFrames)
         return self
 
-    def sequence(
-        self, oneletter=True, noseg=False, return_idx=False, sel="all", _logger=True
+    def getSequence(
+        self,
+        one_letter=True,
+        dict_key="chain",
+        return_idx=False,
+        sel="all",
+        _logger=True,
     ):
         """Return the aminoacid sequence of the Molecule.
 
         Parameters
         ----------
-        oneletter : bool
+        one_letter : bool
             Whether to return one-letter or three-letter AA codes. There should be only one atom per residue.
-        noseg : bool
-            Ignore segments and return the whole sequence as single string.
+        dict_key : str | None
+            If None, the function will return a dictionary with keys "protein" and "nucleic" (if they exist)
+            and the concatenated sequence as the value.
+            If "chain" or "segid" is passed, the function will return a dictionary with the sequence of each
+            chain or segment.
         return_idx : bool
             If True, the function also returns the indexes of the atoms of each residue in the sequence
         sel : str
@@ -2006,35 +2014,50 @@ class Molecule(object):
         Returns
         -------
         sequence : str
-            The primary sequence as a dictionary segid - string (if oneletter is True) or segid - list of
-            strings (otherwise).
+            The primary sequence as a dictionary.
 
         Examples
         --------
-        >>> mol=tryp.copy()
-        >>> mol.sequence()
-        {'0': 'IVGGYTCGANTVPYQVSLNSGYHFCGGSLINSQWVVSAAHCYKSGIQVRLGEDNINVVEGNEQFISASKSIVHPSYNSNTLNNDIMLIKLKSAASLNSRVASISLPTSCASAGTQCLISGWGNTKSSGTSYPDVLKCLKAPILSDSSCKSAYPGQITSNMFCAGYLEGGKDSCQGDSGGPVVCSGKLQGIVSWGSGCAQKNKPGVYTKVCNYVSWIKQTIASN'}
-        >>> sh2 = Molecule("1LKK")
-        >>> pYseq = sh2.sequence(oneletter=False)
-        >>> pYseq['1']
+        >>> mol = Molecule("3PTB")
+        >>> mol.getSequence()
+        {'A': 'IVGGYTCGANTVPYQVSLNSGYHFCGGSLINSQWVVSAAHCYKSGIQVRLGEDNINVVEGNEQFISASKSIVHPSYNSNTLNNDIMLIKLKSAASLNSRVASISLPTSCASAGTQCLISGWGNTKSSGTSYPDVLKCLKAPILSDSSCKSAYPGQITSNMFCAGYLEGGKDSCQGDSGGPVVCSGKLQGIVSWGSGCAQKNKPGVYTKVCNYVSWIKQTIASN'}
+        >>> mol.getSequence(sel="resid 16 to 50")
+        {'A': 'IVGGYTCGANTVPYQVSLNSGYHFCGGSLINSQ'}
+        >>> mol = Molecule("1LKK")
+        >>> seq = mol.getSequence(one_letter=False, dict_key="chain")
+        >>> seq.keys()
+        dict_keys(['A', 'B'])
+        >>> seq['B']
         ['PTR', 'GLU', 'GLU', 'ILE']
-        >>> pYseq = sh2.sequence(oneletter=True)
-        >>> pYseq['1']
+        >>> seq = mol.getSequence(one_letter=True, dict_key="chain")
+        >>> seq['B']
         'XEEI'
-
+        >>> seq = mol.getSequence(one_letter=True, dict_key="segid")
+        >>> seq.keys()
+        dict_keys(['1', '2'])
+        >>> seq, idx = mol.getSequence(return_idx=True)
+        >>> idx['B'][-1] # The atom indexes of the last residue in chain B
+        array([1718, 1719, 1720, 1721, 1722, 1723, 1724, 1725, 1726, 1727, 1728,
+               1729, 1730, 1731, 1732, 1733, 1734, 1735, 1736, 1737])
         """
         from moleculekit.util import sequenceID
+
+        if dict_key is not None and dict_key not in ["segid", "chain"]:
+            raise ValueError(
+                f"Invalid dictionary key: {dict_key}. Allowed values are: segid, chain"
+            )
 
         prot = self.atomselect("protein")
         nucl = self.atomselect("nucleic")
         selb = self.atomselect(sel)
 
         increm = sequenceID((self.resid, self.insertion, self.chain))
-        segs = np.unique(self.segid[(prot | nucl) & selb])
         segSequences = {}
         seqAtoms = {}
-        if noseg:
+        if dict_key is None:
             segs = ["protein", "nucleic"]
+        else:
+            segs = np.unique(getattr(self, dict_key)[(prot | nucl) & selb])
 
         # Iterate over segments
         for seg in segs:
@@ -2045,12 +2068,12 @@ class Molecule(object):
             elif seg == "nucleic":
                 segatoms = nucl & selb
             else:
-                segatoms = (prot | nucl) & (self.segid == seg) & selb
+                segatoms = (prot | nucl) & (getattr(self, dict_key) == seg) & selb
 
             seq, res_atm = _atoms_to_sequence(
                 self,
                 segatoms,
-                oneletter=oneletter,
+                oneletter=one_letter,
                 incremseg=increm[segatoms],
                 _logger=_logger,
             )
@@ -2058,12 +2081,28 @@ class Molecule(object):
             seqAtoms[seg] = res_atm
 
         # Join single letters into strings
-        if oneletter:
+        if one_letter:
             segSequences = {k: "".join(segSequences[k]) for k in segSequences}
 
         if return_idx:
             return segSequences, seqAtoms
         return segSequences
+
+    def sequence(
+        self, oneletter=True, noseg=False, return_idx=False, sel="all", _logger=True
+    ):
+        """DEPRECATED: Use getSequence instead."""
+        logger.warning(
+            "Molecule.sequence() method is deprecated. Please use the new Molecule.getSequence() method instead."
+            "Take care that the new method returns by default a dictionary with the chain IDs as keys instead of segment IDs."
+        )
+        return self.getSequence(
+            one_letter=oneletter,
+            dict_key=None if noseg else "segid",
+            return_idx=return_idx,
+            sel=sel,
+            _logger=_logger,
+        )
 
     def dropFrames(self, drop=None, keep=None):
         """Removes trajectory frames from the Molecule
@@ -3266,6 +3305,27 @@ def mol_equal(
             print(f"Differences detected in mol1 and mol2 in field(s) {difffields}.")
         return False
     return True
+
+
+def _get_residue_indices(mol):
+    """
+    Get the indices of all residues in a Molecule object.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The Molecule object to get the residue indices from.
+
+    Returns
+    -------
+    residue_indices : list
+        A list of arrays, each containing the indices of the atoms in a residue.
+    """
+    from moleculekit.util import sequenceID
+
+    unique_residues = np.unique(sequenceID((mol.resid, mol.insertion, mol.chain)))
+
+    return [np.where(unique_residues == uqresid)[0] for uqresid in set(unique_residues)]
 
 
 def _detectCollisions(coords1, coords2, gap, remove_idx):

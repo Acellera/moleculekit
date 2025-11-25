@@ -1314,7 +1314,7 @@ def MMTFwrite(mol, filename):
             protein = mol.atomselect("protein")
             nucleic = mol.atomselect("nucleic")
             water = mol.atomselect("water")
-            sequences = mol.sequence()
+            sequences = mol.getSequence()
             insertions = []
             self.group_id_list = []
             chain_count = 0
