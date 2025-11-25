@@ -3323,7 +3323,7 @@ def _get_residue_indices(mol):
     """
     from moleculekit.util import sequenceID
 
-    unique_residues = np.unique(sequenceID((mol.resid, mol.insertion, mol.chain)))
+    unique_residues = sequenceID((mol.resid, mol.insertion, mol.chain))
 
     return [np.where(unique_residues == uqresid)[0] for uqresid in set(unique_residues)]
 
