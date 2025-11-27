@@ -2916,6 +2916,7 @@ class Molecule(object):
         --------
         >>> mol = Molecule("3ptb")
         >>> mol.templateResidueFromSmiles("resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True)
+        >>> mol.templateResidueFromSmiles("resname GLY and resid 18", "C(C(=O))N", addHs=True)
         """
         from rdkit.Chem import rdFMCS
         from rdkit import Chem
@@ -2962,7 +2963,9 @@ class Molecule(object):
         non_matched = np.setdiff1d(range(len(elem)), at2)
         if np.any(elem[non_matched] != "H"):
             raise RuntimeError(
-                "The SMILES template contains non-hydrogen atoms that are not matched to the residue"
+                f"The SMILES template '{smiles}' contains heavy atoms which could not be matched to the residue. "
+                "If templating a non-standard amino acid, please don't include the OXT atom in the SMILES string "
+                "unless it exists in the structure. For example Glycine should be templated as 'C(C(=O))N' and not 'C(C(=O)O)N'"
             )
 
         # Transfer the formal charge, bonds and bond orders from rmol_smi to rmol
