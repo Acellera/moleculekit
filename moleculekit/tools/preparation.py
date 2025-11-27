@@ -109,7 +109,8 @@ def _generate_nonstandard_residues_ff(
     if len(missing):
         raise RuntimeError(
             f"Missing topology for residues {missing}. "
-            "Please provide their SMILES in the residue_smiles dictionary or remove them from the input structure."
+            "Please either provide their SMILES in the residue_smiles argument or set ignore_ns=True "
+            "to ignore non-standard residues or remove them from the input structure."
         )
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -362,7 +363,9 @@ def _atomsel_to_hold(mol_in, sel):
     idx = mol_in.atomselect(sel, indexes=True)
     if len(idx) == 0:
         raise RuntimeError(f"Could not select any atoms with atomselection {sel}")
-    residues = [(mol_in.resid[i], mol_in.chain[i], mol_in.insertion[i]) for i in idx]
+    residues = [
+        (mol_in.resid[i].item(), mol_in.chain[i], mol_in.insertion[i]) for i in idx
+    ]
     residues = list(set(residues))
     if len(residues) != 1:
         raise RuntimeError(
@@ -419,8 +422,16 @@ def _get_hold_residues(
                 f"Freezing protein residue {r1} bonded to non-protein molecule {r2}"
             )
             val = [
-                (mol_in.resid[nn[0]], mol_in.chain[nn[0]], mol_in.insertion[nn[0]]),
-                (mol_in.resid[nn[1]], mol_in.chain[nn[1]], mol_in.insertion[nn[1]]),
+                (
+                    mol_in.resid[nn[0]].item(),
+                    mol_in.chain[nn[0]],
+                    mol_in.insertion[nn[0]],
+                ),
+                (
+                    mol_in.resid[nn[1]].item(),
+                    mol_in.chain[nn[1]],
+                    mol_in.insertion[nn[1]],
+                ),
             ]
             _no_opt += val
             _no_titr += val
