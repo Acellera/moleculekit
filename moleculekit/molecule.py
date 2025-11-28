@@ -360,7 +360,7 @@ class Molecule(object):
 
     def getResidues(
         self,
-        fields=("resid", "insertion", "chain", "segid"),
+        fields=("resid", "insertion", "chain"),
         sel="all",
         return_idx=True,
     ):
@@ -370,8 +370,8 @@ class Molecule(object):
         ----------
         fields : np.ndarray or tuple
             An array of Molecule attributes. Once a change in any of the fields happens, a new ID
-            will be created in `residues`. The default fields are ("resid", "insertion", "chain", "segid")
-            which means that a new residue ID will be created if the resid or insertion or chain or segid changes
+            will be created in `residues`. The default fields are ("resid", "insertion", "chain")
+            which means that a new residue ID will be created if the resid or insertion or chain changes
             from the previous atom to the next one.
         sel : str
             Atomselection for which to return the residues. Default is "all".
