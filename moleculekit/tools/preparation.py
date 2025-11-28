@@ -516,6 +516,30 @@ def _fix_protonation_resnames(mol):
             mol.resname[resatm] = "HIE"
 
 
+def _check_backbone(mol):
+    from moleculekit.residues import PROTEIN_RESIDUE_NAMES
+
+    _, res_idx = mol.getResidues(return_idx=True)
+    report = []
+    for idx in res_idx:
+        ii = idx[0]
+        if mol.resname[ii] in PROTEIN_RESIDUE_NAMES:
+            missing_atoms = {"N", "CA", "C", "O"} - set(mol.name[idx])
+            if len(missing_atoms) != 0:
+                msg = (
+                    f"Residue {mol.resname[ii]}:{mol.resid[ii]}{mol.insertion[ii]}:{mol.chain[ii]} "
+                    f"is missing backbone atoms: {missing_atoms}"
+                )
+                report.append(msg)
+    if len(report) > 0:
+        raise RuntimeError(
+            "The following residues have invalid backbones:\n"
+            + "\n".join(report)
+            + "\nStructure preparation cannot continue without a complete backbone. "
+            "Please fix the backbones of these residues or remove them from the structure and run the function again."
+        )
+
+
 def proteinPrepare(
     mol_in,
     pH=7.0,
@@ -732,6 +756,8 @@ def systemPrepare(
         raise ValueError(
             "residue_smiles should be a dictionary with residue names as keys and SMILES strings as values."
         )
+
+    _check_backbone(mol_in)
 
     if no_opt is not None:
         no_opt = ensurelist(no_opt)
