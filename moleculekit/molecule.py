@@ -5,6 +5,10 @@
 #
 import numpy as np
 from moleculekit.util import tempname, ensurelist
+from moleculekit.residues import (
+    SINGLE_LETTER_RESIDUE_NAME_TABLE,
+    SINGLE_LETTER_MODIFIED_RESIDUE_NAME_TABLE,
+)
 from copy import deepcopy
 import logging
 import os
@@ -18,133 +22,6 @@ class TopologyInconsistencyError(Exception):
 
     def __str__(self):
         return repr(self.value)
-
-
-_originalResname = {
-    "ARG": "ARG",
-    "AR0": "ARG",
-    "HIS": "HIS",
-    "HID": "HIS",
-    "HIE": "HIS",
-    "HIP": "HIS",
-    "HSD": "HIS",
-    "HSE": "HIS",
-    "HSP": "HIS",
-    "LYS": "LYS",
-    "LSN": "LYS",
-    "LYN": "LYS",
-    "ASP": "ASP",
-    "ASH": "ASP",
-    "GLU": "GLU",
-    "GLH": "GLU",
-    "SER": "SER",
-    "THR": "THR",
-    "ASN": "ASN",
-    "GLN": "GLN",
-    "CYS": "CYS",
-    "CYM": "CYS",
-    "CYX": "CYS",
-    "SEC": "SEC",
-    "GLY": "GLY",
-    "PRO": "PRO",
-    "ALA": "ALA",
-    "VAL": "VAL",
-    "ILE": "ILE",
-    "LEU": "LEU",
-    "MET": "MET",
-    "PHE": "PHE",
-    "TYR": "TYR",
-    "TRP": "TRP",
-    "G": "G",
-    "G5": "G",
-    "G3": "G",
-    "C": "C",
-    "C5": "C",
-    "C3": "C",
-    "U": "U",
-    "U5": "U",
-    "U3": "U",
-    "A": "A",
-    "A5": "A",
-    "A3": "A",
-    "T": "T",
-    "DG": "G",
-    "DG5": "G",
-    "DG3": "G",
-    "DC": "C",
-    "DC5": "C",
-    "DC3": "C",
-    "DA": "A",
-    "DA5": "A",
-    "DA3": "A",
-    "DT": "T",
-    "DT5": "T",
-    "DT3": "T",
-}
-
-_residueNameTable = {
-    "ARG": "R",
-    "AR0": "R",
-    "HIS": "H",
-    "HID": "H",
-    "HIE": "H",
-    "HIP": "H",
-    "HSD": "H",
-    "HSE": "H",
-    "HSP": "H",
-    "LYS": "K",
-    "LSN": "K",
-    "LYN": "K",
-    "ASP": "D",
-    "ASH": "D",
-    "GLU": "E",
-    "GLH": "E",
-    "SER": "S",
-    "THR": "T",
-    "ASN": "N",
-    "GLN": "Q",
-    "CYS": "C",
-    "CYM": "C",
-    "CYX": "C",
-    "SEC": "U",
-    "GLY": "G",
-    "PRO": "P",
-    "ALA": "A",
-    "VAL": "V",
-    "ILE": "I",
-    "LEU": "L",
-    "MET": "M",
-    "PHE": "F",
-    "TYR": "Y",
-    "TRP": "W",
-    "G": "G",
-    "G5": "G",
-    "G3": "G",
-    "C": "C",
-    "C5": "C",
-    "C3": "C",
-    "U": "U",
-    "U5": "U",
-    "U3": "U",
-    "A": "A",
-    "A5": "A",
-    "A3": "A",
-    "T": "T",
-    "DG": "G",
-    "DG5": "G",
-    "DG3": "G",
-    "DC": "C",
-    "DC5": "C",
-    "DC3": "C",
-    "DA": "A",
-    "DA5": "A",
-    "DA3": "A",
-    "DT": "T",
-    "DT5": "T",
-    "DT3": "T",
-}
-
-_modResidueNameTable = {"MLZ": "K", "MLY": "K", "MSE": "M"}
 
 
 def _atoms_to_sequence(mol, sel, oneletter=True, incremseg=None, _logger=True):
@@ -167,10 +44,10 @@ def _atoms_to_sequence(mol, sel, oneletter=True, incremseg=None, _logger=True):
             )
         resname = resname[0]
         if oneletter:
-            if resname in _residueNameTable:
-                rescode = _residueNameTable[resname]
-            elif resname in _modResidueNameTable:
-                rescode = _modResidueNameTable[resname]
+            if resname in SINGLE_LETTER_RESIDUE_NAME_TABLE:
+                rescode = SINGLE_LETTER_RESIDUE_NAME_TABLE[resname]
+            elif resname in SINGLE_LETTER_MODIFIED_RESIDUE_NAME_TABLE:
+                rescode = SINGLE_LETTER_MODIFIED_RESIDUE_NAME_TABLE[resname]
                 if _logger:
                     logger.warning(
                         f"Modified residue {resname} was detected in the protein and mapped to one-letter code {rescode}"
@@ -481,12 +358,60 @@ class Molecule(object):
             )
         self._frame = value
 
+    def getResidues(
+        self,
+        fields=("resid", "insertion", "chain", "segid"),
+        sel="all",
+        return_idx=True,
+    ):
+        """Get unique ids for the residues of the Molecule
+
+        Parameters
+        ----------
+        fields : np.ndarray or tuple
+            An array of Molecule attributes. Once a change in any of the fields happens, a new ID
+            will be created in `residues`. The default fields are ("resid", "insertion", "chain", "segid")
+            which means that a new residue ID will be created if the resid or insertion or chain or segid changes
+            from the previous atom to the next one.
+        sel : str
+            Atomselection for which to return the residues. Default is "all".
+            See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+        return_idx : bool
+            If set to True, the method will return the indices of each unique residue
+
+        Returns
+        -------
+        residues : np.ndarray
+            An array of unique ids for the residues
+        idx : list
+            A list of arrays, each containing the indices corresponding to the unique values in `residues`.
+            Will only be returned if `return_idx` is set to True.
+
+        Examples
+        --------
+        >>> mol = Molecule('5zmz')
+        >>> residues, idx = mol.getResidues()
+        >>> residues
+        array([0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2,
+               2, 2, 2, 3, 3, 3, 3, 3, 4])
+        >>> idx
+        [array([0, 1, 2, 3, 4, 5, 6, 7]),
+         array([ 8,  9, 10, 11, 12, 13, 14, 15, 16]),
+         array([17, 18, 19, 20, 21, 22, 23, 24]),
+         array([25, 26, 27, 28, 29]),
+         array([30])]
+        """
+        from moleculekit.util import sequenceID
+
+        sel = self.atomselect(sel)
+        return sequenceID(
+            tuple(getattr(self, f)[sel] for f in fields), return_idx=return_idx
+        )
+
     @property
     def numResidues(self):
         """The number of residues in the Molecule"""
-        from moleculekit.util import sequenceID
-
-        return len(np.unique(sequenceID((self.resid, self.insertion, self.chain))))
+        return len(set(self.getResidues(return_idx=False)))
 
     @property
     def boxvectors(self):
@@ -2040,8 +1965,6 @@ class Molecule(object):
         array([1718, 1719, 1720, 1721, 1722, 1723, 1724, 1725, 1726, 1727, 1728,
                1729, 1730, 1731, 1732, 1733, 1734, 1735, 1736, 1737])
         """
-        from moleculekit.util import sequenceID
-
         if dict_key is not None and dict_key not in ["segid", "chain"]:
             raise ValueError(
                 f"Invalid dictionary key: {dict_key}. Allowed values are: segid, chain"
@@ -2051,7 +1974,7 @@ class Molecule(object):
         nucl = self.atomselect("nucleic")
         selb = self.atomselect(sel)
 
-        increm = sequenceID((self.resid, self.insertion, self.chain))
+        increm = self.getResidues(return_idx=False)
         segSequences = {}
         seqAtoms = {}
         if dict_key is None:
@@ -2204,8 +2127,6 @@ class Molecule(object):
         --------
         >>> mapping = mol.renumberResidues(returnMapping=True)
         """
-        from moleculekit.util import sequenceID
-
         if returnMapping:
             resid = self.resid.copy()
             insertion = self.insertion.copy()
@@ -2213,9 +2134,7 @@ class Molecule(object):
             chain = self.chain.copy()
             segid = self.segid.copy()
 
-        self.resid[:] = (
-            sequenceID((self.resid, self.insertion, self.chain, self.segid)) + start
-        )
+        self.resid[:] = self.getResidues(return_idx=False) + start
         if modulo is not None:
             self.resid[:] = self.resid % modulo
         self.insertion[:] = ""
@@ -3308,27 +3227,6 @@ def mol_equal(
             print(f"Differences detected in mol1 and mol2 in field(s) {difffields}.")
         return False
     return True
-
-
-def _get_residue_indices(mol):
-    """
-    Get the indices of all residues in a Molecule object.
-
-    Parameters
-    ----------
-    mol : Molecule
-        The Molecule object to get the residue indices from.
-
-    Returns
-    -------
-    residue_indices : list
-        A list of arrays, each containing the indices of the atoms in a residue.
-    """
-    from moleculekit.util import sequenceID
-
-    unique_residues = sequenceID((mol.resid, mol.insertion, mol.chain))
-
-    return [np.where(unique_residues == uqresid)[0] for uqresid in set(unique_residues)]
 
 
 def _detectCollisions(coords1, coords2, gap, remove_idx):

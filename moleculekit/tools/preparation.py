@@ -499,8 +499,8 @@ def _prepare_nucleics(mol):
 
 def _fix_protonation_resnames(mol):
     # This function patches the names of residues to their correct protonation state if they have specific hydrogens
-    uqres = sequenceID((mol.resid, mol.insertion, mol.chain))
-    for uq in uqres:
+    uqres = mol.getResidues(return_idx=False)
+    for uq in set(uqres):
         resatm = uqres == uq
         resname = mol.resname[resatm][0]
         names = mol.name[resatm]

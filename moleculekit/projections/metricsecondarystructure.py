@@ -63,15 +63,13 @@ class MetricSecondaryStructure(Projection):
         ) = self._calcarrays(mol)
 
     def _calculateMolProp(self, mol, props="all"):
-        from moleculekit.util import sequenceID
-
         # Calculate all properties at once since it would be too slow otherwise to redo calculations
         res = {}
 
         mol = mol.copy()
         mol.filter(self.sel, _logger=False)
 
-        residues = sequenceID((mol.resid, mol.chain, mol.insertion))
+        residues = mol.getResidues(return_idx=False)
 
         backbone = mol.atomselect("backbone")
         ca_indices = np.where(mol.name == "CA")[0].astype(np.int32)

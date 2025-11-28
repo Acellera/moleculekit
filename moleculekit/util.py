@@ -150,7 +150,7 @@ def orientOnAxes(mol, sel="all"):
     return mol
 
 
-def sequenceID(field, prepend=None, step=1):
+def sequenceID(field, prepend=None, step=1, return_idx=False):
     """Array of integers which increments at value change of another array
 
     Parameters
@@ -162,11 +162,15 @@ def sequenceID(field, prepend=None, step=1):
         A string to prepend to the incremental sequence
     step : int
         The step size for incremeting the ID
+    return_idx : bool
+        If set to True, the method will return the indices of the unique values
 
     Returns
     -------
     seq : np.ndarray
         An array of equal size to `field` containing integers which increment every time there is a change in `field`
+    idx : np.ndarray
+        A list of arrays, each containing the indices corresponding to the unique values in `seq`
 
     Examples
     --------
@@ -209,7 +213,11 @@ def sequenceID(field, prepend=None, step=1):
             seq[i] = c
         else:
             seq[i] = prepend + str(c)
-    return seq
+    if not return_idx:
+        return seq
+    else:
+        idx = [np.where(seq == ss)[0] for ss in set(seq)]
+        return seq, idx
 
 
 def _missingChain(mol):

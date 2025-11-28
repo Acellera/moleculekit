@@ -5,7 +5,7 @@
 #
 import numpy as np
 import os
-from moleculekit.util import ensurelist, sequenceID
+from moleculekit.util import ensurelist
 import logging
 import numbers
 
@@ -1047,7 +1047,7 @@ def CIFwrite(
     fp_precision=3,
 ):
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
-    from moleculekit.molecule import _originalResname
+    from moleculekit.residues import ORIGINAL_RESIDUE_NAME_TABLE
     import re
 
     if not return_data:
@@ -1174,10 +1174,10 @@ def CIFwrite(
                 elif mapping[at] == "serial":
                     data.append(i + 1)
                 elif at == "label_comp_id":
-                    if mol.resname[i] not in _originalResname:
+                    if mol.resname[i] not in ORIGINAL_RESIDUE_NAME_TABLE:
                         data.append(mol.resname[i])
                     else:
-                        data.append(_originalResname[mol.resname[i]])
+                        data.append(ORIGINAL_RESIDUE_NAME_TABLE[mol.resname[i]])
                 else:
                     data.append(mol.__dict__[mapping[at]][i])
             aCat.append(data)
@@ -1190,7 +1190,7 @@ def CIFwrite(
                 bonds = explicitbonds[0]
                 bondtype = explicitbonds[1]
 
-            uqresid = sequenceID((mol.resid, mol.insertion, mol.chain))
+            uqresid = mol.getResidues(return_idx=False)
 
             bCat = DataCategory("chem_comp_bond")
             for at in ["comp_id", "atom_id_1", "atom_id_2", "value_order"]:
@@ -1304,13 +1304,13 @@ def BCIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
 def MMTFwrite(mol, filename):
     from mmtf import write_mmtf, MMTFDecoder
     from string import ascii_uppercase
-    from moleculekit.molecule import _residueNameTable
+    from moleculekit.residues import SINGLE_LETTER_RESIDUE_NAME_TABLE
 
     bondmap = {"1": 1, "2": 2, "3": 3, "4": 4, "un": 1, "ar": 1}
 
     class MolToMMTF(MMTFDecoder):
         def __init__(self, mol):
-            uqres = sequenceID((mol.resid, mol.insertion, mol.chain))
+            uqres = mol.getResidues(return_idx=False)
             protein = mol.atomselect("protein")
             nucleic = mol.atomselect("nucleic")
             water = mol.atomselect("water")
@@ -1360,7 +1360,9 @@ def MMTFwrite(mol, filename):
                         "bondOrderList": bond_orders,
                         "bondAtomList": group_bonds.flatten().tolist(),
                         "formalChargeList": mol.formalcharge[mask].tolist(),
-                        "singleLetterCode": _residueNameTable.get(resname, "?"),
+                        "singleLetterCode": SINGLE_LETTER_RESIDUE_NAME_TABLE.get(
+                            resname, "?"
+                        ),
                         "chemCompType": "OTHER",
                     }
 
