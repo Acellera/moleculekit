@@ -99,12 +99,6 @@ class Molecule(object):
     Atom field - altloc shape: (1701,)
     Atom field - atomtype shape: (1701,)
     ...
-
-    .. rubric:: Methods
-    .. autoautosummary:: moleculekit.molecule.Molecule
-       :methods:
-
-    .. rubric:: Attributes
     """
 
     #: The record field of a PDB file if the topology was read from a PDB.

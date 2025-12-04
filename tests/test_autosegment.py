@@ -39,3 +39,46 @@ def _test_autoSegment2():
     vals, counts = np.unique(smol1.segid, return_counts=True)
     assert len(vals) == 3
     assert np.array_equal(counts, np.array([331, 172, 1213]))
+
+
+def _test_autosegment_detailed():
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol = Molecule("3ptb")
+    outmol = autoSegment(mol, fields=("chain", "segid"))
+
+    prot_idx = np.arange(1629)
+    ca_idx = np.array([1629])
+    ben_idx = np.arange(1630, 1639)
+    water_idx = np.arange(1639, 1701)
+
+    chain_a = np.where(outmol.chain == "A")[0]
+    assert np.array_equal(chain_a, prot_idx)
+    chain_b = np.where(outmol.chain == "B")[0]
+    assert np.array_equal(chain_b, ca_idx)
+    chain_c = np.where(outmol.chain == "C")[0]
+    assert np.array_equal(chain_c, ben_idx)
+    chain_w = np.where(outmol.chain == "W")[0]
+    assert np.array_equal(chain_w, water_idx)
+
+    # A is kept by CA, BEN and waters. B is assigned to protein.
+    outmol = autoSegment(mol, fields=("chain", "segid"), sel="protein")
+    chain_a = np.where(outmol.chain == "A")[0]
+    assert np.array_equal(chain_a, np.hstack([ca_idx, ben_idx, water_idx]))
+    chain_b = np.where(outmol.chain == "B")[0]
+    assert np.array_equal(chain_b, prot_idx)
+
+    # A is kept by CA and waters. B is assigned to protein. C is assigned to BEN.
+    outmol = autoSegment(mol, fields=("chain", "segid"), sel="protein or resname BEN")
+    chain_a = np.where(outmol.chain == "A")[0]
+    assert np.array_equal(chain_a, np.hstack([ca_idx, water_idx]))
+    chain_b = np.where(outmol.chain == "B")[0]
+    assert np.array_equal(chain_b, prot_idx)
+    chain_c = np.where(outmol.chain == "C")[0]
+    assert np.array_equal(chain_c, ben_idx)
+
+    # There are no nucleic so it stays as original
+    outmol = autoSegment(mol, fields=("chain", "segid"), sel="nucleic")
+    chain_a = np.where(outmol.chain == "A")[0]
+    assert np.array_equal(chain_a, np.arange(mol.numAtoms))
