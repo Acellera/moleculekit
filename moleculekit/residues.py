@@ -1,5 +1,12 @@
 from collections import namedtuple
+from moleculekit import __share_dir
+import json
+import os
 
+_sel = os.path.join(__share_dir, "atomselect", "atomselect.json")
+with open(_sel, "r") as f:
+    _sel = json.load(f)
+WATER_RESIDUE_NAMES = set(_sel["water_resnames"])
 
 _Residue = namedtuple(
     "Residue", ["full_name", "resname", "single_letter", "resname_variants"]
