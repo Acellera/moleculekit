@@ -26,6 +26,9 @@ help:
 # %: Makefile
 # 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
+html: Makefile rst
+	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+
 # Rule for building .rst from .ipynb
 $(TUTORIALSDIR)/%.rst: ../tutorials/%.ipynb
 	mkdir -p $(TUTORIALSDIR)
@@ -44,8 +47,9 @@ rst: writeversion tutorials
 
 clean:
 	rm -f source/moleculekit.*
-	rm source/version
+	rm -f source/version
 	rm -rf $(TUTORIALSDIR)
+	rm -rf build
 
 publish:
 	ssh software.acellera.com 'rm -rf /var/www/software.acellera.com/source/moleculekit/*'

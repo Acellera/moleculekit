@@ -43,6 +43,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.ifconfig",
     "sphinx.ext.napoleon",
+    "sphinx_autodoc_typehints",
     "sphinxarg.ext",
 ]
 

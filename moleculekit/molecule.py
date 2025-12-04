@@ -5,10 +5,12 @@
 #
 import numpy as np
 from moleculekit.util import tempname, ensurelist
+from moleculekit.representations import Representations
 from moleculekit.residues import (
     SINGLE_LETTER_RESIDUE_NAME_TABLE,
     SINGLE_LETTER_MODIFIED_RESIDUE_NAME_TABLE,
 )
+from typing import Annotated
 from copy import deepcopy
 import logging
 import os
@@ -69,13 +71,13 @@ def _atoms_to_sequence(mol, sel, oneletter=True, incremseg=None, _logger=True):
 
 class Molecule(object):
     """
-    Class to manipulate molecular structures.
+    Class to read, write and manipulate molecular structures.
 
-    Molecule contains all the fields of a PDB and it is independent of any force field. It can contain multiple
-    conformations and trajectories, however all operations are done on the current frame. The following PDB fields
-    are accessible as attributes (record, serial, name, altloc, resname, chain, resid, insertion, coords,
-    occupancy, beta, segid, element, charge). The coordinates are accessible via the coords attribute
-    ([number of atoms x 3 x number of frames] where [x,y,z] are the second dimension.
+    Molecule is the main class of MoleculeKit. It stores all the relevant molecular information for a system
+    and allows many different operations to be performed on it, including adding or removing atoms, bonds,
+    calculating various properties of the system, and visualizing the molecule.
+    Molecule can read a large variety of molecular file formats and convert between them, therefore it can also be used
+    as a molecular file format converter.
 
     Parameters
     ----------
@@ -89,8 +91,8 @@ class Molecule(object):
 
     Examples
     --------
-    >>> mol = Molecule( './test/data/dhfr/dhfr.pdb' )  # doctest: +SKIP
-    >>> mol = Molecule( '3PTB', name='Trypsin' )
+    >>> mol = Molecule('./test/data/dhfr/dhfr.pdb')  # doctest: +SKIP
+    >>> mol = Molecule('3PTB')
     >>> print(mol)                                     # doctest: +ELLIPSIS
     Molecule with 1701 atoms and 1 frames
     Atom field - altloc shape: (1701,)
@@ -102,85 +104,70 @@ class Molecule(object):
        :methods:
 
     .. rubric:: Attributes
-
-    Attributes
-    ----------
-
-    numAtoms : int
-        Number of atoms in the Molecule
-    numFrames : int
-        Number of conformers / simulation frames in the Molecule
-    numResidues : int
-        Number of residues in the Molecule
-
-    record : np.ndarray
-        The record field of a PDB file if the topology was read from a PDB.
-    serial : np.ndarray
-        The serial number of each atom.
-    name : np.ndarray
-        The name of each atom.
-    altloc : np.ndarray
-        The alternative location flag of the atoms if read from a PDB.
-    resname : np.ndarray
-        The residue name of each atom.
-    chain : np.ndarray
-        The chain name of each atom.
-    resid : np.ndarray
-        The residue ID of each atom.
-    insertion : np.ndarray
-        The insertion flag of the atoms if read from a PDB.
-    occupancy : np.ndarray
-        The occupancy value of each atom if read from a PDB.
-    beta : np.ndarray
-        The beta factor value of each atom if read from a PDB.
-    segid : np.ndarray
-        The segment ID of each atom.
-    element : np.ndarray
-        The element of each atom.
-    charge : np.ndarray
-        The charge of each atom.
-    masses : np.ndarray
-        The mass of each atom.
-    atomtype : np.ndarray
-        The atom type of each atom.
-    formalcharge : np.ndarray
-        The formal charge of each atom
-
-    coords : np.ndarray
-        A float32 array with shape (natoms, 3, nframes) containing the coordinates of the Molecule.
-    box : np.ndarray
-        A float32 array with shape (3, nframes) containing the periodic box dimensions of an MD trajectory.
-    boxangles : np.ndarray
-        The angles of the box. If none are set they are assumed to be 90 degrees.
-
-    bonds : np.ndarray
-        Atom pairs corresponding to bond terms.
-    bondtype : np.ndarray
-        The type of each bond in `Molecule.bonds` if available.
-    angles : np.ndarray
-        Atom triplets corresponding to angle terms.
-    dihedrals : np.ndarray
-        Atom quadruplets corresponding to dihedral terms.
-    impropers : np.ndarray
-        Atom quadruplets corresponding to improper dihedral terms.
-
-    crystalinfo : dict
-        A dictionary containing crystallographic information. It has fields ['sGroup', 'numcopies', 'rotations', 'translations']
-
-    frame : int
-        The current frame. atomselection and get commands will be calculated on this frame.
-    fileloc : list
-        The location of the files used to read this Molecule
-    time : list
-        The time for each frame of the simulation
-    fstep : list
-        The step for each frame of the simulation
-    reps : :class:`Representations` object
-        A list of representations that is used when visualizing the molecule
-    viewname : str
-        The name used for the molecule in the viewer
-
     """
+
+    #: The record field of a PDB file if the topology was read from a PDB.
+    record: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    #: The serial number of each atom.
+    serial: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: int"]
+    #: The name of each atom.
+    name: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    #: The alternative location flag of the atoms if read from a PDB.
+    altloc: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    #: The residue name of each atom.
+    resname: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    #: The chain name of each atom.
+    chain: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    #: The residue ID of each atom.
+    resid: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: int"]
+    #: The insertion flag of the atoms if read from a PDB.
+    insertion: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    #: The occupancy value of each atom if read from a PDB.
+    occupancy: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: float32"]
+    #: The beta factor value of each atom if read from a PDB.
+    beta: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: float32"]
+    #: The segment ID of each atom.
+    segid: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    #: The element of each atom.
+    element: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    #: The charge of each atom.
+    charge: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: float32"]
+    #: The mass of each atom.
+    masses: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: float32"]
+    #: The atom type of each atom.
+    atomtype: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    #: The formal charge of each atom.
+    formalcharge: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: int32"]
+    #: Whether the atom is a virtual site.
+    virtualsite: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: bool"]
+    #: The coordinates of the atoms.
+    coords: Annotated[np.ndarray, "Shape: (numAtoms, 3, numFrames), dtype: float32"]
+    #: The box dimensions of the molecule.
+    box: Annotated[np.ndarray, "Shape: (3, numFrames), dtype: float32"]
+    #: The box angles of the molecule.
+    boxangles: Annotated[np.ndarray, "Shape: (3, numFrames), dtype: float32"]
+    #: The step for each frame of the simulation
+    step: Annotated[np.ndarray, "Shape: (numFrames), dtype: uint64"]
+    #: The time for each frame of the simulation
+    time: Annotated[np.ndarray, "Shape: (numFrames), dtype: float64"]
+    #: The location of the files used to read this Molecule
+    fileloc: Annotated[list, "Shape: (numFrames, 2), dtype: object"]
+    #: Atom pairs corresponding to bond terms.
+    bonds: Annotated[np.ndarray, "Shape: (numBonds, 2), dtype: uint32"]
+    #: The type of each bond in `Molecule.bonds` if available.
+    bondtype: Annotated[np.ndarray, "Shape: (numBonds,), dtype: object"]
+    #: Atom triplets corresponding to angle terms.
+    angles: Annotated[np.ndarray, "Shape: (numAngles, 3), dtype: uint32"]
+    #: Atom quadruplets corresponding to dihedral terms.
+    dihedrals: Annotated[np.ndarray, "Shape: (numDihedrals, 4), dtype: uint32"]
+    #: Atom quadruplets corresponding to improper dihedral terms.
+    impropers: Annotated[np.ndarray, "Shape: (numImpropers, 4), dtype: uint32"]
+    #: A dictionary containing crystallographic information. It has fields ['sGroup', 'numcopies', 'rotations', 'translations']
+    crystalinfo: dict
+    #: The name used for the molecule in the viewer
+    viewname: str
+    #: A list of representations that is used when visualizing the molecule
+    reps: Representations
 
     _atom_fields = (
         "record",
@@ -280,7 +267,6 @@ class Molecule(object):
             self.__dict__[field] = np.empty(
                 self._dims[field], dtype=self._dtypes[field]
             )
-        self.ssbonds = []
         self._frame = 0
         self.fileloc = []
         self.crystalinfo = None
@@ -409,12 +395,14 @@ class Molecule(object):
         )
 
     @property
-    def numResidues(self):
+    def numResidues(self) -> int:
         """The number of residues in the Molecule"""
         return len(set(self.getResidues(return_idx=False)))
 
     @property
-    def boxvectors(self):
+    def boxvectors(
+        self,
+    ) -> Annotated[np.ndarray, "Shape: (3, 3, numFrames), dtype: float64"]:
         """The box vectors of the Molecule"""
         from moleculekit.unitcell import lengths_and_angles_to_box_vectors
 
@@ -1773,14 +1761,14 @@ class Molecule(object):
         >>> mol=tryp.copy()
         >>> mol.mutateResidue('resid 158', 'ARG')
         """
-        s = self.atomselect(sel, strict=True)
+        sel_mask = self.atomselect(sel, strict=True)
         # Changed the selection from "and sidechain" to "not backbone" to remove atoms like phosphates which are bonded
         # but not part of the sidechain. Changed again the selection to "name C CA N O" because "backbone" works for
         # both protein and nucleic acid backbones and it confuses phosphates of modified residues for nucleic backbones.
-        remidx = self.atomselect(sel + " and not name C CA N O", indexes=True)
-        self.remove(remidx, _logger=False)
-        s = np.delete(s, remidx)
-        self.set("resname", newres, sel=s)
+        self.resname[sel_mask] = newres
+        sel_idx = np.where(sel_mask)[0]
+        remove = np.isin(self.name[sel_idx], ("N", "CA", "C", "O"))
+        self.remove(sel_idx[remove], _logger=False)
 
     def wrap(
         self,
@@ -3342,179 +3330,3 @@ def getBondedGroups(mol, bonds=None):
     get_bonded_groups(bonds, mol.numAtoms, parent, size)
     _, grouplist, grouparray = np.unique(parent, return_index=True, return_inverse=True)
     return np.hstack((grouplist, [mol.numAtoms])).astype(np.uint32), grouparray
-
-
-class Representations:
-    """Class that stores representations for Molecule.
-
-    Examples
-    --------
-    >>> from moleculekit.molecule import Molecule
-    >>> mol = tryp.copy()
-    >>> mol.reps.add('protein', 'NewCartoon')
-    >>> print(mol.reps)                     # doctest: +NORMALIZE_WHITESPACE
-    rep 0: sel='protein', style='NewCartoon', color='Name'
-    >>> mol.view() # doctest: +SKIP
-    >>> mol.reps.remove() # doctest: +SKIP
-    """
-
-    def __init__(self, mol):
-        self.replist = []
-        self._mol = mol
-        return
-
-    def append(self, reps):
-        if not isinstance(reps, Representations):
-            raise RuntimeError("You can only append Representations objects.")
-        self.replist += reps.replist
-
-    def add(self, sel=None, style=None, color=None, frames=None, opacity=None):
-        """Adds a new representation for Molecule.
-
-        Parameters
-        ----------
-        sel : str
-            Atom selection string for the representation.
-            See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-        style : str
-            Representation style. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node55.html>`__.
-        color : str or int
-            Coloring mode (str) or ColorID (int).
-            See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
-        frames : list
-            List of frames to visualize with this representation. If None it will visualize the current frame only.
-        opacity : float
-            Opacity of the representation. 0 is fully transparent and 1 is fully opaque.
-        """
-        self.replist.append(_Representation(sel, style, color, frames, opacity))
-
-    def remove(self, index=None):
-        """Removed one or all representations.
-
-        Parameters
-        ----------
-        index : int
-            The index of the representation to delete. If none is given it deletes all.
-        """
-        if index is None:
-            self.replist = []
-        else:
-            del self.replist[index]
-
-    def list(self):
-        """Lists all representations. Equivalent to using print."""
-        print(self)
-
-    def __str__(self):
-        s = ""
-        for i, r in enumerate(self.replist):
-            s += f"rep {i}: sel='{r.sel}', style='{r.style}', color='{r.color}'\n"
-        return s
-
-    def _translateNGL(self, rep):
-        styletrans = {
-            "newcartoon": "cartoon",
-            "licorice": "hyperball",
-            "lines": "line",
-            "vdw": "spacefill",
-            "cpk": "ball+stick",
-        }
-        colortrans = {
-            "name": "element",
-            "index": "residueindex",
-            "chain": "chainindex",
-            "secondary structure": "sstruc",
-            "colorid": "color",
-        }
-        hexcolors = {
-            0: "#0000ff",
-            1: "#ff0000",
-            2: "#333333",
-            3: "#ff6600",
-            4: "#ffff00",
-            5: "#4c4d00",
-            6: "#b2b2cc",
-            7: "#33cc33",
-            8: "#ffffff",
-            9: "#ff3399",
-            10: "#33ccff",
-        }
-        try:
-            selidx = "@" + ",".join(
-                map(str, self._mol.atomselect(rep.sel, indexes=True))
-            )
-        except Exception:
-            return None
-        if rep.style.lower() in styletrans:
-            style = styletrans[rep.style.lower()]
-        else:
-            style = rep.style
-        if isinstance(rep.color, int):
-            color = hexcolors[rep.color]
-        elif rep.color.lower() in colortrans:
-            color = colortrans[rep.color.lower()]
-        else:
-            color = rep.color
-        return _Representation(sel=selidx, style=style, color=color)
-
-    def _repsVMD(self, viewer):
-        colortrans = {"secondary structure": "Structure"}
-        if len(self.replist) > 0:
-            viewer.send("mol delrep 0 top")
-            for rep in self.replist:
-                if isinstance(rep.color, str) and rep.color.lower() in colortrans:
-                    color = colortrans[rep.color.lower()]
-                else:
-                    color = rep.color
-                viewer.send(f"mol selection {rep.sel}")
-                viewer.send(f"mol representation {rep.style}")
-                if isinstance(rep.color, str) and not rep.color.isnumeric():
-                    viewer.send(f"mol color {color}")
-                else:
-                    viewer.send(f"mol color ColorID {color}")
-
-                viewer.send("mol addrep top")
-
-    def _repsNGL(self, viewer):
-        if len(self.replist) > 0:
-            reps = []
-            for r in self.replist:
-                r2 = self._translateNGL(r)
-                if r2 is not None:
-                    reps.append(
-                        {
-                            "type": r2.style,
-                            "params": {"sele": r2.sel, "color": r2.color},
-                        }
-                    )
-            if reps != []:
-                viewer.representations = reps
-
-
-class _Representation:
-    """Class that stores a representation for Molecule
-
-    Parameters
-    ----------
-    sel : str
-        Atom selection for the representation.
-        See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    style : str
-        Representation style. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node55.html>`__.
-    color : str or int
-        Coloring mode (str) or ColorID (int).
-        See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
-
-    Examples
-    --------
-    >>> r = _Representation(sel='protein', style='NewCartoon', color='Index')
-    >>> r = _Representation(sel='resname MOL', style='Licorice')
-    >>> r = _Representation(sel='ions', style='VDW', color=1)
-    """
-
-    def __init__(self, sel=None, style=None, color=None, frames=None, opacity=None):
-        self.sel = "all" if sel is None else sel
-        self.style = "Lines" if style is None else style
-        self.color = "Name" if color is None else color
-        self.frames = frames
-        self.opacity = 1 if opacity is None else opacity
