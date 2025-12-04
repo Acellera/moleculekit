@@ -75,9 +75,6 @@ tokens = [
     "GREATER",
     "LESSEREQUAL",
     "GREATEREQUAL",
-    "XCOOR",
-    "YCOOR",
-    "ZCOOR",
     "DOUBLEEQ",
     "NOTEQ",
 ] + [rr.upper() for rr in reserved]
@@ -97,23 +94,6 @@ t_LESSEREQUAL = r"\<\="
 t_GREATEREQUAL = r"\>\="
 t_DOUBLEEQ = r"\=\="
 t_NOTEQ = r"\!\="
-
-# Put the coors here for priority overriding
-
-
-def t_XCOOR(t):
-    r"x"
-    return t
-
-
-def t_YCOOR(t):
-    r"y"
-    return t
-
-
-def t_ZCOOR(t):
-    r"z"
-    return t
 
 
 def t_QUOTEDINT(t):
@@ -440,10 +420,15 @@ def p_numprop_number(p):
             | MASS
             | OCCUPANCY
             | BETA
-            | XCOOR
-            | YCOOR
-            | ZCOOR
+            | STRING
     """
+    # Allow 'x','y','z' as numeric coordinate properties via STRING
+    if isinstance(p[1], str) and p.slice[1].type == "STRING":
+        lowval = p[1].lower()
+        if lowval in ("x", "y", "z"):
+            p[0] = ("numprop", lowval)
+            return
+        raise RuntimeError(f"Unknown numeric property '{p[1]}'")
     p[0] = ("numprop", p[1])
 
 
@@ -453,10 +438,14 @@ def p_numprop_as_str(p):
                    | MASS
                    | OCCUPANCY
                    | BETA
-                   | XCOOR
-                   | YCOOR
-                   | ZCOOR
+                   | STRING
     """
+    if isinstance(p[1], str) and p.slice[1].type == "STRING":
+        lowval = p[1].lower()
+        if lowval in ("x", "y", "z"):
+            p[0] = lowval
+            return
+        raise RuntimeError(f"Unknown numeric property '{p[1]}'")
     p[0] = p[1]
 
 
