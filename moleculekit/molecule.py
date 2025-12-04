@@ -4,6 +4,7 @@
 # No redistribution in whole or part
 #
 import numpy as np
+import numpy.typing as npt
 from moleculekit.util import tempname, ensurelist
 from moleculekit.representations import Representations
 from moleculekit.residues import (
@@ -107,61 +108,61 @@ class Molecule(object):
     """
 
     #: The record field of a PDB file if the topology was read from a PDB.
-    record: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    record: Annotated[npt.NDArray[np.object_], "Shape: (numAtoms,)"]
     #: The serial number of each atom.
-    serial: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: int"]
+    serial: Annotated[npt.NDArray[np.int_], "Shape: (numAtoms,)"]
     #: The name of each atom.
-    name: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    name: Annotated[npt.NDArray[np.object_], "Shape: (numAtoms,)"]
     #: The alternative location flag of the atoms if read from a PDB.
-    altloc: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    altloc: Annotated[npt.NDArray[np.object_], "Shape: (numAtoms,)"]
     #: The residue name of each atom.
-    resname: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    resname: Annotated[npt.NDArray[np.object_], "Shape: (numAtoms,)"]
     #: The chain name of each atom.
-    chain: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    chain: Annotated[npt.NDArray[np.object_], "Shape: (numAtoms,)"]
     #: The residue ID of each atom.
-    resid: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: int"]
+    resid: Annotated[npt.NDArray[np.int_], "Shape: (numAtoms,)"]
     #: The insertion flag of the atoms if read from a PDB.
-    insertion: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    insertion: Annotated[npt.NDArray[np.object_], "Shape: (numAtoms,)"]
     #: The occupancy value of each atom if read from a PDB.
-    occupancy: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: float32"]
-    #: The beta factor value of each atom if read from a PDB.
-    beta: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: float32"]
+    occupancy: Annotated[npt.NDArray[np.float32], "Shape: (numAtoms,)"]
+    #: The beta factor value of each atom.
+    beta: Annotated[npt.NDArray[np.float32], "Shape: (numAtoms,)"]
     #: The segment ID of each atom.
-    segid: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    segid: Annotated[npt.NDArray[np.object_], "Shape: (numAtoms,)"]
     #: The element of each atom.
-    element: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    element: Annotated[npt.NDArray[np.object_], "Shape: (numAtoms,)"]
     #: The charge of each atom.
-    charge: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: float32"]
+    charge: Annotated[npt.NDArray[np.float32], "Shape: (numAtoms,)"]
     #: The mass of each atom.
-    masses: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: float32"]
+    masses: Annotated[npt.NDArray[np.float32], "Shape: (numAtoms,)"]
     #: The atom type of each atom.
-    atomtype: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: object"]
+    atomtype: Annotated[npt.NDArray[np.object_], "Shape: (numAtoms,)"]
     #: The formal charge of each atom.
-    formalcharge: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: int32"]
+    formalcharge: Annotated[npt.NDArray[np.int32], "Shape: (numAtoms,)"]
     #: Whether the atom is a virtual site.
-    virtualsite: Annotated[np.ndarray, "Shape: (numAtoms,), dtype: bool"]
+    virtualsite: Annotated[npt.NDArray[np.bool_], "Shape: (numAtoms,)"]
     #: The coordinates of the atoms.
-    coords: Annotated[np.ndarray, "Shape: (numAtoms, 3, numFrames), dtype: float32"]
+    coords: Annotated[npt.NDArray[np.float32], "Shape: (numAtoms, 3, numFrames)"]
     #: The box dimensions of the molecule.
-    box: Annotated[np.ndarray, "Shape: (3, numFrames), dtype: float32"]
+    box: Annotated[npt.NDArray[np.float32], "Shape: (3, numFrames)"]
     #: The box angles of the molecule.
-    boxangles: Annotated[np.ndarray, "Shape: (3, numFrames), dtype: float32"]
+    boxangles: Annotated[npt.NDArray[np.float32], "Shape: (3, numFrames)"]
     #: The step for each frame of the simulation
-    step: Annotated[np.ndarray, "Shape: (numFrames), dtype: uint64"]
+    step: Annotated[npt.NDArray[np.uint64], "Shape: (numFrames)"]
     #: The time for each frame of the simulation
-    time: Annotated[np.ndarray, "Shape: (numFrames), dtype: float64"]
+    time: Annotated[npt.NDArray[np.float64], "Shape: (numFrames)"]
     #: The location of the files used to read this Molecule
-    fileloc: Annotated[list, "Shape: (numFrames, 2), dtype: object"]
+    fileloc: Annotated[list, "Shape: (numFrames, 2)"]
     #: Atom pairs corresponding to bond terms.
-    bonds: Annotated[np.ndarray, "Shape: (numBonds, 2), dtype: uint32"]
+    bonds: Annotated[npt.NDArray[np.uint32], "Shape: (numBonds, 2)"]
     #: The type of each bond in `Molecule.bonds` if available.
-    bondtype: Annotated[np.ndarray, "Shape: (numBonds,), dtype: object"]
+    bondtype: Annotated[npt.NDArray[np.object_], "Shape: (numBonds,)"]
     #: Atom triplets corresponding to angle terms.
-    angles: Annotated[np.ndarray, "Shape: (numAngles, 3), dtype: uint32"]
+    angles: Annotated[npt.NDArray[np.uint32], "Shape: (numAngles, 3)"]
     #: Atom quadruplets corresponding to dihedral terms.
-    dihedrals: Annotated[np.ndarray, "Shape: (numDihedrals, 4), dtype: uint32"]
+    dihedrals: Annotated[npt.NDArray[np.uint32], "Shape: (numDihedrals, 4)"]
     #: Atom quadruplets corresponding to improper dihedral terms.
-    impropers: Annotated[np.ndarray, "Shape: (numImpropers, 4), dtype: uint32"]
+    impropers: Annotated[npt.NDArray[np.uint32], "Shape: (numImpropers, 4)"]
     #: A dictionary containing crystallographic information. It has fields ['sGroup', 'numcopies', 'rotations', 'translations']
     crystalinfo: dict
     #: The name used for the molecule in the viewer
