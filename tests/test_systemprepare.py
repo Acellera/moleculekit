@@ -194,8 +194,7 @@ def _test_nonstandard_residues(tmp_path, system):
         residue_smiles=res_smiles,
         outdir=os.path.join(tmp_path, "residue_cifs"),
     )
-    pmol.fileloc.append(os.path.join(tmp_path, "prepared.pdb"))
-    pmol.write(pmol.fileloc[0])
+    pmol.write(os.path.join(tmp_path, "prepared.pdb"))
     if system == "2QRV":
         # The LYS hydrogens are placed differently on Mac/Windows builds of pdb2pqr
         # Remove them to make the test more stable
