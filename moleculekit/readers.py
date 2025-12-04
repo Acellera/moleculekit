@@ -276,6 +276,8 @@ class MolFactory(object):
         from moleculekit.periodictable import periodictable
 
         virtual_sites = ["Vs"]
+        unknown_atoms = [("X", "UNX"), ("X", "UNL")]
+        deuterium_found = []
 
         misnamed_element_map = {"So": "Na"}  # Map badly guessed elements
         # Don't issue multiple times the same warning for the same element renaming
@@ -300,6 +302,13 @@ class MolFactory(object):
                         f"Read element {el} which might correspond to a virtual site atom"
                     )
                     issued_warnings.append(el)
+            elif (el, mol.resname[i]) in unknown_atoms:
+                logger.warning(
+                    f"Atom {mol.name[i]} with resname {mol.resname[i]} was read with element {el}. Possibly an unknown atom."
+                )
+            elif el == "D":
+                deuterium_found.append(mol.name[i])
+                el = "H"
             elif el not in periodictable:
                 raise RuntimeError(
                     f"Element {el} was read in file {filename} but was not found in the periodictable. "
@@ -307,6 +316,12 @@ class MolFactory(object):
                 )
 
             mol.element[i] = el  # Set standardized element
+
+        if len(deuterium_found) > 0:
+            logger.warning(
+                f"Element (D) was read in file {filename} for the following atoms: {', '.join(set(deuterium_found))}. "
+                "Assuming it's deuterium, element will be converted to hydrogen (H)."
+            )
 
     @staticmethod
     def _parseTopology(mol, topo, filename, validateElements=True, uniqueBonds=True):
@@ -2007,7 +2022,13 @@ def GROTOPread(filename, frame=None, topoloc=None):
 
 
 def CIFread(
-    filename, frame=None, topoloc=None, zerowarning=True, data=None, covalentonly=True
+    filename,
+    frame=None,
+    topoloc=None,
+    zerowarning=True,
+    data=None,
+    covalentonly=True,
+    validateElements=True,
 ):
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader
     from collections import defaultdict
@@ -2344,6 +2365,16 @@ def CIFread(
     if len(ideal_coords) != 0:
         ideal_allcoords.append(ideal_coords)
 
+    if len(set([len(c) for c in allcoords])) > 1:
+        logger.warning(
+            "Different number of atom coordinates in different models. Keeping only the first model."
+        )
+        allcoords = [allcoords[0]]
+    if len(allcoords[0]) != len(topo.name):
+        raise AssertionError(
+            f"Different number of atoms in coordinates {len(allcoords[0])} and topology {len(topo.name)}."
+        )
+
     allcoords = np.stack(allcoords, axis=2).astype(Molecule._dtypes["coords"])
     if len(ideal_allcoords):
         ideal_allcoords = np.stack(ideal_allcoords, axis=2).astype(
@@ -2370,7 +2401,11 @@ def CIFread(
             [crystalinfo["alpha"], crystalinfo["beta"], crystalinfo["gamma"]]
         )
     return MolFactory.construct(
-        topo, Trajectory(coords=coords, box=box, boxangles=boxangles), filename, frame
+        topo,
+        Trajectory(coords=coords, box=box, boxangles=boxangles),
+        filename,
+        frame,
+        validateElements=validateElements,
     )
 
 
@@ -2850,6 +2885,7 @@ def BCIFread(
     zerowarning=True,
     uri="https://models.rcsb.org/{pdbid}.bcif.gz",
     covalentonly=True,
+    validateElements=True,
 ):
     from moleculekit.pdbx.reader.BinaryCifReader import BinaryCifReader
 
@@ -2870,6 +2906,7 @@ def BCIFread(
         topoloc=topoloc,
         zerowarning=zerowarning,
         covalentonly=covalentonly,
+        validateElements=validateElements,
     )
 
 
