@@ -38,7 +38,7 @@ def autoSegment(
     basename : str
         The basename for segment ids. For example if given 'P' it will name the segments 'P1', 'P2', ...
     spatial : bool
-        Only considers a discontinuity in resid as a gap if no atoms of the two residues have distance less than `spatialgap` Angstrom
+        Only considers a discontinuity in resid as a gap if matching backbone atoms of the two residues have distance larger than `spatialgap` Angstrom
     spatialgap : float
         The size of a spatial gap which validates a discontinuity (A)
     fields : list
@@ -127,13 +127,28 @@ def autoSegment(
                 # Residue gap in sequence for non‑water; optionally validate it
                 # by checking spatial distance between the two residues.
                 if spatial:
-                    # Check smallest distance between atoms in the two residues
-                    dist = cdist(
-                        mol.coords[idx, :, 0], mol.coords[prev_idx, :, 0]
-                    ).min()
-                    if dist > spatialgap:
+                    curr_at = None
+                    prev_at = None
+                    for at in ["N", "CA", "C", "O"]:
+                        if at not in mol.name[idx] or at not in mol.name[prev_idx]:
+                            continue
+                        curr_at = idx[mol.name[idx] == at][0]
+                        prev_at = prev_idx[mol.name[prev_idx] == at][0]
+                        break
+
+                    if curr_at is not None and prev_at is not None:
+                        # Check smallest distance between backbone atoms in the two residues
+                        dist = np.linalg.norm(
+                            mol.coords[curr_at, :, 0] - mol.coords[prev_at, :, 0]
+                        )
+                        if dist > spatialgap:
+                            logger.info(
+                                f"Residue gap between {prev_res} and {curr_res} with backbone distance {dist:.1f}A > {spatialgap}A. Creating new chain."
+                            )
+                            seg_idx += 1
+                    else:
                         logger.info(
-                            f"Residue gap between {prev_res} and {curr_res} with min distance {dist:.1f}A > {spatialgap}A. Creating new chain."
+                            f"Residue gap between {prev_res} and {curr_res}. Creating new chain."
                         )
                         seg_idx += 1
                 else:
