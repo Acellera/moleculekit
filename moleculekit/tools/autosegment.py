@@ -101,7 +101,7 @@ def autoSegment(
                 continue
 
             mol.resid[idx] = water_resid
-            water_resid += 1
+            water_resid += 2
 
         # Determine the previous residue (if any) to decide whether we need to
         # open a new segment based on changes in water/non‑water type or gaps.
