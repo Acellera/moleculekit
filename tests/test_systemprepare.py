@@ -344,3 +344,51 @@ def _test_disabling_titration():
     pmol_ref.remove("resid 25")
     pmol.remove("resid 25")
     assert mol_equal(pmol_ref, pmol, exceptFields=["fileloc"])
+
+
+def _test_backbone_fixing():
+    from moleculekit.tools.backbone import check_backbone
+    from moleculekit.molecule import Molecule
+
+    # Remove lots of heavy atoms from the terminal residues to check if they got deleted
+    mol = Molecule("3PTB")
+    assert np.where(mol.resid == 16)[0].size > 0
+    mol.remove("resid 16 and not name N")  # Keep just the N atom
+    check_backbone(mol)
+    assert np.where(mol.resid == 16)[0].size == 0
+
+    # Remove a backbone O atom from a residue and check if it got reconstructed
+    mol = Molecule("3PTB")
+    mol.remove("resid 20 and name O")
+    assert not np.any((mol.name == "O") & (mol.resid == 20))
+    check_backbone(mol)
+    assert np.sum((mol.name == "O") & (mol.resid == 20)) == 1
+
+    # Remove a backbone N atom from a residue and check if it got reconstructed
+    mol = Molecule("3PTB")
+    mol.remove("resid 20 and name N")
+    assert not np.any((mol.name == "N") & (mol.resid == 20))
+    check_backbone(mol)
+    assert np.sum((mol.name == "N") & (mol.resid == 20)) == 1
+
+    # Remove a backbone C atom from a residue and check if it got reconstructed
+    mol = Molecule("3PTB")
+    mol.remove("resid 20 and name C")
+    assert not np.any((mol.name == "C") & (mol.resid == 20))
+    check_backbone(mol)
+    assert np.sum((mol.name == "C") & (mol.resid == 20)) == 1
+
+    # Remove a backbone CA atom from a residue and check if it got reconstructed
+    mol = Molecule("3PTB")
+    mol.remove("resid 20 and name CA")
+    assert not np.any((mol.name == "CA") & (mol.resid == 20))
+    check_backbone(mol)
+    assert np.sum((mol.name == "CA") & (mol.resid == 20)) == 1
+
+    # Remove everything except the N CA of a c-terminal residue and check if the C atom got added back
+    mol = Molecule("3PTB")
+    mol.filter("protein")
+    mol.remove("resid 245 and not name N CA")
+    assert not np.any((mol.name == "C") & (mol.resid == 245))
+    check_backbone(mol)
+    assert np.sum((mol.name == "C") & (mol.resid == 245)) == 1
