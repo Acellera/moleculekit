@@ -1466,9 +1466,9 @@ class Molecule(object):
                     ["un"] * self.bonds.shape[0], dtype=Molecule._dtypes["bondtype"]
                 )
             if "dihedrals" in guess or "angles" in guess:
-                from moleculekit.util import guessAnglesAndDihedrals
+                from moleculekit.util import calculateAnglesAndDihedrals
 
-                angles, dihedrals = guessAnglesAndDihedrals(self.bonds)
+                angles, dihedrals = calculateAnglesAndDihedrals(self.bonds)
                 if "angles" in guess or ("angles" in guessNE and len(self.angles) == 0):
                     self.angles = angles
                 if "dihedrals" in guess or (

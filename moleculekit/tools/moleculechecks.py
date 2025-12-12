@@ -36,7 +36,7 @@ def isProteinProtonated(mol):
 
 def isLigandOptimized(mol, atol=1e-06):
     """Checks if a ligand is optimized. If all dihedral angles are 0 it means it's flat."""
-    from moleculekit.util import guessAnglesAndDihedrals
+    from moleculekit.util import calculateAnglesAndDihedrals
 
     if mol.numAtoms <= 3:  # Can't check for planarity with <=3 atoms
         return True
@@ -44,7 +44,7 @@ def isLigandOptimized(mol, atol=1e-06):
     if not len(mol.bonds):
         mol.bonds = mol._guessBonds()
 
-    _, dihedrals = guessAnglesAndDihedrals(mol.bonds)
+    _, dihedrals = calculateAnglesAndDihedrals(mol.bonds)
     for dih in dihedrals:
         radians = mol.getDihedral(dih)
         if not (abs(radians) < atol or abs(abs(radians) - pi) < atol):
