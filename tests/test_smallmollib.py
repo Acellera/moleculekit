@@ -118,7 +118,7 @@ def _test_convertToDataFrame():
         cols == ref_cols
     ), "The fields in the SmallMolLib object was not the expected one"
 
-    ligname_99 = df.iloc[99][0]
+    ligname_99 = df.iloc[99, 0]
     ref_ligname = SDF_LOC_0_99
 
     assert ligname_99 == ref_ligname, "The ligand name found is not the expected one"
