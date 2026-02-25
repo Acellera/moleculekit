@@ -31,7 +31,7 @@ jobs:
 
       - name: Install conda deps
         run: |
-          conda install -y -q --file extra_requirements.txt nbconvert sphinx=6.1.3 python=3.9
+          conda install -y -q --file extra_requirements.txt nbconvert sphinx=6.1.3 python=3.10
           pip install pydata-sphinx-theme==0.13.1 sphinx-argparse sphinx-notfound-page sphinx-sitemap sphinx-autodoc-typehints
           pip install .
           # pdb2pqr is downgrading docutils for some reason and causes failures

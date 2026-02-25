@@ -5,7 +5,6 @@ c_stdlib:
 cxx_compiler:
   - vs2019
 python:
-  - 3.9
   - 3.10
   - 3.11
   - 3.12
