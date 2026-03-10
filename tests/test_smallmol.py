@@ -75,20 +75,19 @@ FOUNDBOND_SMI = "C=CN"
     "smiles",
     ((0, "Oc1c(cccc3)c3nc2ccncc12", 3), (1, "CN=c1nc[nH]cc1", 3), (2, "CC=CO", 2)),
 )
-def _test_tautomers(smiles):
+def _test_tautomers(tmp_path, smiles):
     from moleculekit.util import file_diff
     from moleculekit.smallmol.smallmol import SmallMol
-    import tempfile
 
     i, smiles, n_tauts = smiles
     mol = SmallMol(smiles, fixHs=False)
     tauts, scores = mol.getTautomers(canonical=False, genConformers=False)
     assert len(tauts) == n_tauts
-    with tempfile.TemporaryDirectory() as tmpdir:
-        newfile = os.path.join(tmpdir, "tautomers.sdf")
-        tauts.writeSdf(os.path.join(tmpdir, "tautomers.sdf"))
-        reffile = os.path.join(curr_dir, "test_smallmol", f"tautomer_results_{i}.sdf")
-        file_diff(newfile, reffile)
+
+    newfile = os.path.join(tmp_path, "tautomers.sdf")
+    tauts.writeSdf(newfile)
+    reffile = os.path.join(curr_dir, "test_smallmol", f"tautomer_results_{i}.sdf")
+    file_diff(newfile, reffile)
 
 
 @pytest.mark.skipif(not cdp_installed, reason="CDPKit not installed. Skipping test.")
