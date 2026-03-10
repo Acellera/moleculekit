@@ -2603,6 +2603,29 @@ class Molecule(object):
         masses = np.expand_dims(masses, list(range(1, coords.ndim)))
         return (coords * masses).sum(axis=0) / masses.sum()
 
+
+    @staticmethod
+    def fromOpenMMTopology(topology, positions):
+        """Converts an OpenMM topology and positions to a Molecule object
+
+        Parameters
+        ----------
+        topology : openmm.app.Topology
+            The OpenMM topology to convert
+        positions : openmm.unit.Quantity
+            The positions of the atoms in the topology
+
+        Examples
+        --------
+        >>> from openmm import app
+        >>> from openmm import unit
+        >>> pdbfile = app.PDBFile("3ptb.pdb")
+        >>> mol = Molecule.fromOpenMMTopology(pdbfile.topology, pdbfile.positions)
+        """
+        from moleculekit.openmmtools import openmm_to_molecule
+
+        return openmm_to_molecule(topology, positions)
+
     @staticmethod
     def fromRDKitMol(rmol):
         """Converts an RDKit molecule to a Molecule object
@@ -2714,27 +2737,40 @@ class Molecule(object):
     def extendResidueFromSmiles(
         self,
         sel: str,
-        extension_smiles: str,
-        target_atom_sel: str,
+        extension_smiles: str | None = None,
+        target_atom_sel: str | None = None,
+        new_smiles: str | None = None,
         sanitizeSmiles: bool = True,
         _logger: bool = True,
     ):
         """Extend a residue with a SMILES string
 
-        This function will extend a residue with a corresponding SMILES string.
-        The extension will be attached to the target atom.
+        Two modes are supported (mutually exclusive):
 
-        This function requires that the residue already has bond orders assigned and is protonated,
-        which can be achieved by using the templateResidueFromSmiles function if needed.
+        1. Extension SMILES mode: provide ``extension_smiles`` (with a dummy
+           atom ``*``) and ``target_atom_sel`` to attach a moiety at a
+           specific atom.
+
+        2. New SMILES mode: provide ``new_smiles`` with the complete SMILES of
+           the modified molecule. MCS matching is used to identify unchanged
+           atoms and generate 3D coordinates for the new ones.
+
+        This function requires that the residue already has bond orders
+        assigned and is protonated, which can be achieved by using
+        templateResidueFromSmiles if needed.
 
         Parameters
         ----------
         sel : str
             The atom selection of the residue which we want to extend
-        extension_smiles : str
-            The SMILES string of the extension
-        target_atom_sel : str
-            The atom selection of the target atom to which the extension will be attached
+        extension_smiles : str, optional
+            The SMILES string of the extension moiety with a dummy atom ``*``
+        target_atom_sel : str, optional
+            The atom selection of the target atom to which the extension will
+            be attached (required with extension_smiles)
+        new_smiles : str, optional
+            Complete SMILES of the modified molecule (alternative to
+            extension_smiles)
         sanitizeSmiles : bool
             If True the SMILES string will be sanitized
         _logger : bool
@@ -2744,7 +2780,13 @@ class Molecule(object):
         --------
         >>> mol = Molecule('3ptb')
         >>> mol.templateResidueFromSmiles("resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True)
-        >>> mol.extendMoleculeFromSmiles("resname BEN", "*C(C)(C)C", "resname BEN and name H6")
+        >>> mol.extendResidueFromSmiles("resname BEN", extension_smiles="*C(C)(C)C", target_atom_sel="resname BEN and name H6")
+
+        Or equivalently using the full modified SMILES:
+
+        >>> mol = Molecule('3ptb')
+        >>> mol.templateResidueFromSmiles("resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True)
+        >>> mol.extendResidueFromSmiles("resname BEN", new_smiles="[NH2+]=C(N)c1cc(C(C)(C)C)ccc1")
         """
         from moleculekit.rdkittools import extend_residue_from_smiles
 
@@ -2753,6 +2795,7 @@ class Molecule(object):
             sel=sel,
             extension_smiles=extension_smiles,
             target_atom_sel=target_atom_sel,
+            new_smiles=new_smiles,
             sanitizeSmiles=sanitizeSmiles,
             _logger=_logger,
         )

@@ -200,3 +200,80 @@ def _test_extend_residue_from_smiles_double_bond():
     assert ben.numAtoms == 17
     assert ben.numBonds == 17
     assert np.all(ben.bondtype == ref_bondtype)
+
+
+def _test_extend_residue_from_new_smiles():
+    import numpy as np
+
+    mol = Molecule("3ptb")
+    mol.templateResidueFromSmiles("resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True)
+    mol.extendResidueFromSmiles(
+        sel="resname BEN",
+        new_smiles="[NH2+]=C(N)c1cc(C(C)(C)C)ccc1",
+    )
+
+    ben = mol.copy(sel="resname BEN")
+    assert ben.numAtoms == 30
+    assert ben.numBonds == 30
+    assert set(ben.resname) == {"BEN"}
+    assert len(set(ben.chain)) == 1
+    assert len(set(ben.resid)) == 1
+
+    coords = mol.coords[mol.atomselect("resname BEN", indexes=True)]
+    assert not np.any(np.isnan(coords)), "NaN coordinates found"
+    assert not np.any(np.isinf(coords)), "Inf coordinates found"
+
+
+def _test_extend_residue_new_smiles_matches_extension_mode():
+    import numpy as np
+
+    mol_ext = Molecule("3ptb")
+    mol_ext.templateResidueFromSmiles(
+        "resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True
+    )
+    mol_ext.extendResidueFromSmiles(
+        sel="resname BEN",
+        extension_smiles="*C(C)(C)C",
+        target_atom_sel="resname BEN and name H6",
+    )
+
+    mol_new = Molecule("3ptb")
+    mol_new.templateResidueFromSmiles(
+        "resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True
+    )
+    mol_new.extendResidueFromSmiles(
+        sel="resname BEN",
+        new_smiles="[NH2+]=C(N)c1cc(C(C)(C)C)ccc1",
+    )
+
+    ben_ext = mol_ext.copy(sel="resname BEN")
+    ben_new = mol_new.copy(sel="resname BEN")
+
+    assert ben_ext.numAtoms == ben_new.numAtoms
+    assert ben_ext.numBonds == ben_new.numBonds
+
+    ext_elements = sorted(ben_ext.element)
+    new_elements = sorted(ben_new.element)
+    assert ext_elements == new_elements
+
+
+def _test_extend_residue_new_smiles_validation():
+    mol = Molecule("3ptb")
+    mol.templateResidueFromSmiles("resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True)
+
+    with pytest.raises(ValueError, match="Cannot specify both"):
+        mol.extendResidueFromSmiles(
+            sel="resname BEN",
+            extension_smiles="*C(C)(C)C",
+            target_atom_sel="resname BEN and name H6",
+            new_smiles="[NH2+]=C(N)c1cc(C(C)(C)C)ccc1",
+        )
+
+    with pytest.raises(ValueError, match="Must specify either"):
+        mol.extendResidueFromSmiles(sel="resname BEN")
+
+    with pytest.raises(ValueError, match="target_atom_sel.*required"):
+        mol.extendResidueFromSmiles(
+            sel="resname BEN",
+            extension_smiles="*C(C)(C)C",
+        )

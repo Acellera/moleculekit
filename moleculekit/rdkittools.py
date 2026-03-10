@@ -316,154 +316,248 @@ def template_residue_from_smiles(
 def extend_residue_from_smiles(
     mol: Molecule,
     sel: str,
-    extension_smiles: str,
-    target_atom_sel: str,
+    extension_smiles: str | None = None,
+    target_atom_sel: str | None = None,
+    new_smiles: str | None = None,
     sanitizeSmiles: bool = True,
     _logger: bool = True,
 ):
     """
-    Attaches a moiety to a 3D base molecule, preserving original coordinates
-    and relaxing the new moiety to avoid steric clashes.
+    Extends a residue by attaching new atoms, preserving original 3D coordinates
+    and relaxing new atoms via constrained embedding and MMFF minimization.
 
-    Assuming base_mol_3D is your starting molecule with 3D coords and explicit Hs
-    And target_idx is the index of your C5 atom
+    Two modes are supported (mutually exclusive):
 
-    Attach a t-butyl group (*C(C)(C)C) in 3D
-    new_mol_3D = attach_moiety_3D(base_mol_3D, "*C(C)(C)C", target_idx)
+    1. Extension SMILES mode: provide ``extension_smiles`` (containing a dummy
+       atom ``*`` at the attachment point) together with ``target_atom_sel``
+       (the atom on the residue to attach to).
+
+    2. New SMILES mode: provide ``new_smiles`` with the complete SMILES of the
+       modified molecule. The function uses Maximum Common Substructure (MCS)
+       matching to identify unchanged atoms and generates 3D coordinates for
+       the new ones.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule containing the residue to extend
+    sel : str
+        Atom selection for the residue to extend
+    extension_smiles : str, optional
+        SMILES of the extension moiety with a dummy atom ``*``
+    target_atom_sel : str, optional
+        Atom selection of the attachment point (required with extension_smiles)
+    new_smiles : str, optional
+        Complete SMILES of the modified molecule (alternative to extension_smiles)
+    sanitizeSmiles : bool
+        If True the SMILES string will be sanitized
+    _logger : bool
+        If True the logger will be used to print information
+
+    Examples
+    --------
+    >>> mol = Molecule('3ptb')
+    >>> mol.templateResidueFromSmiles("resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True)
+    >>> mol.extendResidueFromSmiles("resname BEN", extension_smiles="*C(C)(C)C", target_atom_sel="resname BEN and name H6")
+
+    Or equivalently using the full modified SMILES:
+
+    >>> mol = Molecule('3ptb')
+    >>> mol.templateResidueFromSmiles("resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True)
+    >>> mol.extendResidueFromSmiles("resname BEN", new_smiles="[NH2+]=C(N)c1cc(C(C)(C)C)ccc1")
     """
     from rdkit import Chem
     from rdkit.Chem import AllChem, rdMolAlign
     import numpy as np
 
-    selidx = mol.atomselect(sel, indexes=True)
-    target_atom_idx = mol.atomselect(target_atom_sel, indexes=True)
-    if len(target_atom_idx) != 1:
-        raise RuntimeError(
-            f"The target atom selection contains multiple atoms {target_atom_idx}. Please select a single atom only."
+    if extension_smiles is not None and new_smiles is not None:
+        raise ValueError(
+            "Cannot specify both 'extension_smiles' and 'new_smiles'. Use one or the other."
         )
-    target_atom_idx = target_atom_idx[0]
-    if target_atom_idx not in selidx:
-        raise RuntimeError(
-            f"The target atom {target_atom_idx} is not in the selection {sel}. Please select a single atom only."
+    if extension_smiles is None and new_smiles is None:
+        raise ValueError(
+            "Must specify either 'extension_smiles' (with 'target_atom_sel') or 'new_smiles'."
         )
-    target_atom_idx = int(np.where(selidx == target_atom_idx)[0][0])
+    if extension_smiles is not None and target_atom_sel is None:
+        raise ValueError(
+            "'target_atom_sel' is required when using 'extension_smiles'."
+        )
 
-    # Check that indexes are all sequential (no gaps)
+    selidx = mol.atomselect(sel, indexes=True)
+
+    if extension_smiles is not None:
+        target_atom_idx = mol.atomselect(target_atom_sel, indexes=True)
+        if len(target_atom_idx) != 1:
+            raise RuntimeError(
+                f"The target atom selection contains multiple atoms {target_atom_idx}. Please select a single atom only."
+            )
+        target_atom_idx = target_atom_idx[0]
+        if target_atom_idx not in selidx:
+            raise RuntimeError(
+                f"The target atom {target_atom_idx} is not in the selection {sel}. Please select a single atom only."
+            )
+        target_atom_idx = int(np.where(selidx == target_atom_idx)[0][0])
+
     if not np.all(np.diff(selidx) == 1):
         raise RuntimeError(
             "The selection contains gaps in the atom indexes. Please select a single molecule residue only."
         )
 
     residue = mol.copy(sel=selidx)
-    # Check that the molecule has a single frame
     if residue.numFrames > 1:
         raise RuntimeError(
             "The molecule has multiple frames. This operation is not supported for multiple frames. Please use Molecule.dropFrames(keep=[0]) to keep a single frame"
         )
 
-    # Check that the molecule has a single residue
     for field in ("resname", "chain", "segid", "resid", "insertion"):
         if len(set(getattr(residue, field))) != 1:
             raise RuntimeError(
                 f"The selection contains multiple {field}s. Please select a single molecule residue only."
             )
 
-    # Check that the molecule has bonds
     if len(residue.bonds) == 0:
         raise RuntimeError(
             "The selection contains no bonds. Please set the bonds of the residue or guess them with guessBonds=True"
         )
 
-    # If the target atom is a hydrogen, we need to find the heavy atom it is bonded to
-    # and use that as the target atom while removing the hydrogen.
-    if residue.element[target_atom_idx] == "H":
-        heavy = residue.getNeighbors(target_atom_idx)
-        residue.remove(target_atom_idx, _logger=False)
-        target_atom_idx = int(heavy[0])
+    if extension_smiles is not None:
+        # --- Extension SMILES mode ---
+        if residue.element[target_atom_idx] == "H":
+            heavy = residue.getNeighbors(target_atom_idx)
+            residue.remove(target_atom_idx, _logger=False)
+            target_atom_idx = int(heavy[0])
 
-    base_mol = residue.toRDKitMol(
-        sanitize=False, kekulize=False, assignStereo=False, _logger=_logger
-    )
-    base_num_atoms = base_mol.GetNumAtoms()
+        base_mol = residue.toRDKitMol(
+            sanitize=False, kekulize=False, assignStereo=False, _logger=_logger
+        )
+        base_num_atoms = base_mol.GetNumAtoms()
 
-    # 1. Parse extension, add explicit hydrogens, and find dummy atom
-    ext_mol = Chem.MolFromSmiles(extension_smiles, sanitize=sanitizeSmiles)
-    ext_mol = Chem.AddHs(ext_mol)
-    Chem.Kekulize(ext_mol)
+        ext_mol = Chem.MolFromSmiles(extension_smiles, sanitize=sanitizeSmiles)
+        ext_mol = Chem.AddHs(ext_mol)
+        Chem.Kekulize(ext_mol)
 
-    # Find the dummy atom in the SMILES and it's attachment atom. This is the atom that will be attached to the base molecule.
-    dummy_idx = -1
-    ext_attach_idx = -1
-    bond_order = Chem.rdchem.BondType.SINGLE  # Default fallback
-    for atom in ext_mol.GetAtoms():
-        if atom.GetAtomicNum() == 0:  # Dummy atom
-            dummy_idx = atom.GetIdx()
-            # Get the bond connected to the dummy atom
-            dummy_bond = atom.GetBonds()[0]
-            bond_order = dummy_bond.GetBondType()
+        dummy_idx = -1
+        ext_attach_idx = -1
+        bond_order = Chem.rdchem.BondType.SINGLE
+        for atom in ext_mol.GetAtoms():
+            if atom.GetAtomicNum() == 0:
+                dummy_idx = atom.GetIdx()
+                dummy_bond = atom.GetBonds()[0]
+                bond_order = dummy_bond.GetBondType()
+                ext_attach_idx = dummy_bond.GetOtherAtomIdx(dummy_idx)
+                break
 
-            # Get the index of the atom on the other side of that bond
-            ext_attach_idx = dummy_bond.GetOtherAtomIdx(dummy_idx)
-            break
+        if dummy_idx == -1:
+            raise ValueError("Extension SMILES must contain a dummy atom '*'.")
 
-    if dummy_idx == -1:
-        raise ValueError("Extension SMILES must contain a dummy atom '*'.")
+        combined_mol = Chem.CombineMols(base_mol, ext_mol)
+        rw_mol = Chem.RWMol(combined_mol)
 
-    # 2. Combine and link the molecules
-    combined_mol = Chem.CombineMols(base_mol, ext_mol)
-    rw_mol = Chem.RWMol(combined_mol)
+        new_dummy_idx = dummy_idx + base_num_atoms
+        new_ext_attach_idx = ext_attach_idx + base_num_atoms
 
-    new_dummy_idx = dummy_idx + base_num_atoms
-    new_ext_attach_idx = ext_attach_idx + base_num_atoms
+        rw_mol.AddBond(target_atom_idx, new_ext_attach_idx, order=bond_order)
+        rw_mol.RemoveAtom(new_dummy_idx)
 
-    rw_mol.AddBond(target_atom_idx, new_ext_attach_idx, order=bond_order)
+        final_mol = rw_mol.GetMol()
+        Chem.SanitizeMol(final_mol)
 
-    # Removing the dummy atom shifts indices, but ONLY for atoms that
-    # come after it. Our base_mol atoms (indices 0 to base_num_atoms-1)
-    # remain completely unaffected.
-    rw_mol.RemoveAtom(new_dummy_idx)
+        conf = base_mol.GetConformer()
+        coord_map = {}
+        for i in range(base_num_atoms):
+            coord_map[i] = conf.GetAtomPosition(i)
 
-    final_mol = rw_mol.GetMol()
-    Chem.SanitizeMol(final_mol)
+        alignment_map = [(i, i) for i in range(base_num_atoms)]
+        fixed_indices = list(range(base_num_atoms))
 
-    # 3. Constrained Embedding (Generate 3D for new atoms, keep old where they are)
-    conf = base_mol.GetConformer()
-    coord_map = {}
-    for i in range(residue.numAtoms):
-        coord_map[i] = conf.GetAtomPosition(i)
+    else:
+        # --- New SMILES mode (MCS-based) ---
+        from rdkit.Chem import rdFMCS
 
-    # Embed the new molecule. We use a random seed for reproducibility.
+        base_mol = residue.toRDKitMol(
+            sanitize=False, kekulize=False, assignStereo=False, _logger=_logger
+        )
+
+        new_mol = Chem.MolFromSmiles(new_smiles, sanitize=sanitizeSmiles)
+        new_mol = Chem.AddHs(new_mol)
+        Chem.Kekulize(new_mol)
+
+        mcs_result = rdFMCS.FindMCS(
+            [base_mol, new_mol],
+            bondCompare=rdFMCS.BondCompare.CompareAny,
+            atomCompare=rdFMCS.AtomCompare.CompareElements,
+        )
+        patt = Chem.MolFromSmarts(mcs_result.smartsString)
+        base_matched = list(base_mol.GetSubstructMatch(patt))
+        new_matched = list(new_mol.GetSubstructMatch(patt))
+
+        if len(base_matched) == 0:
+            raise RuntimeError(
+                "Could not find any common substructure between the residue "
+                "and the new SMILES. Please check that the new SMILES is a "
+                "modified version of the original molecule."
+            )
+
+        n_base_heavy = sum(
+            1 for a in base_mol.GetAtoms() if a.GetAtomicNum() != 1
+        )
+        n_matched_heavy = sum(
+            1
+            for idx in base_matched
+            if base_mol.GetAtomWithIdx(idx).GetAtomicNum() != 1
+        )
+        if n_matched_heavy < n_base_heavy * 0.5:
+            logger.warning(
+                f"Only {n_matched_heavy}/{n_base_heavy} heavy atoms matched "
+                "between residue and new SMILES. The result may be unreliable."
+            )
+
+        conf = base_mol.GetConformer()
+        coord_map = {}
+        matched_new_indices = []
+        for base_idx, new_idx in zip(base_matched, new_matched):
+            coord_map[new_idx] = conf.GetAtomPosition(base_idx)
+            matched_new_indices.append(new_idx)
+
+        final_mol = new_mol
+        Chem.SanitizeMol(final_mol)
+
+        alignment_map = [
+            (new_idx, base_idx)
+            for base_idx, new_idx in zip(base_matched, new_matched)
+        ]
+        fixed_indices = matched_new_indices
+
+    # Constrained embedding: generate 3D for new atoms, keep matched atoms fixed
     res = AllChem.EmbedMolecule(final_mol, coordMap=coord_map, randomSeed=42)
     if res == -1:
         raise RuntimeError(
-            "RDKit failed to embed the molecule. The attachment might be too constrained."
+            "RDKit failed to embed the molecule. The modification might be too constrained."
         )
 
-    # Snap final_mol back to the absolute 3D coordinates of base_mol
-    # atom_map takes a list of tuples: (probe_atom_index, reference_atom_index)
-    alignment_map = [(i, i) for i in range(base_num_atoms)]
     rdMolAlign.AlignMol(final_mol, base_mol, atomMap=alignment_map)
 
-    # 4. Force Field Minimization (Resolve Clashes)
-    # Get MMFF94 properties and set up the force field
+    # MMFF minimization: freeze matched atoms, relax new atoms
     ff_props = AllChem.MMFFGetMoleculeProperties(final_mol)
     ff = AllChem.MMFFGetMoleculeForceField(final_mol, ff_props)
 
     if ff:
-        # Freeze all atoms from the original base molecule
-        for i in range(base_num_atoms):
+        for i in fixed_indices:
             ff.AddFixedPoint(i)
-
-        # Minimize the remaining (new) atoms to relax bonds and resolve clashes
         ff.Minimize(maxIts=1000)
     else:
-        print(
-            "Warning: Could not set up MMFF force field. Molecule generated but clashes may exist."
+        logger.warning(
+            "Could not set up MMFF force field. Molecule generated but clashes may exist."
         )
 
     Chem.Kekulize(final_mol)
 
-    # Add only the new atoms to the molecule (and the bond)
     new_residue = Molecule.fromRDKitMol(final_mol)
+    new_residue.resname[:] = residue.resname[0]
+    new_residue.resid[:] = residue.resid[0]
+    new_residue.chain[:] = residue.chain[0]
+    new_residue.segid[:] = residue.segid[0]
+    new_residue.insertion[:] = residue.insertion[0]
+
     mol.remove(selidx, _logger=False)
     mol.insert(new_residue, selidx[0])
