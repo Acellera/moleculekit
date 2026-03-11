@@ -11,20 +11,10 @@ __check_defined = \
     $(if $(value $1),, \
       $(error Undefined variable: $1$(if $2, ($2))))
 
-.PHONY: release docs
+.PHONY: release
 
 release:
 	@:$(call check_defined, version, The release version)
 	git checkout main
-	git fetch
-	git pull
-	git tag -a v$(version) -m "v$(version) release"
-	git push --tags origin v$(version)
-
-docs:
-	@:$(call check_defined, version, The release version)
-	git checkout main
-	git fetch
-	git pull
-	git tag -fa d$(version) -m "$(version) docs"
-	git push -f --tags origin d$(version)
+	git tag -fa "v$(version)" -m "Release v$(version)"
+	git push origin "v$(version)" --force

@@ -30,8 +30,3 @@ jobs:
     if: startsWith(github.event.ref, 'refs/tags/')
     uses: ./.github/workflows/docs.yml
     secrets: inherit
-
-  docs_update:
-    if: startsWith(github.event.ref, 'refs/tags/d')
-    uses: ./.github/workflows/docs.yml
-    secrets: inherit
