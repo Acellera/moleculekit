@@ -67,6 +67,7 @@ testpaths = ["tests"]
 # Disable Windows 32 builds, Musllinux builds due to rdkit not building on it
 # Disable i686, ppc64le, s390x, universal2, armv7l due to numpy not building on them
 skip = [
+  "cp314*",             # Propka has a bug with Python 3.14. Remove at next release >3.5.1
   "pp*",
   "*win32",
   "*armv7l",
