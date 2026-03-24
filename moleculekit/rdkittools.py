@@ -379,9 +379,7 @@ def extend_residue_from_smiles(
             "Must specify either 'extension_smiles' (with 'target_atom_sel') or 'new_smiles'."
         )
     if extension_smiles is not None and target_atom_sel is None:
-        raise ValueError(
-            "'target_atom_sel' is required when using 'extension_smiles'."
-        )
+        raise ValueError("'target_atom_sel' is required when using 'extension_smiles'.")
 
     selidx = mol.atomselect(sel, indexes=True)
 
@@ -471,61 +469,69 @@ def extend_residue_from_smiles(
         fixed_indices = list(range(base_num_atoms))
 
     else:
-        # --- New SMILES mode (MCS-based) ---
+        # --- SMILES mode (MCS-based on heavy atoms) ---
         from rdkit.Chem import rdFMCS
 
         base_mol = residue.toRDKitMol(
             sanitize=False, kekulize=False, assignStereo=False, _logger=_logger
         )
 
-        new_mol = Chem.MolFromSmiles(new_smiles, sanitize=sanitizeSmiles)
-        new_mol = Chem.AddHs(new_mol)
-        Chem.Kekulize(new_mol)
+        new_mol_noh = Chem.MolFromSmiles(new_smiles, sanitize=sanitizeSmiles)
+        Chem.Kekulize(new_mol_noh)
+
+        # Match on heavy atoms only; including explicit Hs causes
+        # combinatorial explosion because all H atoms share the same element.
+        base_noh = Chem.RemoveHs(base_mol, sanitize=False)
 
         mcs_result = rdFMCS.FindMCS(
-            [base_mol, new_mol],
+            [base_noh, new_mol_noh],
             bondCompare=rdFMCS.BondCompare.CompareAny,
             atomCompare=rdFMCS.AtomCompare.CompareElements,
+            timeout=60,
         )
         patt = Chem.MolFromSmarts(mcs_result.smartsString)
-        base_matched = list(base_mol.GetSubstructMatch(patt))
-        new_matched = list(new_mol.GetSubstructMatch(patt))
+        base_noh_matched = list(base_noh.GetSubstructMatch(patt))
+        new_noh_matched = list(new_mol_noh.GetSubstructMatch(patt))
 
-        if len(base_matched) == 0:
+        if len(base_noh_matched) == 0:
             raise RuntimeError(
                 "Could not find any common substructure between the residue "
                 "and the new SMILES. Please check that the new SMILES is a "
                 "modified version of the original molecule."
             )
 
-        n_base_heavy = sum(
-            1 for a in base_mol.GetAtoms() if a.GetAtomicNum() != 1
-        )
-        n_matched_heavy = sum(
-            1
-            for idx in base_matched
-            if base_mol.GetAtomWithIdx(idx).GetAtomicNum() != 1
-        )
-        if n_matched_heavy < n_base_heavy * 0.5:
+        n_base_heavy = base_noh.GetNumAtoms()
+        if len(base_noh_matched) < n_base_heavy * 0.5:
             logger.warning(
-                f"Only {n_matched_heavy}/{n_base_heavy} heavy atoms matched "
-                "between residue and new SMILES. The result may be unreliable."
+                f"Only {len(base_noh_matched)}/{n_base_heavy} heavy atoms "
+                "matched between residue and new SMILES. The result may be "
+                "unreliable."
             )
+
+        # Map heavy-atom-only indices back to the full (with-H) molecules
+        base_heavy_indices = [
+            a.GetIdx() for a in base_mol.GetAtoms() if a.GetAtomicNum() != 1
+        ]
+        new_mol = Chem.AddHs(new_mol_noh)
+        new_heavy_indices = [
+            a.GetIdx() for a in new_mol.GetAtoms() if a.GetAtomicNum() != 1
+        ]
 
         conf = base_mol.GetConformer()
         coord_map = {}
         matched_new_indices = []
-        for base_idx, new_idx in zip(base_matched, new_matched):
-            coord_map[new_idx] = conf.GetAtomPosition(base_idx)
-            matched_new_indices.append(new_idx)
+        matched_base_indices = []
+        for base_noh_idx, new_noh_idx in zip(base_noh_matched, new_noh_matched):
+            base_orig_idx = base_heavy_indices[base_noh_idx]
+            new_orig_idx = new_heavy_indices[new_noh_idx]
+            coord_map[new_orig_idx] = conf.GetAtomPosition(base_orig_idx)
+            matched_new_indices.append(new_orig_idx)
+            matched_base_indices.append(base_orig_idx)
 
         final_mol = new_mol
         Chem.SanitizeMol(final_mol)
 
-        alignment_map = [
-            (new_idx, base_idx)
-            for base_idx, new_idx in zip(base_matched, new_matched)
-        ]
+        alignment_map = list(zip(matched_new_indices, matched_base_indices))
         fixed_indices = matched_new_indices
 
     # Constrained embedding: generate 3D for new atoms, keep matched atoms fixed
@@ -535,7 +541,50 @@ def extend_residue_from_smiles(
             "RDKit failed to embed the molecule. The modification might be too constrained."
         )
 
+    # Rigid-body alignment brings the whole molecule (including new atoms)
+    # close to the original coordinate frame, so that the subsequent
+    # coordinate snap only makes small corrections and new atoms remain
+    # in physically reasonable positions for minimization.
     rdMolAlign.AlignMol(final_mol, base_mol, atomMap=alignment_map)
+
+    # Snap matched atoms and their H neighbors to exact original coordinates.
+    # EmbedMolecule treats coordMap as soft constraints and can alter
+    # rotatable-bond dihedrals. Setting positions directly preserves the
+    # original geometry exactly; MMFF then only relaxes the new atoms.
+    # Extend alignment_map with H neighbors of matched heavy atoms
+    already_matched_new = set(ni for ni, _ in alignment_map)
+    already_matched_base = set(bi for _, bi in alignment_map)
+    h_pairs = []
+    for new_idx, base_idx in alignment_map:
+        base_atom = base_mol.GetAtomWithIdx(base_idx)
+        if base_atom.GetAtomicNum() == 1:
+            continue
+        base_hs = [
+            n.GetIdx()
+            for n in base_atom.GetNeighbors()
+            if n.GetAtomicNum() == 1 and n.GetIdx() not in already_matched_base
+        ]
+        new_hs = [
+            n.GetIdx()
+            for n in final_mol.GetAtomWithIdx(new_idx).GetNeighbors()
+            if n.GetAtomicNum() == 1 and n.GetIdx() not in already_matched_new
+        ]
+        for bh, nh in zip(base_hs, new_hs):
+            h_pairs.append((nh, bh))
+
+    alignment_map = alignment_map + h_pairs
+    fixed_indices = fixed_indices + [nh for nh, _ in h_pairs]
+
+    # Snap positions and preserve names for all matched atoms (heavy + H)
+    final_conf = final_mol.GetConformer()
+    base_conf = base_mol.GetConformer()
+    for new_idx, base_idx in alignment_map:
+        final_conf.SetAtomPosition(new_idx, base_conf.GetAtomPosition(base_idx))
+        base_atom = base_mol.GetAtomWithIdx(base_idx)
+        if base_atom.HasProp("_Name"):
+            final_mol.GetAtomWithIdx(new_idx).SetProp(
+                "_Name", base_atom.GetProp("_Name")
+            )
 
     # MMFF minimization: freeze matched atoms, relax new atoms
     ff_props = AllChem.MMFFGetMoleculeProperties(final_mol)
@@ -551,6 +600,14 @@ def extend_residue_from_smiles(
         )
 
     Chem.Kekulize(final_mol)
+
+    # Reorder: matched atoms first (in original base_mol order), then the rest
+    sorted_pairs = sorted(alignment_map, key=lambda x: x[1])
+    matched_ordered = [new_idx for new_idx, _base_idx in sorted_pairs]
+    matched_set = set(matched_ordered)
+    unmatched = [i for i in range(final_mol.GetNumAtoms()) if i not in matched_set]
+    new_order = matched_ordered + unmatched
+    final_mol = Chem.RenumberAtoms(final_mol, new_order)
 
     new_residue = Molecule.fromRDKitMol(final_mol)
     new_residue.resname[:] = residue.resname[0]

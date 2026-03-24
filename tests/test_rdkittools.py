@@ -228,9 +228,7 @@ def _test_extend_residue_new_smiles_matches_extension_mode():
     import numpy as np
 
     mol_ext = Molecule("3ptb")
-    mol_ext.templateResidueFromSmiles(
-        "resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True
-    )
+    mol_ext.templateResidueFromSmiles("resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True)
     mol_ext.extendResidueFromSmiles(
         sel="resname BEN",
         extension_smiles="*C(C)(C)C",
@@ -238,9 +236,7 @@ def _test_extend_residue_new_smiles_matches_extension_mode():
     )
 
     mol_new = Molecule("3ptb")
-    mol_new.templateResidueFromSmiles(
-        "resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True
-    )
+    mol_new.templateResidueFromSmiles("resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True)
     mol_new.extendResidueFromSmiles(
         sel="resname BEN",
         new_smiles="[NH2+]=C(N)c1cc(C(C)(C)C)ccc1",
@@ -277,3 +273,64 @@ def _test_extend_residue_new_smiles_validation():
             sel="resname BEN",
             extension_smiles="*C(C)(C)C",
         )
+
+
+def _test_extend_residue_from_smiles_preserve_atom_names():
+    import numpy as np
+
+    mol = Molecule(os.path.join(curr_dir, "test_rdkittools", "p38_lig_1.sdf"))
+    for i in range(mol.numAtoms):
+        mol.name[i] = f"{mol.name[i]}{i}"
+    original_mol = mol.copy()
+    mol.extendResidueFromSmiles(
+        new_smiles="[H]OC(C(C([n]1c2c(c(nc(n2)N(C2(C([H])([H])C([H])([H])OC([H])([H])C2([H])[H])[H])[H])[H])c([H])c(C2CC2)c1=O)([H])[H])([H])[H])([H])[H]",
+        sel="all",
+    )
+    matching_atoms = [
+        "C1",
+        "C3",
+        "C4",
+        "C5",
+        "C9",
+        "C10",
+        "C11",
+        "C27",
+        "C28",
+        "C29",
+        "C30",
+        "C31",
+        "C42",
+        "C45",
+        "C48",
+        "H21",
+        "H24",
+        "H25",
+        "H33",
+        "H34",
+        "H35",
+        "H36",
+        "H37",
+        "H38",
+        "H39",
+        "H40",
+        "H41",
+        "H43",
+        "H44",
+        "H46",
+        "H47",
+        "H49",
+        "H50",
+        "H52",
+        "N15",
+        "N17",
+        "N18",
+        "N19",
+        "O16",
+        "O32",
+        "O51",
+    ]
+    # Check that the positions of the matching atoms are the same
+    for atom in matching_atoms:
+        orig_coor = original_mol.coords[original_mol.name == atom, :, 0]
+        new_coor = mol.coords[mol.name == atom, :, 0]
+        assert np.allclose(orig_coor, new_coor, atol=1e-3)

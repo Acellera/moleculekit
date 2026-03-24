@@ -173,10 +173,10 @@ class MetricFluctuation(_MetricCoordinate):
                     f"Fluctuation of {mol.resname[i]} {mol.resid[i]} {mol.name[i]}"
                 ]
         elif self._mode == "residue":
-            resids = mol.resid[atomidx]
-            for r in np.unique(resids):
+            atomresids = sequenceID(mol.resid)[atomidx]
+            for r in np.unique(atomresids):
                 types += ["fluctuation"]
-                i = atomidx[np.where(resids == r)[0][0]]
+                i = atomidx[np.where(atomresids == r)[0][0]]
                 indexes += [i]
                 description += [f"Mean fluctuation of {mol.resname[i]} {mol.resid[i]}"]
         else:

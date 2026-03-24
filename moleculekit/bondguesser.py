@@ -126,6 +126,12 @@ vdw_radii = {
 def guess_bonds(mol):
     defaults = {"H": 1.0, "C": 1.5, "N": 1.4, "O": 1.3, "F": 1.2, "S": 1.9}
 
+    if mol.frame >= mol.numFrames:
+        raise RuntimeError(
+            f"Frame {mol.frame} (defined in mol.frame) is out of range. "
+            f"Must be less than the number of coordinate frames ({mol.numFrames}) in this molecule."
+        )
+
     coords = mol.coords[:, :, mol.frame].copy()
     radii = []
     for i, el in enumerate(mol.element):

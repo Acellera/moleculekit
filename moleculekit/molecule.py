@@ -1125,6 +1125,16 @@ class Molecule(object):
         """
         from moleculekit.bondguesser import guess_bonds, guess_bonds_rdkit
 
+        if self.numFrames == 0:
+            raise RuntimeError(
+                "No coordinates found in the molecule. Cannot guess bonds."
+            )
+        if self.frame >= self.numFrames:
+            raise RuntimeError(
+                f"Selected coordinate frame {self.frame} (defined in mol.frame) is out of range. "
+                f"Must be less than the number of coordinate frames ({self.numFrames}) in this molecule."
+            )
+
         if rdkit:
             return guess_bonds_rdkit(self)
         else:
@@ -2602,7 +2612,6 @@ class Molecule(object):
 
         masses = np.expand_dims(masses, list(range(1, coords.ndim)))
         return (coords * masses).sum(axis=0) / masses.sum()
-
 
     @staticmethod
     def fromOpenMMTopology(topology, positions):
