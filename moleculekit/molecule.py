@@ -1125,6 +1125,9 @@ class Molecule(object):
         """
         from moleculekit.bondguesser import guess_bonds, guess_bonds_rdkit
 
+        if self.numAtoms == 0:
+            return np.empty((0, 2), dtype=Molecule._dtypes["bonds"])
+
         if self.numFrames == 0:
             raise RuntimeError(
                 "No coordinates found in the molecule. Cannot guess bonds."

@@ -44,6 +44,31 @@ def _test_bond_guessing(pdbid):
     assert np.array_equal(bonds, bondsref)
 
 
+def _test_zero_atoms():
+    from moleculekit.molecule import Molecule
+    from moleculekit.bondguesser import guess_bonds
+
+    mol = Molecule()
+    bonds = guess_bonds(mol)
+    assert bonds.shape == (0, 2)
+    assert bonds.dtype == np.uint32
+
+
+def _test_single_atom():
+    from moleculekit.molecule import Molecule
+    from moleculekit.bondguesser import guess_bonds
+
+    mol = Molecule()
+    mol.empty(1)
+    mol.element[:] = "C"
+    mol.name[:] = "CA"
+    mol.coords = np.zeros((1, 3, 1), dtype=np.float32)
+
+    bonds = guess_bonds(mol)
+    assert bonds.shape == (0, 2)
+    assert bonds.dtype == np.uint32
+
+
 def _test_solvated_bond_guessing():
     from moleculekit.molecule import Molecule, calculateUniqueBonds
     from moleculekit.bondguesser import guess_bonds

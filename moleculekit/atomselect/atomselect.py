@@ -268,6 +268,12 @@ def traverse_ast(mol, analysis, node):
 
 
 def atomselect(mol, selection, bonds, _debug=False, _analysis=None, _return_ast=False):
+    if mol.numAtoms == 0:
+        mask = np.zeros(0, dtype=bool)
+        if _return_ast:
+            return mask, None
+        return mask
+
     if _analysis is None:
         _analysis = analyze(mol, bonds)
 

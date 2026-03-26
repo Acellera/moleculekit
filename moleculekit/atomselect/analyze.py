@@ -70,6 +70,22 @@ def analyze(mol: Molecule, bonds, _profile=False):
     from moleculekit.periodictable import periodictable
     import numpy as np
 
+    if mol.numAtoms == 0:
+        empty_bool = np.zeros(0, dtype=bool)
+        empty_uint = np.zeros(0, dtype=np.uint32)
+        return {
+            "waters": empty_bool.copy(),
+            "lipids": empty_bool.copy(),
+            "ions": empty_bool.copy(),
+            "residues": empty_uint.copy(),
+            "protein_bb": empty_bool.copy(),
+            "nucleic_bb": empty_bool.copy(),
+            "protein": empty_bool.copy(),
+            "nucleic": empty_bool.copy(),
+            "fragments": empty_uint.copy(),
+            "sidechain": empty_bool.copy(),
+        }
+
     insertion = np.unique(mol.insertion, return_inverse=True)[1].astype(np.uint32)
     chain_id = np.unique(mol.chain, return_inverse=True)[1].astype(np.uint32)
     seg_id = np.unique(mol.segid, return_inverse=True)[1].astype(np.uint32)

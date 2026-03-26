@@ -183,6 +183,89 @@ def _test_atomselect(pdbid, sel, _pdbmols):
             pickle.dump(results, f)
 
 
+def _test_empty_molecule():
+    mol = Molecule()
+    selections = [
+        "all",
+        "protein",
+        "nucleic",
+        "water",
+        "lipid",
+        "ion",
+        "backbone",
+        "sidechain",
+        "hydrogen",
+        "noh",
+        "name CA",
+        "resname ALA",
+        "resid 1",
+        "chain A",
+        "index 0",
+        "serial 1",
+        "element C",
+        "mass < 5",
+        "x < 6",
+        "beta >= 0",
+        "not protein",
+    ]
+    for sel in selections:
+        res = mol.atomselect(sel)
+        assert res.shape == (0,), f"Expected empty result for '{sel}', got shape {res.shape}"
+        assert res.dtype == bool, f"Expected bool dtype for '{sel}', got {res.dtype}"
+
+
+def _test_single_atom_molecule():
+    mol = Molecule()
+    mol.empty(1)
+    mol.record[:] = "ATOM"
+    mol.name[:] = "CA"
+    mol.resname[:] = "ALA"
+    mol.resid[:] = 1
+    mol.chain[:] = "A"
+    mol.element[:] = "C"
+    mol.coords = np.zeros((1, 3, 1), dtype=np.float32)
+
+    expected_true = [
+        "all",
+        "name CA",
+        "resname ALA",
+        "resid 1",
+        "chain A",
+        "element C",
+        "index 0",
+        "serial 1",
+        "noh",
+        "not nucleic",
+        "not water",
+        "x < 6",
+        "beta >= 0",
+    ]
+    for sel in expected_true:
+        res = mol.atomselect(sel)
+        assert res.shape == (1,), f"Expected shape (1,) for '{sel}', got {res.shape}"
+        assert res.dtype == bool
+        assert res[0], f"Expected True for '{sel}'"
+
+    expected_false = [
+        "nucleic",
+        "water",
+        "lipid",
+        "ion",
+        "hydrogen",
+        "name CB",
+        "resname GLY",
+        "resid 2",
+        "chain B",
+        "element N",
+        "index 1",
+    ]
+    for sel in expected_false:
+        res = mol.atomselect(sel)
+        assert res.shape == (1,), f"Expected shape (1,) for '{sel}', got {res.shape}"
+        assert res.dtype == bool
+        assert not res[0], f"Expected False for '{sel}'"
+
+
 def _test_numprop_list_equality():
     pdb = os.path.join(curr_dir, "test_atomselect", "test.pdb")
     mol = Molecule(pdb)
