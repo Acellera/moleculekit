@@ -124,6 +124,9 @@ vdw_radii = {
 
 
 def guess_bonds(mol):
+    if mol.numAtoms <= 1:
+        return np.zeros((0, 2), dtype=np.uint32)
+
     defaults = {"H": 1.0, "C": 1.5, "N": 1.4, "O": 1.3, "F": 1.2, "S": 1.9}
 
     if mol.frame >= mol.numFrames:
@@ -160,6 +163,9 @@ def guess_bonds_rdkit(mol):
     from rdkit import Chem
     import tempfile
     import os
+
+    if mol.numAtoms <= 1:
+        return [], []
 
     btypemap = {"SINGLE": "1", "DOUBLE": "2", "TRIPLE": "3", "AROMATIC": "ar"}
 
