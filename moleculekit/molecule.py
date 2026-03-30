@@ -1775,8 +1775,8 @@ class Molecule(object):
         # both protein and nucleic acid backbones and it confuses phosphates of modified residues for nucleic backbones.
         self.resname[sel_mask] = newres
         sel_idx = np.where(sel_mask)[0]
-        remove = np.isin(self.name[sel_idx], ("N", "CA", "C", "O"))
-        self.remove(sel_idx[remove], _logger=False)
+        keep_backbone = np.isin(self.name[sel_idx], ("N", "CA", "C", "O"))
+        self.remove(sel_idx[~keep_backbone], _logger=False)
 
     def wrap(
         self,

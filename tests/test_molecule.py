@@ -532,3 +532,22 @@ def _test_large_time_fstep():
     mol.time = np.arange(1e15, 1.000000001e15, 4, dtype=Molecule._dtypes["time"])
     mol.fileloc = ["x"] * mol.time.shape[0]
     assert mol.fstep == 4e-6
+
+
+def _test_mutateResidue():
+    mol = MOL3PTB.copy()
+
+    sel = "protein and resid 158"
+    orig_idx = np.where(mol.atomselect(sel, strict=True))[0]
+    orig_backbone = np.isin(mol.name[orig_idx], ("N", "CA", "C", "O"))
+    n_backbone = orig_backbone.sum()
+    n_sidechain = len(orig_idx) - n_backbone
+    n_total_before = mol.numAtoms
+
+    mol.mutateResidue(sel, "ARG")
+
+    assert mol.numAtoms == n_total_before - n_sidechain
+    new_idx = np.where(mol.atomselect("protein and resid 158", strict=True))[0]
+    assert len(new_idx) == n_backbone
+    assert set(mol.name[new_idx]) == {"N", "CA", "C", "O"}
+    assert all(mol.resname[new_idx] == "ARG")
