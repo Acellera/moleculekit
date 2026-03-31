@@ -186,6 +186,57 @@ def molecule_to_rdkitmol(
     return Chem.Mol(_rdmol)
 
 
+def _try_remove_carboxyl_oh(rmol_smi, unmatched_heavy_idx, residue):
+    """Remove carboxyl -OH oxygens from a SMILES molecule if the residue is non-terminal.
+
+    When a non-standard amino acid is not at the chain terminus, the OXT atom
+    is absent but the user-provided SMILES may still include the full carboxyl
+    group (C(=O)O).  This helper detects that situation and returns a modified
+    SMILES with the single-bonded carboxyl oxygen(s) removed, or ``None`` if
+    the conditions are not met.
+    """
+    if "OXT" in residue.name:
+        return None
+
+    carboxyl_ohs = []
+    for idx in unmatched_heavy_idx:
+        atom = rmol_smi.GetAtomWithIdx(int(idx))
+        if atom.GetSymbol() != "O":
+            return None
+
+        heavy_neighbors = [n for n in atom.GetNeighbors() if n.GetSymbol() != "H"]
+        if len(heavy_neighbors) != 1 or heavy_neighbors[0].GetSymbol() != "C":
+            return None
+
+        bond = rmol_smi.GetBondBetweenAtoms(atom.GetIdx(), heavy_neighbors[0].GetIdx())
+        if bond.GetBondType() != Chem.BondType.SINGLE:
+            return None
+
+        carbon = heavy_neighbors[0]
+        has_double_o = any(
+            b.GetOtherAtom(carbon).GetSymbol() == "O"
+            and b.GetBondType() == Chem.BondType.DOUBLE
+            and b.GetOtherAtom(carbon).GetIdx() != atom.GetIdx()
+            for b in carbon.GetBonds()
+        )
+        if not has_double_o:
+            return None
+
+        carboxyl_ohs.append(int(idx))
+
+    if not carboxyl_ohs:
+        return None
+
+    edit_mol = Chem.RWMol(rmol_smi)
+    for idx in sorted(carboxyl_ohs, reverse=True):
+        edit_mol.RemoveAtom(idx)
+
+    try:
+        return Chem.MolToSmiles(edit_mol)
+    except Exception:
+        return None
+
+
 def template_residue_from_smiles(
     mol: Molecule,
     sel: str,
@@ -271,11 +322,42 @@ def template_residue_from_smiles(
     elem = np.array([a.GetSymbol() for a in rmol_smi.GetAtoms()])
     non_matched = np.setdiff1d(range(len(elem)), at2)
     if np.any(elem[non_matched] != "H"):
-        raise RuntimeError(
-            f"The SMILES template '{smiles}' contains heavy atoms which could not be matched to the residue. "
-            "If templating a non-standard amino acid, please don't include the OXT atom in the SMILES string "
-            "unless it exists in the structure. For example Glycine should be templated as 'C(C(=O))N' and not 'C(C(=O)O)N'"
+        unmatched_heavy_idx = non_matched[elem[non_matched] != "H"]
+        modified_smiles = _try_remove_carboxyl_oh(
+            rmol_smi, unmatched_heavy_idx, residue
         )
+        if modified_smiles is not None:
+            if _logger:
+                logger.info(
+                    f"Removed terminal carboxyl -OH from SMILES template as "
+                    f"the residue appears to be non-terminal (no OXT atom). "
+                    f"Modified SMILES: '{modified_smiles}'"
+                )
+            rmol_smi = Chem.MolFromSmiles(modified_smiles, sanitize=sanitizeSmiles)
+            Chem.Kekulize(rmol_smi)
+            res = rdFMCS.FindMCS(
+                [rmol, rmol_smi],
+                bondCompare=rdFMCS.BondCompare.CompareAny,
+                atomCompare=rdFMCS.AtomCompare.CompareElements,
+            )
+            patt = Chem.MolFromSmarts(res.smartsString)
+            at1 = list(rmol.GetSubstructMatch(patt))
+            at2 = list(rmol_smi.GetSubstructMatch(patt))
+            atom_mapping = {j: i for i, j in zip(at1, at2)}
+
+            elem = np.array([a.GetSymbol() for a in rmol_smi.GetAtoms()])
+            non_matched = np.setdiff1d(range(len(elem)), at2)
+            if np.any(elem[non_matched] != "H"):
+                raise RuntimeError(
+                    f"The SMILES template '{smiles}' contains heavy atoms which could not be matched to the residue. "
+                    "Even after removing the terminal carboxyl -OH, some heavy atoms could not be matched."
+                )
+        else:
+            raise RuntimeError(
+                f"The SMILES template '{smiles}' contains heavy atoms which could not be matched to the residue. "
+                "If templating a non-standard amino acid, please don't include the OXT atom in the SMILES string "
+                "unless it exists in the structure. For example Glycine should be templated as 'C(C(=O))N' and not 'C(C(=O)O)N'"
+            )
 
     # Transfer the formal charge, bonds and bond orders from rmol_smi to rmol
     for i, j in zip(at1, at2):

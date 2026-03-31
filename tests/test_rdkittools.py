@@ -104,6 +104,50 @@ def _test_templatingNonStandardResidues():
     )
 
 
+def _test_template_non_terminal_carboxyl_removal():
+    import numpy as np
+
+    mol = Molecule("5VBL")
+    sel = "resname ALC"
+    smiles_with_oh = "C1CCC(CC1)C[C@@H](C(=O)O)N"
+
+    # This should NOT raise even though the SMILES contains -OH in the
+    # carboxyl group, because ALC is non-terminal (no OXT) and the code
+    # should automatically strip the extra oxygen.
+    mol.templateResidueFromSmiles(sel, smiles_with_oh, addHs=False, guessBonds=True)
+
+    alc = mol.copy(sel=sel)
+    assert alc.numAtoms > 0
+
+    # The C=O bond order should be double
+    c_idx = np.where(alc.name == "C")[0]
+    o_idx = np.where(alc.name == "O")[0]
+    if len(c_idx) and len(o_idx):
+        found_double = False
+        for bi in range(alc.bonds.shape[0]):
+            a, b = alc.bonds[bi]
+            if (a == c_idx[0] and b == o_idx[0]) or (a == o_idx[0] and b == c_idx[0]):
+                assert alc.bondtype[bi] == "2"
+                found_double = True
+                break
+        assert found_double, "Expected a double bond between C and O atoms"
+
+    # Also verify that the original SMILES (without -OH) still works
+    mol2 = Molecule("5VBL")
+    smiles_without_oh = "C1CCC(CC1)C[C@@H](C(=O))N"
+    mol2.templateResidueFromSmiles(sel, smiles_without_oh, addHs=False, guessBonds=True)
+
+    alc1 = mol.copy(sel=sel)
+    alc2 = mol2.copy(sel=sel)
+    assert mol_equal(
+        alc1,
+        alc2,
+        checkFields=("coords", "name", "element", "bonds", "bondtype"),
+        uqBonds=True,
+        fieldPrecision={"coords": 1e-3},
+    )
+
+
 def _test_extend_residue_from_smiles():
     from moleculekit.molecule import Molecule
     import numpy as np
