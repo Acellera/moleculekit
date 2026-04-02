@@ -306,6 +306,7 @@ def template_residue_from_smiles(
         sanitize=False, kekulize=False, assignStereo=False, _logger=_logger
     )
     rmol_smi = Chem.MolFromSmiles(smiles, sanitize=sanitizeSmiles)
+    rmol_smi = Chem.RemoveAllHs(rmol_smi)
     Chem.Kekulize(rmol_smi)
 
     res = rdFMCS.FindMCS(
