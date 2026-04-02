@@ -61,6 +61,25 @@ def _test_templateResidueFromSmiles():
     _cmp(mol, ref_mol)
 
 
+def _test_templateResidueFromSmiles_incorrect_smiles():
+    import numpy as np
+
+    testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
+    start_file = os.path.join(testdir, "BEN.pdb")
+
+    sel = "resname BEN"
+    incorrect_smiles = "[H]/N=C(\\c1ccccc1)/N"
+
+    mol = Molecule(start_file)
+    mol.templateResidueFromSmiles(sel, incorrect_smiles, addHs=False, guessBonds=True)
+
+    ben = mol.copy(sel=sel)
+    assert ben.numAtoms == 9
+    assert ben.numBonds == 9
+    assert np.all(ben.formalcharge == 0)
+    assert "2" in ben.bondtype
+
+
 @pytest.mark.parametrize("file", ("1STP_BTN.cif", "BEN_pH7.4.cif"))
 def _test_toRDKitMol(file):
     testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
