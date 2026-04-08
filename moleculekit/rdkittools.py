@@ -403,6 +403,7 @@ def extend_residue_from_smiles(
     target_atom_sel: str | None = None,
     new_smiles: str | None = None,
     sanitizeSmiles: bool = True,
+    minimize: bool = False,
     _logger: bool = True,
 ):
     """
@@ -434,6 +435,9 @@ def extend_residue_from_smiles(
         Complete SMILES of the modified molecule (alternative to extension_smiles)
     sanitizeSmiles : bool
         If True the SMILES string will be sanitized
+    minimize : bool
+        If True and OpenMM is available, run a soft-potential energy
+        minimization of the residue against its surroundings after insertion.
     _logger : bool
         If True the logger will be used to print information
 
@@ -701,3 +705,9 @@ def extend_residue_from_smiles(
 
     mol.remove(selidx, _logger=False)
     mol.insert(new_residue, selidx[0])
+
+    if minimize:
+        from moleculekit.tools.mutate import _minimize_with_openmm
+
+        residue_indices = set(range(selidx[0], selidx[0] + new_residue.numAtoms))
+        _minimize_with_openmm(mol, residue_indices)

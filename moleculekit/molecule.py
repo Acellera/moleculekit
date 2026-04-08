@@ -2776,6 +2776,7 @@ class Molecule(object):
         target_atom_sel: str | None = None,
         new_smiles: str | None = None,
         sanitizeSmiles: bool = True,
+        minimize: bool = False,
         _logger: bool = True,
     ):
         """Extend a residue with a SMILES string
@@ -2808,6 +2809,10 @@ class Molecule(object):
             extension_smiles)
         sanitizeSmiles : bool
             If True the SMILES string will be sanitized
+        minimize : bool
+            If True and OpenMM is available, run a soft-potential energy
+            minimization of the residue against its surroundings after
+            insertion.
         _logger : bool
             If True the logger will be used to print information
 
@@ -2832,6 +2837,7 @@ class Molecule(object):
             target_atom_sel=target_atom_sel,
             new_smiles=new_smiles,
             sanitizeSmiles=sanitizeSmiles,
+            minimize=minimize,
             _logger=_logger,
         )
 
