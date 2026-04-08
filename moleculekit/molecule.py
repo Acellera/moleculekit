@@ -1753,30 +1753,53 @@ class Molecule(object):
             if hasattr(self, field):
                 delattr(self, field)
 
-    def mutateResidue(self, sel, newres):
-        """Mutates a residue by deleting its sidechain and renaming it
+    def mutateResidue(
+        self, sel, newres, reconstruct=True, rotamer_mode="best", minimize=False
+    ):
+        """Mutate a residue, optionally reconstructing the side-chain.
+
+        When *reconstruct* is True (the default) the old side-chain is removed
+        and a new one is built from ideal geometry, placed using the Dunbrack
+        backbone-dependent rotamer library, and optionally refined with an
+        OpenMM soft-potential energy minimization.
 
         Parameters
         ----------
         sel : str
-            Atom selection string for the residue we want to mutate. The selection needs to include all atoms of the
-            residue. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+            Atom selection string for the residue we want to mutate. The
+            selection needs to include all atoms of the residue.
+            See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         newres : str
-            The name of the new residue
+            The three-letter code of the target residue.
+        reconstruct : bool, optional
+            If True (default), fully reconstruct the new side-chain.  If False,
+            use legacy behaviour (strip side-chain and rename).
+        rotamer_mode : str, optional
+            How to choose the rotamer.  ``"best"`` (default) picks the rotamer
+            with the lowest VdW clash energy against surrounding atoms.
+            ``"first"`` picks the most probable rotamer.  ``"random"`` samples
+            a rotamer weighted by probability.
+        minimize : bool, optional
+            If True and OpenMM is installed, run a soft-potential energy
+            minimization after side-chain placement.  Default False.
 
         Examples
         --------
         >>> mol=tryp.copy()
         >>> mol.mutateResidue('resid 158', 'ARG')
         """
-        sel_mask = self.atomselect(sel, strict=True)
-        # Changed the selection from "and sidechain" to "not backbone" to remove atoms like phosphates which are bonded
-        # but not part of the sidechain. Changed again the selection to "name C CA N O" because "backbone" works for
-        # both protein and nucleic acid backbones and it confuses phosphates of modified residues for nucleic backbones.
-        self.resname[sel_mask] = newres
-        sel_idx = np.where(sel_mask)[0]
-        keep_backbone = np.isin(self.name[sel_idx], ("N", "CA", "C", "O"))
-        self.remove(sel_idx[~keep_backbone], _logger=False)
+        if reconstruct:
+            from moleculekit.tools.mutate import mutate_residue
+
+            mutate_residue(
+                self, sel, newres, rotamer_mode=rotamer_mode, minimize=minimize
+            )
+        else:
+            sel_mask = self.atomselect(sel, strict=True)
+            self.resname[sel_mask] = newres
+            sel_idx = np.where(sel_mask)[0]
+            keep_backbone = np.isin(self.name[sel_idx], ("N", "CA", "C", "O"))
+            self.remove(sel_idx[~keep_backbone], _logger=False)
 
     def wrap(
         self,

@@ -52,6 +52,12 @@ build-backend = "setuptools.build_meta"
 [dependency-groups]
 dev = [
   "ipython>=8.18.1",
+  "nvidia-cuda-cupti-cu12<12.7",
+  "nvidia-cuda-nvcc-cu12<12.7",
+  "nvidia-cuda-nvrtc-cu12<12.7",
+  "nvidia-cuda-runtime-cu12<12.7",
+  "nvidia-nvjitlink-cu12<12.7",
+  "openmm[cuda12]>=8.5.0",
   "pymol-open-source>=3.2.0a0",
   "pyqt5>=5.15.11",
   "pytest>=8.4.2",

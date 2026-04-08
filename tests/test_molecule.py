@@ -534,7 +534,7 @@ def _test_large_time_fstep():
     assert mol.fstep == 4e-6
 
 
-def _test_mutateResidue():
+def _test_mutateResidue_legacy():
     mol = MOL3PTB.copy()
 
     sel = "protein and resid 158"
@@ -544,10 +544,144 @@ def _test_mutateResidue():
     n_sidechain = len(orig_idx) - n_backbone
     n_total_before = mol.numAtoms
 
-    mol.mutateResidue(sel, "ARG")
+    mol.mutateResidue(sel, "ARG", reconstruct=False)
 
     assert mol.numAtoms == n_total_before - n_sidechain
     new_idx = np.where(mol.atomselect("protein and resid 158", strict=True))[0]
     assert len(new_idx) == n_backbone
     assert set(mol.name[new_idx]) == {"N", "CA", "C", "O"}
     assert all(mol.resname[new_idx] == "ARG")
+
+
+def _test_mutateResidue():
+    from moleculekit.tools.mutate import RESIDUE_ORDER, BACKBONE_ATOMS
+
+    mol = MOL3PTB.copy()
+    sel = "protein and resid 158"
+
+    # Res 158 is LEU in 3PTB
+    orig_idx = np.where(mol.atomselect(sel, strict=True))[0]
+    assert mol.resname[orig_idx[0]] == "LEU"
+    bb_coords_before = {}
+    for idx in orig_idx:
+        if mol.name[idx] in ("N", "CA", "C"):
+            bb_coords_before[mol.name[idx]] = mol.coords[idx, :, mol.frame].copy()
+
+    # --- Mutate LEU -> ARG (default: reconstruct=True, rotamer_mode="best") ---
+    mol.mutateResidue(sel, "ARG")
+    new_idx = np.where(mol.atomselect("protein and resid 158", strict=True))[0]
+
+    expected_atoms = set(RESIDUE_ORDER["ARG"])
+    actual_atoms = set(mol.name[new_idx])
+    assert actual_atoms == expected_atoms, f"Expected {expected_atoms}, got {actual_atoms}"
+    assert all(mol.resname[new_idx] == "ARG")
+
+    # Backbone coordinates should be preserved
+    for idx in new_idx:
+        if mol.name[idx] in ("N", "CA", "C"):
+            np.testing.assert_allclose(
+                mol.coords[idx, :, mol.frame],
+                bb_coords_before[mol.name[idx]],
+                atol=0.01,
+            )
+
+    # Side-chain coordinates should be non-zero
+    for idx in new_idx:
+        if mol.name[idx] not in BACKBONE_ATOMS:
+            assert not np.allclose(mol.coords[idx, :, mol.frame], 0.0), (
+                f"Atom {mol.name[idx]} has zero coordinates"
+            )
+
+    # Residue ordering should be contiguous
+    assert np.all(np.diff(new_idx) == 1), "Residue atoms are not contiguous"
+
+
+def _test_mutateResidue_to_gly():
+    mol = MOL3PTB.copy()
+    sel = "protein and resid 158"
+
+    mol.mutateResidue(sel, "GLY")
+    new_idx = np.where(mol.atomselect("protein and resid 158", strict=True))[0]
+
+    assert set(mol.name[new_idx]) == {"N", "CA", "C", "O"}
+    assert all(mol.resname[new_idx] == "GLY")
+
+
+def _test_mutateResidue_to_ala():
+    mol = MOL3PTB.copy()
+    sel = "protein and resid 158"
+
+    mol.mutateResidue(sel, "ALA")
+    new_idx = np.where(mol.atomselect("protein and resid 158", strict=True))[0]
+
+    assert set(mol.name[new_idx]) == {"N", "CA", "C", "O", "CB"}
+    assert all(mol.resname[new_idx] == "ALA")
+
+    cb_idx = new_idx[mol.name[new_idx] == "CB"][0]
+    assert not np.allclose(mol.coords[cb_idx, :, mol.frame], 0.0)
+
+
+def _test_mutateResidue_to_pro():
+    mol = MOL3PTB.copy()
+    sel = "protein and resid 158"
+
+    mol.mutateResidue(sel, "PRO")
+    new_idx = np.where(mol.atomselect("protein and resid 158", strict=True))[0]
+
+    from moleculekit.tools.mutate import RESIDUE_ORDER
+
+    assert set(mol.name[new_idx]) == set(RESIDUE_ORDER["PRO"])
+    assert all(mol.resname[new_idx] == "PRO")
+
+
+def _test_mutateResidue_rotamer_modes():
+    from moleculekit.tools.mutate import RESIDUE_ORDER
+
+    # Test "first" mode
+    mol = MOL3PTB.copy()
+    mol.mutateResidue("protein and resid 158", "TRP", rotamer_mode="first")
+    new_idx = np.where(mol.atomselect("protein and resid 158", strict=True))[0]
+    assert set(mol.name[new_idx]) == set(RESIDUE_ORDER["TRP"])
+
+    # Test "random" mode
+    mol2 = MOL3PTB.copy()
+    mol2.mutateResidue("protein and resid 158", "TRP", rotamer_mode="random")
+    new_idx2 = np.where(mol2.atomselect("protein and resid 158", strict=True))[0]
+    assert set(mol2.name[new_idx2]) == set(RESIDUE_ORDER["TRP"])
+
+
+def _test_mutateResidue_preserves_neighbors():
+    mol = MOL3PTB.copy()
+    sel = "protein and resid 158"
+
+    # Record neighbor residue coords
+    res157_idx = np.where(mol.atomselect("protein and resid 157", strict=True))[0]
+    res159_idx = np.where(mol.atomselect("protein and resid 159", strict=True))[0]
+    coords_157_before = mol.coords[res157_idx, :, mol.frame].copy()
+    coords_159_before = mol.coords[res159_idx, :, mol.frame].copy()
+
+    mol.mutateResidue(sel, "PHE")
+
+    # Neighbors should be untouched
+    res157_idx_after = np.where(mol.atomselect("protein and resid 157", strict=True))[0]
+    res159_idx_after = np.where(mol.atomselect("protein and resid 159", strict=True))[0]
+    np.testing.assert_array_equal(
+        mol.coords[res157_idx_after, :, mol.frame], coords_157_before
+    )
+    np.testing.assert_array_equal(
+        mol.coords[res159_idx_after, :, mol.frame], coords_159_before
+    )
+
+
+def _test_mutateResidue_all_residues():
+    from moleculekit.tools.mutate import RESIDUE_ORDER
+
+    for target in sorted(RESIDUE_ORDER.keys()):
+        mol = MOL3PTB.copy()
+        mol.mutateResidue("protein and resid 158", target)
+        new_idx = np.where(mol.atomselect("protein and resid 158", strict=True))[0]
+        actual = set(mol.name[new_idx])
+        expected = set(RESIDUE_ORDER[target])
+        assert actual == expected, (
+            f"Mutation to {target}: expected {expected}, got {actual}"
+        )
