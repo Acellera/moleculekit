@@ -249,7 +249,7 @@ def _test_sequence():
     seq, idx = mol.getSequence(return_idx=True)
     assert seq == {
         "A": "LEPEPWFFKNLSRKDAERQLLAPGNTHGSFLIRESESTAGSFSLSVRDFDQNQGEVVKHYKIRNLDNGGFYISPRITFPGLHELVRHYTNASDGLCTRLSRPCQT",
-        "B": "XEEI",
+        "B": "YEEI",
     }
 
     refidx = np.array(
@@ -275,7 +275,7 @@ def _test_sequence():
     seq = mol.getSequence(dict_key="segid")
     assert seq == {
         "1": "LEPEPWFFKNLSRKDAERQLLAPGNTHGSFLIRESESTAGSFSLSVRDFDQNQGEVVKHYKIRNLDNGGFYISPRITFPGLHELVRHYTNASDGLCTRLSRPCQT",
-        "2": "XEEI",
+        "2": "YEEI",
     }
     assert mol.getSequence(one_letter=False)["B"] == ["PTR", "GLU", "GLU", "ILE"]
 
@@ -573,7 +573,9 @@ def _test_mutateResidue():
 
     expected_atoms = set(RESIDUE_ORDER["ARG"])
     actual_atoms = set(mol.name[new_idx])
-    assert actual_atoms == expected_atoms, f"Expected {expected_atoms}, got {actual_atoms}"
+    assert (
+        actual_atoms == expected_atoms
+    ), f"Expected {expected_atoms}, got {actual_atoms}"
     assert all(mol.resname[new_idx] == "ARG")
 
     # Backbone coordinates should be preserved
@@ -588,9 +590,9 @@ def _test_mutateResidue():
     # Side-chain coordinates should be non-zero
     for idx in new_idx:
         if mol.name[idx] not in BACKBONE_ATOMS:
-            assert not np.allclose(mol.coords[idx, :, mol.frame], 0.0), (
-                f"Atom {mol.name[idx]} has zero coordinates"
-            )
+            assert not np.allclose(
+                mol.coords[idx, :, mol.frame], 0.0
+            ), f"Atom {mol.name[idx]} has zero coordinates"
 
     # Residue ordering should be contiguous
     assert np.all(np.diff(new_idx) == 1), "Residue atoms are not contiguous"
@@ -682,6 +684,6 @@ def _test_mutateResidue_all_residues():
         new_idx = np.where(mol.atomselect("protein and resid 158", strict=True))[0]
         actual = set(mol.name[new_idx])
         expected = set(RESIDUE_ORDER[target])
-        assert actual == expected, (
-            f"Mutation to {target}: expected {expected}, got {actual}"
-        )
+        assert (
+            actual == expected
+        ), f"Mutation to {target}: expected {expected}, got {actual}"
