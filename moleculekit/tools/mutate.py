@@ -78,6 +78,31 @@ RESIDUE_ORDER = {
         "OH",
     ],
     "VAL": ["N", "CA", "C", "O", "CB", "CG1", "CG2"],
+    # Modified amino acids
+    "MSE": ["N", "CA", "C", "O", "CB", "CG", "SE", "CE"],
+    "MLZ": ["N", "CA", "C", "O", "CB", "CG", "CD", "CE", "NZ", "CM"],
+    "MLY": ["N", "CA", "C", "O", "CB", "CG", "CD", "CE", "NZ", "CH1", "CH2"],
+    "M3L": ["N", "CA", "C", "O", "CB", "CG", "CD", "CE", "NZ", "CM1", "CM2", "CM3"],
+    "SEP": ["N", "CA", "C", "O", "CB", "OG", "P", "O1P", "O2P", "O3P"],
+    "TPO": ["N", "CA", "C", "O", "CB", "OG1", "CG2", "P", "O1P", "O2P", "O3P"],
+    "PTR": [
+        "N",
+        "CA",
+        "C",
+        "O",
+        "CB",
+        "CG",
+        "CD1",
+        "CD2",
+        "CE1",
+        "CE2",
+        "CZ",
+        "OH",
+        "P",
+        "O1P",
+        "O2P",
+        "O3P",
+    ],
 }
 
 # Chi angle definitions: for each chi angle, the 4-atom dihedral and the
@@ -102,6 +127,13 @@ CHI_ANGLES = {
         "GLU": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
         "TYR": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
         "MET": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
+        "MSE": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
+        "MLZ": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
+        "MLY": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
+        "M3L": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
+        "SEP": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "OG"]},
+        "TPO": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "OG1"]},
+        "PTR": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
     },
     "CHI2": {
         "ASP": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "OD1"]},
@@ -118,6 +150,11 @@ CHI_ANGLES = {
         "GLU": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "CD"]},
         "TYR": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "CD1"]},
         "MET": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "SD"]},
+        "MSE": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "SE"]},
+        "MLZ": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "CD"]},
+        "MLY": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "CD"]},
+        "M3L": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "CD"]},
+        "PTR": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "CD1"]},
     },
     "CHI3": {
         "ARG": {"axis": ["CG", "CD"], "ref_plane": ["CB", "CG", "CD", "NE"]},
@@ -125,11 +162,31 @@ CHI_ANGLES = {
         "GLU": {"axis": ["CG", "CD"], "ref_plane": ["CB", "CG", "CD", "OE1"]},
         "LYS": {"axis": ["CG", "CD"], "ref_plane": ["CB", "CG", "CD", "CE"]},
         "MET": {"axis": ["CG", "SD"], "ref_plane": ["CB", "CG", "SD", "CE"]},
+        "MSE": {"axis": ["CG", "SE"], "ref_plane": ["CB", "CG", "SE", "CE"]},
+        "MLZ": {"axis": ["CG", "CD"], "ref_plane": ["CB", "CG", "CD", "CE"]},
+        "MLY": {"axis": ["CG", "CD"], "ref_plane": ["CB", "CG", "CD", "CE"]},
+        "M3L": {"axis": ["CG", "CD"], "ref_plane": ["CB", "CG", "CD", "CE"]},
     },
     "CHI4": {
         "ARG": {"axis": ["CD", "NE"], "ref_plane": ["CG", "CD", "NE", "CZ"]},
         "LYS": {"axis": ["CD", "CE"], "ref_plane": ["CG", "CD", "CE", "NZ"]},
+        "MLZ": {"axis": ["CD", "CE"], "ref_plane": ["CG", "CD", "CE", "NZ"]},
+        "MLY": {"axis": ["CD", "CE"], "ref_plane": ["CG", "CD", "CE", "NZ"]},
+        "M3L": {"axis": ["CD", "CE"], "ref_plane": ["CG", "CD", "CE", "NZ"]},
     },
+}
+
+# Modified residues -> parent residue for rotamer library lookup.
+# These have their own CIF templates and RESIDUE_ORDER entries, but reuse
+# the parent's rotamers since the modifications are at the chain terminus.
+_ROTAMER_PARENT = {
+    "MSE": "MET",
+    "MLZ": "LYS",
+    "MLY": "LYS",
+    "M3L": "LYS",
+    "SEP": "SER",
+    "TPO": "THR",
+    "PTR": "TYR",
 }
 
 # Per-element VdW radii (Angstroms) for clash scoring
@@ -138,6 +195,7 @@ VDW_RADII = {
     "N": 1.55,
     "O": 1.52,
     "S": 1.8,
+    "P": 1.8,
     "H": 1.2,
     "SE": 1.9,
 }
@@ -652,7 +710,9 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
         variants such as ``"HID"``, ``"HIE"``, ``"HIP"``, ``"CYX"``,
         ``"ASH"``, ``"GLH"``, ``"LYN"`` etc. are also accepted -- the
         heavy-atom geometry is taken from the parent residue and the
-        requested name is preserved.
+        requested name is preserved.  Modified amino acids ``"MSE"``,
+        ``"MLZ"``, and ``"MLY"`` are also supported -- they use their own
+        CIF templates but the parent's rotamer library entries.
     rotamer_mode : str, optional
         ``"best"`` (lowest clash energy, default), ``"first"`` (highest
         probability), or ``"random"`` (sampled by probability).
@@ -671,6 +731,10 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
             f"Supported: {sorted(RESIDUE_ORDER.keys())} and their "
             f"protonation variants."
         )
+
+    # Modified residues (MSE, MLZ, MLY) have their own templates/chi defs
+    # but reuse the parent residue's rotamer library entries.
+    rotamer_res = _ROTAMER_PARENT.get(baseres, baseres)
 
     sel_mask = mol.atomselect(sel, strict=True)
     sel_idx = np.where(sel_mask)[0]
@@ -738,11 +802,11 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
         psi_bin = _snap_to_bin(psi)
 
         rotlib = _load_rotamer_library()
-        rotamers = rotlib.get(baseres, {}).get((phi_bin, psi_bin), [])
+        rotamers = rotlib.get(rotamer_res, {}).get((phi_bin, psi_bin), [])
 
         if not rotamers:
             logger.warning(
-                f"No rotamers found for {baseres} at phi={phi_bin}, psi={psi_bin}. "
+                f"No rotamers found for {rotamer_res} at phi={phi_bin}, psi={psi_bin}. "
                 f"Using template geometry."
             )
         else:

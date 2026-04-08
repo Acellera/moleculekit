@@ -1,0 +1,172 @@
+data_M3L
+# 
+_chem_comp.id                                    M3L 
+_chem_comp.name                                  N-TRIMETHYLLYSINE 
+_chem_comp.type                                  "L-PEPTIDE LINKING" 
+_chem_comp.pdbx_type                             ATOMP 
+_chem_comp.formula                               "C9 H21 N2 O2" 
+_chem_comp.mon_nstd_parent_comp_id               LYS 
+_chem_comp.pdbx_synonyms                         ? 
+_chem_comp.pdbx_formal_charge                    1 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2024-09-27 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        189.275 
+_chem_comp.one_letter_code                       K 
+_chem_comp.three_letter_code                     M3L 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        ? 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        1IRV 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+_chem_comp.pdbx_pcm                              Y 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+M3L N    N    N 0 1 N N N Y Y N -2.814 12.539 13.256 2.673  -1.806 -0.237 N    M3L 1  
+M3L CA   CA   C 0 1 N N S Y N N -3.102 11.614 14.365 2.588  -0.365 -0.509 CA   M3L 2  
+M3L CB   CB   C 0 1 N N N N N N -4.189 12.119 15.335 1.322  0.202  0.136  CB   M3L 3  
+M3L CG   CG   C 0 1 N N N N N N -3.880 13.549 15.831 0.090  -0.410 -0.535 CG   M3L 4  
+M3L CD   CD   C 0 1 N N N N N N -4.441 13.558 17.321 -1.176 0.157  0.110  CD   M3L 5  
+M3L CE   CE   C 0 1 N N N N N N -3.694 14.657 18.071 -2.408 -0.455 -0.560 CE   M3L 6  
+M3L NZ   NZ   N 1 1 N N N N N N -4.572 15.283 19.112 -3.623 0.090  0.059  NZ   M3L 7  
+M3L C    C    C 0 1 N N N Y N Y -3.379 10.187 13.922 3.798  0.327  0.065  C    M3L 8  
+M3L O    O    O 0 1 N N N Y N Y -3.248 9.276  14.755 4.447  -0.211 0.930  O    M3L 9  
+M3L OXT  OXT  O 0 1 N Y N Y N Y -3.767 10.077 12.705 4.153  1.541  -0.384 OXT  M3L 10 
+M3L CM1  CM1  C 0 1 N N N N N N -4.397 14.369 20.286 -3.648 1.549  -0.111 CM1  M3L 11 
+M3L CM2  CM2  C 0 1 N N N N N N -4.155 16.639 19.590 -3.632 -0.237 1.491  CM2  M3L 12 
+M3L CM3  CM3  C 0 1 N N N N N N -5.970 15.303 18.583 -4.806 -0.498 -0.585 CM3  M3L 13 
+M3L H    1HN  H 0 1 N N N Y Y N -2.094 12.204 12.614 2.704  -1.910 0.766  H    M3L 14 
+M3L H2   2HN  H 0 1 N Y N Y Y N -2.573 13.463 13.613 1.802  -2.211 -0.544 H2   M3L 15 
+M3L HA   HA   H 0 1 N N N Y N N -2.146 11.591 14.939 2.553  -0.200 -1.586 HA   M3L 16 
+M3L HB2  1HB  H 0 1 N N N N N N -5.204 12.054 14.880 1.304  1.285  0.010  HB2  M3L 17 
+M3L HB3  2HB  H 0 1 N N N N N N -4.337 11.414 16.186 1.315  -0.040 1.198  HB3  M3L 18 
+M3L HG2  1HG  H 0 1 N N N N N N -2.809 13.847 15.739 0.109  -1.492 -0.409 HG2  M3L 19 
+M3L HG3  2HG  H 0 1 N N N N N N -4.284 14.359 15.181 0.097  -0.167 -1.598 HG3  M3L 20 
+M3L HD2  1HD  H 0 1 N N N N N N -5.549 13.668 17.371 -1.194 1.240  -0.016 HD2  M3L 21 
+M3L HD3  2HD  H 0 1 N N N N N N -4.374 12.563 17.820 -1.182 -0.085 1.173  HD3  M3L 22 
+M3L HE2  1HE  H 0 1 N N N N N N -2.739 14.282 18.507 -2.389 -1.537 -0.435 HE2  M3L 23 
+M3L HE3  2HE  H 0 1 N N N N N N -3.272 15.418 17.374 -2.401 -0.212 -1.623 HE3  M3L 24 
+M3L HXT  HXT  H 0 1 N Y N Y N Y -3.940 9.184  12.428 4.929  1.985  -0.016 HXT  M3L 25 
+M3L HM11 1HM1 H 0 0 N N N N N N -5.050 14.834 21.060 -2.771 1.985  0.367  HM11 M3L 26 
+M3L HM12 2HM1 H 0 0 N N N N N N -4.612 13.295 20.077 -3.641 1.791  -1.173 HM12 M3L 27 
+M3L HM13 3HM1 H 0 0 N N N N N N -3.339 14.210 20.601 -4.550 1.953  0.349  HM13 M3L 28 
+M3L HM21 1HM2 H 0 0 N N N N N N -4.808 17.104 20.364 -4.534 0.167  1.950  HM21 M3L 29 
+M3L HM22 2HM2 H 0 0 N N N N N N -3.101 16.605 19.953 -3.614 -1.320 1.616  HM22 M3L 30 
+M3L HM23 3HM2 H 0 0 N N N N N N -4.045 17.329 18.721 -2.755 0.199  1.968  HM23 M3L 31 
+M3L HM31 1HM3 H 0 0 N N N N N N -6.623 15.768 19.357 -4.799 -0.255 -1.648 HM31 M3L 32 
+M3L HM32 2HM3 H 0 0 N N N N N N -6.049 15.806 17.591 -4.788 -1.581 -0.459 HM32 M3L 33 
+M3L HM33 3HM3 H 0 0 N N N N N N -6.326 14.295 18.266 -5.708 -0.094 -0.126 HM33 M3L 34 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+M3L N   CA   SING N N 1  
+M3L N   H    SING N N 2  
+M3L N   H2   SING N N 3  
+M3L CA  CB   SING N N 4  
+M3L CA  C    SING N N 5  
+M3L CA  HA   SING N N 6  
+M3L CB  CG   SING N N 7  
+M3L CB  HB2  SING N N 8  
+M3L CB  HB3  SING N N 9  
+M3L CG  CD   SING N N 10 
+M3L CG  HG2  SING N N 11 
+M3L CG  HG3  SING N N 12 
+M3L CD  CE   SING N N 13 
+M3L CD  HD2  SING N N 14 
+M3L CD  HD3  SING N N 15 
+M3L CE  NZ   SING N N 16 
+M3L CE  HE2  SING N N 17 
+M3L CE  HE3  SING N N 18 
+M3L NZ  CM1  SING N N 19 
+M3L NZ  CM2  SING N N 20 
+M3L NZ  CM3  SING N N 21 
+M3L C   O    DOUB N N 22 
+M3L C   OXT  SING N N 23 
+M3L OXT HXT  SING N N 24 
+M3L CM1 HM11 SING N N 25 
+M3L CM1 HM12 SING N N 26 
+M3L CM1 HM13 SING N N 27 
+M3L CM2 HM21 SING N N 28 
+M3L CM2 HM22 SING N N 29 
+M3L CM2 HM23 SING N N 30 
+M3L CM3 HM31 SING N N 31 
+M3L CM3 HM32 SING N N 32 
+M3L CM3 HM33 SING N N 33 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+M3L SMILES           ACDLabs              10.04 "O=C(O)C(N)CCCC[N+](C)(C)C"                                                          
+M3L SMILES_CANONICAL CACTVS               3.341 "C[N+](C)(C)CCCC[C@H](N)C(O)=O"                                                      
+M3L SMILES           CACTVS               3.341 "C[N+](C)(C)CCCC[CH](N)C(O)=O"                                                       
+M3L SMILES_CANONICAL "OpenEye OEToolkits" 1.5.0 "C[N+](C)(C)CCCC[C@@H](C(=O)O)N"                                                     
+M3L SMILES           "OpenEye OEToolkits" 1.5.0 "C[N+](C)(C)CCCCC(C(=O)O)N"                                                          
+M3L InChI            InChI                1.03  "InChI=1S/C9H20N2O2/c1-11(2,3)7-5-4-6-8(10)9(12)13/h8H,4-7,10H2,1-3H3/p+1/t8-/m0/s1" 
+M3L InChIKey         InChI                1.03  MXNRLFUSFKVQSK-QMMMGPOBSA-O                                                          
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+M3L "SYSTEMATIC NAME" ACDLabs              10.04 "N-[(5S)-5-amino-5-carboxypentyl]-N,N-dimethylmethanaminium" 
+M3L "SYSTEMATIC NAME" "OpenEye OEToolkits" 1.5.0 "[(5S)-5-amino-6-hydroxy-6-oxo-hexyl]-trimethyl-azanium"     
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+M3L "Create component"  1999-07-08 RCSB 
+M3L "Modify descriptor" 2011-06-04 RCSB 
+M3L "Modify backbone"   2023-11-03 PDBE 
+M3L "Modify PCM"        2024-09-27 PDBE 
+# 
+_pdbx_chem_comp_pcm.pcm_id                             1 
+_pdbx_chem_comp_pcm.comp_id                            M3L 
+_pdbx_chem_comp_pcm.modified_residue_id                LYS 
+_pdbx_chem_comp_pcm.type                               Methylation 
+_pdbx_chem_comp_pcm.category                           "Named protein modification" 
+_pdbx_chem_comp_pcm.position                           "Amino-acid side chain" 
+_pdbx_chem_comp_pcm.polypeptide_position               "Any position" 
+_pdbx_chem_comp_pcm.comp_id_linking_atom               ? 
+_pdbx_chem_comp_pcm.modified_residue_id_linking_atom   ? 
+_pdbx_chem_comp_pcm.uniprot_specific_ptm_accession     PTM-0187 
+_pdbx_chem_comp_pcm.uniprot_generic_ptm_accession      PTM-0193 
+# 

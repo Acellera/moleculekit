@@ -114,6 +114,30 @@ MODIFIED_PROTEIN_RESIDUES = (
         single_letter="K",
         resname_variants=[],
     ),
+    _Residue(
+        full_name="N-trimethyl-lysine",
+        resname="M3L",
+        single_letter="K",
+        resname_variants=[],
+    ),
+    _Residue(
+        full_name="Phosphoserine",
+        resname="SEP",
+        single_letter="S",
+        resname_variants=[],
+    ),
+    _Residue(
+        full_name="Phosphothreonine",
+        resname="TPO",
+        single_letter="T",
+        resname_variants=[],
+    ),
+    _Residue(
+        full_name="Phosphotyrosine",
+        resname="PTR",
+        single_letter="Y",
+        resname_variants=[],
+    ),
 )
 NUCLEIC_RESIDUES = (
     _Residue(
