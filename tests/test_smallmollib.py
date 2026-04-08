@@ -137,7 +137,9 @@ def _test_writeSmiles(tmp_path):
     with open(os.path.join(curr_dir, "test_smallmol", "fda_drugs_light.smi"), "r") as f:
         reflines = f.readlines()[1:]
 
-    assert filelines == reflines, "The smiles written were not the expected ones"
+    assert (
+        filelines == reflines
+    ), f"Failed comparison of {tmpfile} vs {os.path.join(curr_dir, 'test_smallmol', 'fda_drugs_light.smi')}"
 
 
 def _test_readSmiles():
