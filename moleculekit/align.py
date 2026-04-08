@@ -64,6 +64,128 @@ def _pp_align(
         return newcoords
 
 
+def _find_optimal_chain_mapping(mol, ref, molsel, refsel, mol_frame, ref_frame):
+    """Find optimal chain-to-chain mapping using greedy RMSD matching.
+
+    Computes pairwise Kabsch RMSD between all chain pairs on CA atoms, then
+    greedily assigns chains starting from the best (lowest RMSD) pair.
+
+    Parameters
+    ----------
+    mol, ref : Molecule objects
+    molsel, refsel : np.ndarray (boolean masks, already resolved from atomselect)
+    mol_frame, ref_frame : int
+
+    Returns
+    -------
+    (mapping, mol_chains) or None
+        mapping: dict mapping mol_chain_id -> ref_chain_id
+        mol_chains: mol chain IDs in file order
+        Returns None if mapping is unnecessary (single chain or fewer).
+    """
+    mol_prot = mol.atomselect("protein")
+    ref_prot = ref.atomselect("protein")
+
+    mol_ca = mol.name == "CA"
+    ref_ca = ref.name == "CA"
+
+    mol_eff = molsel & mol_prot
+    ref_eff = refsel & ref_prot
+
+    # Get unique chains in file order
+    def _unique_ordered(arr):
+        _, first_idx = np.unique(arr, return_index=True)
+        order = np.argsort(first_idx)
+        return np.unique(arr)[order]
+
+    mol_chains = _unique_ordered(mol.chain[mol_eff])
+    ref_chains = _unique_ordered(ref.chain[ref_eff])
+
+    if len(mol_chains) <= 1 or len(ref_chains) <= 1:
+        return None
+
+    # Build per-chain CA coordinates
+    mol_ca_coords = {}
+    for ch in mol_chains:
+        mask = mol_eff & mol_ca & (mol.chain == ch)
+        mol_ca_coords[ch] = mol.coords[mask, :, mol_frame].astype(np.float64)
+
+    ref_ca_coords = {}
+    for ch in ref_chains:
+        mask = ref_eff & ref_ca & (ref.chain == ch)
+        ref_ca_coords[ch] = ref.coords[mask, :, ref_frame].astype(np.float64)
+
+    # Compute pairwise RMSD for all chain pairs
+    pairs = []
+    for mc in mol_chains:
+        P_full = mol_ca_coords[mc]
+        if P_full.shape[0] == 0:
+            continue
+        for rc in ref_chains:
+            Q_full = ref_ca_coords[rc]
+            if Q_full.shape[0] == 0:
+                continue
+            n_min = min(P_full.shape[0], Q_full.shape[0])
+            n_max = max(P_full.shape[0], Q_full.shape[0])
+            if n_min / n_max < 0.5:
+                continue
+            P = P_full[:n_min]
+            Q = Q_full[:n_min]
+            _, rmsd = _pp_measure_fit(P - P.mean(axis=0), Q - Q.mean(axis=0))
+            pairs.append((rmsd, mc, rc))
+
+    # Greedy assignment: best RMSD pair first, skip already-used chains
+    pairs.sort()
+    mapping = {}
+    used_mol = set()
+    used_ref = set()
+    for rmsd, mc, rc in pairs:
+        if mc in used_mol or rc in used_ref:
+            continue
+        mapping[mc] = rc
+        used_mol.add(mc)
+        used_ref.add(rc)
+
+    if not mapping:
+        return None
+
+    return mapping, mol_chains
+
+
+def _reorder_ref_atoms(ref, refsel, mapping, mol_chains):
+    """Reorder ref's selected atoms so chains appear in mol's chain order.
+
+    Parameters
+    ----------
+    ref : Molecule
+    refsel : np.ndarray (boolean mask)
+    mapping : dict (mol_chain -> ref_chain)
+    mol_chains : array of mol chain IDs in file order
+
+    Returns
+    -------
+    np.ndarray : integer index array of ref atoms in reordered chain order
+    """
+    reordered = []
+    used_ref_chains = set()
+
+    for mc in mol_chains:
+        if mc in mapping:
+            rc = mapping[mc]
+            used_ref_chains.add(rc)
+            indices = np.where(refsel & (ref.chain == rc))[0]
+            reordered.append(indices)
+
+    # Append unmatched ref chains
+    all_ref_indices = np.where(refsel)[0]
+    matched_set = set(np.concatenate(reordered)) if reordered else set()
+    unmatched = np.array([i for i in all_ref_indices if i not in matched_set])
+    if len(unmatched) > 0:
+        reordered.append(unmatched)
+
+    return np.concatenate(reordered)
+
+
 def molTMscore(mol, ref, molsel="protein", refsel="protein"):
     return molTMalign(mol, ref, molsel, refsel, return_alignments=False)
 
@@ -136,10 +258,38 @@ def molTMalign(
     if refsel.sum() == 0:
         raise RuntimeError("No atoms in `refsel`")
 
-    seqx = mol.getSequence(dict_key=None, sel=molsel, _logger=False)["protein"].encode(
-        "UTF-8"
+    # Find optimal chain mapping and reorder ref atoms to match mol's chain order
+    result = _find_optimal_chain_mapping(
+        mol, ref, molsel, refsel, mol_frame=frames[0], ref_frame=ref.frame
     )
-    seqy = ref.getSequence(dict_key=None, sel=refsel, _logger=False)["protein"].encode(
+    if result is not None:
+        mapping, mol_chains = result
+        ref_indices = _reorder_ref_atoms(ref, refsel, mapping, mol_chains)
+        # Build reordered ref sequence from per-chain sequences in mol's chain order
+        ref_seq_by_chain = ref.getSequence(
+            dict_key="chain", sel=refsel, _logger=False
+        )
+        seqy = "".join(
+            ref_seq_by_chain[mapping[mc]] for mc in mol_chains if mc in mapping
+        )
+        # Add sequences from unmatched ref chains
+        matched_ref_chains = set(mapping.values())
+        ref_prot = ref.atomselect("protein")
+        all_ref_chains_arr = ref.chain[refsel & ref_prot]
+        if len(all_ref_chains_arr):
+            _, first_idx = np.unique(all_ref_chains_arr, return_index=True)
+            all_ref_chains = np.unique(all_ref_chains_arr)[np.argsort(first_idx)]
+            for rc in all_ref_chains:
+                if rc not in matched_ref_chains and rc in ref_seq_by_chain:
+                    seqy += ref_seq_by_chain[rc]
+        seqy = seqy.encode("UTF-8")
+    else:
+        ref_indices = None
+        seqy = ref.getSequence(dict_key=None, sel=refsel, _logger=False)[
+            "protein"
+        ].encode("UTF-8")
+
+    seqx = mol.getSequence(dict_key=None, sel=molsel, _logger=False)["protein"].encode(
         "UTF-8"
     )
 
@@ -152,6 +302,9 @@ def molTMalign(
             f"No protein sequence found in `ref` for selection '{refsel}'"
         )
 
+    # Select ref coordinates using reordered indices or original mask
+    ref_coord_sel = ref_indices if ref_indices is not None else refsel
+
     # Transpose to have fastest axis as last
     if matchingframes:
         TM1 = []
@@ -163,7 +316,7 @@ def molTMalign(
             coords1 = np.transpose(
                 mol.coords[molsel, :, f].astype(np.float64), (2, 0, 1)
             ).copy()
-            coords2 = ref.coords[refsel, :, f].astype(np.float64).copy()
+            coords2 = ref.coords[ref_coord_sel, :, f].astype(np.float64).copy()
             res = tmalign(coords1, coords2, seqx, seqy)
             TM1.append(res[0][0])
             rmsd.append(res[1][0])
@@ -174,7 +327,7 @@ def molTMalign(
         coords1 = np.transpose(
             mol.coords[molsel][:, :, frames].astype(np.float64), (2, 0, 1)
         ).copy()
-        coords2 = ref.coords[refsel, :, ref.frame].astype(np.float64).copy()
+        coords2 = ref.coords[ref_coord_sel, :, ref.frame].astype(np.float64).copy()
         TM1, rmsd, nali, t0, u0 = tmalign(coords1, coords2, seqx, seqy)
 
     if return_alignments:
