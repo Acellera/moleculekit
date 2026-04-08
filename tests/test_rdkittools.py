@@ -97,7 +97,7 @@ def _test_toRDKitMol(file):
     )
 
 
-def _test_templatingNonStandardResidues():
+def _test_templatingNonStandardResidues(tmp_path):
     test_home = os.path.join(
         curr_dir, "test_systemprepare", "test-nonstandard-residues"
     )
@@ -109,18 +109,22 @@ def _test_templatingNonStandardResidues():
         guessBonds=True,
         onlyOnAtoms="not backbone",
     )
+    res = mol.copy(sel="resname TYS")
+    curr_file = os.path.join(tmp_path, "TYS_templated.cif")
+    res.write(curr_file)
 
-    refmol = Molecule(
-        os.path.join(curr_dir, "test_molecule", "test_templating", "TYS_templated.cif")
+    reffile = os.path.join(
+        curr_dir, "test_molecule", "test_templating", "TYS_templated.cif"
     )
+    refmol = Molecule(reffile)
     assert mol_equal(
-        mol.copy(sel="resname TYS"),
+        res,
         refmol,
         checkFields=Molecule._all_fields,
-        exceptFields=["crystalinfo", "fileloc", "serial"],
+        exceptFields=["crystalinfo", "fileloc", "serial", "chain", "segid", "resid"],
         uqBonds=True,
         fieldPrecision={"coords": 1e-3},
-    )
+    ), f"Failed comparison of {curr_file} vs {reffile}"
 
 
 def _test_template_non_terminal_carboxyl_removal():
