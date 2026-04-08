@@ -65,7 +65,10 @@ def _pp_align(
 
 
 def _find_optimal_chain_mapping(mol, ref, molsel, refsel, mol_frame, ref_frame):
-    """Find optimal chain-to-chain mapping using Kabsch RMSD and the Hungarian algorithm.
+    """Find optimal chain-to-chain mapping using greedy RMSD matching.
+
+    Computes pairwise Kabsch RMSD between all chain pairs on CA atoms, then
+    greedily assigns chains starting from the best (lowest RMSD) pair.
 
     Parameters
     ----------
@@ -80,8 +83,6 @@ def _find_optimal_chain_mapping(mol, ref, molsel, refsel, mol_frame, ref_frame):
         ref_chains: ref chain IDs in file order
         Returns None if mapping is unnecessary (single chain or fewer).
     """
-    from scipy.optimize import linear_sum_assignment
-
     mol_prot = mol.atomselect("protein")
     ref_prot = ref.atomselect("protein")
 
@@ -114,13 +115,13 @@ def _find_optimal_chain_mapping(mol, ref, molsel, refsel, mol_frame, ref_frame):
         mask = ref_eff & ref_ca & (ref.chain == ch)
         ref_ca_coords[ch] = ref.coords[mask, :, ref_frame].astype(np.float64)
 
-    # Build cost matrix using Kabsch RMSD
-    cost = np.full((len(mol_chains), len(ref_chains)), 1e9)
-    for i, mc in enumerate(mol_chains):
+    # Compute pairwise RMSD for all chain pairs
+    pairs = []
+    for mc in mol_chains:
         P_full = mol_ca_coords[mc]
         if P_full.shape[0] == 0:
             continue
-        for j, rc in enumerate(ref_chains):
+        for rc in ref_chains:
             Q_full = ref_ca_coords[rc]
             if Q_full.shape[0] == 0:
                 continue
@@ -131,14 +132,19 @@ def _find_optimal_chain_mapping(mol, ref, molsel, refsel, mol_frame, ref_frame):
             P = P_full[:n_min]
             Q = Q_full[:n_min]
             _, rmsd = _pp_measure_fit(P - P.mean(axis=0), Q - Q.mean(axis=0))
-            cost[i, j] = rmsd
+            pairs.append((rmsd, mc, rc))
 
-    row_ind, col_ind = linear_sum_assignment(cost)
-
+    # Greedy assignment: best RMSD pair first, skip already-used chains
+    pairs.sort()
     mapping = {}
-    for r, c in zip(row_ind, col_ind):
-        if cost[r, c] < 1e9:
-            mapping[ref_chains[c]] = mol_chains[r]
+    used_mol = set()
+    used_ref = set()
+    for rmsd, mc, rc in pairs:
+        if mc in used_mol or rc in used_ref:
+            continue
+        mapping[rc] = mc
+        used_mol.add(mc)
+        used_ref.add(rc)
 
     if not mapping:
         return None
