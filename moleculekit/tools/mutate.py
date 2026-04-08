@@ -648,7 +648,11 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
     sel : str
         Atom selection string identifying a single residue.
     newres : str
-        3-letter code of the target residue (e.g. ``"ARG"``).
+        3-letter code of the target residue (e.g. ``"ARG"``).  Protonation
+        variants such as ``"HID"``, ``"HIE"``, ``"HIP"``, ``"CYX"``,
+        ``"ASH"``, ``"GLH"``, ``"LYN"`` etc. are also accepted -- the
+        heavy-atom geometry is taken from the parent residue and the
+        requested name is preserved.
     rotamer_mode : str, optional
         ``"best"`` (lowest clash energy, default), ``"first"`` (highest
         probability), or ``"random"`` (sampled by probability).
@@ -656,10 +660,16 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
         If True, run soft-potential OpenMM minimization after rotamer
         placement.  Requires OpenMM.  Default False.
     """
-    if newres not in RESIDUE_ORDER:
+    from moleculekit.residues import ORIGINAL_RESIDUE_NAME_TABLE
+
+    # Resolve protonation variants (HID->HIS, CYX->CYS, etc.) to the
+    # base residue for template geometry and rotamer lookup.
+    baseres = ORIGINAL_RESIDUE_NAME_TABLE.get(newres, newres)
+    if baseres not in RESIDUE_ORDER:
         raise ValueError(
             f"Unknown target residue '{newres}'. "
-            f"Supported: {sorted(RESIDUE_ORDER.keys())}"
+            f"Supported: {sorted(RESIDUE_ORDER.keys())} and their "
+            f"protonation variants."
         )
 
     sel_mask = mol.atomselect(sel, strict=True)
@@ -710,13 +720,13 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
 
     # ── Phase 1: Template superposition ──────────────────────────────
     placed_coords, placed_elements, placed_bonds = _build_template_on_backbone(
-        newres, bb_coords
+        baseres, bb_coords
     )
 
     # ── Phase 2: Rotamer selection ───────────────────────────────────
-    sc_names = [a for a in RESIDUE_ORDER[newres] if a not in BACKBONE_ATOMS]
+    sc_names = [a for a in RESIDUE_ORDER[baseres] if a not in BACKBONE_ATOMS]
 
-    if sc_names and newres not in ("ALA", "GLY"):
+    if sc_names and baseres not in ("ALA", "GLY"):
         phi, psi = _compute_phi_psi(mol, sel_idx)
         if phi is None or psi is None:
             logger.warning(
@@ -728,11 +738,11 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
         psi_bin = _snap_to_bin(psi)
 
         rotlib = _load_rotamer_library()
-        rotamers = rotlib.get(newres, {}).get((phi_bin, psi_bin), [])
+        rotamers = rotlib.get(baseres, {}).get((phi_bin, psi_bin), [])
 
         if not rotamers:
             logger.warning(
-                f"No rotamers found for {newres} at phi={phi_bin}, psi={psi_bin}. "
+                f"No rotamers found for {baseres} at phi={phi_bin}, psi={psi_bin}. "
                 f"Using template geometry."
             )
         else:
@@ -742,7 +752,7 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
                 placed_coords = _select_best_rotamer(
                     placed_coords,
                     placed_elements,
-                    newres,
+                    baseres,
                     rotamers,
                     surr_coords,
                     surr_elements,
@@ -750,14 +760,14 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
             elif rotamer_mode == "first":
                 _apply_chi_angles(
                     placed_coords,
-                    newres,
+                    baseres,
                     rotamers[0][1:],
                 )
             elif rotamer_mode == "random":
                 probs = np.array([r[0] for r in rotamers])
                 probs /= probs.sum()
                 chosen = rotamers[np.random.choice(len(rotamers), p=probs)]
-                _apply_chi_angles(placed_coords, newres, chosen[1:])
+                _apply_chi_angles(placed_coords, baseres, chosen[1:])
             else:
                 raise ValueError(
                     f"Unknown rotamer_mode '{rotamer_mode}'. "
