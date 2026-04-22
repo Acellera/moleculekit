@@ -106,5 +106,29 @@ extentions.append(
         language="c++",
     )
 )
+# Port of scipy.spatial.cKDTree (scipy BSD-3-Clause license).  See
+# moleculekit/kdtree/README.md for licensing details.  We strip the
+# scipy.sparse dependency, so only the Cython/C++ sources are needed.
+extentions.append(
+    Extension(
+        "moleculekit.kdtree._ckdtree",
+        sources=[
+            "moleculekit/kdtree/src/build.cxx",
+            "moleculekit/kdtree/src/count_neighbors.cxx",
+            "moleculekit/kdtree/src/query.cxx",
+            "moleculekit/kdtree/src/query_ball_point.cxx",
+            "moleculekit/kdtree/src/query_ball_tree.cxx",
+            "moleculekit/kdtree/src/query_pairs.cxx",
+            "moleculekit/kdtree/src/sparse_distances.cxx",
+            "moleculekit/kdtree/_ckdtree.pyx",
+        ],
+        include_dirs=[
+            "moleculekit/kdtree/src",
+            numpy.get_include(),
+        ],
+        extra_compile_args=["-O3", "-w"],
+        language="c++",
+    )
+)
 
 setup(zip_safe=False, ext_modules=cythonize(extentions, language_level="3"))

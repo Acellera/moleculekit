@@ -36,7 +36,7 @@ include = ["moleculekit*"]
 "moleculekit.share" = ["**/*"]
 
 [tool.setuptools.exclude-package-data]
-"*" = ["*.c", "*.cpp", "*.h", "*.pyx", "*.pxd", ".gitignore"]
+"*" = ["*.c", "*.cpp", "*.cxx", "*.h", "*.pyx", "*.pxd", ".gitignore"]
 
 [tool.setuptools_scm]
 
