@@ -551,84 +551,6 @@ def _select_best_rotamer(
     return best_coords
 
 
-def _minimize_with_openmm(mol, new_atom_indices):
-    """Run a soft-potential energy minimization on the new side-chain atoms.
-
-    All other atoms are frozen (mass = 0).  Uses a soft repulsive
-    ``CustomNonbondedForce`` so that overlapping atoms are gently pushed apart
-    rather than exploding.
-
-    Parameters
-    ----------
-    mol : Molecule
-        Must already contain the new atoms.
-    new_atom_indices : set of int
-        Indices of the newly placed side-chain atoms.
-
-    Returns
-    -------
-    bool
-        True if minimization was performed, False if OpenMM is unavailable.
-    """
-    try:
-        from openmm import CustomNonbondedForce, System, LangevinMiddleIntegrator
-        from openmm import LocalEnergyMinimizer, Platform, Context
-        from openmm import unit as u
-    except ImportError:
-        logger.info("OpenMM not available -- skipping soft-potential minimization.")
-        return False
-
-    n_atoms = mol.numAtoms
-    frame = mol.frame
-
-    system = System()
-    for i in range(n_atoms):
-        mass = 12.0 if i in new_atom_indices else 0.0
-        system.addParticle(mass * u.dalton)
-
-    # Soft repulsive potential: C / ((r/0.2)^4 + 1)
-    # C = 10 kJ/mol by default; 0.2 nm = 2 Angstrom core
-    force = CustomNonbondedForce("C / ((r/0.2)^4 + 1); C=10")
-    force.setNonbondedMethod(CustomNonbondedForce.NoCutoff)
-    for _ in range(n_atoms):
-        force.addParticle([])
-    # Only compute interactions that involve a new atom
-    force.addInteractionGroup(list(new_atom_indices), list(range(n_atoms)))
-    system.addForce(force)
-
-    integrator = LangevinMiddleIntegrator(
-        300 * u.kelvin, 1.0 / u.picosecond, 0.002 * u.picoseconds
-    )
-
-    platform = Platform.getPlatformByName("Reference")
-    context = Context(system, integrator, platform)
-
-    positions = mol.coords[:, :, frame].astype(np.float64) * 0.1  # Angstrom -> nm
-    context.setPositions(positions * u.nanometer)
-
-    e_before = (
-        context.getState(getEnergy=True)
-        .getPotentialEnergy()
-        .value_in_unit(u.kilocalories_per_mole)
-    )
-
-    LocalEnergyMinimizer.minimize(context, maxIterations=200)
-
-    state = context.getState(getPositions=True, getEnergy=True)
-    e_after = state.getPotentialEnergy().value_in_unit(u.kilocalories_per_mole)
-    logger.info(
-        f"Soft-potential minimization: {e_before:.1f} -> {e_after:.1f} kcal/mol "
-        f"(delta = {e_after - e_before:.1f} kcal/mol)"
-    )
-
-    new_positions = state.getPositions(asNumpy=True).value_in_unit(u.nanometer)
-    new_positions = np.array(new_positions) * 10.0  # nm -> Angstrom
-
-    for idx in new_atom_indices:
-        mol.coords[idx, :, frame] = new_positions[idx].astype(np.float32)
-
-    return True
-
 
 def _get_surrounding_atoms(mol, res_idx, cutoff=8.0):
     """Collect coordinates and elements of atoms surrounding a residue.
@@ -890,4 +812,6 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
     # ── Phase 3: Optional minimization ───────────────────────────────
     if minimize:
         new_indices = set(range(insert_pos, insert_pos + n_new))
-        _minimize_with_openmm(mol, new_indices)
+        from moleculekit.openmmtools import minimize_soft_potential
+
+        minimize_soft_potential(mol, new_indices)
