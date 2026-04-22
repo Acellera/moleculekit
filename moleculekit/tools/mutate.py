@@ -814,4 +814,4 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
         new_indices = set(range(insert_pos, insert_pos + n_new))
         from moleculekit.openmmtools import minimize_soft_potential
 
-        minimize_soft_potential(mol, new_indices)
+        minimize_soft_potential(mol, new_indices, restrain_bonded=False)

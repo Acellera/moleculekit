@@ -710,4 +710,4 @@ def extend_residue_from_smiles(
         from moleculekit.openmmtools import minimize_soft_potential
 
         residue_indices = set(range(selidx[0], selidx[0] + new_residue.numAtoms))
-        minimize_soft_potential(mol, residue_indices)
+        minimize_soft_potential(mol, residue_indices, restrain_bonded=False)
