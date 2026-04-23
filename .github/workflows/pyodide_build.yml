@@ -18,6 +18,10 @@ jobs:
         env:
           CIBW_PLATFORM: pyodide
           CIBW_TEST_SKIP: "*pyodide*"
+          # Force the version to avoid setuptools_scm producing a
+          # .dev0+g<sha>.d<date> local version when the tree is detected
+          # as dirty during the build.
+          SETUPTOOLS_SCM_PRETEND_VERSION_FOR_MOLECULEKIT: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
 
       - name: Upload wheel artifact(s)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
