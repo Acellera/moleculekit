@@ -78,6 +78,27 @@ RESIDUE_ORDER = {
         "OH",
     ],
     "VAL": ["N", "CA", "C", "O", "CB", "CG1", "CG2"],
+    # Non-standard natural amino acids (21st and 22nd)
+    "SEC": ["N", "CA", "C", "O", "CB", "SE"],
+    "PYL": [
+        "N",
+        "CA",
+        "C",
+        "O",
+        "CB",
+        "CG",
+        "CD",
+        "CE",
+        "NZ",
+        "C2",
+        "O2",
+        "CA2",
+        "N2",
+        "CE2",
+        "CD2",
+        "CG2",
+        "CB2",
+    ],
     # Modified amino acids
     "MSE": ["N", "CA", "C", "O", "CB", "CG", "SE", "CE"],
     "MLZ": ["N", "CA", "C", "O", "CB", "CG", "CD", "CE", "NZ", "CM"],
@@ -127,6 +148,8 @@ CHI_ANGLES = {
         "GLU": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
         "TYR": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
         "MET": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
+        "SEC": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "SE"]},
+        "PYL": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
         "MSE": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
         "MLZ": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
         "MLY": {"axis": ["CA", "CB"], "ref_plane": ["N", "CA", "CB", "CG"]},
@@ -150,6 +173,7 @@ CHI_ANGLES = {
         "GLU": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "CD"]},
         "TYR": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "CD1"]},
         "MET": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "SD"]},
+        "PYL": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "CD"]},
         "MSE": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "SE"]},
         "MLZ": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "CD"]},
         "MLY": {"axis": ["CB", "CG"], "ref_plane": ["CA", "CB", "CG", "CD"]},
@@ -162,6 +186,7 @@ CHI_ANGLES = {
         "GLU": {"axis": ["CG", "CD"], "ref_plane": ["CB", "CG", "CD", "OE1"]},
         "LYS": {"axis": ["CG", "CD"], "ref_plane": ["CB", "CG", "CD", "CE"]},
         "MET": {"axis": ["CG", "SD"], "ref_plane": ["CB", "CG", "SD", "CE"]},
+        "PYL": {"axis": ["CG", "CD"], "ref_plane": ["CB", "CG", "CD", "CE"]},
         "MSE": {"axis": ["CG", "SE"], "ref_plane": ["CB", "CG", "SE", "CE"]},
         "MLZ": {"axis": ["CG", "CD"], "ref_plane": ["CB", "CG", "CD", "CE"]},
         "MLY": {"axis": ["CG", "CD"], "ref_plane": ["CB", "CG", "CD", "CE"]},
@@ -170,6 +195,7 @@ CHI_ANGLES = {
     "CHI4": {
         "ARG": {"axis": ["CD", "NE"], "ref_plane": ["CG", "CD", "NE", "CZ"]},
         "LYS": {"axis": ["CD", "CE"], "ref_plane": ["CG", "CD", "CE", "NZ"]},
+        "PYL": {"axis": ["CD", "CE"], "ref_plane": ["CG", "CD", "CE", "NZ"]},
         "MLZ": {"axis": ["CD", "CE"], "ref_plane": ["CG", "CD", "CE", "NZ"]},
         "MLY": {"axis": ["CD", "CE"], "ref_plane": ["CG", "CD", "CE", "NZ"]},
         "M3L": {"axis": ["CD", "CE"], "ref_plane": ["CG", "CD", "CE", "NZ"]},
@@ -180,6 +206,8 @@ CHI_ANGLES = {
 # These have their own CIF templates and RESIDUE_ORDER entries, but reuse
 # the parent's rotamers since the modifications are at the chain terminus.
 _ROTAMER_PARENT = {
+    "SEC": "CYS",
+    "PYL": "LYS",
     "MSE": "MET",
     "MLZ": "LYS",
     "MLY": "LYS",
@@ -632,9 +660,12 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
         variants such as ``"HID"``, ``"HIE"``, ``"HIP"``, ``"CYX"``,
         ``"ASH"``, ``"GLH"``, ``"LYN"`` etc. are also accepted -- the
         heavy-atom geometry is taken from the parent residue and the
-        requested name is preserved.  Modified amino acids ``"MSE"``,
-        ``"MLZ"``, and ``"MLY"`` are also supported -- they use their own
-        CIF templates but the parent's rotamer library entries.
+        requested name is preserved.  The non-standard natural amino acids
+        ``"SEC"`` (selenocysteine) and ``"PYL"`` (pyrrolysine) and the
+        modified amino acids ``"MSE"``, ``"MLZ"``, ``"MLY"``, ``"M3L"``,
+        ``"SEP"``, ``"TPO"`` and ``"PTR"`` are also supported -- they use
+        their own CIF templates but reuse their parent residue's rotamer
+        library entries.
     rotamer_mode : str, optional
         ``"best"`` (lowest clash energy, default), ``"first"`` (highest
         probability), or ``"random"`` (sampled by probability).

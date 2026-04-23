@@ -1,0 +1,171 @@
+data_PYL
+# 
+_chem_comp.id                                    PYL 
+_chem_comp.name                                  PYRROLYSINE 
+_chem_comp.type                                  "L-PEPTIDE LINKING" 
+_chem_comp.pdbx_type                             ATOMP 
+_chem_comp.formula                               "C12 H21 N3 O3" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         ? 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2024-02-07 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        255.313 
+_chem_comp.one_letter_code                       O 
+_chem_comp.three_letter_code                     PYL 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        Corina 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        ? 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+PYL CB2  CB2  C 0 1 N N N N N N 3.704  72.211 1.136 3.980  2.442  -0.324 CB2  PYL 1  
+PYL CG2  CG2  C 0 1 N N R N N N 4.671  71.449 2.044 4.412  1.125  0.325  CG2  PYL 2  
+PYL CD2  CD2  C 0 1 N N N N N N 3.984  70.864 3.276 5.952  0.975  0.313  CD2  PYL 3  
+PYL CE2  CE2  C 0 1 N N N N N N 5.175  70.696 4.223 6.169  -0.493 0.022  CE2  PYL 4  
+PYL N2   N2   N 0 1 N N N N N N 6.149  71.534 3.873 5.110  -1.035 -0.430 N2   PYL 5  
+PYL CA2  CA2  C 0 1 N N R N N N 5.739  72.323 2.701 3.995  -0.087 -0.540 CA2  PYL 6  
+PYL C2   C2   C 0 1 N N N N N N 6.927  72.567 1.767 2.729  -0.703 -0.004 C2   PYL 7  
+PYL O2   O2   O 0 1 N N N N N N 6.764  72.855 0.582 2.784  -1.700 0.685  O2   PYL 8  
+PYL NZ   NZ   N 0 1 N N N N N N 8.114  72.417 2.351 1.535  -0.146 -0.288 NZ   PYL 9  
+PYL CE   CE   C 0 1 N N N N N N 9.389  72.611 1.647 0.304  -0.745 0.234  CE   PYL 10 
+PYL CD   CD   C 0 1 N N N N N N 10.162 73.741 2.330 -0.900 0.075  -0.233 CD   PYL 11 
+PYL CG   CG   C 0 1 N N N N N N 9.403  75.065 2.218 -2.185 -0.550 0.312  CG   PYL 12 
+PYL CB   CB   C 0 1 N N N N N N 10.049 76.170 3.058 -3.389 0.270  -0.155 CB   PYL 13 
+PYL CA   CA   C 0 1 N N S Y N N 9.934  75.876 4.556 -4.675 -0.355 0.390  CA   PYL 14 
+PYL C    C    C 0 1 N N N Y N Y 10.671 76.956 5.350 -5.849 0.520  0.034  C    PYL 15 
+PYL OXT  OXT  O 0 1 N Y N Y N Y 11.889 76.767 5.558 -6.114 1.616  0.762  OXT  PYL 16 
+PYL O    O    O 0 1 N N N Y N Y 9.999  77.938 5.732 -6.552 0.234  -0.906 O    PYL 17 
+PYL N    N    N 0 1 N N N Y Y N 8.521  75.845 4.961 -4.860 -1.687 -0.201 N    PYL 18 
+PYL HXT  HXT  H 0 1 N Y N Y N Y 12.241 77.493 6.060 -6.878 2.146  0.495  HXT  PYL 19 
+PYL HA   HA   H 0 1 N N N Y N N 10.400 74.901 4.764 -4.604 -0.445 1.474  HA   PYL 20 
+PYL H    H    H 0 1 N N N Y Y N 8.459  75.652 5.940 -5.668 -2.148 0.192  H    PYL 21 
+PYL H2   HN2  H 0 1 N Y N Y Y N 8.100  76.731 4.768 -4.929 -1.631 -1.206 H2   PYL 22 
+PYL HB3  HB3  H 0 1 N N N N N N 11.113 76.247 2.790 -3.298 1.292  0.214  HB3  PYL 23 
+PYL HB2  HB2  H 0 1 N N N N N N 9.546  77.124 2.841 -3.423 0.279  -1.244 HB2  PYL 24 
+PYL HG3  HG3  H 0 1 N N N N N N 9.393  75.380 1.164 -2.277 -1.572 -0.057 HG3  PYL 25 
+PYL HG2  HG2  H 0 1 N N N N N N 8.370  74.913 2.565 -2.152 -0.558 1.401  HG2  PYL 26 
+PYL HD3  HD3  H 0 1 N N N N N N 10.299 73.493 3.393 -0.808 1.097  0.135  HD3  PYL 27 
+PYL HD2  HD2  H 0 1 N N N N N N 11.145 73.847 1.849 -0.933 0.084  -1.323 HD2  PYL 28 
+PYL HE3  HE3  H 0 1 N N N N N N 9.978  71.683 1.687 0.213  -1.767 -0.135 HE3  PYL 29 
+PYL HE2  HE2  H 0 1 N N N N N N 9.195  72.877 0.597 0.338  -0.753 1.323  HE2  PYL 30 
+PYL HZ   HZ   H 0 1 N N N N N N 8.139  72.159 3.317 1.491  0.651  -0.839 HZ   PYL 31 
+PYL HA2  HA2  H 0 1 N N N N N N 5.301  73.283 3.010 3.859  0.218  -1.578 HA2  PYL 32 
+PYL HE22 HE22 H 0 0 N N N N N N 5.219  70.003 5.050 7.102  -1.015 0.178  HE22 PYL 33 
+PYL HD32 HD32 H 0 0 N N N N N N 3.235  71.556 3.688 6.391  1.590  -0.473 HD32 PYL 34 
+PYL HD22 HD22 H 0 0 N N N N N N 3.507  69.899 3.052 6.371  1.239  1.284  HD22 PYL 35 
+PYL HG22 HG22 H 0 0 N N N N N N 5.154  70.643 1.473 4.016  1.041  1.337  HG22 PYL 36 
+PYL HB12 HB12 H 0 0 N N N N N N 4.251  72.609 0.269 4.346  2.478  -1.350 HB12 PYL 37 
+PYL HB22 HB22 H 0 0 N N N N N N 2.913  71.530 0.790 2.892  2.507  -0.324 HB22 PYL 38 
+PYL HB32 HB32 H 0 0 N N N N N N 3.252  73.042 1.697 4.395  3.278  0.239  HB32 PYL 39 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+PYL CB2 CG2  SING N N 1  
+PYL CB2 HB12 SING N N 2  
+PYL CB2 HB22 SING N N 3  
+PYL CB2 HB32 SING N N 4  
+PYL CG2 CD2  SING N N 5  
+PYL CG2 CA2  SING N N 6  
+PYL CG2 HG22 SING N N 7  
+PYL CD2 CE2  SING N N 8  
+PYL CD2 HD32 SING N N 9  
+PYL CD2 HD22 SING N N 10 
+PYL CE2 N2   DOUB N N 11 
+PYL CE2 HE22 SING N N 12 
+PYL N2  CA2  SING N N 13 
+PYL CA2 C2   SING N N 14 
+PYL CA2 HA2  SING N N 15 
+PYL C2  NZ   SING N N 16 
+PYL C2  O2   DOUB N N 17 
+PYL NZ  CE   SING N N 18 
+PYL NZ  HZ   SING N N 19 
+PYL CE  CD   SING N N 20 
+PYL CE  HE3  SING N N 21 
+PYL CE  HE2  SING N N 22 
+PYL CD  CG   SING N N 23 
+PYL CD  HD3  SING N N 24 
+PYL CD  HD2  SING N N 25 
+PYL CG  CB   SING N N 26 
+PYL CG  HG3  SING N N 27 
+PYL CG  HG2  SING N N 28 
+PYL CB  CA   SING N N 29 
+PYL CB  HB3  SING N N 30 
+PYL CB  HB2  SING N N 31 
+PYL CA  C    SING N N 32 
+PYL CA  HA   SING N N 33 
+PYL CA  N    SING N N 34 
+PYL C   OXT  SING N N 35 
+PYL C   O    DOUB N N 36 
+PYL OXT HXT  SING N N 37 
+PYL N   H    SING N N 38 
+PYL N   H2   SING N N 39 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+PYL SMILES           ACDLabs              12.01 "O=C(NCCCCC(C(=O)O)N)C1N=CCC1C"                                                                                               
+PYL InChI            InChI                1.03  "InChI=1S/C12H21N3O3/c1-8-5-7-14-10(8)11(16)15-6-3-2-4-9(13)12(17)18/h7-10H,2-6,13H2,1H3,(H,15,16)(H,17,18)/t8-,9+,10-/m1/s1" 
+PYL InChIKey         InChI                1.03  ZFOMKMMPBOQKMC-KXUCPTDWSA-N                                                                                                   
+PYL SMILES_CANONICAL CACTVS               3.385 "C[C@@H]1CC=N[C@H]1C(=O)NCCCC[C@H](N)C(O)=O"                                                                                  
+PYL SMILES           CACTVS               3.385 "C[CH]1CC=N[CH]1C(=O)NCCCC[CH](N)C(O)=O"                                                                                      
+PYL SMILES_CANONICAL "OpenEye OEToolkits" 1.7.6 "C[C@@H]1CC=N[C@H]1C(=O)NCCCC[C@@H](C(=O)O)N"                                                                                 
+PYL SMILES           "OpenEye OEToolkits" 1.7.6 "CC1CC=NC1C(=O)NCCCCC(C(=O)O)N"                                                                                               
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+PYL "SYSTEMATIC NAME" ACDLabs              12.01 "N~6~-{[(2R,3R)-3-methyl-3,4-dihydro-2H-pyrrol-2-yl]carbonyl}-L-lysine"                     
+PYL "SYSTEMATIC NAME" "OpenEye OEToolkits" 1.7.6 "(2S)-2-azanyl-6-[[(2R,3R)-3-methyl-3,4-dihydro-2H-pyrrol-2-yl]carbonylamino]hexanoic acid" 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+PYL "Create component"       1999-07-08 RCSB 
+PYL "Modify descriptor"      2011-06-04 RCSB 
+PYL "Other modification"     2014-01-14 RCSB 
+PYL "Modify one letter code" 2014-07-17 RCSB 
+PYL "Other modification"     2024-02-07 PDBE 
+# 
