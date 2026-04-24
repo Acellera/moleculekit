@@ -20,6 +20,7 @@ import numpy as np
 
 from moleculekit.dihedral import dihedralAngle
 from moleculekit.util import rotationMatrix
+from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -233,51 +234,6 @@ VDW_RADII = {
 # ──────────────────────────────────────────────────────────────────────
 
 
-@functools.lru_cache(maxsize=32)
-def _load_template(resname):
-    """Load a CIF template for *resname* and return heavy-atom data.
-
-    Uses ``Molecule`` to read the CIF file, then filters to heavy atoms
-    that belong to the standard residue definition (``RESIDUE_ORDER``).
-
-    Returns
-    -------
-    coords : dict
-        ``{atom_name: np.ndarray([x, y, z])}`` for heavy atoms only.
-    elements : dict
-        ``{atom_name: element_symbol}``
-    bonds : list of tuple
-        ``[(atom1, atom2), ...]`` heavy-atom bonds.
-    """
-    from moleculekit.molecule import Molecule
-
-    cif_path = os.path.join(_CIF_DIR, f"{resname}.cif")
-    if not os.path.isfile(cif_path):
-        raise FileNotFoundError(f"No CIF template for residue {resname} at {cif_path}")
-
-    tmpl = Molecule(cif_path)
-    allowed = set(RESIDUE_ORDER.get(resname, []))
-
-    coords = {}
-    elements = {}
-    idx_to_name = {}
-    for i in range(tmpl.numAtoms):
-        name = tmpl.name[i]
-        if tmpl.element[i] == "H" or name not in allowed:
-            continue
-        coords[name] = tmpl.coords[i, :, 0].astype(np.float64)
-        elements[name] = tmpl.element[i]
-        idx_to_name[i] = name
-
-    bonds = []
-    for b in tmpl.bonds:
-        a1, a2 = int(b[0]), int(b[1])
-        if a1 in idx_to_name and a2 in idx_to_name:
-            bonds.append((idx_to_name[a1], idx_to_name[a2]))
-
-    return coords, elements, bonds
-
-
 # Map non-standard residue names in the library to standard names
 _ROTLIB_RESNAME_MAP = {
     "CYH": "CYS",
@@ -325,90 +281,98 @@ def _load_rotamer_library():
     return lib
 
 
-def _build_template_on_backbone(resname, bb_coords):
-    """Phase 1: superpose ideal template onto actual backbone N/CA/C.
-
-    Uses the Kabsch algorithm from :func:`moleculekit.align._pp_measure_fit`.
+def _build_template_on_backbone(resname, res: Molecule):
+    """Superpose ideal template onto the backbone N/CA/C of a residue.
 
     Parameters
     ----------
     resname : str
-    bb_coords : dict
-        ``{"N": array, "CA": array, "C": array}``
+        The name of the residue we want to mutate to.
+    res : Molecule
+        The residue whose backbone we want to align the template to.
 
     Returns
     -------
-    placed : dict
-        ``{atom_name: np.ndarray([x, y, z])}`` for all heavy atoms.
-    elements : dict
-    bonds : list of tuple
+    tmpl : Molecule
+        The template molecule (heavy atoms only) aligned to the backbone
+        of ``res``.
     """
-    from moleculekit.align import _pp_measure_fit
+    cif_path = os.path.join(_CIF_DIR, f"{resname}.cif")
+    if not os.path.isfile(cif_path):
+        raise FileNotFoundError(f"No CIF template for residue {resname} at {cif_path}")
 
-    template_coords, elements, bonds = _load_template(resname)
+    tmpl = Molecule(cif_path)
 
-    P = np.array(
-        [template_coords["N"], template_coords["CA"], template_coords["C"]],
-        dtype=np.float64,
+    allowed = set(RESIDUE_ORDER.get(resname, []))
+    keep = (tmpl.element != "H") & np.isin(tmpl.name, list(allowed))
+    tmpl.filter(keep, _logger=False)
+
+    tmpl_idx = np.array(
+        [np.where(tmpl.name == a)[0][0] for a in ("N", "CA", "C")], dtype=np.uint32
     )
-    Q = np.array(
-        [bb_coords["N"], bb_coords["CA"], bb_coords["C"]],
-        dtype=np.float64,
+    res_idx = np.array(
+        [np.where(res.name == a)[0][0] for a in ("N", "CA", "C")], dtype=np.uint32
     )
-    centroidP = P.mean(axis=0)
-    centroidQ = Q.mean(axis=0)
-    rot, _ = _pp_measure_fit(P - centroidP, Q - centroidQ)
+    tmpl.align(tmpl_idx, refmol=res, refsel=res_idx, _logger=False)
 
-    placed = {}
-    for name, coord in template_coords.items():
-        placed[name] = (coord - centroidP) @ rot.T + centroidQ
-
-    return placed, elements, bonds
+    return tmpl
 
 
-def _apply_chi_angles(coords, resname, chi_values):
-    """Rotate side-chain atoms to match the given chi angles.
+def _apply_chi_angles(tmpl, resname, chi_values):
+    """Rotate side-chain atoms of ``tmpl`` to match the given chi angles.
 
     Parameters
     ----------
-    coords : dict
-        ``{atom_name: np.ndarray}`` -- modified **in place** and returned.
+    tmpl : Molecule
+        Template molecule, modified **in place** and returned. Coordinates
+        of the current ``frame`` are rotated.
     resname : str
     chi_values : tuple
         ``(chi1, chi2, chi3, chi4)`` in **degrees**.
 
     Returns
     -------
-    coords : dict
+    tmpl : Molecule
     """
     order = RESIDUE_ORDER.get(resname)
     if order is None:
-        return coords
+        return tmpl
+
+    frame = tmpl.frame
+    name_to_idx = {n: i for i, n in enumerate(tmpl.name)}
 
     for chi_name, chi_target_deg in zip(("CHI1", "CHI2", "CHI3", "CHI4"), chi_values):
-        if chi_target_deg == 0.0 and chi_name not in CHI_ANGLES:
-            continue
         chi_def = CHI_ANGLES.get(chi_name, {}).get(resname)
         if chi_def is None:
             continue
 
         ref_atoms = chi_def["ref_plane"]
-        if any(a not in coords for a in ref_atoms):
+        if any(a not in name_to_idx for a in ref_atoms):
             continue
-        current_angle = dihedralAngle(np.array([coords[a] for a in ref_atoms]))
+        ref_coords = np.array(
+            [tmpl.coords[name_to_idx[a], :, frame] for a in ref_atoms],
+            dtype=np.float64,
+        )
+        current_angle = dihedralAngle(ref_coords)
         delta = current_angle - np.deg2rad(chi_target_deg)
 
         axis_atoms = chi_def["axis"]
-        axis_vec = coords[axis_atoms[0]] - coords[axis_atoms[1]]
-        pivot = coords[axis_atoms[1]]
+        pivot = tmpl.coords[name_to_idx[axis_atoms[1]], :, frame].astype(np.float64)
+        axis_vec = (
+            tmpl.coords[name_to_idx[axis_atoms[0]], :, frame].astype(np.float64)
+            - pivot
+        )
         R = rotationMatrix(axis_vec, delta)
 
-        pivot_idx = order.index(axis_atoms[1])
-        for atom_name in order[pivot_idx + 1 :]:
-            if atom_name in coords:
-                coords[atom_name] = R @ (coords[atom_name] - pivot) + pivot
+        pivot_order_idx = order.index(axis_atoms[1])
+        to_rotate = [
+            a for a in order[pivot_order_idx + 1 :] if a in name_to_idx
+        ]
+        if not to_rotate:
+            continue
+        tmpl.rotateBy(R, center=pivot, sel=np.isin(tmpl.name, to_rotate))
 
-    return coords
+    return tmpl
 
 
 def _score_clashes(new_coords, new_elements, surr_coords, surr_elements):
@@ -430,21 +394,16 @@ def _score_clashes(new_coords, new_elements, surr_coords, surr_elements):
     """
     if len(new_coords) == 0 or len(surr_coords) == 0:
         return 0.0
+    from moleculekit.distance import cdist
 
     new_radii = np.array([VDW_RADII.get(e, 1.7) for e in new_elements])
     surr_radii = np.array([VDW_RADII.get(e, 1.7) for e in surr_elements])
-
-    # sigma_ij = r_i + r_j
     sigma = new_radii[:, None] + surr_radii[None, :]
 
-    diff = new_coords[:, None, :] - surr_coords[None, :, :]
-    dist = np.sqrt((diff * diff).sum(axis=2))
-    dist = np.maximum(dist, 0.1)  # avoid division by zero
-
+    dist = np.maximum(cdist(new_coords, surr_coords), 0.1)
     ratio = sigma / dist
     r6 = ratio**6
-    energy = (r6 * r6 - r6).sum()
-    return energy
+    return float((r6 * r6 - r6).sum())
 
 
 def _compute_phi_psi(mol, res_idx):
@@ -463,61 +422,40 @@ def _compute_phi_psi(mol, res_idx):
     psi : float or None
         In degrees, or None if C-terminal.
     """
-    frame = mol.frame
     resid = mol.resid[res_idx[0]]
     chain = mol.chain[res_idx[0]]
     insertion = mol.insertion[res_idx[0]]
     segid = mol.segid[res_idx[0]]
 
-    name_map = {}
-    for idx in res_idx:
-        name_map[mol.name[idx]] = mol.coords[idx, :, frame].astype(np.float64)
-
-    if "N" not in name_map or "CA" not in name_map or "C" not in name_map:
+    name_to_idx = {mol.name[i]: int(i) for i in res_idx}
+    if not {"N", "CA", "C"}.issubset(name_to_idx):
         return None, None
+    n_idx, ca_idx, c_idx = name_to_idx["N"], name_to_idx["CA"], name_to_idx["C"]
 
-    # Find previous residue's C atom for phi
-    phi = None
     chain_mask = (mol.chain == chain) & (mol.segid == segid)
-    prev_c_mask = chain_mask & (mol.name == "C") & (mol.resid == resid - 1)
-    if insertion != "":
-        prev_c_mask = (
-            chain_mask
-            & (mol.name == "C")
-            & (mol.resid == resid)
-            & (mol.insertion < insertion)
-        )
-        if not prev_c_mask.any():
-            prev_c_mask = chain_mask & (mol.name == "C") & (mol.resid == resid - 1)
-    prev_c_idx = np.where(prev_c_mask)[0]
-    if len(prev_c_idx) > 0:
-        prev_c = mol.coords[prev_c_idx[-1], :, frame].astype(np.float64)
-        phi = np.degrees(
-            dihedralAngle(
-                np.array([prev_c, name_map["N"], name_map["CA"], name_map["C"]])
-            )
-        )
 
-    # Find next residue's N atom for psi
+    def _neighbor_idx(target_name, prev):
+        resid_offset = -1 if prev else 1
+        mask = chain_mask & (mol.name == target_name) & (mol.resid == resid + resid_offset)
+        if insertion != "":
+            ins_cmp = mol.insertion < insertion if prev else mol.insertion > insertion
+            ins_mask = chain_mask & (mol.name == target_name) & (mol.resid == resid) & ins_cmp
+            if ins_mask.any():
+                mask = ins_mask
+        idx = np.where(mask)[0]
+        if not len(idx):
+            return None
+        return int(idx[-1] if prev else idx[0])
+
+    phi = None
+    prev_c_idx = _neighbor_idx("C", prev=True)
+    if prev_c_idx is not None:
+        phi = np.degrees(mol.getDihedral([prev_c_idx, n_idx, ca_idx, c_idx]))
+
     psi = None
-    next_n_mask = chain_mask & (mol.name == "N") & (mol.resid == resid + 1)
-    if insertion != "":
-        next_n_mask = (
-            chain_mask
-            & (mol.name == "N")
-            & (mol.resid == resid)
-            & (mol.insertion > insertion)
-        )
-        if not next_n_mask.any():
-            next_n_mask = chain_mask & (mol.name == "N") & (mol.resid == resid + 1)
-    next_n_idx = np.where(next_n_mask)[0]
-    if len(next_n_idx) > 0:
-        next_n = mol.coords[next_n_idx[0], :, frame].astype(np.float64)
-        psi = np.degrees(
-            dihedralAngle(
-                np.array([name_map["N"], name_map["CA"], name_map["C"], next_n])
-            )
-        )
+    next_n_idx = _neighbor_idx("N", prev=False)
+    if next_n_idx is not None:
+        psi = np.degrees(mol.getDihedral([n_idx, ca_idx, c_idx, next_n_idx]))
 
     return phi, psi
 
@@ -534,21 +472,13 @@ def _snap_to_bin(angle, step=10):
     return binned
 
 
-def _select_best_rotamer(
-    template_coords,
-    template_elements,
-    resname,
-    rotamers,
-    surr_coords,
-    surr_elements,
-):
-    """Try each rotamer and pick the one with the lowest clash energy.
+def _select_best_rotamer(tmpl, resname, rotamers, surr_coords, surr_elements):
+    """Try each rotamer and leave ``tmpl`` holding the lowest-clash pose.
 
     Parameters
     ----------
-    template_coords : dict
-        Side-chain atom coords after Phase 1 placement (pre-rotation).
-    template_elements : dict
+    tmpl : Molecule
+        Backbone-aligned template (pre-rotation), modified **in place**.
     resname : str
     rotamers : list of tuple
         ``[(prob, chi1, chi2, chi3, chi4), ...]``
@@ -557,35 +487,40 @@ def _select_best_rotamer(
 
     Returns
     -------
-    best_coords : dict
+    tmpl : Molecule
     """
-    sc_names = [a for a in RESIDUE_ORDER.get(resname, []) if a not in BACKBONE_ATOMS]
+    frame = tmpl.frame
+    sc_mask = ~np.isin(tmpl.name, list(BACKBONE_ATOMS))
+    sc_elems = tmpl.element[sc_mask].tolist()
+
+    original_coords = tmpl.coords.copy()
 
     best_energy = float("inf")
-    best_coords = None
+    best_rotamer = None
 
-    for prob, chi1, chi2, chi3, chi4 in rotamers:
-        trial = {k: v.copy() for k, v in template_coords.items()}
-        _apply_chi_angles(trial, resname, (chi1, chi2, chi3, chi4))
+    for rot in rotamers:
+        tmpl.coords[...] = original_coords
+        _apply_chi_angles(tmpl, resname, rot[1:])
 
-        sc_coords = np.array([trial[a] for a in sc_names if a in trial])
-        sc_elems = [template_elements[a] for a in sc_names if a in trial]
-
+        sc_coords = tmpl.coords[sc_mask, :, frame].astype(np.float64)
         energy = _score_clashes(sc_coords, sc_elems, surr_coords, surr_elements)
         if energy < best_energy:
             best_energy = energy
-            best_coords = trial
+            best_rotamer = rot
 
-    return best_coords
+    tmpl.coords[...] = original_coords
+    if best_rotamer is not None:
+        _apply_chi_angles(tmpl, resname, best_rotamer[1:])
 
+    return tmpl
 
 
 def _get_surrounding_atoms(mol, res_idx, cutoff=8.0):
     """Collect coordinates and elements of atoms surrounding a residue.
 
-    Excludes:
-    - The residue's own atoms
-    - Backbone atoms of immediately adjacent residues
+    An atom is a surrounding if its distance to the nearest residue atom
+    is below ``cutoff``. Excludes the residue itself, hydrogens, and
+    backbone atoms of the two adjacent residues (same chain/segid).
 
     Parameters
     ----------
@@ -599,40 +534,61 @@ def _get_surrounding_atoms(mol, res_idx, cutoff=8.0):
     surr_coords : np.ndarray, shape (K, 3)
     surr_elements : list of str
     """
+    from moleculekit.distance import cdist
+
     frame = mol.frame
-    resid = mol.resid[res_idx[0]]
+    resid = int(mol.resid[res_idx[0]])
     chain = mol.chain[res_idx[0]]
     segid = mol.segid[res_idx[0]]
 
-    res_set = set(res_idx)
-    center = mol.coords[res_idx, :, frame].mean(axis=0)
-
     all_coords = mol.coords[:, :, frame]
-    dists = np.sqrt(((all_coords - center) ** 2).sum(axis=1))
-    candidate_mask = dists < cutoff
+    min_dists = cdist(all_coords[res_idx], all_coords).min(axis=0)
 
-    surr_coords = []
-    surr_elements = []
-    for i in np.where(candidate_mask)[0]:
-        if i in res_set:
-            continue
-        # Skip backbone atoms of adjacent residues
-        if (
-            mol.chain[i] == chain
-            and mol.segid[i] == segid
-            and abs(int(mol.resid[i]) - int(resid)) == 1
-            and mol.name[i] in BACKBONE_ATOMS
-        ):
-            continue
-        # Skip hydrogens in surroundings
-        if mol.element[i] == "H":
-            continue
-        surr_coords.append(all_coords[i].astype(np.float64))
-        surr_elements.append(mol.element[i])
+    exclude = np.zeros(mol.numAtoms, dtype=bool)
+    exclude[res_idx] = True
+    exclude |= mol.element == "H"
+    exclude |= (
+        (mol.chain == chain)
+        & (mol.segid == segid)
+        & ((mol.resid == resid - 1) | (mol.resid == resid + 1))
+        & np.isin(mol.name, list(BACKBONE_ATOMS))
+    )
 
-    if surr_coords:
-        return np.array(surr_coords), surr_elements
-    return np.empty((0, 3)), []
+    mask = (min_dists < cutoff) & ~exclude
+    return all_coords[mask].astype(np.float64), mol.element[mask].tolist()
+
+
+def _merge_template_bonds(mol, bb_sc_connections, chain, resid, insertion, segid):
+    """Add backbone-to-sidechain bonds after inserting new side-chain atoms.
+
+    Intra-sidechain bonds are merged automatically by ``Molecule.insert``;
+    the backbone-sidechain connections (e.g. ``CA``-``CB``) are dropped
+    when the template is filtered to side-chain atoms and must be
+    re-added manually.
+    """
+    if not bb_sc_connections:
+        return
+
+    res_mask = (
+        (mol.chain == chain)
+        & (mol.resid == resid)
+        & (mol.insertion == insertion)
+        & (mol.segid == segid)
+    )
+    new_bonds = []
+    for bb_name, sc_name in bb_sc_connections:
+        bb_idx = np.where(res_mask & (mol.name == bb_name))[0]
+        sc_idx = np.where(res_mask & (mol.name == sc_name))[0]
+        if len(bb_idx) and len(sc_idx):
+            new_bonds.append([bb_idx[0], sc_idx[0]])
+    if not new_bonds:
+        return
+
+    new_bonds = np.array(new_bonds, dtype=mol.bonds.dtype)
+    mol.bonds = np.append(mol.bonds, new_bonds, axis=0)
+    mol.bondtype = np.append(
+        mol.bondtype, np.array(["1"] * len(new_bonds), dtype=object)
+    )
 
 
 def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
@@ -647,7 +603,8 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
        (lowest VdW clash energy with surroundings) is selected.
     3. **Optional OpenMM minimization** -- if *minimize* is True and OpenMM is
        installed, a soft-potential energy minimization gently resolves remaining
-       clashes.
+       clashes.  Template bonds for the new residue are merged into ``mol.bonds``
+       after insertion so minimization (and other tools) see correct connectivity.
 
     Parameters
     ----------
@@ -709,38 +666,35 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
     insertion = mol.insertion[sel_idx[0]]
     segid = mol.segid[sel_idx[0]]
 
-    # Extract backbone coordinates
-    bb_coords = {}
-    for idx in sel_idx:
-        if mol.name[idx] in ("N", "CA", "C"):
-            bb_coords[mol.name[idx]] = mol.coords[idx, :, frame].astype(np.float64)
-
+    # Verify the residue has a full backbone to align the template onto
+    res_names = set(mol.name[sel_idx])
     for req in ("N", "CA", "C"):
-        if req not in bb_coords:
+        if req not in res_names:
             raise ValueError(
                 f"Backbone atom {req} not found in selected residue. "
                 f"Cannot reconstruct side-chain."
             )
 
-    # Warn about disulfide bonds
-    if mol.resname[sel_idx[0]] == "CYS":
-        for idx in sel_idx:
-            if mol.name[idx] == "SG":
-                sg_bonds = mol.bonds[(mol.bonds == idx).any(axis=1)]
-                for bond in sg_bonds:
-                    partner = bond[0] if bond[1] == idx else bond[1]
-                    if mol.name[partner] == "SG" and mol.resname[partner] == "CYS":
-                        logger.warning(
-                            f"Residue {chain}:{resid} CYS is involved in a "
-                            f"disulfide bond. Mutating it will break the bond."
-                        )
+    # Warn about disulfide bonds (covers CYS/CYX/CYM). PDB-loaded
+    # structures often miss inter-residue S-S bonds, so include guessed
+    # bonds for the neighbor lookup.
+    cys_aliases = {"CYS", "CYX", "CYM"}
+    if mol.resname[sel_idx[0]] in cys_aliases:
+        all_bonds = mol._getBonds(guessBonds=True)
+        for sg in sel_idx[mol.name[sel_idx] == "SG"]:
+            for nb in mol.getNeighbors(int(sg), bonds=all_bonds):
+                if mol.name[nb] == "SG" and mol.resname[nb] in cys_aliases:
+                    logger.warning(
+                        f"Residue {chain}:{resid} is involved in a disulfide "
+                        f"bond. Mutating it will break the bond."
+                    )
+                    break
 
-    # ── Phase 1: Template superposition ──────────────────────────────
-    placed_coords, placed_elements, placed_bonds = _build_template_on_backbone(
-        baseres, bb_coords
-    )
+    # Phase 1: Template superposition
+    res = mol.copy(sel=sel_mask)
+    tmpl = _build_template_on_backbone(baseres, res)
 
-    # ── Phase 2: Rotamer selection ───────────────────────────────────
+    # Phase 2: Rotamer selection
     sc_names = [a for a in RESIDUE_ORDER[baseres] if a not in BACKBONE_ATOMS]
 
     if sc_names and baseres not in ("ALA", "GLY"):
@@ -766,25 +720,16 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
             surr_coords, surr_elements = _get_surrounding_atoms(mol, sel_idx)
 
             if rotamer_mode == "best":
-                placed_coords = _select_best_rotamer(
-                    placed_coords,
-                    placed_elements,
-                    baseres,
-                    rotamers,
-                    surr_coords,
-                    surr_elements,
+                tmpl = _select_best_rotamer(
+                    tmpl, baseres, rotamers, surr_coords, surr_elements
                 )
             elif rotamer_mode == "first":
-                _apply_chi_angles(
-                    placed_coords,
-                    baseres,
-                    rotamers[0][1:],
-                )
+                _apply_chi_angles(tmpl, baseres, rotamers[0][1:])
             elif rotamer_mode == "random":
                 probs = np.array([r[0] for r in rotamers])
                 probs /= probs.sum()
                 chosen = rotamers[np.random.choice(len(rotamers), p=probs)]
-                _apply_chi_angles(placed_coords, baseres, chosen[1:])
+                _apply_chi_angles(tmpl, baseres, chosen[1:])
             else:
                 raise ValueError(
                     f"Unknown rotamer_mode '{rotamer_mode}'. "
@@ -798,7 +743,44 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
     if len(to_remove):
         mol.remove(to_remove, _logger=False)
 
-    # Refresh selection after removal
+    if not sc_names:
+        return
+
+    # Record backbone<->sidechain connecting bonds (e.g. CA-CB) so we can
+    # re-add them in ``mol`` after filtering the template down to side-chain.
+    sc_mask_tmpl = ~np.isin(tmpl.name, list(BACKBONE_ATOMS))
+    bb_sc_connections = []
+    for bb_name in BACKBONE_ATOMS:
+        bb_where = np.where(tmpl.name == bb_name)[0]
+        if not len(bb_where):
+            continue
+        for nb in tmpl.getNeighbors(int(bb_where[0])):
+            if sc_mask_tmpl[nb]:
+                bb_sc_connections.append((bb_name, tmpl.name[nb]))
+
+    # Keep only the side-chain of the template for insertion
+    sc_tmpl = tmpl.copy()
+    sc_tmpl.filter(sc_mask_tmpl, _logger=False)
+    sc_tmpl.record[:] = "ATOM"
+    sc_tmpl.resname[:] = newres
+    sc_tmpl.resid[:] = resid
+    sc_tmpl.chain[:] = chain
+    sc_tmpl.insertion[:] = insertion
+    sc_tmpl.segid[:] = segid
+    sc_tmpl.occupancy[:] = 1.0
+    sc_tmpl.beta[:] = 0.0
+    sc_tmpl.altloc[:] = ""
+    sc_tmpl.atomtype[:] = ""
+
+    # Match the parent molecule's frame count (CIF templates have 1 frame)
+    if sc_tmpl.numFrames != mol.numFrames:
+        new_coords = np.zeros(
+            (sc_tmpl.numAtoms, 3, mol.numFrames), dtype=np.float32
+        )
+        new_coords[:, :, frame] = sc_tmpl.coords[:, :, 0]
+        sc_tmpl.coords = new_coords
+
+    # Refresh selection and insert right after the existing backbone atoms
     sel_mask_new = (
         (mol.chain == chain)
         & (mol.resid == resid)
@@ -806,43 +788,14 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
         & (mol.segid == segid)
     )
     sel_idx_new = np.where(sel_mask_new)[0]
-
-    # ── Insert new side-chain atoms ──────────────────────────────────
-    if not sc_names:
-        return
-
-    from moleculekit.molecule import Molecule as Mol
-
-    n_new = len(sc_names)
-    new_mol = Mol()
-    new_mol.empty(n_new)
-
-    for i, atom_name in enumerate(sc_names):
-        new_mol.record[i] = "ATOM"
-        new_mol.name[i] = atom_name
-        new_mol.resname[i] = newres
-        new_mol.resid[i] = resid
-        new_mol.chain[i] = chain
-        new_mol.insertion[i] = insertion
-        new_mol.segid[i] = segid
-        new_mol.element[i] = placed_elements.get(atom_name, atom_name[0])
-        new_mol.occupancy[i] = 1.0
-        new_mol.beta[i] = 0.0
-        new_mol.altloc[i] = ""
-        new_mol.atomtype[i] = ""
-
-    new_mol.coords = np.zeros((n_new, 3, mol.numFrames), dtype=np.float32)
-    for i, atom_name in enumerate(sc_names):
-        if atom_name in placed_coords:
-            new_mol.coords[i, :, frame] = placed_coords[atom_name].astype(np.float32)
-
-    # Insert right after the existing backbone atoms of this residue
     insert_pos = sel_idx_new[-1] + 1 if len(sel_idx_new) > 0 else mol.numAtoms
-    mol.insert(new_mol, insert_pos)
+
+    mol.insert(sc_tmpl, insert_pos)
+    _merge_template_bonds(mol, bb_sc_connections, chain, resid, insertion, segid)
 
     # ── Phase 3: Optional minimization ───────────────────────────────
     if minimize:
-        new_indices = set(range(insert_pos, insert_pos + n_new))
+        new_indices = set(range(insert_pos, insert_pos + sc_tmpl.numAtoms))
         from moleculekit.openmmtools import minimize_soft_potential
 
-        minimize_soft_potential(mol, new_indices, restrain_bonded=False)
+        minimize_soft_potential(mol, new_indices)

@@ -88,23 +88,20 @@ def _add_bonded_forces(system, mol, mobile_atom_indices, positions_nm):
         logger.debug(f"Added {angle_force.getNumAngles()} harmonic angle restraints")
 
 
-def minimize_soft_potential(
-    mol, mobile_atom_indices, max_iterations=200, restrain_bonded=True
-):
+def minimize_soft_potential(mol, mobile_atom_indices, max_iterations=200):
     """Run a soft-potential energy minimization on selected atoms.
 
     All other atoms are frozen (mass = 0).  Uses a soft repulsive
-    ``CustomNonbondedForce`` so that overlapping atoms are gently pushed apart
-    rather than exploding.  Only interactions involving at least one mobile
-    atom are computed.
+    ``CustomNonbondedForce`` so overlapping atoms are gently pushed apart
+    rather than exploding.  Only interactions involving at least one
+    mobile atom are computed.
 
-    When ``restrain_bonded=True`` (default), harmonic bond and angle
-    restraints are added for bonds in ``mol.bonds`` that involve at least
-    one mobile atom.  Equilibrium values are taken from the current
-    coordinates (ideal CIF geometry or RDKit embedding), so the
-    minimization resolves clashes while preserving chemically valid bond
-    lengths and angles.  Disable this flag if you only want a pure
-    clash-relief minimization, or if ``mol.bonds`` is unreliable.
+    Harmonic bond and angle restraints are added for bonds in
+    ``mol.bonds`` involving at least one mobile atom; equilibrium values
+    are taken from the current coordinates.  This keeps bond lengths and
+    angles close to their starting geometry so the minimization resolves
+    clashes by rotating dihedrals rather than distorting covalent
+    structure.
 
     Parameters
     ----------
@@ -114,10 +111,6 @@ def minimize_soft_potential(
         Indices of atoms that are free to move.
     max_iterations : int, optional
         Maximum number of minimization iterations.  Default 200.
-    restrain_bonded : bool, optional
-        If True (default), add harmonic bond and angle restraints using
-        ``mol.bonds`` to preserve internal geometry of mobile atoms.
-        If False, only the soft repulsive non-bonded force is used.
 
     Returns
     -------
@@ -136,6 +129,22 @@ def minimize_soft_potential(
     n_atoms = mol.numAtoms
     frame = mol.frame
 
+    if mol.bonds is None or len(mol.bonds) == 0:
+        raise ValueError(
+            "minimize_soft_potential requires mol.bonds to be populated for "
+            "bond/angle restraints. Call mol._guessBonds() or load a topology "
+            "with bond information."
+        )
+    bonds_arr = np.asarray(mol.bonds)
+    mobile_mask = np.zeros(n_atoms, dtype=bool)
+    mobile_mask[list(mobile_atom_indices)] = True
+    if not (mobile_mask[bonds_arr[:, 0]] | mobile_mask[bonds_arr[:, 1]]).any():
+        raise ValueError(
+            "No bonds in mol.bonds involve any of the mobile atoms; cannot "
+            "build bond/angle restraints. Check that mol.bonds connects the "
+            "mobile selection."
+        )
+
     system = System()
     for i in range(n_atoms):
         mass = 12.0 if i in mobile_atom_indices else 0.0
@@ -144,8 +153,7 @@ def minimize_soft_potential(
     positions_nm = mol.coords[:, :, frame].astype(np.float64) * 0.1  # Å -> nm
 
     # Bonded forces keep bond lengths and angles close to ideal geometry
-    if restrain_bonded:
-        _add_bonded_forces(system, mol, mobile_atom_indices, positions_nm)
+    _add_bonded_forces(system, mol, mobile_atom_indices, positions_nm)
 
     # Soft repulsive potential: C / ((r/0.2)^4 + 1)
     # C = 10 kJ/mol; 0.2 nm = 2 Angstrom core
