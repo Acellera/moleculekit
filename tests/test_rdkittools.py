@@ -80,11 +80,22 @@ def _test_templateResidueFromSmiles_incorrect_smiles():
     assert "2" in ben.bondtype
 
 
-def _test_templateResidueFromSmiles_inter_residue_bonds():
+@pytest.mark.parametrize(
+    "smiles",
+    (
+        # Pre-stripped SMILES (matches what's in the structure)
+        "C1N(CN(CN1C(=O)CC)C(=O)CC)C(=O)CC",
+        # Original SMILES with Br leaving groups — should auto-strip via the
+        # cross-residue-bond signal (C10/C11/C12 are bonded to CYS sulfurs)
+        "C1N(CN(CN1C(=O)CCBr)C(=O)CCBr)C(=O)CCBr",
+    ),
+)
+def _test_templateResidueFromSmiles_inter_residue_bonds(smiles):
     """A residue with covalent bonds to other residues (e.g. covalent
     inhibitor LFI in 8QFZ alkylating three cysteines) must not be
     over-protonated at the boundary atoms, and the cross-residue bonds
-    must be preserved in mol.bonds.
+    must be preserved in mol.bonds. Both the pre-stripped and the original
+    leaving-group SMILES should give the same result.
     """
     import numpy as np
 
@@ -96,7 +107,6 @@ def _test_templateResidueFromSmiles_inter_residue_bonds():
     in_lfi = np.isin(mol.bonds, lfi_idx)
     assert (in_lfi.sum(axis=1) == 1).sum() == 3
 
-    smiles = "C1N(CN(CN1C(=O)CC)C(=O)CC)C(=O)CC"
     mol.templateResidueFromSmiles("resname LFI", smiles, addHs=True)
 
     # Each terminal carbon must end up with 1 C, 1 S, 2 H neighbors (4 total)
