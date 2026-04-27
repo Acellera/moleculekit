@@ -288,6 +288,25 @@ def template_residue_from_smiles(
             "The selection contains gaps in the atom indexes. Please select a single molecule residue only."
         )
 
+    # Identify covalent bonds that link the residue to the rest of the
+    # molecule. mol.copy()/remove()/insert() would otherwise drop these, and
+    # Chem.AddHs would over-protonate the boundary atoms because it has no
+    # knowledge of the external bonds.
+    _bondtype_order = {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "ar": 1, "un": 1}
+    sel_start = int(selidx[0])
+    sel_end = int(selidx[-1])
+    cross_bonds = []  # (local_residue_idx, external_global_idx, bondtype_str)
+    if len(mol.bonds):
+        in_sel = (mol.bonds >= sel_start) & (mol.bonds <= sel_end)
+        cross_mask = in_sel.sum(axis=1) == 1
+        for bidx in np.where(cross_mask)[0]:
+            a, b = int(mol.bonds[bidx, 0]), int(mol.bonds[bidx, 1])
+            bt = str(mol.bondtype[bidx]) if len(mol.bondtype) > bidx else "1"
+            if sel_start <= a <= sel_end:
+                cross_bonds.append((a - sel_start, b, bt))
+            else:
+                cross_bonds.append((b - sel_start, a, bt))
+
     residue = mol.copy(sel=selidx)
     if guessBonds:
         residue.guessBonds()
@@ -376,6 +395,23 @@ def template_residue_from_smiles(
             raise RuntimeError(f"Bond between atoms {i} and {j} not found in residue")
         rbond.SetBondType(btype)
 
+    # For atoms that are covalently bonded to other residues, the SMILES
+    # template assumes those bonds are hydrogens. Reduce the implicit H
+    # count on each boundary atom by the order of its external bonds so
+    # that AddHs (and downstream sanitization) doesn't over-protonate.
+    rmol_to_smi = dict(zip(at1, at2))
+    boundary_ext_order = {}
+    for local_idx, _, bt in cross_bonds:
+        boundary_ext_order[local_idx] = boundary_ext_order.get(local_idx, 0) + _bondtype_order.get(bt, 1)
+    for local_idx, ext_order in boundary_ext_order.items():
+        if local_idx not in rmol_to_smi:
+            continue
+        smi_atom = rmol_smi.GetAtomWithIdx(rmol_to_smi[local_idx])
+        target_hs = max(0, int(smi_atom.GetTotalNumHs()) - int(ext_order))
+        atom = rmol.GetAtomWithIdx(local_idx)
+        atom.SetNumExplicitHs(target_hs)
+        atom.SetNoImplicit(True)
+
     # Protonate the residue according to the SMILES template
     if addHs:
         if onlyOnAtoms is not None:
@@ -394,6 +430,20 @@ def template_residue_from_smiles(
 
     mol.remove(selidx, _logger=False)
     mol.insert(new_residue, selidx[0])
+
+    # Restore the inter-residue bonds. Atoms originally past the residue
+    # were shifted by (new_residue.numAtoms - len(selidx)) due to the
+    # remove/insert sequence; atoms before the residue are unchanged.
+    if cross_bonds:
+        shift = new_residue.numAtoms - len(selidx)
+        for local_idx, ext_global_idx, bt in cross_bonds:
+            if ext_global_idx < sel_start:
+                new_ext = ext_global_idx
+            elif ext_global_idx > sel_end:
+                new_ext = ext_global_idx + shift
+            else:
+                continue
+            mol.addBond(sel_start + local_idx, new_ext, bt)
 
 
 def extend_residue_from_smiles(

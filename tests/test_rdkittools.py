@@ -80,6 +80,48 @@ def _test_templateResidueFromSmiles_incorrect_smiles():
     assert "2" in ben.bondtype
 
 
+def _test_templateResidueFromSmiles_inter_residue_bonds():
+    """A residue with covalent bonds to other residues (e.g. covalent
+    inhibitor LFI in 8QFZ alkylating three cysteines) must not be
+    over-protonated at the boundary atoms, and the cross-residue bonds
+    must be preserved in mol.bonds.
+    """
+    import numpy as np
+
+    testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
+    mol = Molecule(os.path.join(testdir, "8QFZ.pdb"))
+
+    # Sanity-check: PDB declares LINK records C10/C11/C12 (LFI) <-> SG (CYS)
+    lfi_idx = mol.atomselect("resname LFI", indexes=True)
+    in_lfi = np.isin(mol.bonds, lfi_idx)
+    assert (in_lfi.sum(axis=1) == 1).sum() == 3
+
+    smiles = "C1N(CN(CN1C(=O)CC)C(=O)CC)C(=O)CC"
+    mol.templateResidueFromSmiles("resname LFI", smiles, addHs=True)
+
+    # Each terminal carbon must end up with 1 C, 1 S, 2 H neighbors (4 total)
+    expected_links = {"C10": 17, "C11": 22, "C12": 11}
+    for cname, cys_resid in expected_links.items():
+        cidx = mol.atomselect(f"resname LFI and name {cname}", indexes=True)[0]
+        nb_rows = mol.bonds[(mol.bonds == cidx).any(axis=1)]
+        neighbors = np.where(nb_rows == cidx, nb_rows[:, ::-1], nb_rows)[:, 0]
+        elems = sorted(mol.element[n] for n in neighbors)
+        assert elems == ["C", "H", "H", "S"], (
+            f"{cname} expected [C,H,H,S] neighbors, got {elems}"
+        )
+        # And specifically bonded to the right CYS
+        sg_neighbor = [n for n in neighbors if mol.element[n] == "S"][0]
+        assert mol.resname[sg_neighbor] == "CYS"
+        assert mol.resid[sg_neighbor] == cys_resid
+        assert mol.name[sg_neighbor] == "SG"
+
+    # Cross-residue bonds must be intact in mol.bonds
+    lfi_idx = mol.atomselect("resname LFI", indexes=True)
+    in_lfi = np.isin(mol.bonds, lfi_idx)
+    cross_count = (in_lfi.sum(axis=1) == 1).sum()
+    assert cross_count == 3, f"Expected 3 cross-residue bonds, got {cross_count}"
+
+
 @pytest.mark.parametrize("file", ("1STP_BTN.cif", "BEN_pH7.4.cif"))
 def _test_toRDKitMol(file):
     testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
