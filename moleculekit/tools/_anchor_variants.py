@@ -77,6 +77,17 @@ ANCHOR_VARIANTS = {
         "cb_ff14sb_type": "3C",
         "hb_ff14sb_type": "H1",
     },
+    # Asn N-glycosylation: ND2 loses one of its two amide hydrogens to
+    # accept a glycosidic C-N bond from a sugar's anomeric carbon. NLN is
+    # the AMBER glycoprotein-junction residue (provided by GLYCAM); GLYCAM
+    # must be loaded by amber.build for this rename to resolve.
+    ("ASN", "ND2"): {
+        "variant": "NLN",
+        "drop_h": ["HD22"],
+        "ff14sb_type": "N",
+        "cb_ff14sb_type": "C",
+        "hb_ff14sb_type": "H",
+    },
 }
 
 

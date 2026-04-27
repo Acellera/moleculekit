@@ -240,10 +240,11 @@ def _test_1r1j_covalent_glycosylation(tmp_path):
     assert len(free) == 1
     assert free[0].resname == "OIR"
 
-    # ASN ND2 is not in ANCHOR_VARIANTS so no force_protonation entries get
-    # emitted (the user is expected to handle ASN -> NLN renaming themselves
-    # for covalent glycosylation).
-    assert forceProtonationFromSpecs(specs) == []
+    # ANCHOR_VARIANTS has an (ASN, ND2) -> NLN entry for N-glycosylation;
+    # forceProtonationFromSpecs emits one rename per glycosylated Asn.
+    fp = forceProtonationFromSpecs(specs)
+    assert len(fp) == 3
+    assert all(variant == "NLN" for _, variant in fp)
 
     # Three custombonds must be emitted: one per NAG-Asn glycosidic bond.
     cb = custombondsFromSpecs(specs)
