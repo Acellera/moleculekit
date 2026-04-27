@@ -10,9 +10,21 @@ canonical-AA / nucleic / water / ion sets. Each such residue is classified into:
     bicyclic/tricyclic etc. depending on anchor count).
   - ``"ncaa"``: a non-canonical amino acid embedded in a polymer chain via
     peptide N-C bonds to canonical AAs.
-  - ``"cofactor"``: free or single-anchor non-standard residue (any HETATM that
-    is not a scaffold and not chain-embedded: small ligands, modified bases,
-    PTMs, etc.).
+  - ``"covalent_ligand"``: a non-standard residue bonded to exactly one
+    canonical-AA residue via a non-peptide covalent bond (NAG glycosylation
+    on Asn, single-Cys heme attachment, covalent-inhibitor monoadducts, ...).
+    Needs a ``custombonds`` entry at build time (and possibly an anchor
+    rename via ``force_protonation``).
+  - ``"ligand"``: a free, non-covalently bound non-standard residue (small
+    drug molecules, fatty acids in binding pockets, ...). Parameterized
+    standalone; needs no ``custombonds`` or ``force_protonation``.
+  - ``"peptide_crosslink"``: a direct sidechain-to-sidechain covalent bond
+    between two non-canonical amino acids that are themselves peptide-bonded
+    into a polymer chain. Pattern-B stapled peptides (e.g. olefin-metathesis
+    staples between two S5/R8 residues, click-chemistry staples). The two
+    endpoint residues are classified separately as ``"ncaa"``; the crosslink
+    itself is reported as its own spec so the bond can be emitted via
+    ``custombondsFromSpecs``.
 
 For each residue the helper writes a model-compound CIF ready for handing to
 parameterization functions and returns metadata the caller uses to derive the
@@ -110,21 +122,65 @@ class NCAASpec:
 
 
 @dataclass
-class CofactorSpec:
-    """Free or single-anchor non-standard residue (small ligands, modified
-    bases, PTMs, etc. that are not chain-embedded)."""
+class LigandSpec:
+    """Non-standard residue with no covalent bonds to canonical-AA residues:
+    small molecules, drug ligands, fatty acids, etc. Parameterized
+    standalone; needs no ``custombonds`` or ``force_protonation`` at build."""
 
-    category: ClassVar[str] = "cofactor"
+    category: ClassVar[str] = "ligand"
     resname: str
     residue: UniqueResidueID
     model_compound_cif: Optional[str] = None
 
 
-NonStandardResidueSpec = Union[ScaffoldedPeptideSpec, NCAASpec, CofactorSpec]
+@dataclass
+class CovalentLigandSpec:
+    """Non-standard residue bonded to exactly one canonical-AA residue via a
+    non-peptide covalent bond (e.g. NAG-Asn glycosylation, single-Cys heme
+    attachment, covalent-inhibitor monoadducts). The ``anchor`` carries the
+    canonical-AA atom and the ligand atom on the bond. Needs a custombond
+    at build time, and possibly an anchor rename via ``force_protonation``
+    if the canonical anchor atom appears in :data:`ANCHOR_VARIANTS`."""
+
+    category: ClassVar[str] = "covalent_ligand"
+    resname: str
+    residue: UniqueResidueID
+    anchor: ScaffoldAnchor
+    model_compound_cif: Optional[str] = None
+
+
+@dataclass
+class PeptideCrosslinkSpec:
+    """A direct sidechain-to-sidechain covalent bond between two
+    non-canonical amino acids that are both peptide-bonded into a polymer
+    chain (Pattern-B stapled peptides). Each endpoint NCAA is classified
+    separately as :class:`NCAASpec`; this spec carries only the crosslink
+    bond itself so it can be emitted via ``custombondsFromSpecs``."""
+
+    category: ClassVar[str] = "peptide_crosslink"
+    atom_a: UniqueAtomID
+    atom_b: UniqueAtomID
+
+
+NonStandardResidueSpec = Union[
+    ScaffoldedPeptideSpec,
+    NCAASpec,
+    CovalentLigandSpec,
+    LigandSpec,
+    PeptideCrosslinkSpec,
+]
 
 
 with open(os.path.join(__share_dir, "atomselect", "atomselect.json")) as _f:
     _ION_RESNAMES = set(json.load(_f).get("ion_resnames", []))
+
+
+# Standard peptide-terminus caps. AMBER ff14SB / ff19SB ship parameters for
+# these so they don't need user-driven parameterization. ACE = acetyl
+# (N-terminal); NME = N-methylamide and NHE/NH2 = ammonia (C-terminal).
+# moleculekit treats ACE/NME as part of "protein" elsewhere
+# (preparation, autosegment, metricdihedral).
+_CAP_RESNAMES = {"ACE", "NME", "NHE", "NH2"}
 
 
 # Resnames that should never be flagged as non-standard.
@@ -136,6 +192,7 @@ def _canonical_resnames():
         names.update(rr.resname_variants)
     names |= WATER_RESIDUE_NAMES
     names |= _ION_RESNAMES
+    names |= _CAP_RESNAMES
     return names
 
 
@@ -189,19 +246,26 @@ def _ensure_bonds(mol):
 
 
 def _classify_residues(mol, a2r, groups, bonds, min_anchors_for_scaffold):
-    """Return a dict {residue_index -> classification info}.
+    """Return ``(classifications, inter_residue_bonds)`` where
+    ``classifications`` is a dict ``{residue_index -> info}`` carrying a
+    ``category`` plus category-specific fields, and
+    ``inter_residue_bonds`` is a list of ``(atom_a, atom_b, residue_a, residue_b)``
+    tuples for every non-peptide inter-residue bond in the molecule (used
+    later for peptide-crosslink detection).
 
-    Classification info has ``category`` plus category-specific fields.
-    Standard residues classify to ``None`` and are absent from the result.
+    Standard residues are absent from ``classifications``.
     """
     # Collect per-residue inter-residue bonds: list of (other_atom_idx, this_atom_idx, bond_idx)
     inter_bonds_per_res = [[] for _ in groups]
+    inter_residue_bonds = []  # (a1, a2, r1, r2) for non-peptide bonds only
     for bi, (a1, a2) in enumerate(bonds):
         r1, r2 = a2r[a1], a2r[a2]
         if r1 == r2 or r1 < 0 or r2 < 0:
             continue
         inter_bonds_per_res[r1].append((a2, a1, bi))
         inter_bonds_per_res[r2].append((a1, a2, bi))
+        if not _is_peptide_bond(str(mol.name[a1]), str(mol.name[a2])):
+            inter_residue_bonds.append((int(a1), int(a2), int(r1), int(r2)))
 
     classifications = {}
     for r_idx, g in enumerate(groups):
@@ -257,13 +321,20 @@ def _classify_residues(mol, a2r, groups, bonds, min_anchors_for_scaffold):
             }
             continue
 
-        # Free or single-anchor non-standard residue.
-        classifications[r_idx] = {
-            "category": "cofactor",
-            "anchors": anchor_bonds,
-        }
+        if len(anchor_bonds) >= 1:
+            # Non-peptide covalent bond(s) to canonical residue(s) but fewer
+            # than the scaffold threshold: a covalent ligand / single-anchor
+            # PTM (NAG glycosylation, single-Cys heme, ...).
+            classifications[r_idx] = {
+                "category": "covalent_ligand",
+                "anchors": anchor_bonds,
+            }
+            continue
 
-    return classifications
+        # No covalent bonds to canonical residues: free non-covalent ligand.
+        classifications[r_idx] = {"category": "ligand"}
+
+    return classifications, inter_residue_bonds
 
 
 def _is_peptide_bond(name_a, name_b):
@@ -509,8 +580,9 @@ def detectNonStandardResidues(
     Returns
     -------
     list[NonStandardResidueSpec]
-        One :class:`ScaffoldedPeptideSpec`, :class:`NCAASpec`, or
-        :class:`CofactorSpec` per detected residue.
+        One :class:`ScaffoldedPeptideSpec`, :class:`NCAASpec`,
+        :class:`CovalentLigandSpec`, or :class:`LigandSpec` per detected
+        residue.
     """
     if write_models:
         if outdir is None:
@@ -519,7 +591,7 @@ def detectNonStandardResidues(
 
     bonds = _ensure_bonds(mol)
     a2r, groups = _residue_groups(mol)
-    classifications = _classify_residues(
+    classifications, inter_residue_bonds = _classify_residues(
         mol, a2r, groups, bonds, min_anchors_for_scaffold
     )
 
@@ -593,32 +665,84 @@ def detectNonStandardResidues(
                 )
             )
 
-        elif info["category"] == "cofactor":
+        elif info["category"] == "covalent_ligand":
+            anc = info["anchors"][0]
+            anchor = ScaffoldAnchor(
+                anchor_atom=UniqueAtomID.fromMolecule(
+                    mol, idx=anc["anchor_atom_idx"]
+                ),
+                scaffold_atom=UniqueAtomID.fromMolecule(
+                    mol, idx=anc["scaffold_atom_idx"]
+                ),
+            )
             if write_models:
                 _build_cofactor_model(mol, g).write(cif_path)
             specs.append(
-                CofactorSpec(
+                CovalentLigandSpec(
+                    resname=g["resname"],
+                    residue=residue_id,
+                    anchor=anchor,
+                    model_compound_cif=cif_path,
+                )
+            )
+
+        elif info["category"] == "ligand":
+            if write_models:
+                _build_cofactor_model(mol, g).write(cif_path)
+            specs.append(
+                LigandSpec(
                     resname=g["resname"],
                     residue=residue_id,
                     model_compound_cif=cif_path,
                 )
             )
 
+    # Pattern-B stapled peptides: scan inter-residue non-peptide bonds for
+    # NCAA-NCAA crosslinks. Cys-Cys disulfides are skipped (they are handled
+    # separately by amber.build's disulfide path).
+    cys_resnames = {"CYS", "CYM", "CYX"}
+    for a1, a2, r1, r2 in inter_residue_bonds:
+        cat1 = classifications.get(r1, {}).get("category")
+        cat2 = classifications.get(r2, {}).get("category")
+        if cat1 != "ncaa" or cat2 != "ncaa":
+            continue
+        if (
+            groups[r1]["resname"] in cys_resnames
+            and groups[r2]["resname"] in cys_resnames
+            and str(mol.name[a1]) == "SG"
+            and str(mol.name[a2]) == "SG"
+        ):
+            continue
+        specs.append(
+            PeptideCrosslinkSpec(
+                atom_a=UniqueAtomID.fromMolecule(mol, idx=a1),
+                atom_b=UniqueAtomID.fromMolecule(mol, idx=a2),
+            )
+        )
+
     return specs
+
+
+def _spec_anchors(spec):
+    """Yield each :class:`ScaffoldAnchor` carried by a spec.
+    :class:`ScaffoldedPeptideSpec` carries a list; :class:`CovalentLigandSpec`
+    a single anchor; other spec classes none."""
+    if isinstance(spec, ScaffoldedPeptideSpec):
+        yield from spec.anchors
+    elif isinstance(spec, CovalentLigandSpec):
+        yield spec.anchor
 
 
 def forceProtonationFromSpecs(specs):
     """Convert detector specs to a ``force_protonation`` list for systemPrepare.
 
-    Each scaffolded-peptide anchor whose ``(resname, anchor_atom_name)`` is in
-    ``ANCHOR_VARIANTS`` and has a non-None ``variant`` produces a
-    ``(atomselect_string, variant_resname)`` entry. Unknown anchors are
-    skipped with a warning."""
+    Each scaffolded-peptide / covalent-ligand anchor whose
+    ``(resname, anchor_atom_name)`` is in ``ANCHOR_VARIANTS`` with a non-None
+    ``variant`` produces a ``(atomselect_string, variant_resname)`` entry.
+    Unknown anchors are skipped with a warning."""
     out = []
     for spec in specs:
-        if not isinstance(spec, ScaffoldedPeptideSpec):
-            continue
-        for anc in spec.anchors:
+        for anc in _spec_anchors(spec):
             atom_id = anc.anchor_atom
             entry = lookup_anchor_variant(atom_id.resname, atom_id.name)
             if entry is None:
@@ -645,13 +769,20 @@ def custombondsFromSpecs(specs):
     """Convert detector specs to a ``custombonds`` list for ``amber.build``.
 
     Emits one ``(anchor_sel, scaffold_atom_sel)`` pair per scaffolded-peptide
-    anchor. Atom-selection strings target a single atom by
+    or covalent-ligand anchor, plus one pair per peptide-crosslink bond.
+    Atom-selection strings target a single atom by
     ``segid+chain+resid+insertion+name``."""
     out = []
     for spec in specs:
-        if not isinstance(spec, ScaffoldedPeptideSpec):
+        if isinstance(spec, PeptideCrosslinkSpec):
+            out.append(
+                [
+                    _atom_sel_from_id(spec.atom_a),
+                    _atom_sel_from_id(spec.atom_b),
+                ]
+            )
             continue
-        for anc in spec.anchors:
+        for anc in _spec_anchors(spec):
             out.append(
                 [
                     _atom_sel_from_id(anc.anchor_atom),
