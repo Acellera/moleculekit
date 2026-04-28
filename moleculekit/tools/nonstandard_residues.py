@@ -277,13 +277,46 @@ def _ensure_bonds(mol):
     return np.asarray(bonds, dtype=np.int64)
 
 
+@dataclass
+class _PeptideBondInfo:
+    """One peptide N-C inter-residue bond out of a non-canonical residue."""
+
+    this_atom_idx: int
+    this_atom_name: str
+    other_residue_idx: int
+    other_atom_name: str
+
+
+@dataclass
+class _AnchorBondInfo:
+    """One non-peptide bond from a non-canonical residue to a canonical
+    amino-acid residue (a candidate scaffold or covalent-ligand anchor)."""
+
+    anchor_atom_idx: int
+    anchor_atom_name: str
+    scaffold_atom_idx: int
+    scaffold_atom_name: str
+    other_residue_idx: int
+
+
+@dataclass
+class _ResidueClassification:
+    """Internal classifier output for a single non-canonical residue.
+    ``category`` mirrors the public spec category strings; per-category
+    fields carry the bond-bookkeeping the spec-emit step needs.
+    Standard residues are absent from the classifier's output dict."""
+
+    category: str  # "scaffolded_peptide" | "ncaa" | "covalent_ligand" | "ligand"
+    anchors: list[_AnchorBondInfo]
+    peptide_bonds: list[_PeptideBondInfo]
+
+
 def _classify_residues(mol, a2r, groups, bonds, min_anchors_for_scaffold):
     """Return ``(classifications, inter_residue_bonds)`` where
-    ``classifications`` is a dict ``{residue_index -> info}`` carrying a
-    ``category`` plus category-specific fields, and
-    ``inter_residue_bonds`` is a list of ``(atom_a, atom_b, residue_a, residue_b)``
-    tuples for every non-peptide inter-residue bond in the molecule (used
-    later for peptide-crosslink detection).
+    ``classifications`` is a dict ``{residue_index -> _ResidueClassification}``
+    and ``inter_residue_bonds`` is a list of
+    ``(atom_a, atom_b, residue_a, residue_b)`` tuples for every non-peptide
+    inter-residue bond in the molecule (used later for crosslink detection).
 
     Standard residues are absent from ``classifications``.
     """
@@ -317,54 +350,44 @@ def _classify_residues(mol, a2r, groups, bonds, min_anchors_for_scaffold):
             other_name = str(mol.name[other_atom])
             if _is_peptide_bond(this_name, other_name):
                 peptide_bonds.append(
-                    {
-                        "this_atom": int(this_atom),
-                        "this_atom_name": this_name,
-                        "other_residue_idx": int(a2r[other_atom]),
-                        "other_atom_name": other_name,
-                    }
+                    _PeptideBondInfo(
+                        this_atom_idx=int(this_atom),
+                        this_atom_name=this_name,
+                        other_residue_idx=int(a2r[other_atom]),
+                        other_atom_name=other_name,
+                    )
                 )
                 continue
             if other_resname in _PROTEIN_ANCHOR_SET:
                 anchor_bonds.append(
-                    {
-                        "anchor_atom_idx": int(other_atom),
-                        "anchor_atom_name": other_name,
-                        "scaffold_atom_idx": int(this_atom),
-                        "scaffold_atom_name": this_name,
-                        "other_residue_idx": int(a2r[other_atom]),
-                    }
+                    _AnchorBondInfo(
+                        anchor_atom_idx=int(other_atom),
+                        anchor_atom_name=other_name,
+                        scaffold_atom_idx=int(this_atom),
+                        scaffold_atom_name=this_name,
+                        other_residue_idx=int(a2r[other_atom]),
+                    )
                 )
 
         if len(anchor_bonds) >= min_anchors_for_scaffold:
-            classifications[r_idx] = {
-                "category": "scaffolded_peptide",
-                "anchors": anchor_bonds,
-                "peptide_bonds": peptide_bonds,
-            }
-            continue
-
-        if len(peptide_bonds) >= 1:
+            category = "scaffolded_peptide"
+        elif len(peptide_bonds) >= 1:
             # Embedded in a chain via at least one peptide bond.
-            classifications[r_idx] = {
-                "category": "ncaa",
-                "peptide_bonds": peptide_bonds,
-                "anchors": anchor_bonds,
-            }
-            continue
-
-        if len(anchor_bonds) >= 1:
+            category = "ncaa"
+        elif len(anchor_bonds) >= 1:
             # Non-peptide covalent bond(s) to canonical residue(s) but fewer
             # than the scaffold threshold: a covalent ligand / single-anchor
             # PTM (NAG glycosylation, single-Cys heme, ...).
-            classifications[r_idx] = {
-                "category": "covalent_ligand",
-                "anchors": anchor_bonds,
-            }
-            continue
+            category = "covalent_ligand"
+        else:
+            # No covalent bonds to canonical residues: free non-covalent ligand.
+            category = "ligand"
 
-        # No covalent bonds to canonical residues: free non-covalent ligand.
-        classifications[r_idx] = {"category": "ligand"}
+        classifications[r_idx] = _ResidueClassification(
+            category=category,
+            anchors=anchor_bonds,
+            peptide_bonds=peptide_bonds,
+        )
 
     return classifications, inter_residue_bonds
 
@@ -409,18 +432,6 @@ def _load_known_resnames():
 # ---------------------------------------------------------------------------
 # Model-compound construction
 # ---------------------------------------------------------------------------
-
-
-def _heavy_neighbor(mol, idx, exclude):
-    """Return the index of a heavy-atom neighbor of ``idx`` (via
-    :meth:`Molecule.getNeighbors`), excluding any indices in ``exclude``.
-    ``None`` if there is no such neighbor."""
-    excluded = set(exclude)
-    for j in mol.getNeighbors(idx):
-        j = int(j)
-        if j not in excluded and mol.element[j] != "H":
-            return j
-    return None
 
 
 def _idealized_methyl_positions(center, neighbor_pos, bond_length=1.09):
@@ -513,7 +524,14 @@ def _build_scaffold_model(mol, scaffold_group, anchors):
         # Falls back to a synthetic CB along the anchor-scaffold axis if the
         # input has no heavy bond out of the anchor.
         anchor_pos = mol.coords[anchor_idx, :, mol.frame].copy()
-        cb_idx = _heavy_neighbor(mol, anchor_idx, exclude=[scaffold_idx])
+        cb_idx = next(
+            (
+                int(j)
+                for j in mol.getNeighbors(anchor_idx)
+                if int(j) != scaffold_idx and mol.element[int(j)] != "H"
+            ),
+            None,
+        )
         if cb_idx is not None:
             cb_pos = mol.coords[cb_idx, :, mol.frame].copy()
         else:
@@ -666,17 +684,15 @@ def detectNonStandardResidues(
             os.path.join(outdir, f"{g['resname']}_model.cif") if write_models else None
         )
 
-        if info["category"] == "scaffolded_peptide":
+        if info.category == "scaffolded_peptide":
             anchors = [
                 ScaffoldAnchor(
-                    anchor_atom=UniqueAtomID.fromMolecule(
-                        mol, idx=anc["anchor_atom_idx"]
-                    ),
+                    anchor_atom=UniqueAtomID.fromMolecule(mol, idx=anc.anchor_atom_idx),
                     scaffold_atom=UniqueAtomID.fromMolecule(
-                        mol, idx=anc["scaffold_atom_idx"]
+                        mol, idx=anc.scaffold_atom_idx
                     ),
                 )
-                for anc in info["anchors"]
+                for anc in info.anchors
             ]
             atom_map_obj = None
             if write_models:
@@ -696,13 +712,9 @@ def detectNonStandardResidues(
                 )
             )
 
-        elif info["category"] == "ncaa":
-            head_attached = any(
-                pb["this_atom_name"] == "N" for pb in info["peptide_bonds"]
-            )
-            tail_attached = any(
-                pb["this_atom_name"] == "C" for pb in info["peptide_bonds"]
-            )
+        elif info.category == "ncaa":
+            head_attached = any(pb.this_atom_name == "N" for pb in info.peptide_bonds)
+            tail_attached = any(pb.this_atom_name == "C" for pb in info.peptide_bonds)
             if write_models:
                 _build_ncaa_model(mol, g).write(cif_path)
             specs.append(
@@ -717,13 +729,11 @@ def detectNonStandardResidues(
                 )
             )
 
-        elif info["category"] == "covalent_ligand":
-            anc = info["anchors"][0]
+        elif info.category == "covalent_ligand":
+            anc = info.anchors[0]
             anchor = ScaffoldAnchor(
-                anchor_atom=UniqueAtomID.fromMolecule(mol, idx=anc["anchor_atom_idx"]),
-                scaffold_atom=UniqueAtomID.fromMolecule(
-                    mol, idx=anc["scaffold_atom_idx"]
-                ),
+                anchor_atom=UniqueAtomID.fromMolecule(mol, idx=anc.anchor_atom_idx),
+                scaffold_atom=UniqueAtomID.fromMolecule(mol, idx=anc.scaffold_atom_idx),
             )
             if write_models:
                 _build_cofactor_model(mol, g).write(cif_path)
@@ -736,7 +746,7 @@ def detectNonStandardResidues(
                 )
             )
 
-        elif info["category"] == "ligand":
+        elif info.category == "ligand":
             if write_models:
                 _build_cofactor_model(mol, g).write(cif_path)
             specs.append(
@@ -850,14 +860,17 @@ def custombondsFromSpecs(specs):
 
 def _residue_sel_from_id(uid):
     """Build an atomselect string targeting the residue containing this atom
-    or residue ID. Accepts :class:`UniqueAtomID` or :class:`UniqueResidueID`."""
+    or residue ID. Accepts :class:`UniqueAtomID` or :class:`UniqueResidueID`.
+    All string identifiers are double-quoted so values containing spaces or
+    other atomselect-significant characters (e.g. multi-character segids)
+    parse correctly."""
     parts = []
     segid = getattr(uid, "segid", "")
     chain = getattr(uid, "chain", "")
     if segid:
-        parts.append(f"segid {segid}")
+        parts.append(f'segid "{segid}"')
     if chain:
-        parts.append(f"chain {chain}")
+        parts.append(f'chain "{chain}"')
     parts.append(f"resid {int(uid.resid)}")
     insertion = getattr(uid, "insertion", "")
     if insertion:
@@ -866,5 +879,7 @@ def _residue_sel_from_id(uid):
 
 
 def _atom_sel_from_id(uaid):
-    """Build an atomselect string targeting a single :class:`UniqueAtomID`."""
-    return _residue_sel_from_id(uaid) + f" and name {uaid.name}"
+    """Build an atomselect string targeting a single :class:`UniqueAtomID`.
+    The atom name is double-quoted so names containing apostrophes (e.g.
+    nucleic-acid ``H1'``, ``O3'``) parse correctly."""
+    return _residue_sel_from_id(uaid) + f' and name "{uaid.name}"'
