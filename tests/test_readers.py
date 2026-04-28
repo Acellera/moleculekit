@@ -804,6 +804,39 @@ def _test_bcif_pdb(pdbid):
     )
 
 
+@pytest.mark.parametrize("pdbid", ["3ptb", "3hyd", "6a5j", "5vbl", "7q5b"])
+@pytest.mark.parametrize("ext", ["bcif", "bcif.gz"])
+def _test_bcif_write(pdbid, ext):
+    import tempfile
+
+    ciffile = os.path.join(curr_dir, "pdb", f"{pdbid.lower()}.cif")
+    mol1 = Molecule(ciffile)
+    # CIFwrite (and therefore BCIFwrite) writes a single frame, so collapse
+    # multi-model structures before comparing.
+    if mol1.numFrames > 1:
+        mol1.dropFrames(keep=mol1.frame)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        outfile = os.path.join(tmpdir, f"out.{ext}")
+        mol1.write(outfile)
+        assert os.path.getsize(outfile) > 0
+        mol2 = Molecule(outfile)
+
+    assert mol_equal(
+        mol1,
+        mol2,
+        checkFields=Molecule._all_fields,
+        exceptFields=[
+            "fileloc",
+            # CIFwrite renumbers serials starting from 1.
+            "serial",
+            # Some bond types (am, un) are coerced to SING by CIFwrite and read
+            # back as "1" instead of the original label.
+            "bondtype",
+        ],
+    )
+
+
 def _test_inpcrd():
     import tempfile
 

@@ -1050,11 +1050,7 @@ def CIFwrite(
     from moleculekit.residues import ORIGINAL_RESIDUE_NAME_TABLE
     import re
 
-    if not return_data:
-        from moleculekit.pdbx.reader.PdbxContainers import DataContainer, DataCategory
-    else:
-        from mmcif.api.DataCategory import DataCategory
-        from mmcif.api.PdbxContainers import DataContainer
+    from moleculekit.pdbx.reader.PdbxContainers import DataContainer, DataCategory
 
     if chemcomp is not None:
         single_mol = chemcomp
@@ -1148,6 +1144,40 @@ def CIFwrite(
     myDataList = []
     with open(filename, "w") as ofh:
         curContainer = DataContainer(mol.resname[0] if single_mol else viewname)
+
+        # Cell + symmetry. Round-trippable with CIFread, which reads
+        # _cell.length_a/b/c + _cell.angle_* into mol.crystalinfo, and
+        # _symmetry.space_group_name_H-M into crystalinfo["sGroup"].
+        ci = mol.crystalinfo
+        if ci:
+            cell_keys = ("a", "b", "c", "alpha", "beta", "gamma")
+            if all(k in ci for k in cell_keys):
+                cellCat = DataCategory("cell")
+                for at in (
+                    "length_a",
+                    "length_b",
+                    "length_c",
+                    "angle_alpha",
+                    "angle_beta",
+                    "angle_gamma",
+                ):
+                    cellCat.appendAttribute(at)
+                if "z" in ci:
+                    cellCat.appendAttribute("Z_PDB")
+                row = [float(ci[k]) for k in cell_keys]
+                if "z" in ci:
+                    row.append(int(ci["z"]))
+                cellCat.append(row)
+                curContainer.append(cellCat)
+            if "sGroup" in ci and ci["sGroup"]:
+                sGroup = ci["sGroup"]
+                if isinstance(sGroup, (list, tuple)):
+                    sGroup = " ".join(sGroup)
+                symCat = DataCategory("symmetry")
+                symCat.appendAttribute("space_group_name_H-M")
+                symCat.append([sGroup])
+                curContainer.append(symCat)
+
         if atom_block == "chem_comp_atom":
             aCat = DataCategory("chem_comp")
             aCat.appendAttribute("id")
@@ -1164,8 +1194,14 @@ def CIFwrite(
             data = []
             for at in mapping:
                 if mapping[at] == "coords":
+                    coord = mol.coords[i, xyz_map[at], mol.frame]
+                    # When returning the typed container (used by BCIFwrite),
+                    # keep coordinates as native floats. The fp_precision
+                    # truncation only matters for the text CIF output below.
                     data.append(
-                        f"{mol.coords[i, xyz_map[at], mol.frame]:.{fp_precision}f}"
+                        float(coord)
+                        if return_data
+                        else f"{coord:.{fp_precision}f}"
                     )
                 elif mapping[at] == "frame":
                     data.append(1)
@@ -1254,51 +1290,122 @@ mmcif_api = None
 
 
 def BCIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
-    from mmcif.io.BinaryCifWriter import BinaryCifWriter
-    from mmcif.api.DictionaryApi import DictionaryApi
-    from mmcif.api.PdbxContainers import DataContainer
-    from mmcif.api.DataCategoryTyped import DataCategoryTyped
+    import gzip
+    import shutil
+    import tempfile
+    from moleculekit.pdbx.writer.BinaryCifWriter import BinaryCifWriter
 
-    raise NotImplementedError("BinaryCIF writing is not yet fully implemented")
+    # Type hints for the categories that CIFwrite emits. Anything not listed
+    # defaults to "string" in the writer, which is the safe choice.
+    type_hints = {
+        "cell": {
+            # float64 because cell parameters in CIF are routinely stored at
+            # 3-4 decimal precision (e.g. 54.89), which doesn't survive a
+            # float32 round-trip exactly.
+            "length_a": "float64",
+            "length_b": "float64",
+            "length_c": "float64",
+            "angle_alpha": "float64",
+            "angle_beta": "float64",
+            "angle_gamma": "float64",
+            "Z_PDB": "integer",
+        },
+        "symmetry": {
+            "space_group_name_H-M": "string",
+        },
+        "chem_comp": {
+            "id": "string",
+            "type": "string",
+            "pdbx_formal_charge": "integer",
+        },
+        "atom_site": {
+            "group_PDB": "string",
+            "id": "integer",
+            "type_symbol": "string",
+            "label_atom_id": "string",
+            "label_alt_id": "string",
+            "label_comp_id": "string",
+            "label_asym_id": "string",
+            "label_entity_id": "string",
+            "label_seq_id": "integer",
+            "pdbx_PDB_ins_code": "string",
+            "Cartn_x": "float",
+            "Cartn_y": "float",
+            "Cartn_z": "float",
+            "occupancy": "float",
+            "B_iso_or_equiv": "float",
+            "pdbx_formal_charge": "integer",
+            "auth_seq_id": "integer",
+            "auth_comp_id": "string",
+            "auth_asym_id": "string",
+            "auth_atom_id": "string",
+            "pdbx_PDB_model_num": "integer",
+        },
+        "chem_comp_atom": {
+            "comp_id": "string",
+            "atom_id": "string",
+            "alt_atom_id": "string",
+            "type_symbol": "string",
+            "charge": "integer",
+            "partial_charge": "float",
+            "model_Cartn_x": "float",
+            "model_Cartn_y": "float",
+            "model_Cartn_z": "float",
+            "pdbx_model_Cartn_x_ideal": "float",
+            "pdbx_model_Cartn_y_ideal": "float",
+            "pdbx_model_Cartn_z_ideal": "float",
+        },
+        "chem_comp_bond": {
+            "comp_id": "string",
+            "atom_id_1": "string",
+            "atom_id_2": "string",
+            "value_order": "string",
+        },
+        "struct_conn": {
+            "conn_type_id": "string",
+            "ptnr1_auth_asym_id": "string",
+            "ptnr1_auth_seq_id": "integer",
+            "ptnr1_label_atom_id": "string",
+            "pdbx_ptnr1_PDB_ins_code": "string",
+            "ptnr2_auth_asym_id": "string",
+            "ptnr2_auth_seq_id": "integer",
+            "ptnr2_label_atom_id": "string",
+            "pdbx_ptnr2_PDB_ins_code": "string",
+            "pdbx_value_order": "string",
+        },
+    }
 
-    global mmcif_api
-
-    if mmcif_api is None:
-        from mmcif.io.IoAdapterPy import IoAdapterPy as IoAdapter
-        from moleculekit import __share_dir
-
-        myIo = IoAdapter(raiseExceptions=True)
-        dict_path = os.path.join(__share_dir, "mmcif", "mmcif_pdbx_v5_next.dic")
-        cl = myIo.readFile(inputFilePath=dict_path)
-        mmcif_api = DictionaryApi(cl, consolidate=True)
-
-    containerList = CIFwrite(
-        mol,
-        filename=filename,
-        explicitbonds=explicitbonds,
-        chemcomp=chemcomp,
-        return_data=True,
-    )
+    # CIFwrite always opens `filename` for writing the text CIF, even when
+    # return_data=True (the file is never actually used in that path). Point it
+    # at a tempfile to avoid leaving a stray empty file next to the .bcif.
+    with tempfile.NamedTemporaryFile(suffix=".cif", mode="w", delete=True) as tmp:
+        containerList = CIFwrite(
+            mol,
+            filename=tmp.name,
+            explicitbonds=explicitbonds,
+            chemcomp=chemcomp,
+            return_data=True,
+        )
 
     bcw = BinaryCifWriter(
-        dictionaryApi=mmcif_api,
+        typeHints=type_hints,
         storeStringsAsBytes=False,
         defaultStringEncoding="utf-8",
-        applyTypes=True,
         useFloat64=False,
     )
 
-    # Convert to typed container
-    container = containerList[0]
-    cName = container.getName()
-    tc = DataContainer(cName)
-    for catName in container.getObjNameList():
-        dObj = container.getObj(catName)
-        tObj = DataCategoryTyped(dObj, dictionaryApi=mmcif_api, copyInputData=True)
-        tc.append(tObj)
-
-    # Write to file
-    bcw.serialize(filename, [tc])
+    if filename.endswith(".gz"):
+        with tempfile.NamedTemporaryFile(suffix=".bcif", delete=False) as tmp:
+            tmp_path = tmp.name
+        try:
+            bcw.serialize(tmp_path, containerList)
+            with open(tmp_path, "rb") as src, gzip.open(filename, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+    else:
+        bcw.serialize(filename, containerList)
 
 
 def MMTFwrite(mol, filename):
@@ -1487,7 +1594,8 @@ _WRITERS = {
     "binpos": BINPOSwrite,
     "xyz": XYZwrite,
     "xyz.gz": XYZwrite,
-    # "bcif": BCIFwrite,
+    "bcif": BCIFwrite,
+    "bcif.gz": BCIFwrite,
     "inpcrd": INPCRDwrite,
     "crd": INPCRDwrite,
     "json": JSONwrite,
