@@ -11,7 +11,7 @@ from moleculekit.tools.nonstandard_residues import (
     NCAASpec,
     CovalentLigandSpec,
     LigandSpec,
-    PeptideCrosslinkSpec,
+    CrosslinkSpec,
     ModelAtom,
 )
 
@@ -259,7 +259,7 @@ def _test_8qu4_stapled_peptide(tmp_path):
     peptide with an i, i+4 hydrocarbon staple between two non-canonical amino
     acids (NLE at resid 272 and MK8 at resid 276), capped with ACE and NH2.
     The staple bond NLE.CE - MK8.CE is the only non-peptide inter-residue
-    bond and must be reported as a :class:`PeptideCrosslinkSpec`. The ACE
+    bond and must be reported as a :class:`CrosslinkSpec`. The ACE
     and NH2 caps have AMBER parameters bundled and are not flagged."""
     mol = Molecule(QU4_A_CIF)
     specs = detectNonStandardResidues(
@@ -269,7 +269,7 @@ def _test_8qu4_stapled_peptide(tmp_path):
     # Exactly two NCAAs (the stapled residues) and one crosslink. ACE / NH2
     # caps must not be flagged.
     ncaas = [s for s in specs if isinstance(s, NCAASpec)]
-    crosslinks = [s for s in specs if isinstance(s, PeptideCrosslinkSpec)]
+    crosslinks = [s for s in specs if isinstance(s, CrosslinkSpec)]
     assert sorted(s.resname for s in ncaas) == ["MK8", "NLE"]
     assert len(crosslinks) == 1
     assert len(specs) == 3, [type(s).__name__ for s in specs]

@@ -1,30 +1,47 @@
-"""Lookup table for canonical-residue anchor atoms in scaffolded peptides.
+"""Lookup table mapping canonical amino-acid sidechain atoms to their
+"deprotonated anchor" AMBER residue variants.
 
-When a canonical-AA sidechain atom is covalently bonded to a non-peptidic
-scaffold (a "scaffolded peptide" / bicyclic peptide), the residue must be
-renamed to its deprotonated variant so AMBER's force field skips the displaced
-hydrogen and uses the right charges. This table is the single source of truth
-shared by moleculekit (`detectNonStandardResidues`, `systemPrepare` via
-`force_protonation`) and htmd (`amber.build` defense-in-depth rename, the
-junction-frcmod splitter).
+When a canonical amino-acid sidechain atom is covalently bonded to a
+non-canonical residue (for example a Cys SG bonded to a scaffold carbon
+in a bicyclic peptide, or an Asn ND2 N-glycosylated by a sugar), the
+residue must be renamed to a force-field variant in which the displaced
+hydrogen is absent and the partial charges are set up for the bonded
+state. Without the rename, AMBER's standard residue template would place
+an extra hydrogen on the anchor atom and use the wrong charges.
 
-Variant-to-base resname normalization (e.g. ``CYX -> CYS``) is reused from
-:data:`moleculekit.residues.ORIGINAL_RESIDUE_NAME_TABLE` rather than
-duplicated here.
+This table is the single source of truth for those rename rules. It is
+shared by:
+  - moleculekit's :func:`detectNonStandardResidues` and
+    :func:`forceProtonationFromSpecs` (which feed
+    ``systemPrepare(..., force_protonation=...)``);
+  - htmd's ``amber.build`` defense-in-depth rename (which applies the
+    same rename when the user supplies ``custombonds`` directly without
+    going through ``systemPrepare``);
+  - htmd's helper that splits an antechamber-generated frcmod into
+    scaffold-internal and junction terms (the ``ff14sb_type`` /
+    ``cb_ff14sb_type`` / ``hb_ff14sb_type`` fields tell that helper which
+    canonical force-field atom types to rewrite the GAFF2 stub-atom
+    types back to).
 
-Keys are ``(input_resname, anchor_atom_name)``. Values:
-  - ``variant``: the AMBER residue name to use (e.g. ``CYX``). ``None`` means
-    no FF variant exists; the bond's valence will be satisfied by the explicit
-    bond command at build time and the ``drop_h`` atom must be removed manually.
+Variant-to-base resname normalisation (e.g. ``CYX -> CYS``) is reused
+from :data:`moleculekit.residues.ORIGINAL_RESIDUE_NAME_TABLE` rather
+than duplicated here.
+
+Keys are ``(input_resname, anchor_atom_name)``. Each value is a dict:
+  - ``variant``: the AMBER residue name to use after the rename (e.g.
+    ``"CYX"``). ``None`` means no force-field variant exists for this
+    anchor. In that case the bond's valence is satisfied solely by the
+    explicit bond command emitted at build time, and the ``drop_h`` atom
+    must be removed manually before building.
   - ``drop_h``: list of hydrogen atom names that must not appear on the
-    anchored residue.
+    anchored residue (the H atoms displaced by forming the new bond).
   - ``ff14sb_type``: ff14SB atom type of the anchor atom in the canonical
-    residue.
-  - ``cb_ff14sb_type``: ff14SB type of the heavy atom one bond away from the
-    anchor (the "CB-equivalent" we cap with a methyl in the model compound).
-  - ``hb_ff14sb_type``: ff14SB type of hydrogens attached to that CB-equivalent.
-The last three fields are used by htmd's junction-frcmod splitter to rewrite
-GAFF2 types of model-compound stub atoms back to the canonical FF types.
+    residue (e.g. ``"S"`` for Cys SG, ``"N"`` for Asn ND2).
+  - ``cb_ff14sb_type``: ff14SB type of the heavy atom one bond closer to
+    the backbone than the anchor (the "CB-equivalent" the model-compound
+    builder caps with a methyl group).
+  - ``hb_ff14sb_type``: ff14SB type of hydrogens attached to that
+    CB-equivalent atom.
 """
 
 ANCHOR_VARIANTS = {

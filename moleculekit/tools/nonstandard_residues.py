@@ -1,37 +1,50 @@
 """Discovery helper for non-standard residues that need user-driven AMBER
 parameterization before building.
 
-A "non-standard residue" is any residue whose ``resname`` is not in moleculekit's
-canonical-AA / nucleic / water / ion sets. Each such residue is classified into:
+A "non-standard residue" is any residue whose ``resname`` is not in
+moleculekit's canonical amino-acid / nucleic / water / ion sets. Each such
+residue is classified into one of:
 
-  - ``"scaffolded_peptide"``: a HETATM scaffold covalently bonded (non-peptide)
-    to ``>= min_anchors`` canonical-AA residues. The chemistry behind cyclic
-    peptides held in shape by a small-molecule scaffold ("bicycles", strictly
-    bicyclic/tricyclic etc. depending on anchor count).
-  - ``"ncaa"``: a non-canonical amino acid embedded in a polymer chain via
-    peptide N-C bonds to canonical AAs.
+  - ``"scaffolded_peptide"``: a non-protein residue (typically a HETATM
+    small-molecule scaffold) covalently bonded to two or more canonical
+    amino-acid residues. Examples: bicyclic and tricyclic peptides held
+    in shape by a central organic scaffold linked to multiple cysteine
+    sidechains; metal-cofactor sites where one ligand bridges several
+    coordinating residues. Needs a ``custombonds`` entry per anchor at
+    build time, plus parameters for the scaffold itself.
+  - ``"ncaa"``: a non-canonical amino acid embedded in a polypeptide
+    chain via standard peptide (N-C) bonds to canonical amino acids.
+    Examples: selenomethionine (MSE), norleucine (NLE), D-amino acids,
+    backbone-modified residues.
   - ``"covalent_ligand"``: a non-standard residue bonded to exactly one
-    canonical-AA residue via a non-peptide covalent bond (NAG glycosylation
-    on Asn, single-Cys heme attachment, covalent-inhibitor monoadducts, ...).
-    Needs a ``custombonds`` entry at build time (and possibly an anchor
-    rename via ``force_protonation``).
-  - ``"ligand"``: a free, non-covalently bound non-standard residue (small
-    drug molecules, fatty acids in binding pockets, ...). Parameterized
-    standalone; needs no ``custombonds`` or ``force_protonation``.
-  - ``"peptide_crosslink"``: a direct sidechain-to-sidechain covalent bond
-    between two non-canonical amino acids that are themselves peptide-bonded
-    into a polymer chain. Pattern-B stapled peptides (e.g. olefin-metathesis
-    staples between two S5/R8 residues, click-chemistry staples). The two
-    endpoint residues are classified separately as ``"ncaa"``; the crosslink
-    itself is reported as its own spec so the bond can be emitted via
-    ``custombondsFromSpecs``.
+    canonical amino-acid residue via a non-peptide covalent bond.
+    Examples: an N-linked sugar (NAG) glycosidically bonded to Asn ND2;
+    a single-cysteine heme attachment; a covalent-inhibitor monoadduct.
+    Needs a ``custombonds`` entry at build time, and possibly an anchor
+    rename via ``force_protonation`` (e.g. CYS -> CYX, ASN -> NLN).
+  - ``"ligand"``: a non-standard residue with no covalent bonds to any
+    canonical amino-acid residue (a free, non-covalently bound ligand).
+    Examples: small-molecule drug ligands in binding pockets, fatty
+    acids, lipid head-groups. Parameterized standalone; needs no
+    ``custombonds`` or ``force_protonation``.
+  - ``"crosslink"``: a direct covalent bond between two non-canonical
+    residues (neither endpoint is on a canonical amino acid). Examples:
+    sidechain-to-sidechain crosslinks between two non-canonical amino
+    acids in helical "stapled" peptides (e.g. olefin-metathesis or
+    click-chemistry staples between two i, i+4 sidechains); glycosidic
+    bonds between sugars in a multi-residue glycan tree (NAG-NAG,
+    NAG-Man, Man-Man, ...); any other non-canonical-to-non-canonical
+    covalent linkage. Each endpoint residue is still classified
+    independently as one of the above; the crosslink bond itself is
+    reported as its own spec so it can be emitted as a ``custombond``.
 
-For each residue the helper writes a model-compound CIF ready for handing to
-parameterization functions and returns metadata the caller uses to derive the
-standard arguments to
-:func:`moleculekit.tools.preparation.systemPrepare` (``force_protonation``) and
-:func:`htmd.builder.amber.build` (``custombonds``). Two thin helpers do that
-conversion: :func:`forceProtonationFromSpecs` and :func:`custombondsFromSpecs`.
+For each residue the helper writes a model-compound CIF ready for handing
+to parameterization tools (e.g. antechamber) and returns metadata the
+caller uses to derive the standard arguments to
+:func:`moleculekit.tools.preparation.systemPrepare` (``force_protonation``)
+and :func:`htmd.builder.amber.build` (``custombonds``). Two thin helpers
+do that conversion: :func:`forceProtonationFromSpecs` and
+:func:`custombondsFromSpecs`.
 """
 
 from __future__ import annotations
@@ -74,10 +87,11 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ScaffoldAnchor:
-    """One covalent anchor between a canonical-residue sidechain atom and a
-    scaffolded-peptide scaffold atom. ``anchor_atom`` is the canonical-AA
-    sidechain atom (e.g. Cys SG); ``scaffold_atom`` is the bonded atom on
-    the non-canonical scaffold."""
+    """One covalent bond between a canonical amino-acid sidechain atom and
+    a non-canonical residue (a scaffold or a covalent ligand).
+    ``anchor_atom`` is the atom on the canonical amino acid (e.g. Cys SG,
+    Asn ND2); ``scaffold_atom`` is the bonded atom on the non-canonical
+    residue."""
 
     anchor_atom: UniqueAtomID
     scaffold_atom: UniqueAtomID
@@ -86,8 +100,12 @@ class ScaffoldAnchor:
 @dataclass
 class ModelAtom:
     """Per-atom record in a scaffolded-peptide model compound. ``role`` is
-    either ``"scaffold"`` or ``"stub"``; ``ff_type`` is the canonical-FF
-    atom type for stub atoms (``None`` for scaffold atoms)."""
+    ``"scaffold"`` for atoms that belong to the scaffold itself, or
+    ``"stub"`` for the small canonical-sidechain stubs the detector adds
+    at each anchor (e.g. a methyl-thioether stub representing a Cys
+    sidechain). ``ff_type`` is the canonical force-field atom type for
+    stub atoms (used when splitting the antechamber frcmod into scaffold-
+    internal and junction terms); ``None`` for scaffold atoms."""
 
     role: str
     ff_type: Optional[str]
@@ -95,8 +113,11 @@ class ModelAtom:
 
 @dataclass
 class ScaffoldedPeptideSpec:
-    """A non-canonical residue covalently bonded (via non-peptide bonds) to
-    two or more canonical residues."""
+    """A non-canonical residue covalently bonded to two or more canonical
+    amino-acid residues via non-peptide bonds. Typical case: a small-
+    molecule scaffold linking several cysteine sidechains in a bicyclic /
+    tricyclic peptide. Each anchor needs a ``custombond`` at build time,
+    plus parameters for the scaffold itself."""
 
     category: ClassVar[str] = "scaffolded_peptide"
     resname: str
@@ -108,8 +129,11 @@ class ScaffoldedPeptideSpec:
 
 @dataclass
 class NCAASpec:
-    """A non-canonical amino acid embedded in a polymer chain via peptide
-    N-C bonds to canonical AAs."""
+    """A non-canonical amino acid embedded in a polypeptide chain via
+    standard peptide (N-C) bonds to canonical amino acids. Examples:
+    selenomethionine (MSE), norleucine (NLE), D-amino acids, backbone-
+    modified residues. Needs a residue template / parameters but no
+    ``custombond`` (the peptide bonds are recognized by tLeap)."""
 
     category: ClassVar[str] = "ncaa"
     resname: str
@@ -123,9 +147,11 @@ class NCAASpec:
 
 @dataclass
 class LigandSpec:
-    """Non-standard residue with no covalent bonds to canonical-AA residues:
-    small molecules, drug ligands, fatty acids, etc. Parameterized
-    standalone; needs no ``custombonds`` or ``force_protonation`` at build."""
+    """A non-standard residue with no covalent bonds to any canonical
+    amino-acid residue (a free, non-covalently bound ligand). Examples:
+    small-molecule drug ligands in binding pockets, fatty acids, lipid
+    head-groups. Parameterized standalone; needs no ``custombonds`` or
+    ``force_protonation`` at build."""
 
     category: ClassVar[str] = "ligand"
     resname: str
@@ -135,12 +161,14 @@ class LigandSpec:
 
 @dataclass
 class CovalentLigandSpec:
-    """Non-standard residue bonded to exactly one canonical-AA residue via a
-    non-peptide covalent bond (e.g. NAG-Asn glycosylation, single-Cys heme
-    attachment, covalent-inhibitor monoadducts). The ``anchor`` carries the
-    canonical-AA atom and the ligand atom on the bond. Needs a custombond
-    at build time, and possibly an anchor rename via ``force_protonation``
-    if the canonical anchor atom appears in :data:`ANCHOR_VARIANTS`."""
+    """A non-standard residue bonded to exactly one canonical amino-acid
+    residue via a single non-peptide covalent bond. Examples: an N-linked
+    sugar glycosidically bonded to Asn ND2; a single-cysteine heme
+    attachment; a covalent-inhibitor monoadduct. The ``anchor`` carries
+    both endpoints of the bond. Needs a ``custombond`` at build time, and
+    possibly an anchor rename via ``force_protonation`` if the canonical
+    anchor atom appears in :data:`ANCHOR_VARIANTS` (e.g. CYS -> CYX,
+    ASN -> NLN)."""
 
     category: ClassVar[str] = "covalent_ligand"
     resname: str
@@ -150,14 +178,18 @@ class CovalentLigandSpec:
 
 
 @dataclass
-class PeptideCrosslinkSpec:
-    """A direct sidechain-to-sidechain covalent bond between two
-    non-canonical amino acids that are both peptide-bonded into a polymer
-    chain (Pattern-B stapled peptides). Each endpoint NCAA is classified
-    separately as :class:`NCAASpec`; this spec carries only the crosslink
-    bond itself so it can be emitted via ``custombondsFromSpecs``."""
+class CrosslinkSpec:
+    """A direct covalent bond between two non-canonical residues (neither
+    endpoint is on a canonical amino acid). Examples: sidechain-to-sidechain
+    crosslinks between two non-canonical amino acids in stapled helical
+    peptides; glycosidic bonds between two sugars in a multi-residue glycan;
+    any other non-canonical-to-non-canonical covalent linkage. Each endpoint
+    residue is classified separately (:class:`NCAASpec`,
+    :class:`CovalentLigandSpec`, or :class:`LigandSpec`); this spec carries
+    only the crosslink bond so it can be emitted via
+    :func:`custombondsFromSpecs`."""
 
-    category: ClassVar[str] = "peptide_crosslink"
+    category: ClassVar[str] = "crosslink"
     atom_a: UniqueAtomID
     atom_b: UniqueAtomID
 
@@ -167,7 +199,7 @@ NonStandardResidueSpec = Union[
     NCAASpec,
     CovalentLigandSpec,
     LigandSpec,
-    PeptideCrosslinkSpec,
+    CrosslinkSpec,
 ]
 
 
@@ -401,7 +433,11 @@ def _idealized_methyl_positions(center, neighbor_pos, bond_length=1.09):
         direction = np.array([1.0, 0.0, 0.0])
     else:
         direction /= norm
-    ref = np.array([1.0, 0.0, 0.0]) if abs(direction[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
+    ref = (
+        np.array([1.0, 0.0, 0.0])
+        if abs(direction[0]) < 0.9
+        else np.array([0.0, 1.0, 0.0])
+    )
     x = np.cross(direction, ref)
     x /= np.linalg.norm(x)
     y = np.cross(direction, x)
@@ -499,7 +535,9 @@ def _build_scaffold_model(mol, scaffold_group, anchors):
         stub.resid[:] = 1
         stub.segid[:] = "A"
         stub.chain[:] = "A"
-        stub.coords = np.vstack([anchor_pos, cb_pos, *h_positions])[:, :, np.newaxis].astype(np.float32)
+        stub.coords = np.vstack([anchor_pos, cb_pos, *h_positions])[
+            :, :, np.newaxis
+        ].astype(np.float32)
         stub.record[:] = "HETATM"
 
         n_before = model.numAtoms
@@ -549,40 +587,54 @@ def _build_ncaa_model(mol, group):
 
 
 def detectNonStandardResidues(
-    mol,
-    outdir=None,
-    write_models=True,
-    include_known=False,
-    min_anchors_for_scaffold=2,
+    mol, outdir=None, write_models=True, include_known=False, min_anchors_for_scaffold=2
 ):
     """Detect non-standard residues and (optionally) write model-compound CIFs.
+
+    Walks every residue in the input molecule and classifies any whose
+    resname is not in the canonical amino-acid / nucleic / water / ion sets
+    into one of: scaffolded peptide, non-canonical amino acid (NCAA),
+    covalent ligand, free ligand, or inter-residue crosslink. See the
+    module docstring for a description of each category.
+
+    For each detected residue the helper writes a "model compound" CIF
+    that's ready to be parameterized (e.g. with ``antechamber``). The
+    returned spec list also lets the caller derive the standard arguments
+    expected by downstream tools via :func:`forceProtonationFromSpecs`
+    (for ``systemPrepare``) and :func:`custombondsFromSpecs` (for
+    ``amber.build``).
 
     Parameters
     ----------
     mol : :class:`moleculekit.molecule.Molecule`
-        Input molecule. Must already carry the bonds you care about (read from
-        a PDB CONECT or CIF ``_struct_conn`` block); if ``mol.bonds`` is empty,
-        the detector falls back to ``mol._guessBonds()``.
+        Input molecule. Should already carry covalent bonds (e.g. read
+        from a PDB ``CONECT`` block or a CIF ``_struct_conn`` block); if
+        ``mol.bonds`` is empty, the detector falls back to distance-based
+        bond guessing via ``mol._guessBonds()``.
     outdir : str, optional
         Output directory for model-compound CIFs. Required when
         ``write_models=True``.
     write_models : bool, optional
         If True, write a CIF model compound per detected residue into
-        ``outdir``. The path is recorded in each spec under
+        ``outdir``. The path is recorded on each spec as
         ``model_compound_cif``.
     include_known : bool, optional
-        If False (default), skip residues whose resname is already covered by
-        htmd's bundled AMBER cofactor / NCAA / PTM registry.
+        If False (default), skip residues whose resname is already covered
+        by HTMD's bundled AMBER cofactor / NCAA / PTM registry (no need
+        to re-parameterize residues that already have parameters
+        shipped). Set True to include them anyway.
     min_anchors_for_scaffold : int, optional
-        Number of covalent bonds to canonical-AA residues a HETATM must have
-        to be classified as a scaffolded peptide. Default 2.
+        Minimum number of non-peptide covalent bonds to canonical amino
+        acids a non-canonical residue must have to be classified as a
+        scaffolded peptide. Default 2; residues with one such bond are
+        classified as covalent ligands instead.
 
     Returns
     -------
     list[NonStandardResidueSpec]
         One :class:`ScaffoldedPeptideSpec`, :class:`NCAASpec`,
-        :class:`CovalentLigandSpec`, or :class:`LigandSpec` per detected
-        residue.
+        :class:`CovalentLigandSpec`, :class:`LigandSpec`, or
+        :class:`CrosslinkSpec` per detected residue / inter-residue bond.
     """
     if write_models:
         if outdir is None:
@@ -668,9 +720,7 @@ def detectNonStandardResidues(
         elif info["category"] == "covalent_ligand":
             anc = info["anchors"][0]
             anchor = ScaffoldAnchor(
-                anchor_atom=UniqueAtomID.fromMolecule(
-                    mol, idx=anc["anchor_atom_idx"]
-                ),
+                anchor_atom=UniqueAtomID.fromMolecule(mol, idx=anc["anchor_atom_idx"]),
                 scaffold_atom=UniqueAtomID.fromMolecule(
                     mol, idx=anc["scaffold_atom_idx"]
                 ),
@@ -697,24 +747,20 @@ def detectNonStandardResidues(
                 )
             )
 
-    # Pattern-B stapled peptides: scan inter-residue non-peptide bonds for
-    # NCAA-NCAA crosslinks. Cys-Cys disulfides are skipped (they are handled
-    # separately by amber.build's disulfide path).
-    cys_resnames = {"CYS", "CYM", "CYX"}
+    # Crosslinks: scan inter-residue non-peptide bonds where both endpoints
+    # are non-canonical residues (i.e. both appear in `classifications`).
+    # Covers sidechain-to-sidechain crosslinks between two non-canonical
+    # amino acids (e.g. stapled helical peptides) and sugar-to-sugar
+    # glycosidic bonds inside a multi-residue glycan. Bonds where one
+    # endpoint is on a canonical amino acid are already captured by
+    # ScaffoldedPeptideSpec / CovalentLigandSpec and are skipped here.
+    # Cys-Cys disulfides never reach this loop because both cysteines are
+    # canonical residues.
     for a1, a2, r1, r2 in inter_residue_bonds:
-        cat1 = classifications.get(r1, {}).get("category")
-        cat2 = classifications.get(r2, {}).get("category")
-        if cat1 != "ncaa" or cat2 != "ncaa":
-            continue
-        if (
-            groups[r1]["resname"] in cys_resnames
-            and groups[r2]["resname"] in cys_resnames
-            and str(mol.name[a1]) == "SG"
-            and str(mol.name[a2]) == "SG"
-        ):
+        if r1 not in classifications or r2 not in classifications:
             continue
         specs.append(
-            PeptideCrosslinkSpec(
+            CrosslinkSpec(
                 atom_a=UniqueAtomID.fromMolecule(mol, idx=a1),
                 atom_b=UniqueAtomID.fromMolecule(mol, idx=a2),
             )
@@ -734,12 +780,21 @@ def _spec_anchors(spec):
 
 
 def forceProtonationFromSpecs(specs):
-    """Convert detector specs to a ``force_protonation`` list for systemPrepare.
+    """Convert detector specs to a ``force_protonation`` list for
+    :func:`moleculekit.tools.preparation.systemPrepare`.
 
-    Each scaffolded-peptide / covalent-ligand anchor whose
-    ``(resname, anchor_atom_name)`` is in ``ANCHOR_VARIANTS`` with a non-None
-    ``variant`` produces a ``(atomselect_string, variant_resname)`` entry.
-    Unknown anchors are skipped with a warning."""
+    When a canonical amino-acid sidechain atom is covalently bonded to a
+    scaffold or a covalent ligand, the residue typically needs to be
+    renamed to a deprotonated AMBER variant (e.g. CYS -> CYX when the
+    sulfur is bonded to a scaffold carbon, ASN -> NLN when the side-chain
+    nitrogen is N-glycosylated) so the force field uses the right
+    template (skipping the displaced hydrogen and using the right
+    charges). For each scaffolded-peptide or covalent-ligand anchor whose
+    ``(resname, anchor_atom_name)`` appears in :data:`ANCHOR_VARIANTS`
+    with a defined variant, this helper emits a
+    ``(atomselect_string, variant_resname)`` entry. Anchors with no entry
+    or no defined variant are skipped with a warning (the displaced H
+    must then be removed manually)."""
     out = []
     for spec in specs:
         for anc in _spec_anchors(spec):
@@ -769,12 +824,13 @@ def custombondsFromSpecs(specs):
     """Convert detector specs to a ``custombonds`` list for ``amber.build``.
 
     Emits one ``(anchor_sel, scaffold_atom_sel)`` pair per scaffolded-peptide
-    or covalent-ligand anchor, plus one pair per peptide-crosslink bond.
-    Atom-selection strings target a single atom by
-    ``segid+chain+resid+insertion+name``."""
+    or covalent-ligand anchor, plus one pair per :class:`CrosslinkSpec` bond
+    (e.g. a stapled-peptide sidechain-to-sidechain crosslink or a sugar-to-
+    sugar glycosidic bond inside a glycan tree). Atom-selection strings
+    target a single atom by ``segid+chain+resid+insertion+name``."""
     out = []
     for spec in specs:
-        if isinstance(spec, PeptideCrosslinkSpec):
+        if isinstance(spec, CrosslinkSpec):
             out.append(
                 [
                     _atom_sel_from_id(spec.atom_a),
