@@ -1141,147 +1141,147 @@ def CIFwrite(
         viewname = "MOL"
     viewname = re.sub(r"\W+", "_", viewname)
 
-    myDataList = []
-    with open(filename, "w") as ofh:
-        curContainer = DataContainer(mol.resname[0] if single_mol else viewname)
+    curContainer = DataContainer(mol.resname[0] if single_mol else viewname)
 
-        # Cell + symmetry. Round-trippable with CIFread, which reads
-        # _cell.length_a/b/c + _cell.angle_* into mol.crystalinfo, and
-        # _symmetry.space_group_name_H-M into crystalinfo["sGroup"].
-        ci = mol.crystalinfo
-        if ci:
-            cell_keys = ("a", "b", "c", "alpha", "beta", "gamma")
-            if all(k in ci for k in cell_keys):
-                cellCat = DataCategory("cell")
-                for at in (
-                    "length_a",
-                    "length_b",
-                    "length_c",
-                    "angle_alpha",
-                    "angle_beta",
-                    "angle_gamma",
-                ):
-                    cellCat.appendAttribute(at)
-                if "z" in ci:
-                    cellCat.appendAttribute("Z_PDB")
-                row = [float(ci[k]) for k in cell_keys]
-                if "z" in ci:
-                    row.append(int(ci["z"]))
-                cellCat.append(row)
-                curContainer.append(cellCat)
-            if "sGroup" in ci and ci["sGroup"]:
-                sGroup = ci["sGroup"]
-                if isinstance(sGroup, (list, tuple)):
-                    sGroup = " ".join(sGroup)
-                symCat = DataCategory("symmetry")
-                symCat.appendAttribute("space_group_name_H-M")
-                symCat.append([sGroup])
-                curContainer.append(symCat)
+    # Cell + symmetry. Round-trippable with CIFread, which reads
+    # _cell.length_a/b/c + _cell.angle_* into mol.crystalinfo, and
+    # _symmetry.space_group_name_H-M into crystalinfo["sGroup"].
+    ci = mol.crystalinfo
+    if ci:
+        cell_keys = ("a", "b", "c", "alpha", "beta", "gamma")
+        if all(k in ci for k in cell_keys):
+            cellCat = DataCategory("cell")
+            for at in (
+                "length_a",
+                "length_b",
+                "length_c",
+                "angle_alpha",
+                "angle_beta",
+                "angle_gamma",
+            ):
+                cellCat.appendAttribute(at)
+            if "z" in ci:
+                cellCat.appendAttribute("Z_PDB")
+            row = [float(ci[k]) for k in cell_keys]
+            if "z" in ci:
+                row.append(int(ci["z"]))
+            cellCat.append(row)
+            curContainer.append(cellCat)
+        if "sGroup" in ci and ci["sGroup"]:
+            sGroup = ci["sGroup"]
+            if isinstance(sGroup, (list, tuple)):
+                sGroup = " ".join(sGroup)
+            symCat = DataCategory("symmetry")
+            symCat.appendAttribute("space_group_name_H-M")
+            symCat.append([sGroup])
+            curContainer.append(symCat)
 
-        if atom_block == "chem_comp_atom":
-            aCat = DataCategory("chem_comp")
-            aCat.appendAttribute("id")
-            aCat.appendAttribute("type")
-            aCat.appendAttribute("pdbx_formal_charge")
-            aCat.append([mol.resname[0], "NON-POLYMER", int(mol.formalcharge.sum())])
-            curContainer.append(aCat)
-
-        aCat = DataCategory(atom_block)
-        for at in mapping:
-            aCat.appendAttribute(at)
-
-        for i in range(mol.numAtoms):
-            data = []
-            for at in mapping:
-                if mapping[at] == "coords":
-                    coord = mol.coords[i, xyz_map[at], mol.frame]
-                    # When returning the typed container (used by BCIFwrite),
-                    # keep coordinates as native floats. The fp_precision
-                    # truncation only matters for the text CIF output below.
-                    data.append(
-                        float(coord)
-                        if return_data
-                        else f"{coord:.{fp_precision}f}"
-                    )
-                elif mapping[at] == "frame":
-                    data.append(1)
-                elif mapping[at] == "name":
-                    data.append(atomnames[i])
-                elif mapping[at] == "serial":
-                    data.append(i + 1)
-                elif at == "label_comp_id":
-                    if mol.resname[i] not in ORIGINAL_RESIDUE_NAME_TABLE:
-                        data.append(mol.resname[i])
-                    else:
-                        data.append(ORIGINAL_RESIDUE_NAME_TABLE[mol.resname[i]])
-                else:
-                    data.append(mol.__dict__[mapping[at]][i])
-            aCat.append(data)
+    if atom_block == "chem_comp_atom":
+        aCat = DataCategory("chem_comp")
+        aCat.appendAttribute("id")
+        aCat.appendAttribute("type")
+        aCat.appendAttribute("pdbx_formal_charge")
+        aCat.append([mol.resname[0], "NON-POLYMER", int(mol.formalcharge.sum())])
         curContainer.append(aCat)
 
-        if len(mol.bonds) and writebonds:
-            bonds = mol.bonds
-            bondtype = mol.bondtype
-            if explicitbonds is not None:
-                bonds = explicitbonds[0]
-                bondtype = explicitbonds[1]
+    aCat = DataCategory(atom_block)
+    for at in mapping:
+        aCat.appendAttribute(at)
 
-            uqresid = mol.getResidues(return_idx=False)
+    for i in range(mol.numAtoms):
+        data = []
+        for at in mapping:
+            if mapping[at] == "coords":
+                coord = mol.coords[i, xyz_map[at], mol.frame]
+                # When returning the typed container (used by BCIFwrite),
+                # keep coordinates as native floats. The fp_precision
+                # truncation only matters for the text CIF output below.
+                data.append(
+                    float(coord)
+                    if return_data
+                    else f"{coord:.{fp_precision}f}"
+                )
+            elif mapping[at] == "frame":
+                data.append(1)
+            elif mapping[at] == "name":
+                data.append(atomnames[i])
+            elif mapping[at] == "serial":
+                data.append(i + 1)
+            elif at == "label_comp_id":
+                if mol.resname[i] not in ORIGINAL_RESIDUE_NAME_TABLE:
+                    data.append(mol.resname[i])
+                else:
+                    data.append(ORIGINAL_RESIDUE_NAME_TABLE[mol.resname[i]])
+            else:
+                data.append(mol.__dict__[mapping[at]][i])
+        aCat.append(data)
+    curContainer.append(aCat)
 
-            bCat = DataCategory("chem_comp_bond")
-            for at in ["comp_id", "atom_id_1", "atom_id_2", "value_order"]:
+    if len(mol.bonds) and writebonds:
+        bonds = mol.bonds
+        bondtype = mol.bondtype
+        if explicitbonds is not None:
+            bonds = explicitbonds[0]
+            bondtype = explicitbonds[1]
+
+        uqresid = mol.getResidues(return_idx=False)
+
+        bCat = DataCategory("chem_comp_bond")
+        for at in ["comp_id", "atom_id_1", "atom_id_2", "value_order"]:
+            bCat.appendAttribute(at)
+
+        written_bonds = set()
+        for i in range(bonds.shape[0]):
+            bond = bonds[i]
+            if uqresid[bond[0]] != uqresid[bond[1]]:
+                continue
+            key = (mol.resname[bond[0]], atomnames[bond[0]], atomnames[bond[1]])
+            if key in written_bonds:
+                continue
+            written_bonds.add(key)
+            bCat.append([*key, bondtype_map[bondtype[i]]])
+        curContainer.append(bCat)
+
+        if not single_mol:
+            bCat = DataCategory("struct_conn")
+            for at in [
+                "conn_type_id",
+                "ptnr1_auth_asym_id",
+                "ptnr1_auth_seq_id",
+                "ptnr1_label_atom_id",
+                "pdbx_ptnr1_PDB_ins_code",
+                "ptnr2_auth_asym_id",
+                "ptnr2_auth_seq_id",
+                "ptnr2_label_atom_id",
+                "pdbx_ptnr2_PDB_ins_code",
+                "pdbx_value_order",
+            ]:
                 bCat.appendAttribute(at)
-
-            written_bonds = set()
             for i in range(bonds.shape[0]):
                 bond = bonds[i]
-                if uqresid[bond[0]] != uqresid[bond[1]]:
+                if uqresid[bond[0]] == uqresid[bond[1]]:
                     continue
-                key = (mol.resname[bond[0]], atomnames[bond[0]], atomnames[bond[1]])
-                if key in written_bonds:
-                    continue
-                written_bonds.add(key)
-                bCat.append([*key, bondtype_map[bondtype[i]]])
+                bCat.append(
+                    [
+                        "covale",
+                        mol.chain[bond[0]],
+                        mol.resid[bond[0]],
+                        mol.name[bond[0]],
+                        mol.insertion[bond[0]],
+                        mol.chain[bond[1]],
+                        mol.resid[bond[1]],
+                        mol.name[bond[1]],
+                        mol.insertion[bond[1]],
+                        bondtype_map[bondtype[i]],
+                    ]
+                )
             curContainer.append(bCat)
 
-            if not single_mol:
-                bCat = DataCategory("struct_conn")
-                for at in [
-                    "conn_type_id",
-                    "ptnr1_auth_asym_id",
-                    "ptnr1_auth_seq_id",
-                    "ptnr1_label_atom_id",
-                    "pdbx_ptnr1_PDB_ins_code",
-                    "ptnr2_auth_asym_id",
-                    "ptnr2_auth_seq_id",
-                    "ptnr2_label_atom_id",
-                    "pdbx_ptnr2_PDB_ins_code",
-                    "pdbx_value_order",
-                ]:
-                    bCat.appendAttribute(at)
-                for i in range(bonds.shape[0]):
-                    bond = bonds[i]
-                    if uqresid[bond[0]] == uqresid[bond[1]]:
-                        continue
-                    bCat.append(
-                        [
-                            "covale",
-                            mol.chain[bond[0]],
-                            mol.resid[bond[0]],
-                            mol.name[bond[0]],
-                            mol.insertion[bond[0]],
-                            mol.chain[bond[1]],
-                            mol.resid[bond[1]],
-                            mol.name[bond[1]],
-                            mol.insertion[bond[1]],
-                            bondtype_map[bondtype[i]],
-                        ]
-                    )
-                curContainer.append(bCat)
+    myDataList = [curContainer]
+    if return_data:
+        return myDataList
 
-        myDataList.append(curContainer)
-        if return_data:
-            return myDataList
+    with open(filename, "w") as ofh:
         pdbxW = PdbxWriter(ofh)
         pdbxW.write(myDataList)
 
@@ -1291,8 +1291,6 @@ mmcif_api = None
 
 def BCIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
     import gzip
-    import shutil
-    import tempfile
     from moleculekit.pdbx.writer.BinaryCifWriter import BinaryCifWriter
 
     # Type hints for the categories that CIFwrite emits. Anything not listed
@@ -1375,17 +1373,13 @@ def BCIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
         },
     }
 
-    # CIFwrite always opens `filename` for writing the text CIF, even when
-    # return_data=True (the file is never actually used in that path). Point it
-    # at a tempfile to avoid leaving a stray empty file next to the .bcif.
-    with tempfile.NamedTemporaryFile(suffix=".cif", mode="w", delete=True) as tmp:
-        containerList = CIFwrite(
-            mol,
-            filename=tmp.name,
-            explicitbonds=explicitbonds,
-            chemcomp=chemcomp,
-            return_data=True,
-        )
+    containerList = CIFwrite(
+        mol,
+        filename=None,
+        explicitbonds=explicitbonds,
+        chemcomp=chemcomp,
+        return_data=True,
+    )
 
     bcw = BinaryCifWriter(
         typeHints=type_hints,
@@ -1395,15 +1389,8 @@ def BCIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
     )
 
     if filename.endswith(".gz"):
-        with tempfile.NamedTemporaryFile(suffix=".bcif", delete=False) as tmp:
-            tmp_path = tmp.name
-        try:
-            bcw.serialize(tmp_path, containerList)
-            with open(tmp_path, "rb") as src, gzip.open(filename, "wb") as dst:
-                shutil.copyfileobj(src, dst)
-        finally:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
+        with gzip.open(filename, "wb") as fh:
+            bcw.serialize(fh, containerList)
     else:
         bcw.serialize(filename, containerList)
 

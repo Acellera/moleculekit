@@ -45,7 +45,14 @@ class BinaryCifWriter(object):
         self.__defaultStringEncoding = defaultStringEncoding
         self.__useFloat64 = useFloat64
 
-    def serialize(self, filePath, containerList):
+    def serialize(self, filePathOrFileObj, containerList):
+        """Serialize `containerList` to BCIF.
+
+        `filePathOrFileObj` may be a filesystem path or any binary file-like
+        object (anything with a `write` method). Passing a file object lets
+        callers write directly into wrappers like `gzip.open(...)` without
+        materializing an intermediate file.
+        """
         blocks = []
         for container in containerList:
             block = {
@@ -88,8 +95,11 @@ class BinaryCifWriter(object):
             self.__toBytes("encoder"): self.__toBytes("moleculekit"),
             self.__toBytes("dataBlocks"): blocks,
         }
-        with open(filePath, "wb") as ofh:
-            msgpack.pack(data, ofh)
+        if hasattr(filePathOrFileObj, "write"):
+            msgpack.pack(data, filePathOrFileObj)
+        else:
+            with open(filePathOrFileObj, "wb") as ofh:
+                msgpack.pack(data, ofh)
         return True
 
     def __encodeColumnData(self, colDataList, dataType):
