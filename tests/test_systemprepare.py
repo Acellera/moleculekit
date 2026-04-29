@@ -176,7 +176,9 @@ def _test_nonstandard_residues(tmp_path, system):
 
     res_smiles = {
         "200": "c1cc(ccc1C[C@@H](C(=O)O)N)Cl",
+        "ALC": "C1CCC(CC1)C[C@@H](C=O)N",
         "HRG": "C(CCNC(=N)N)C[C@@H](C=O)N",
+        "NLE": "CCCC[C@@H](C=O)N",
         "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C=O",
         "TYS": "c1cc(ccc1C[C@@H](C=O)N)OS(=O)(=O)O",
         "SAH": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CSCC[C@@H](C(=O)O)N)O)O)N",
@@ -392,3 +394,147 @@ def _test_backbone_fixing():
     assert not np.any((mol.name == "C") & (mol.resid == 245))
     check_backbone(mol)
     assert np.sum((mol.name == "C") & (mol.resid == 245)) == 1
+
+
+def _test_capture_and_restore_bonds():
+    """_capture_bonds must capture every bond (intra- and inter-residue),
+    and _restore_bonds must silently drop bonds whose missing endpoint
+    is hydrogen while still warning when a heavy atom goes missing.
+    """
+    import logging
+    from moleculekit.tools.preparation import _capture_bonds, _restore_bonds
+
+    class _CaptureWarnings(logging.Handler):
+        def __init__(self):
+            super().__init__(level=logging.WARNING)
+            self.messages = []
+
+        def emit(self, record):
+            self.messages.append(record.getMessage())
+
+    prep_logger = logging.getLogger("moleculekit.tools.preparation")
+
+    def _attach_handler():
+        h = _CaptureWarnings()
+        prep_logger.addHandler(h)
+        return h
+
+    # Build a 4-atom mol: C1-C2 (intra), C2-H1 (H bond), C1-N1 (inter-residue).
+    mol = Molecule().empty(4)
+    mol.coords = np.zeros((4, 3, 1), dtype=np.float32)
+    mol.coords[:, 0, 0] = [0.0, 1.5, 2.5, 3.0]
+    mol.name[:] = ["C1", "C2", "H1", "N1"]
+    mol.element[:] = ["C", "C", "H", "N"]
+    mol.resname[:] = ["LIG", "LIG", "LIG", "RES"]
+    mol.resid[:] = [1, 1, 1, 2]
+    mol.chain[:] = ["A"] * 4
+    mol.segid[:] = ["L"] * 4
+    mol.bonds = np.array([[0, 1], [1, 2], [0, 3]], dtype=np.uint32)
+    mol.bondtype = np.array(["2", "1", "ar"], dtype=object)  # mixed types
+
+    captured = _capture_bonds(mol)
+    assert len(captured) == 3, "all bonds (incl. intra-residue) must be captured"
+    assert [t[3] for t in captured] == ["2", "1", "ar"], "bondtype must be captured"
+
+    h_flags = [t[2] for t in captured]
+    assert h_flags == [False, True, False], "is_h_bond must be set per bond"
+
+    # Restore onto a copy with a resname rename (CYS->CYX style); H still present.
+    mol2 = mol.copy()
+    mol2.resname[mol2.resid == 1] = "LGX"
+    mol2.bonds = np.zeros((0, 2), dtype=np.uint32)
+    mol2.bondtype = np.array([], dtype=object)
+    _restore_bonds(mol2, captured)
+    assert len(mol2.bonds) == 3, "all bonds must be restored when atoms still present"
+    assert list(mol2.bondtype) == ["2", "1", "ar"], "bondtype must round-trip"
+
+    # Restore onto a copy where the hydrogen was removed: drop silently.
+    mol3 = mol.copy()
+    mol3.remove("name H1", _logger=False)
+    mol3.bonds = np.zeros((0, 2), dtype=np.uint32)
+    mol3.bondtype = np.array([], dtype=object)
+    h = _attach_handler()
+    try:
+        _restore_bonds(mol3, captured)
+    finally:
+        prep_logger.removeHandler(h)
+    assert len(mol3.bonds) == 2, "C2-H bond must be dropped, heavy bonds kept"
+    assert not h.messages, f"missing H must not warn; got {h.messages}"
+
+    # Restore onto a copy where a heavy atom was removed: warn.
+    mol4 = mol.copy()
+    mol4.remove("name N1", _logger=False)
+    mol4.bonds = np.zeros((0, 2), dtype=np.uint32)
+    mol4.bondtype = np.array([], dtype=object)
+    h = _attach_handler()
+    try:
+        _restore_bonds(mol4, captured)
+    finally:
+        prep_logger.removeHandler(h)
+    assert len(mol4.bonds) == 2, "C1-N bond must be dropped"
+    assert h.messages, "missing heavy atom must warn"
+
+
+
+def _heavy_bond_signatures(mol, sel):
+    """Return a set of frozenset signatures for heavy-atom bonds whose
+    endpoints both belong to ``sel``. Each signature is a pair of
+    (segid, chain, resid, insertion, name) tuples — order-insensitive.
+    """
+    idx = set(int(i) for i in mol.atomselect(sel, indexes=True))
+    sigs = set()
+    for a, b in mol.bonds:
+        a, b = int(a), int(b)
+        if a not in idx or b not in idx:
+            continue
+        if mol.element[a] == "H" or mol.element[b] == "H":
+            continue
+        ka = (str(mol.segid[a]), str(mol.chain[a]), int(mol.resid[a]),
+              str(mol.insertion[a]), str(mol.name[a]))
+        kb = (str(mol.segid[b]), str(mol.chain[b]), int(mol.resid[b]),
+              str(mol.insertion[b]), str(mol.name[b]))
+        sigs.add(frozenset([ka, kb]))
+    return sigs
+
+
+def _test_5vbl_templated_bonds_preserved():
+    """systemPrepare must preserve every heavy-atom bond of templated
+    non-canonical residues across the PDB2PQR roundtrip. 5VBL contains
+    five NCAAs (HRG, ALC, OIC, NLE, 200) plus a Zn ion and an OLC
+    ligand; we template the NCAAs via templateResidueFromSmiles (the
+    canonical entry point — ``residue_smiles=`` on systemPrepare is
+    being deprecated) and run with ``ignore_ns=True`` so pdb2pqr leaves
+    the NCAAs alone but the bond capture/restore round-trip still has
+    to put their connectivity back.
+    """
+    from moleculekit.tools.preparation import systemPrepare
+
+    smiles = {
+        "HRG": "C(CCNC(=N)N)C[C@@H](C(=O)O)N",
+        "ALC": "C1CCC(CC1)CC(C(=O)O)N",
+        "OIC": "C1CCC2C(C1)CC(N2)C(=O)O",
+        "NLE": "CCCC[C@@H](C(=O)O)N",
+        "200": "c1cc(ccc1CC(C(=O)O)N)Cl",
+    }
+
+    mol = Molecule("5VBL")
+    for resname, smi in smiles.items():
+        mol.templateResidueFromSmiles(
+            f"resname '{resname}'", smi, addHs=True, _logger=False
+        )
+
+    sel = "resname " + " ".join(f"'{r}'" for r in smiles)
+    expected = _heavy_bond_signatures(mol, sel)
+    assert expected, "templated NCAAs must have heavy bonds in input"
+
+    pmol = systemPrepare(mol, ignore_ns=True, verbose=False)
+    got = _heavy_bond_signatures(pmol, sel)
+
+    missing = expected - got
+    assert not missing, (
+        f"systemPrepare dropped {len(missing)} heavy bond(s) of templated "
+        f"residues: {sorted(missing)}"
+    )
+
+
+

@@ -544,6 +544,97 @@ def proteinPrepare(
     )
 
 
+def _capture_bonds(mol):
+    """Walk ``mol.bonds`` and return a list of
+    ``(UniqueAtomID, UniqueAtomID, is_h_bond, bondtype)`` tuples for
+    every bond in the molecule. Used by :func:`systemPrepare` to preserve
+    connectivity (peptide N-C bonds, disulfides, glycosidic bonds,
+    stapled-peptide sidechain bonds, scaffolded-peptide thioethers,
+    intra-ligand bonds, ...) across the PDB2PQR roundtrip, which strips
+    ``mol.bonds`` entirely. Captured as ``UniqueAtomID`` pairs so
+    resname / index changes through PDB2PQR don't break the round-trip.
+    ``is_h_bond`` lets the restore step silently drop bonds whose H
+    endpoint pdb2pqr removed (e.g. when re-protonating), while still
+    warning when a heavy-heavy bond breaks. Bondtype is carried through
+    so single/double/aromatic order is preserved.
+    """
+    from moleculekit.molecule import UniqueAtomID
+
+    if mol.bonds is None or len(mol.bonds) == 0:
+        return []
+    out = []
+    for i, (a, b) in enumerate(mol.bonds):
+        a, b = int(a), int(b)
+        is_h_bond = "H" in mol.element[[a, b]]
+        out.append(
+            (
+                UniqueAtomID.fromMolecule(mol, idx=a),
+                UniqueAtomID.fromMolecule(mol, idx=b),
+                bool(is_h_bond),
+                str(mol.bondtype[i]),
+            )
+        )
+    return out
+
+
+def _restore_bonds(mol, preserved_pairs):
+    """Re-resolve each captured bond against ``mol`` and add it back.
+    Resname can change between input and post-systemPrepare mol (e.g.
+    CYS -> CYX after disulfide detection); we use a relaxed lookup that
+    ignores resname so heavy-atom bonds still resolve. If an endpoint
+    can't be resolved and the bond involved a hydrogen, drop silently
+    (pdb2pqr strips and re-adds hydrogens). For broken heavy-heavy
+    bonds we warn since that indicates real connectivity loss. The
+    original bondtype is preserved.
+    """
+    new_bonds = []
+    new_btypes = []
+    for uaid_a, uaid_b, is_h_bond, btype in preserved_pairs:
+        a = _find_atom_relaxed(mol, uaid_a)
+        b = _find_atom_relaxed(mol, uaid_b)
+        if a is None or b is None:
+            if not is_h_bond:
+                logger.warning(
+                    "systemPrepare: failed to restore covalent bond %s - %s "
+                    "(endpoint not found in prepared mol).",
+                    uaid_a,
+                    uaid_b,
+                )
+            continue
+        new_bonds.append([a, b])
+        new_btypes.append(btype)
+    if not new_bonds:
+        return
+    arr = np.asarray(new_bonds, dtype=np.uint32)
+    btype_arr = np.array(new_btypes, dtype=object)
+    if mol.bonds is None or len(mol.bonds) == 0:
+        mol.bonds = arr
+        mol.bondtype = btype_arr
+    else:
+        mol.bonds = np.vstack([mol.bonds, arr])
+        mol.bondtype = np.hstack([mol.bondtype, btype_arr])
+
+
+def _find_atom_relaxed(mol, uaid):
+    """Locate an atom in ``mol`` matching ``uaid`` by
+    segid+chain+resid+insertion+name. Resname and altloc are intentionally
+    ignored so that residues renamed by systemPrepare (CYS -> CYX, etc.)
+    still resolve. Returns the atom index or ``None`` if no exact unique
+    match exists."""
+    mask = mol.name == uaid.name
+    if uaid.segid:
+        mask &= mol.segid == uaid.segid
+    if uaid.chain:
+        mask &= mol.chain == uaid.chain
+    mask &= mol.resid == int(uaid.resid)
+    if uaid.insertion:
+        mask &= mol.insertion == uaid.insertion
+    idxs = np.where(mask)[0]
+    if len(idxs) == 1:
+        return int(idxs[0])
+    return None
+
+
 def systemPrepare(
     mol_in: Molecule,
     titration=True,
@@ -558,7 +649,7 @@ def systemPrepare(
     hydrophobic_thickness=None,
     plot_pka=None,
     _logger_level="ERROR",
-    _molkit_ff=True,
+    _molkit_ff=False,
     outdir=None,
     residue_smiles=None,
     ignore_ns=False,
@@ -724,6 +815,15 @@ def systemPrepare(
     # We don't want to modify the original molecule in place so we create a new molecule
     mol_in = mol_in.copy(frames=[0])
 
+    # Capture all bonds before the PDB2PQR roundtrip strips them, so we
+    # can restore them on mol_out at the end. This preserves both
+    # cross-residue connectivity (peptide N-C bonds, disulfides,
+    # glycosidic bonds, stapled-peptide sidechain bonds, scaffolded-
+    # peptide thioethers, ...) and intra-residue connectivity (organic
+    # ligand bonds, custom-residue bonds) that pdb2pqr can't regenerate
+    # from FF templates.
+    _preserved_bonds = _capture_bonds(mol_in)
+
     old_level = logger.getEffectiveLevel()
     if not verbose:
         logger.setLevel(logging.WARNING)
@@ -843,6 +943,11 @@ def systemPrepare(
     mol_out.step = mol_in.step
     mol_out.fileloc = mol_in.fileloc
     _fixup_water_names(mol_out)
+
+    # Restore the bonds we captured before the PDB2PQR roundtrip
+    # stripped them.
+    if _preserved_bonds:
+        _restore_bonds(mol_out, _preserved_bonds)
 
     df = _create_table(mol_orig, mol_out, pka_df)
 
