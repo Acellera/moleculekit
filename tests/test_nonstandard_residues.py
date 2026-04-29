@@ -1,22 +1,3 @@
-"""Tests for :func:`detectNonStandardResidues`.
-
-The detector mutates ``mol`` in place: every canonical amino-acid residue
-whose sidechain is covalently bonded to a non-canonical residue is
-renamed to a unique system-specific resname (``CYX1``, ``CYX2``, ...,
-``NLN1``, ...) and the displaced sidechain hydrogens listed in
-:data:`ANCHOR_VARIANTS` are removed. The return value is a flat list of
-per-residue specs:
-
-  - :class:`NCAASpec` - chain-resident NCAA, no sidechain crosslink.
-  - :class:`CrosslinkedNCAASpec` - chain-resident NCAA with crosslink(s).
-  - :class:`ScaffoldSpec` - free non-canonical residue, >=2 non-peptide
-    bonds going out.
-  - :class:`CovalentLigandSpec` - free non-canonical residue, exactly one
-    non-peptide bond going out.
-  - :class:`LigandSpec` - free non-canonical residue, no bonds.
-  - :class:`CanonicalRenamedSpec` - one per renamed canonical residue.
-"""
-
 import os
 import numpy as np
 from moleculekit.molecule import Molecule
@@ -95,9 +76,7 @@ def _test_8qfz_scaffolded_peptide():
         assert r.residue.resname == new_resname
 
     # No other spec types for this fixture.
-    assert all(
-        isinstance(s, (ScaffoldSpec, CanonicalRenamedSpec)) for s in specs
-    )
+    assert all(isinstance(s, (ScaffoldSpec, CanonicalRenamedSpec)) for s in specs)
 
 
 def _test_h_drop_for_canonical_anchor():
@@ -106,11 +85,11 @@ def _test_h_drop_for_canonical_anchor():
     group), then verify detect removes it as part of the rename."""
     mol = Molecule(QFZ_B_CIF)
     cys_resid = int(sorted(set(mol.resid[mol.resname == "CYS"]))[0])
-    cys_atom_idxs = mol.atomselect(
-        f"resname CYS and resid {cys_resid}", indexes=True
-    )
+    cys_atom_idxs = mol.atomselect(f"resname CYS and resid {cys_resid}", indexes=True)
     sg_idx = int(
-        mol.atomselect(f"resname CYS and resid {cys_resid} and name SG", indexes=True)[0]
+        mol.atomselect(f"resname CYS and resid {cys_resid} and name SG", indexes=True)[
+            0
+        ]
     )
     insert_at = int(cys_atom_idxs[-1]) + 1
 
@@ -207,7 +186,8 @@ def _test_1r1j_covalent_glycosylation():
 
     cov = [s for s in specs if isinstance(s, CovalentLigandSpec) and s.resname == "NAG"]
     asn_renames = [
-        s for s in specs
+        s
+        for s in specs
         if isinstance(s, CanonicalRenamedSpec) and s.original_resname == "ASN"
     ]
     assert len(cov) == 3
@@ -312,7 +292,9 @@ def _test_canonical_to_ncaa_crosslink():
     # ALA has no entry in ANCHOR_VARIANTS so the new resname falls back to
     # the original base with a numeric suffix.
     assert renames[0].original_resname == "ALA"
-    assert renames[0].new_resname.startswith("ALA") or renames[0].new_resname.startswith("AL")
+    assert renames[0].new_resname.startswith("ALA") or renames[
+        0
+    ].new_resname.startswith("AL")
 
 
 def _test_distinct_partner_resnames_get_distinct_renames():
