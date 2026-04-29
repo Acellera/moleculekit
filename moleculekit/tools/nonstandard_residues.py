@@ -233,6 +233,40 @@ def _residue_id(g):
     )
 
 
+def _has_peptide_neighbour(mol, group, side):
+    """Return True if this residue has a peptide-bond neighbour on the
+    given side (``"N"`` = previous residue's C atom; ``"C"`` = next
+    residue's N atom). Falls back to a distance check (peptide N-C is
+    ~1.32 A; we accept anything under 1.6 A) so sparse CIF inputs that
+    only carry the special inter-residue bonds still get correct
+    chain-terminus flags for canonical amino acids."""
+    self_name = side
+    other_name = "C" if side == "N" else "N"
+    own_atoms = set(int(a) for a in group["atom_idx"])
+    self_atom_idxs = [
+        int(a) for a in group["atom_idx"] if str(mol.name[int(a)]) == self_name
+    ]
+    if not self_atom_idxs:
+        return False
+    for self_atom in self_atom_idxs:
+        for nb in mol.getNeighbors(self_atom):
+            nb = int(nb)
+            if nb in own_atoms:
+                continue
+            if str(mol.name[nb]) == other_name:
+                return True
+        self_pos = mol.coords[self_atom, :, mol.frame]
+        for cand_idx in range(mol.numAtoms):
+            if cand_idx in own_atoms:
+                continue
+            if str(mol.name[cand_idx]) != other_name:
+                continue
+            cand_pos = mol.coords[cand_idx, :, mol.frame]
+            if float(np.linalg.norm(cand_pos - self_pos)) < 1.6:
+                return True
+    return False
+
+
 def _pick_bucket_resname(variant_or_resname, prefix_counter):
     """Build a 3-char custom resname so tLeap loads our antechamber-derived
     prepi for this bucket instead of falling back to the built-in
@@ -274,11 +308,14 @@ def detectNonStandardResidues(mol):
     parameterizer's antechamber-derived prepi is the one that loads.
 
     Residues that share the same ``(canonical_resname, anchor_atom_name,
-    partner_resname)`` key are assigned the *same* resname so the
-    parameterizer emits one prepi shared across them (e.g. all
-    ASN-ND2-bonded-to-NAG residues become ``NL1``). Residues whose
-    anchor has no entry in :data:`ANCHOR_VARIANTS` (e.g. SER OG) use
-    their original resname's first two chars as the prefix.
+    partner_resname, n_term, c_term)`` key are assigned the *same*
+    resname so the parameterizer emits one prepi shared across them
+    (e.g. all mid-chain ASN-ND2-bonded-to-NAG residues become ``NL1``).
+    Chain-terminal residues end up in their own bucket because terminal
+    forms genuinely have different atoms (OXT on C-terminal carboxylate,
+    extra H1/H2/H3 on N-terminal amine) and different charges.
+    Residues whose anchor has no entry in :data:`ANCHOR_VARIANTS` (e.g.
+    SER OG) use their original resname's first two chars as the prefix.
 
     To preserve the input molecule, call ``mol.copy()`` first.
 
@@ -369,7 +406,19 @@ def detectNonStandardResidues(mol):
         partner_resname = groups[other_r]["resname"]
         entry = lookup_anchor_variant(g["resname"], anchor_atom)
 
-        bucket_key = (g["resname"], anchor_atom, partner_resname)
+        # Bucket key includes terminus flags: chain-terminal residues
+        # have different atoms (OXT on C-term, extra H1/H2/H3 on N-term)
+        # and different charges than mid-chain ones, so they need their
+        # own parameterization. Sparse CIF inputs frequently omit the
+        # standard peptide bonds, so we fall back to a distance check
+        # when no explicit N-C bond was seen.
+        n_term = not peptide_attached_n[r_idx] and not _has_peptide_neighbour(
+            mol, g, "N"
+        )
+        c_term = not peptide_attached_c[r_idx] and not _has_peptide_neighbour(
+            mol, g, "C"
+        )
+        bucket_key = (g["resname"], anchor_atom, partner_resname, n_term, c_term)
         if bucket_key in bucket_to_resname:
             new_resname = bucket_to_resname[bucket_key]
         else:

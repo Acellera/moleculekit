@@ -45,18 +45,19 @@ def _test_anchor_variants_lookup():
 
 
 def _test_8qfz_scaffolded_peptide():
-    """8QFZ chain B: LFI scaffold thio-ether bonded to three CYS sidechains.
-    All three CYS share the (CYS, SG, LFI) bucket so they collapse onto
-    the same custom 3-char resname (one shared parameterization). The
-    fixture has no explicit HG hydrogens so no atoms are dropped; the
-    rename still happens."""
+    """8QFZ chain B: LFI scaffold thio-ether bonded to three CYS sidechains
+    at resids 11, 17, 22. CYS 11 is N-terminal (no peptide bond on the N
+    side), CYS 22 is C-terminal (no peptide bond on the C side), CYS 17
+    is mid-chain. Each chain-position bucket gets its own custom resname
+    so terminal forms (which carry OXT or H1/H2/H3 in solution) don't
+    collapse onto the mid-chain template. The fixture has no explicit HG
+    hydrogens so no atoms are dropped; the rename still happens."""
     mol = Molecule(QFZ_B_CIF)
     n_atoms_before = mol.numAtoms
     assert (mol.resname == "CYS").sum() > 0
 
     specs = detectNonStandardResidues(mol)
 
-    # All three CYS residues collapse to one bucket -> one new resname.
     assert (mol.resname == "CYS").sum() == 0
     assert mol.numAtoms == n_atoms_before
 
@@ -67,13 +68,14 @@ def _test_8qfz_scaffolded_peptide():
     assert len(renames) == 3
     assert {r.original_resname for r in renames} == {"CYS"}
     new_names = {r.new_resname for r in renames}
-    assert len(new_names) == 1, f"expected one shared rename, got {new_names}"
-    new_resname = next(iter(new_names))
-    assert len(new_resname) == 3 and new_resname.startswith("CY")
-    # The renamed residue resname in mol must match the spec.
-    assert (mol.resname == new_resname).sum() > 0
+    # Three distinct chain positions -> three distinct rename targets.
+    assert len(new_names) == 3, f"expected three distinct renames, got {new_names}"
+    for n in new_names:
+        assert len(n) == 3 and n.startswith("CY")
+        assert (mol.resname == n).sum() > 0
     for r in renames:
-        assert r.residue.resname == new_resname
+        # spec UID resname matches the actual resname applied to mol.
+        assert r.residue.resname == r.new_resname
 
     # No other spec types for this fixture.
     assert all(isinstance(s, (ScaffoldSpec, CanonicalRenamedSpec)) for s in specs)
