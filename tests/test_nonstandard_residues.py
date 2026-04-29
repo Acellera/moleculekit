@@ -1,3 +1,22 @@
+"""Tests for :func:`detectNonStandardResidues`.
+
+The detector mutates ``mol`` in place: every canonical amino-acid residue
+whose sidechain is covalently bonded to a non-canonical residue is
+renamed to a unique system-specific resname (``CYX1``, ``CYX2``, ...,
+``NLN1``, ...) and the displaced sidechain hydrogens listed in
+:data:`ANCHOR_VARIANTS` are removed. The return value is a flat list of
+per-residue specs:
+
+  - :class:`NCAASpec` - chain-resident NCAA, no sidechain crosslink.
+  - :class:`CrosslinkedNCAASpec` - chain-resident NCAA with crosslink(s).
+  - :class:`ScaffoldSpec` - free non-canonical residue, >=2 non-peptide
+    bonds going out.
+  - :class:`CovalentLigandSpec` - free non-canonical residue, exactly one
+    non-peptide bond going out.
+  - :class:`LigandSpec` - free non-canonical residue, no bonds.
+  - :class:`CanonicalRenamedSpec` - one per renamed canonical residue.
+"""
+
 import os
 import numpy as np
 from moleculekit.molecule import Molecule
@@ -5,14 +24,12 @@ from moleculekit.tools._anchor_variants import lookup_anchor_variant
 from moleculekit.residues import ORIGINAL_RESIDUE_NAME_TABLE
 from moleculekit.tools.nonstandard_residues import (
     detectNonStandardResidues,
-    forceProtonationFromSpecs,
-    custombondsFromSpecs,
-    ScaffoldedPeptideSpec,
     NCAASpec,
+    CrosslinkedNCAASpec,
+    ScaffoldSpec,
     CovalentLigandSpec,
     LigandSpec,
-    CrosslinkSpec,
-    ModelAtom,
+    CanonicalRenamedSpec,
 )
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,8 +40,13 @@ VBL_PDB = os.path.join(curr_dir, "pdb", "5vbl.pdb")
 R1J_PDB = os.path.join(curr_dir, "pdb", "1r1j.pdb")
 
 
+def _residue_atom_names(mol, resname, resid):
+    """Helper: return the set of atom names on a (resname, resid) residue."""
+    sel = mol.atomselect(f"resname {resname} and resid {resid}", indexes=True)
+    return {str(mol.name[int(i)]) for i in sel}
+
+
 def _test_anchor_variants_lookup():
-    # Direct hit on the canonical resname.
     e = lookup_anchor_variant("CYS", "SG")
     assert e is not None
     assert e["variant"] == "CYX"
@@ -41,110 +63,84 @@ def _test_anchor_variants_lookup():
     assert lookup_anchor_variant("UNK", "X1") is None
 
 
-def _test_8qfz_chain_b_scaffolded_peptide(tmp_path):
+def _test_8qfz_scaffolded_peptide():
+    """8QFZ chain B: LFI scaffold thio-ether bonded to three CYS sidechains.
+    All three CYS share the (CYS, SG, LFI) bucket so they collapse onto
+    the same custom 3-char resname (one shared parameterization). The
+    fixture has no explicit HG hydrogens so no atoms are dropped; the
+    rename still happens."""
     mol = Molecule(QFZ_B_CIF)
+    n_atoms_before = mol.numAtoms
+    assert (mol.resname == "CYS").sum() > 0
 
-    specs = detectNonStandardResidues(
-        mol, outdir=str(tmp_path), write_models=True, include_known=True
+    specs = detectNonStandardResidues(mol)
+
+    # All three CYS residues collapse to one bucket -> one new resname.
+    assert (mol.resname == "CYS").sum() == 0
+    assert mol.numAtoms == n_atoms_before
+
+    scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
+    renames = [s for s in specs if isinstance(s, CanonicalRenamedSpec)]
+
+    assert len(scaffolds) == 1 and scaffolds[0].resname == "LFI"
+    assert len(renames) == 3
+    assert {r.original_resname for r in renames} == {"CYS"}
+    new_names = {r.new_resname for r in renames}
+    assert len(new_names) == 1, f"expected one shared rename, got {new_names}"
+    new_resname = next(iter(new_names))
+    assert len(new_resname) == 3 and new_resname.startswith("CY")
+    # The renamed residue resname in mol must match the spec.
+    assert (mol.resname == new_resname).sum() > 0
+    for r in renames:
+        assert r.residue.resname == new_resname
+
+    # No other spec types for this fixture.
+    assert all(
+        isinstance(s, (ScaffoldSpec, CanonicalRenamedSpec)) for s in specs
     )
 
-    # Chain B has water (HOH, canonical, skipped) plus the LFI scaffold,
-    # which should be the only spec returned.
-    assert len(specs) == 1, [s.resname for s in specs]
-    spec = specs[0]
-    assert isinstance(spec, ScaffoldedPeptideSpec)
-    assert spec.category == "scaffolded_peptide"
-    assert spec.resname == "LFI"
-    assert int(spec.residue.resid) == 101
 
-    anchors = spec.anchors
-    assert len(anchors) == 3
-    anchor_resids = sorted(int(a.anchor_atom.resid) for a in anchors)
-    assert anchor_resids == [11, 17, 22]
-    for a in anchors:
-        assert a.anchor_atom.name == "SG"
-        assert a.anchor_atom.resname == "CYS"
-        assert a.scaffold_atom.name in {"C10", "C11", "C12"}
-        # The UniqueAtomIDs must round-trip against the input molecule:
-        # selecting must hit one atom, and that atom's name/resid must match.
-        idx = int(a.anchor_atom.selectAtom(mol))
-        assert mol.name[idx] == "SG"
-        assert int(mol.resid[idx]) == int(a.anchor_atom.resid)
-
-    # Model compound was written and is loadable.
-    cif_path = spec.model_compound_cif
-    assert os.path.isfile(cif_path)
-    model = Molecule(cif_path)
-    # 18 LFI heavy atoms + 3 anchors x 5 stub atoms each = 33.
-    assert model.numAtoms == 33
-
-    # atom_map covers every atom in the model and uses the ModelAtom dataclass.
-    atom_map = spec.model_atom_map
-    assert set(atom_map.keys()) == {str(n) for n in model.name}
-    assert all(isinstance(v, ModelAtom) for v in atom_map.values())
-    n_stub = sum(1 for v in atom_map.values() if v.role == "stub")
-    n_scaffold = sum(1 for v in atom_map.values() if v.role == "scaffold")
-    assert n_scaffold == 18
-    assert n_stub == 15  # 3 anchors x 5 atoms
-
-    # Stub atoms must carry a canonical-FF type so the junction-frcmod splitter
-    # can rewrite GAFF2 names. For Cys SG anchors we expect "S", "2C", "H1".
-    stub_ff_types = {v.ff_type for v in atom_map.values() if v.role == "stub"}
-    assert stub_ff_types == {"S", "2C", "H1"}
-    # Scaffold atoms have no canonical-FF type (they keep their GAFF2 type).
-    assert all(v.ff_type is None for v in atom_map.values() if v.role == "scaffold")
-
-
-def _test_force_protonation_from_specs(tmp_path):
+def _test_h_drop_for_canonical_anchor():
+    """Insert an HG atom into one of the LFI-anchored cysteines (right
+    after that residue's existing atoms so it ends up in the same residue
+    group), then verify detect removes it as part of the rename."""
     mol = Molecule(QFZ_B_CIF)
-    specs = detectNonStandardResidues(
-        mol, outdir=str(tmp_path), write_models=True, include_known=True
+    cys_resid = int(sorted(set(mol.resid[mol.resname == "CYS"]))[0])
+    cys_atom_idxs = mol.atomselect(
+        f"resname CYS and resid {cys_resid}", indexes=True
     )
-
-    fp = forceProtonationFromSpecs(specs)
-    assert len(fp) == 3
-    for sel, variant in fp:
-        assert variant == "CYX"
-        # Each selection must resolve to one residue (>=1 atom is fine; PDB2PQR
-        # collapses to residue identity).
-        n = mol.atomselect(sel).sum()
-        assert n > 0
-
-
-def _test_custombonds_from_specs(tmp_path):
-    mol = Molecule(QFZ_B_CIF)
-    specs = detectNonStandardResidues(
-        mol, outdir=str(tmp_path), write_models=True, include_known=True
+    sg_idx = int(
+        mol.atomselect(f"resname CYS and resid {cys_resid} and name SG", indexes=True)[0]
     )
+    insert_at = int(cys_atom_idxs[-1]) + 1
 
-    cb = custombondsFromSpecs(specs)
-    assert len(cb) == 3
-    for sel1, sel2 in cb:
-        # Each side must point to exactly one atom in the molecule.
-        n1 = mol.atomselect(sel1).sum()
-        n2 = mol.atomselect(sel2).sum()
-        assert n1 == 1
-        assert n2 == 1
+    hg = Molecule().empty(1)
+    hg.name[:] = ["HG"]
+    hg.element[:] = ["H"]
+    hg.resname[:] = "CYS"
+    hg.resid[:] = cys_resid
+    hg.chain[:] = mol.chain[sg_idx]
+    hg.segid[:] = mol.segid[sg_idx]
+    hg.coords = (mol.coords[sg_idx, :, mol.frame] + np.array([1.0, 0.0, 0.0]))[
+        np.newaxis, :, np.newaxis
+    ].astype(np.float32)
+    hg.record[:] = "ATOM"
+    n_before = mol.numAtoms
+    mol.insert(hg, insert_at)
+    # SG's index is unchanged because we inserted after it; HG sits at insert_at.
+    mol.addBond(sg_idx, insert_at, "1")
+
+    detectNonStandardResidues(mol)
+    # The injected HG must be gone after detect.
+    assert mol.numAtoms == n_before
+    assert (mol.name == "HG").sum() == 0
 
 
-def _test_specs_without_writing_models():
+def _test_min_anchors_threshold_emits_covalent_ligand():
+    """Strip two of the three CYS-LFI bonds: LFI now has only one anchor
+    so it's a CovalentLigandSpec rather than a ScaffoldSpec, and only the
+    one remaining CYS gets renamed."""
     mol = Molecule(QFZ_B_CIF)
-    specs = detectNonStandardResidues(mol, write_models=False, include_known=True)
-    assert len(specs) == 1
-    spec = specs[0]
-    assert isinstance(spec, ScaffoldedPeptideSpec)
-    assert spec.model_compound_cif is None
-    assert spec.model_atom_map is None
-    # Anchor records are still populated even without model-writing.
-    assert len(spec.anchors) == 3
-
-
-def _test_min_anchors_filter(tmp_path):
-    """A scaffold with only 1 covalent bond to a canonical residue falls below
-    the scaffolded-peptide threshold and should classify as
-    :class:`CovalentLigandSpec`."""
-    mol = Molecule(QFZ_B_CIF)
-    # Drop two of the three CYS-LFI bonds so LFI only has one anchor.
     keep = []
     dropped = 0
     lfi = mol.atomselect("resname LFI", indexes=True)
@@ -157,146 +153,204 @@ def _test_min_anchors_filter(tmp_path):
     mol.bonds = np.asarray(keep, dtype=np.uint32)
     mol.bondtype = mol.bondtype[: len(keep)]
 
-    specs = detectNonStandardResidues(
-        mol, outdir=str(tmp_path), write_models=True, include_known=True
-    )
-    assert not any(isinstance(s, ScaffoldedPeptideSpec) for s in specs)
-    lfi_specs = [s for s in specs if s.resname == "LFI"]
-    assert len(lfi_specs) == 1
-    assert isinstance(lfi_specs[0], CovalentLigandSpec)
-    assert lfi_specs[0].anchor.anchor_atom.resname == "CYS"
-    assert lfi_specs[0].anchor.anchor_atom.name == "SG"
+    specs = detectNonStandardResidues(mol)
+    cov = [s for s in specs if isinstance(s, CovalentLigandSpec)]
+    renames = [s for s in specs if isinstance(s, CanonicalRenamedSpec)]
+    scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
+
+    assert scaffolds == []
+    assert len(cov) == 1 and cov[0].resname == "LFI"
+    assert len(renames) == 1 and renames[0].original_resname == "CYS"
 
 
-def _test_5vbl_ncaas_and_free_ligand(tmp_path):
-    """5VBL: chain A is a peptide inhibitor with five non-canonical amino
-    acids in the polymer chain (HRG, ALC, OIC, NLE, 200), and chain B
-    carries OLC (oleic acid) as a free, non-covalently bound ligand."""
+def _test_5vbl_ncaas_and_free_ligand():
+    """5VBL chain A peptide inhibitor: five chain-resident NCAAs with no
+    crosslinks, plus a free OLC ligand. Detector emits NCAASpec entries
+    and one LigandSpec; mol is unchanged."""
     mol = Molecule(VBL_PDB)
-    specs = detectNonStandardResidues(
-        mol, outdir=str(tmp_path), write_models=True, include_known=True
-    )
+    n_atoms_before = mol.numAtoms
+    resnames_before = sorted(set(str(r) for r in mol.resname))
+
+    specs = detectNonStandardResidues(mol)
+
+    # No canonical anchors in this fixture, so no mutations.
+    assert mol.numAtoms == n_atoms_before
+    assert sorted(set(str(r) for r in mol.resname)) == resnames_before
 
     ncaas = [s for s in specs if isinstance(s, NCAASpec)]
+    crosslinked = [s for s in specs if isinstance(s, CrosslinkedNCAASpec)]
     ligands = [s for s in specs if isinstance(s, LigandSpec)]
-    assert not any(isinstance(s, ScaffoldedPeptideSpec) for s in specs)
-    assert not any(isinstance(s, CovalentLigandSpec) for s in specs)
+    renames = [s for s in specs if isinstance(s, CanonicalRenamedSpec)]
+    scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
+    cov = [s for s in specs if isinstance(s, CovalentLigandSpec)]
 
-    # NCAAs: chain-embedded non-canonical amino acids.
+    assert crosslinked == [] and renames == [] and scaffolds == [] and cov == []
     assert sorted(s.resname for s in ncaas) == ["200", "ALC", "HRG", "NLE", "OIC"]
+    # Resid 17 = "200" is the C-terminal NCAA: no peptide tail bond.
     for s in ncaas:
-        assert s.head_atom == "N" and s.tail_atom == "C"
-        # 200 is the C-terminal NCAA (resid 17): no C-tail bond.
         if s.resname == "200":
             assert s.is_c_term and not s.is_n_term
         else:
             assert not s.is_n_term and not s.is_c_term
-        # Each NCAA writes a bare-residue model CIF.
-        m = Molecule(s.model_compound_cif)
-        assert m.numAtoms > 0
-        assert all(rn == s.resname for rn in m.resname)
 
-    # Free ligand: OLC, no covalent bonds.
     assert len(ligands) == 1
     assert ligands[0].resname == "OLC" and ligands[0].residue.chain == "B"
-    assert os.path.isfile(ligands[0].model_compound_cif)
-
-    # Helpers must not emit anything for NCAAs or free ligands.
-    assert forceProtonationFromSpecs(specs) == []
-    assert custombondsFromSpecs(specs) == []
 
 
-def _test_1r1j_covalent_glycosylation(tmp_path):
-    """1R1J is a glycoprotein with three NAG residues each covalently
-    attached to a different Asn ND2 (N-glycosylation), plus a free OIR
-    ligand. This exercises :class:`CovalentLigandSpec` and the
-    ``custombondsFromSpecs`` helper for single-anchor covalent bonds."""
+def _test_1r1j_covalent_glycosylation():
+    """1R1J: three NAG-Asn N-glycosylation sites. Each NAG has one bond to
+    an Asn ND2; all three (ASN, ND2, NAG) buckets are identical so the
+    detector emits one CovalentLigandSpec per NAG plus three
+    CanonicalRenamedSpec entries that all share the same new resname."""
     mol = Molecule(R1J_PDB)
-    specs = detectNonStandardResidues(
-        mol, outdir=str(tmp_path), write_models=True, include_known=True
-    )
+    specs = detectNonStandardResidues(mol)
 
-    nags = [s for s in specs if isinstance(s, CovalentLigandSpec) and s.resname == "NAG"]
-    free = [s for s in specs if isinstance(s, LigandSpec)]
-    assert not any(isinstance(s, ScaffoldedPeptideSpec) for s in specs)
-    assert not any(isinstance(s, NCAASpec) for s in specs)
-
-    # Three NAGs, each bonded ASN.ND2 <-> NAG.C1.
-    assert len(nags) == 3
-    asn_resids = sorted(int(s.anchor.anchor_atom.resid) for s in nags)
-    assert asn_resids == [144, 324, 627]
-    for s in nags:
-        assert s.anchor.anchor_atom.resname == "ASN"
-        assert s.anchor.anchor_atom.name == "ND2"
-        assert s.anchor.scaffold_atom.name == "C1"
-        # Round-trip the UniqueAtomIDs against the input molecule.
-        anchor_idx = int(s.anchor.anchor_atom.selectAtom(mol))
-        scaffold_idx = int(s.anchor.scaffold_atom.selectAtom(mol))
-        assert mol.name[anchor_idx] == "ND2"
-        assert mol.name[scaffold_idx] == "C1"
-        assert mol.resname[scaffold_idx] == "NAG"
-
-    # Free ligand: OIR.
-    assert len(free) == 1
-    assert free[0].resname == "OIR"
-
-    # ANCHOR_VARIANTS has an (ASN, ND2) -> NLN entry for N-glycosylation;
-    # forceProtonationFromSpecs emits one rename per glycosylated Asn.
-    fp = forceProtonationFromSpecs(specs)
-    assert len(fp) == 3
-    assert all(variant == "NLN" for _, variant in fp)
-
-    # Three custombonds must be emitted: one per NAG-Asn glycosidic bond.
-    cb = custombondsFromSpecs(specs)
-    assert len(cb) == 3
-    for sel1, sel2 in cb:
-        assert mol.atomselect(sel1).sum() == 1
-        assert mol.atomselect(sel2).sum() == 1
+    cov = [s for s in specs if isinstance(s, CovalentLigandSpec) and s.resname == "NAG"]
+    asn_renames = [
+        s for s in specs
+        if isinstance(s, CanonicalRenamedSpec) and s.original_resname == "ASN"
+    ]
+    assert len(cov) == 3
+    assert len(asn_renames) == 3
+    new_names = {r.new_resname for r in asn_renames}
+    assert len(new_names) == 1, f"expected one shared rename, got {new_names}"
+    shared = next(iter(new_names))
+    assert len(shared) == 3 and shared.startswith("NL")
+    for r in asn_renames:
+        rid = int(r.residue.resid)
+        names = _residue_atom_names(mol, shared, rid)
+        assert "ND2" in names
 
 
-def _test_8qu4_stapled_peptide(tmp_path):
-    """Pattern-B stapled peptide: PDB 8QU4 chain A is a 13-mer NF-Y-derived
-    peptide with an i, i+4 hydrocarbon staple between two non-canonical amino
-    acids (NLE at resid 272 and MK8 at resid 276), capped with ACE and NH2.
-    The staple bond NLE.CE - MK8.CE is the only non-peptide inter-residue
-    bond and must be reported as a :class:`CrosslinkSpec`. The ACE
-    and NH2 caps have AMBER parameters bundled and are not flagged."""
+def _test_8qu4_ncaa_crosslink():
+    """8QU4 chain A stapled peptide: NLE272 + MK8276 are two NCAAs joined
+    by a sidechain CE-CE staple. Detector emits a CrosslinkedNCAASpec for
+    each; no CanonicalRenamedSpec because neither residue is canonical."""
     mol = Molecule(QU4_A_CIF)
-    specs = detectNonStandardResidues(
-        mol, outdir=str(tmp_path), write_models=True, include_known=True
-    )
+    n_atoms_before = mol.numAtoms
+    specs = detectNonStandardResidues(mol)
 
-    # Exactly two NCAAs (the stapled residues) and one crosslink. ACE / NH2
-    # caps must not be flagged.
-    ncaas = [s for s in specs if isinstance(s, NCAASpec)]
-    crosslinks = [s for s in specs if isinstance(s, CrosslinkSpec)]
-    assert sorted(s.resname for s in ncaas) == ["MK8", "NLE"]
-    assert len(crosslinks) == 1
-    assert len(specs) == 3, [type(s).__name__ for s in specs]
+    # No canonical anchors -> no mol mutation.
+    assert mol.numAtoms == n_atoms_before
 
-    # Crosslink endpoints: NLE272.CE <-> MK8276.CE.
-    cl = crosslinks[0]
-    pair_resnames = {cl.atom_a.resname, cl.atom_b.resname}
-    pair_resids = {int(cl.atom_a.resid), int(cl.atom_b.resid)}
-    assert pair_resnames == {"NLE", "MK8"}
-    assert pair_resids == {272, 276}
-    assert cl.atom_a.name == "CE" and cl.atom_b.name == "CE"
+    crosslinked = [s for s in specs if isinstance(s, CrosslinkedNCAASpec)]
+    renames = [s for s in specs if isinstance(s, CanonicalRenamedSpec)]
+    scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
 
-    # UniqueAtomIDs round-trip against the input.
-    for uid in (cl.atom_a, cl.atom_b):
-        idx = int(uid.selectAtom(mol))
-        assert mol.name[idx] == "CE"
-        assert int(mol.resid[idx]) == int(uid.resid)
+    assert renames == [] and scaffolds == []
+    assert sorted(s.resname for s in crosslinked) == ["MK8", "NLE"]
+    # Both residues are mid-chain (not termini).
+    for s in crosslinked:
+        assert not s.is_n_term and not s.is_c_term
 
-    # custombondsFromSpecs must emit exactly one entry for the staple bond
-    # (no other anchor-bearing specs in this fixture).
-    cb = custombondsFromSpecs(specs)
-    assert len(cb) == 1
-    sel1, sel2 = cb[0]
-    assert mol.atomselect(sel1).sum() == 1
-    assert mol.atomselect(sel2).sum() == 1
 
-    # No scaffolded peptide, no covalent ligand, no free ligand for this fixture.
-    assert not any(isinstance(s, ScaffoldedPeptideSpec) for s in specs)
-    assert not any(isinstance(s, CovalentLigandSpec) for s in specs)
-    assert not any(isinstance(s, LigandSpec) for s in specs)
+def _test_scaffold_anchored_on_ncaa_sidechains():
+    """A scaffold whose anchors land on NCAA sidechains (rather than
+    canonical Cys/Lys/etc.) still emits ScaffoldSpec for the scaffold and
+    CrosslinkedNCAASpec for each chain-resident NCAA. No
+    CanonicalRenamedSpec because there are no canonical anchors."""
+    mol = Molecule(QU4_A_CIF)
+    mol.segid[:] = "P"
+
+    nle_ce = int(mol.atomselect("resname NLE and name CE", indexes=True)[0])
+    mk8_ce = int(mol.atomselect("resname MK8 and name CE", indexes=True)[0])
+
+    # Replace the existing NLE.CE-MK8.CE staple with two anchor bonds to a
+    # synthetic 2-carbon SCF residue.
+    keep = []
+    for b in mol.bonds:
+        if {int(b[0]), int(b[1])} == {nle_ce, mk8_ce}:
+            continue
+        keep.append(b)
+    mol.bonds = np.asarray(keep, dtype=np.uint32)
+    mol.bondtype = mol.bondtype[: len(keep)]
+
+    scf = Molecule().empty(2)
+    scf.name[:] = ["C1", "C2"]
+    scf.element[:] = ["C", "C"]
+    scf.resname[:] = "SCF"
+    scf.resid[:] = 999
+    scf.chain[:] = "A"
+    scf.segid[:] = "P"
+    scf.record[:] = "HETATM"
+    scf.coords = (
+        np.tile(mol.coords[nle_ce, :, mol.frame], (2, 1))
+        + np.array([[0.0, 0.0, 0.0], [1.5, 0.0, 0.0]])
+    )[:, :, np.newaxis].astype(np.float32)
+    n_before = mol.numAtoms
+    mol.append(scf, collisions=False)
+    c1, c2 = n_before, n_before + 1
+    mol.addBond(c1, c2, "1")
+    mol.addBond(nle_ce, c1, "1")
+    mol.addBond(mk8_ce, c2, "1")
+
+    specs = detectNonStandardResidues(mol)
+    scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
+    crosslinked = [s for s in specs if isinstance(s, CrosslinkedNCAASpec)]
+    renames = [s for s in specs if isinstance(s, CanonicalRenamedSpec)]
+
+    assert len(scaffolds) == 1 and scaffolds[0].resname == "SCF"
+    assert sorted(s.resname for s in crosslinked) == ["MK8", "NLE"]
+    assert renames == []
+
+
+def _test_canonical_to_ncaa_crosslink():
+    """A non-peptide bond between a canonical AA and an NCAA emits a
+    CrosslinkedNCAASpec for the NCAA plus a CanonicalRenamedSpec for the
+    canonical residue (a single-anchor scenario, so no ScaffoldSpec)."""
+    mol = Molecule(QU4_A_CIF)
+    mol.segid[:] = "P"
+    # Rename MK8 -> ALA so the existing CE-CE staple becomes asymmetric.
+    mol.resname[mol.resname == "MK8"] = "ALA"
+
+    specs = detectNonStandardResidues(mol)
+    crosslinked = [s for s in specs if isinstance(s, CrosslinkedNCAASpec)]
+    renames = [s for s in specs if isinstance(s, CanonicalRenamedSpec)]
+
+    assert len(crosslinked) == 1 and crosslinked[0].resname == "NLE"
+    assert len(renames) == 1
+    # ALA has no entry in ANCHOR_VARIANTS so the new resname falls back to
+    # the original base with a numeric suffix.
+    assert renames[0].original_resname == "ALA"
+    assert renames[0].new_resname.startswith("ALA") or renames[0].new_resname.startswith("AL")
+
+
+def _test_distinct_partner_resnames_get_distinct_renames():
+    """Two CYS residues, each bonded to a *different* non-canonical
+    residue (different ``partner_resname``), produce two distinct
+    bucket keys and two distinct rename targets. CYS residues bonded to
+    the *same* partner resname collapse into one shared rename."""
+    base = Molecule(QFZ_B_CIF)
+
+    # Trim to one CYS-LFI anchor (drop two of the three).
+    keep = []
+    dropped = 0
+    lfi_idx = base.atomselect("resname LFI", indexes=True)
+    for bnd in base.bonds:
+        is_cross = (bnd[0] in lfi_idx) != (bnd[1] in lfi_idx)
+        if is_cross and dropped < 2:
+            dropped += 1
+            continue
+        keep.append(bnd)
+    base.bonds = np.asarray(keep, dtype=np.uint32)
+    base.bondtype = base.bondtype[: len(keep)]
+
+    a = base.copy()
+    a.chain[:] = "X"
+    a.segid[:] = "X"
+    b = base.copy()
+    b.chain[:] = "Y"
+    b.segid[:] = "Y"
+    b.resid[:] = b.resid + 100
+    # Rename the second copy's scaffold so it has a *different* partner
+    # resname (LFI vs SCF), forcing a distinct bucket.
+    b.resname[b.resname == "LFI"] = "SCF"
+    a.append(b, collisions=False)
+
+    specs = detectNonStandardResidues(a)
+    renames = [s for s in specs if isinstance(s, CanonicalRenamedSpec)]
+    assert len(renames) == 2
+    new_names = sorted({r.new_resname for r in renames})
+    assert len(new_names) == 2, f"expected two buckets, got {new_names}"
+    for n in new_names:
+        assert len(n) == 3 and n.startswith("CY")
