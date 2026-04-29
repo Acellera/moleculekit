@@ -291,8 +291,11 @@ def _test_cyclic_peptides_noncanonical():
     smiles = {
         "33X": "CC(CO)NC",
         "34E": "CN[C@@H]([C@H](C)CN1CCN(CCOC)CC1)C(O)",
+        "ABA": "CC[C@H](CO)N",
         "BMT": "C/C=C/C[C@@H](C)[C@H]([C@@H](CO)NC)O",
         "DAL": "C[C@H](CO)N",
+        "MLE": "CC(C)C[C@@H](CO)NC",
+        "MVA": "CC(C)[C@@H](CO)NC",
     }
     pmol, df = systemPrepare(mol, return_details=True, residue_smiles=smiles)
 
