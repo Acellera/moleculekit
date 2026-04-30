@@ -89,7 +89,13 @@ def _check_chain_and_segid(mol, verbose):
 
 
 def _generate_nonstandard_residues_ff(
-    mol, definition, forcefield, _molkit_ff=True, outdir=None, residue_smiles=None
+    mol,
+    definition,
+    forcefield,
+    _molkit_ff=True,
+    outdir=None,
+    residue_smiles=None,
+    detect_specs=None,
 ):
     import tempfile
     from moleculekit.tools.preparation_customres import _get_custom_ff
@@ -100,58 +106,92 @@ def _generate_nonstandard_residues_ff(
         _prepare_for_parameterize,
     )
 
-    uqprot_resn = np.unique(mol.get("resname", sel="protein"))
-    not_in_ff = []
-    for resn in uqprot_resn:
-        if not forcefield.has_residue(resn):
-            not_in_ff.append(resn)
+    uqprot_resn = list(np.unique(mol.get("resname", sel="protein")))
+
+    # Build a resname -> first matching detect spec lookup for chain-resident
+    # NCAAs. The residue is already templated upstream by
+    # ``mol.templateResidueFromSmiles`` so we can extract it from ``mol``
+    # directly without needing a SMILES. ``protein`` atomselect filters by
+    # the canonical amino-acid name list, so chain-resident NCAAs with
+    # arbitrary resnames are added explicitly here.
+    spec_by_resname = {}
+    if detect_specs:
+        from moleculekit.tools.nonstandard_residues import (
+            NCAASpec,
+            CrosslinkedNCAASpec,
+        )
+        for spec in detect_specs:
+            if not isinstance(spec, (NCAASpec, CrosslinkedNCAASpec)):
+                continue
+            resn = str(spec.resname)
+            spec_by_resname.setdefault(resn, spec)
+            if resn not in uqprot_resn:
+                uqprot_resn.append(resn)
+
+    not_in_ff = [r for r in uqprot_resn if not forcefield.has_residue(r)]
 
     if len(not_in_ff) == 0:
         return definition, forcefield
 
     residue_smiles = residue_smiles or {}
-    missing = np.setdiff1d(not_in_ff, list(residue_smiles.keys()))
+    have_template = set(residue_smiles) | set(spec_by_resname)
+    missing = np.setdiff1d(not_in_ff, list(have_template))
     if len(missing):
         raise MissingTopologyError(
             f"Missing topology for residues {missing}. "
-            "Please either provide their SMILES in the residue_smiles argument or set ignore_ns=True "
-            "to ignore non-standard residues or remove them from the input structure."
+            "Please either provide their SMILES in the residue_smiles argument, "
+            "or pass detect_specs from detectNonStandardResidues, or set "
+            "ignore_ns=True to ignore non-standard residues or remove them from "
+            "the input structure."
         )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         for res in not_in_ff:
             logger.info(f"Attempting to template non-canonical residue {res}...")
-            # This removes the non-canonical hydrogens from the original mol object
-            mol.remove((mol.resname == res) & (mol.element == "H"), _logger=False)
-            molc = mol.copy()
+            spec = spec_by_resname.get(res)
+            if spec is not None:
+                rid = spec.residue
+                mask = (
+                    (mol.resname == res)
+                    & (mol.segid == str(rid.segid))
+                    & (mol.chain == str(rid.chain))
+                    & (mol.resid == int(rid.resid))
+                    & (mol.insertion == str(rid.insertion))
+                )
+                if not mask.any():
+                    raise RuntimeError(
+                        f"detect_specs entry for residue {res} "
+                        f"({rid}) not found in the input structure."
+                    )
+                molc = mol.copy()
+                molc.filter(np.where(mask)[0], _logger=False)
+            else:
+                # SMILES path
+                # This removes the non-canonical hydrogens from the original mol
+                mol.remove(
+                    (mol.resname == res) & (mol.element == "H"), _logger=False
+                )
+                molc = mol.copy()
 
-            # Hacky way of getting the first molecule, if there are copies
-            molresn = molc.resname == res
-            firstname = molc.name[molresn][0]
-            lastname = molc.name[molresn][-1]
-            start = np.where(molresn & (molc.name == firstname))[0][0]
-            end = np.where(molresn & (molc.name == lastname))[0][0]
-            # Remove all other stuff
-            molc.filter(f"index {start} to {end}", _logger=False)
-            molc.guessBonds()
+                # Hacky way of getting the first molecule, if there are copies
+                molresn = molc.resname == res
+                firstname = molc.name[molresn][0]
+                lastname = molc.name[molresn][-1]
+                start = np.where(molresn & (molc.name == firstname))[0][0]
+                end = np.where(molresn & (molc.name == lastname))[0][0]
+                molc.filter(f"index {start} to {end}", _logger=False)
+                molc.guessBonds()
+
+                smiles = residue_smiles[res]
+                if os.path.isfile(smiles):
+                    molc = Molecule(smiles)
+                else:
+                    molc.templateResidueFromSmiles("all", smiles, addHs=True)
 
             if len(np.unique(molc.name)) != molc.numAtoms:
                 raise RuntimeError(
                     f"Residue {res} contains duplicate atom names. Please rename the atoms to have unique names."
                 )
-
-            smiles = None
-            if residue_smiles is not None and res in residue_smiles:
-                smiles = residue_smiles[res]
-            if smiles is None:
-                raise RuntimeError(
-                    f"Residue {res} is not in the residue_smiles dictionary. Please add it to the dictionary or remove it from the protein."
-                )
-
-            if os.path.isfile(smiles):
-                molc = Molecule(smiles)
-            else:
-                molc.templateResidueFromSmiles("all", smiles, addHs=True)
 
             # Ensure the H bonded to OXT is named HXT
             if "OXT" in molc.name:
@@ -897,6 +937,7 @@ def systemPrepare(
             _molkit_ff,
             outdir,
             residue_smiles=residue_smiles,
+            detect_specs=detect_specs,
         )
 
     nonpept = []
