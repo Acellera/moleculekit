@@ -290,7 +290,7 @@ def _mol_to_dat_def(mol: Molecule, outfile: str):
             )
 
 
-def _get_custom_ff(user_ff=None, molkit_ff=True):
+def _get_custom_ff(user_ff=None):
     import xml.etree.ElementTree as ET
     import pdb2pqr
     import pdb2pqr.aa
@@ -299,20 +299,12 @@ def _get_custom_ff(user_ff=None, molkit_ff=True):
     from glob import glob
 
     original = os.path.join(os.path.dirname(pdb2pqr.__file__), "dat")
-    try:
-        molkitcustom = os.path.join(__share_dir, "pdb2pqr", "residues")
-    except Exception:
-        molkitcustom = None
 
     custom_xml = []
-    if molkit_ff and molkitcustom is not None:
-        custom_xml += glob(os.path.join(molkitcustom, "*.xml"))
     if user_ff is not None:
         custom_xml += glob(os.path.join(user_ff, "*.xml"))
 
     custom_dat = []
-    if molkit_ff and molkitcustom is not None:
-        custom_dat += glob(os.path.join(molkitcustom, "*.dat"))
     if user_ff is not None:
         custom_dat += glob(os.path.join(user_ff, "*.dat"))
 

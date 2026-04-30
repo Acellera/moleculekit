@@ -92,7 +92,6 @@ def _generate_nonstandard_residues_ff(
     mol,
     definition,
     forcefield,
-    _molkit_ff=True,
     outdir=None,
     detect_specs=None,
 ):
@@ -173,7 +172,7 @@ def _generate_nonstandard_residues_ff(
                 pres.write(os.path.join(outdir, f"{res}.cif"))
             logger.info(f"Succesfully templated non-canonical residue {res}.")
 
-        definition, forcefield = _get_custom_ff(user_ff=tmpdir, molkit_ff=_molkit_ff)
+        definition, forcefield = _get_custom_ff(user_ff=tmpdir)
     return definition, forcefield
 
 
@@ -668,7 +667,6 @@ def systemPrepare(
     hydrophobic_thickness=None,
     plot_pka=None,
     _logger_level="ERROR",
-    _molkit_ff=False,
     outdir=None,
     ignore_ns=False,
     titrate=None,
@@ -910,15 +908,10 @@ def systemPrepare(
     _prepare_nucleics(mol_in)
     _fix_protonation_resnames(mol_in)
 
-    definition, forcefield = _get_custom_ff(molkit_ff=_molkit_ff)
+    definition, forcefield = _get_custom_ff()
     if not ignore_ns:
         definition, forcefield = _generate_nonstandard_residues_ff(
-            mol_in,
-            definition,
-            forcefield,
-            _molkit_ff,
-            outdir,
-            detect_specs=detect_specs,
+            mol_in, definition, forcefield, outdir, detect_specs=detect_specs
         )
         _canonicalize_ncaa_h_names(mol_in, detect_specs)
 
