@@ -400,7 +400,11 @@ def detectNonStandardResidues(mol):
         if not partners:
             continue
         residue = residues[r_idx]
-        if residue.resname not in _CANONICAL_RESNAMES:
+        # Only canonical amino acids get renamed - ions, water and caps
+        # are also "canonical" in the no-need-to-parameterize sense, but
+        # they have no sidechain hydrogen to displace and no protein
+        # template to swap to.
+        if residue.resname not in _PROTEIN_RESNAMES:
             continue
         # Pick a non-canonical partner. Canonical-canonical non-peptide
         # bonds (e.g. disulfides) are handled by the existing amber.build
