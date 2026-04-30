@@ -654,6 +654,7 @@ def systemPrepare(
     residue_smiles=None,
     ignore_ns=False,
     titrate=None,
+    detect_specs=None,
 ):
     """Prepare molecular systems through protonation and h-bond optimization.
 
@@ -963,6 +964,33 @@ def systemPrepare(
         if hydrophobic_thickness:
             # TODO: I think this only works if the protein is assumed aligned to the membrane and the membrane is centered at Z=0
             _warn_buried_residues(df, mol_out, hydrophobic_thickness)
+
+    # Apply any caller-supplied custom resnames + displaced-H drops now
+    # that PDB2PQR's terminus / hydrogen logic has run on the canonical
+    # naming. Rename happens in place; matching residues by
+    # (segid, chain, resid, insertion).
+    if detect_specs:
+        drop_mask = np.zeros(mol_out.numAtoms, dtype=bool)
+        for spec in detect_specs:
+            if not all(
+                hasattr(spec, a)
+                for a in ("original_resname", "new_resname", "residue", "drop_h")
+            ):
+                continue
+            rid = spec.residue
+            res_mask = (
+                (mol_out.segid == str(rid.segid))
+                & (mol_out.chain == str(rid.chain))
+                & (mol_out.resid == int(rid.resid))
+                & (mol_out.insertion == str(rid.insertion))
+            )
+            if not res_mask.any():
+                continue
+            mol_out.resname[res_mask] = str(spec.new_resname)
+            for h_name in spec.drop_h:
+                drop_mask |= res_mask & (mol_out.name == h_name)
+        if drop_mask.any():
+            mol_out.remove(drop_mask, _logger=False)
 
     logger.setLevel(old_level)
 
