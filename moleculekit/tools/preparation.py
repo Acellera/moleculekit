@@ -94,7 +94,6 @@ def _generate_nonstandard_residues_ff(
     forcefield,
     _molkit_ff=True,
     outdir=None,
-    residue_smiles=None,
     detect_specs=None,
 ):
     import tempfile
@@ -105,88 +104,48 @@ def _generate_nonstandard_residues_ff(
         _mol_to_xml_def,
         _prepare_for_parameterize,
     )
+    from moleculekit.tools.nonstandard_residues import (
+        NCAASpec,
+        CrosslinkedNCAASpec,
+    )
 
-    uqprot_resn = list(np.unique(mol.get("resname", sel="protein")))
-
-    # Build a resname -> first matching detect spec lookup for chain-resident
-    # NCAAs. The residue is already templated upstream by
+    # Only chain-resident non-canonical amino acids
+    # (NCAASpec / CrosslinkedNCAASpec) need FF templating here. Free /
+    # covalent / scaffold ligands are handled separately (or held by
+    # ``hold_nonpeptidic_bonds``); canonical AAs are already in the FF.
+    # The residue is expected to have been templated upstream by
     # ``mol.templateResidueFromSmiles`` so we can extract it from ``mol``
-    # directly without needing a SMILES. ``protein`` atomselect filters by
-    # the canonical amino-acid name list, so chain-resident NCAAs with
-    # arbitrary resnames are added explicitly here.
+    # directly via the spec's residue identity.
     spec_by_resname = {}
     if detect_specs:
-        from moleculekit.tools.nonstandard_residues import (
-            NCAASpec,
-            CrosslinkedNCAASpec,
-        )
         for spec in detect_specs:
-            if not isinstance(spec, (NCAASpec, CrosslinkedNCAASpec)):
-                continue
-            resn = str(spec.resname)
-            spec_by_resname.setdefault(resn, spec)
-            if resn not in uqprot_resn:
-                uqprot_resn.append(resn)
+            if isinstance(spec, (NCAASpec, CrosslinkedNCAASpec)):
+                spec_by_resname.setdefault(str(spec.resname), spec)
 
-    not_in_ff = [r for r in uqprot_resn if not forcefield.has_residue(r)]
+    not_in_ff = [r for r in spec_by_resname if not forcefield.has_residue(r)]
 
     if len(not_in_ff) == 0:
         return definition, forcefield
 
-    residue_smiles = residue_smiles or {}
-    have_template = set(residue_smiles) | set(spec_by_resname)
-    missing = np.setdiff1d(not_in_ff, list(have_template))
-    if len(missing):
-        raise MissingTopologyError(
-            f"Missing topology for residues {missing}. "
-            "Please either provide their SMILES in the residue_smiles argument, "
-            "or pass detect_specs from detectNonStandardResidues, or set "
-            "ignore_ns=True to ignore non-standard residues or remove them from "
-            "the input structure."
-        )
-
     with tempfile.TemporaryDirectory() as tmpdir:
         for res in not_in_ff:
             logger.info(f"Attempting to template non-canonical residue {res}...")
-            spec = spec_by_resname.get(res)
-            if spec is not None:
-                rid = spec.residue
-                mask = (
-                    (mol.resname == res)
-                    & (mol.segid == str(rid.segid))
-                    & (mol.chain == str(rid.chain))
-                    & (mol.resid == int(rid.resid))
-                    & (mol.insertion == str(rid.insertion))
+            spec = spec_by_resname[res]
+            rid = spec.residue
+            mask = (
+                (mol.resname == res)
+                & (mol.segid == str(rid.segid))
+                & (mol.chain == str(rid.chain))
+                & (mol.resid == int(rid.resid))
+                & (mol.insertion == str(rid.insertion))
+            )
+            if not mask.any():
+                raise RuntimeError(
+                    f"detect_specs entry for residue {res} "
+                    f"({rid}) not found in the input structure."
                 )
-                if not mask.any():
-                    raise RuntimeError(
-                        f"detect_specs entry for residue {res} "
-                        f"({rid}) not found in the input structure."
-                    )
-                molc = mol.copy()
-                molc.filter(np.where(mask)[0], _logger=False)
-            else:
-                # SMILES path
-                # This removes the non-canonical hydrogens from the original mol
-                mol.remove(
-                    (mol.resname == res) & (mol.element == "H"), _logger=False
-                )
-                molc = mol.copy()
-
-                # Hacky way of getting the first molecule, if there are copies
-                molresn = molc.resname == res
-                firstname = molc.name[molresn][0]
-                lastname = molc.name[molresn][-1]
-                start = np.where(molresn & (molc.name == firstname))[0][0]
-                end = np.where(molresn & (molc.name == lastname))[0][0]
-                molc.filter(f"index {start} to {end}", _logger=False)
-                molc.guessBonds()
-
-                smiles = residue_smiles[res]
-                if os.path.isfile(smiles):
-                    molc = Molecule(smiles)
-                else:
-                    molc.templateResidueFromSmiles("all", smiles, addHs=True)
+            molc = mol.copy()
+            molc.filter(np.where(mask)[0], _logger=False)
 
             if len(np.unique(molc.name)) != molc.numAtoms:
                 raise RuntimeError(
@@ -245,6 +204,49 @@ def _detect_nonpeptidic_bonds(mol):
         f"Found {len(b_prot_idx)} covalent bonds from protein to non-protein molecules."
     )
     return np.vstack([b_prot_idx, b_other_idx]).T
+
+
+def _canonicalize_ncaa_h_names(mol, detect_specs):
+    """Rename the amide H and alpha H of each chain-resident NCAA in
+    ``mol`` to the AMBER conventions ``H`` and ``HA``. The FF template
+    written by :func:`_process_custom_residue` always uses these names,
+    so without this rename the auto-generated ``H1``/``H2``/... that
+    ``mol.templateResidueFromSmiles(addHs=True)`` produces would not
+    match the FF template and PDB2PQR's biomolecule pass would either
+    treat the residue as N-terminal (expecting NH3+) or fail to walk
+    the path to ``CA``.
+    """
+    if not detect_specs:
+        return
+    from moleculekit.tools.nonstandard_residues import (
+        NCAASpec,
+        CrosslinkedNCAASpec,
+    )
+
+    for spec in detect_specs:
+        if not isinstance(spec, (NCAASpec, CrosslinkedNCAASpec)):
+            continue
+        rid = spec.residue
+        res_mask = (
+            (mol.resname == str(spec.resname))
+            & (mol.segid == str(rid.segid))
+            & (mol.chain == str(rid.chain))
+            & (mol.resid == int(rid.resid))
+            & (mol.insertion == str(rid.insertion))
+        )
+        res_idx = np.where(res_mask)[0]
+        if not len(res_idx):
+            continue
+        res_set = set(int(i) for i in res_idx)
+
+        for backbone_name, h_target in (("N", "H"), ("CA", "HA")):
+            bb_atoms = res_idx[mol.name[res_idx] == backbone_name]
+            if not len(bb_atoms):
+                continue
+            for nb in mol.getNeighbors(int(bb_atoms[0])):
+                if int(nb) in res_set and mol.element[int(nb)] == "H":
+                    mol.name[int(nb)] = h_target
+                    break
 
 
 def _delete_no_titrate(pka_list, no_titr):
@@ -561,29 +563,6 @@ def _fix_protonation_resnames(mol):
             mol.resname[resatm] = "HIE"
 
 
-def proteinPrepare(
-    mol_in,
-    pH=7.0,
-    verbose=0,
-    returnDetails=False,
-    hydrophobicThickness=None,
-    holdSelection=None,
-    _loggerLevel=None,
-):
-    logger.warning(
-        "proteinPrepare has been deprecated in favor of the systemPrepare function and will soon be removed. "
-        "Please look at the documentation of systemPrepare for more information."
-    )
-    return systemPrepare(
-        mol_in,
-        pH=pH,
-        verbose=verbose,
-        return_details=returnDetails,
-        hydrophobic_thickness=hydrophobicThickness,
-        _logger_level=_loggerLevel,
-    )
-
-
 def _capture_bonds(mol):
     """Walk ``mol.bonds`` and return a list of
     ``(UniqueAtomID, UniqueAtomID, is_h_bond, bondtype)`` tuples for
@@ -691,7 +670,6 @@ def systemPrepare(
     _logger_level="ERROR",
     _molkit_ff=False,
     outdir=None,
-    residue_smiles=None,
     ignore_ns=False,
     titrate=None,
     detect_specs=None,
@@ -789,15 +767,24 @@ def systemPrepare(
         Provide a file path with .png extension to draw the titration diagram for the system residues.
     outdir : str
         A path where to save custom residue cif files used for building
-    residue_smiles : dict
-        A dictionary with keys being residue names and values being the SMILES string of the residue. This is used to
-        create protonated versions of non-canonical residues.
     ignore_ns : bool
         If False systemPrepare will issue an error when it fails to protonate non-canonical residues in the protein.
         If True it will leave non-canonical residues unprotonated.
     titrate : list[str]
         Select which aminoacids can be titrated. For example pass titrate=["HIS", "ARG"] to only allow titration
         of histidines and arginines. If set to None it will titrate all amino acids in the above table.
+    detect_specs : list
+        Per-residue specs from
+        :func:`moleculekit.tools.nonstandard_residues.detectNonStandardResidues`.
+        For chain-resident non-canonical amino acids
+        (:class:`NCAASpec` / :class:`CrosslinkedNCAASpec`) the caller is
+        expected to have already templated each residue via
+        ``mol.templateResidueFromSmiles`` before calling ``systemPrepare``;
+        the spec tells the parameterizer which residue instance to extract
+        for force-field generation. :class:`CanonicalRenamedSpec` entries
+        are applied as resname renames + sidechain-H drops on the prepared
+        molecule (e.g. CYS -> CY1 with HG removed for a cysteine bonded to
+        a non-canonical scaffold).
 
     Returns
     -------
@@ -877,11 +864,6 @@ def systemPrepare(
         logging.getLogger("propka").setLevel(_logger_level)
     logger.debug("Starting.")
 
-    if residue_smiles is not None and not isinstance(residue_smiles, dict):
-        raise ValueError(
-            "residue_smiles should be a dictionary with residue names as keys and SMILES strings as values."
-        )
-
     check_backbone(mol_in)
 
     if no_opt is not None:
@@ -936,9 +918,9 @@ def systemPrepare(
             forcefield,
             _molkit_ff,
             outdir,
-            residue_smiles=residue_smiles,
             detect_specs=detect_specs,
         )
+        _canonicalize_ncaa_h_names(mol_in, detect_specs)
 
     nonpept = []
     if hold_nonpeptidic_bonds:
