@@ -559,8 +559,20 @@ def template_residue_from_smiles(
         for field in ("beta", "occupancy", "record", "altloc"):
             getattr(new_residue, field)[new_idx] = getattr(residue, field)[orig_idx]
 
+    # If the residue is the entire molecule, ``mol.remove`` empties it
+    # and the subsequent ``mol.insert`` adopts ``new_residue``'s
+    # zero-initialised ``box`` / ``boxangles`` arrays. Snapshot them so
+    # we can restore the simulation cell after the round-trip.
+    saved_box = mol.box.copy() if mol.box is not None else None
+    saved_boxangles = mol.boxangles.copy() if mol.boxangles is not None else None
+
     mol.remove(selidx, _logger=False)
     mol.insert(new_residue, selidx[0])
+
+    if saved_box is not None and np.any(saved_box):
+        mol.box = saved_box
+    if saved_boxangles is not None and np.any(saved_boxangles):
+        mol.boxangles = saved_boxangles
 
     # Restore the inter-residue bonds. Atoms originally past the residue
     # were shifted by (new_residue.numAtoms - len(selidx)) due to the
