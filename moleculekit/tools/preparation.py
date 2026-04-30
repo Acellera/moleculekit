@@ -970,12 +970,11 @@ def systemPrepare(
     # naming. Rename happens in place; matching residues by
     # (segid, chain, resid, insertion).
     if detect_specs:
+        from moleculekit.tools.nonstandard_residues import CanonicalRenamedSpec
+
         drop_mask = np.zeros(mol_out.numAtoms, dtype=bool)
         for spec in detect_specs:
-            if not all(
-                hasattr(spec, a)
-                for a in ("original_resname", "new_resname", "residue", "drop_h")
-            ):
+            if not isinstance(spec, CanonicalRenamedSpec):
                 continue
             rid = spec.residue
             res_mask = (

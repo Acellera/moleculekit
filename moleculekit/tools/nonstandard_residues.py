@@ -3,9 +3,9 @@ parameterization before building.
 
 A "non-standard residue" is any residue whose ``resname`` is not in
 moleculekit's canonical amino-acid / nucleic / water / ion sets.
-:func:`detectNonStandardResidues` inspects the molecule and returns one
-spec per non-standard residue (plus one per canonical residue covalently
-bonded to a non-canonical one):
+:func:`detectNonStandardResidues` inspects the molecule (without
+mutating it) and returns one spec per non-standard residue, plus one
+per canonical residue covalently bonded to a non-canonical one:
 
   - :class:`NCAASpec` - chain-resident NCAA with no sidechain crosslink
     (e.g. selenomethionine, norleucine, a D-amino acid).
@@ -27,12 +27,9 @@ bonded to a non-canonical one):
     hydrogen names (``["HG"]`` for a CYS-SG anchor, ``["HD22"]`` for an
     ASN-ND2 anchor).
 
-Detect is non-mutating: pass the spec list to
-:func:`moleculekit.tools.preparation.systemPrepare` via
-``detect_specs=specs`` to apply the proposed renames + H-drops on the
-prepared molecule. Parameterization (running antechamber, splitting
-per-residue, emitting custombonds for ``amber.build``) lives in
-``htmd.builder.scaffolded_peptide.parameterizeFromSpecs``.
+Pass the spec list to :func:`moleculekit.tools.preparation.systemPrepare`
+via ``detect_specs=specs`` to apply the proposed renames + H-drops on
+the prepared molecule.
 """
 
 from __future__ import annotations
@@ -133,33 +130,21 @@ class LigandSpec:
 @dataclass
 class CanonicalRenamedSpec:
     """A canonical amino-acid residue that the detector identified as
-    covalently bonded to a non-canonical residue. The detector itself is
-    non-mutating: ``residue.resname`` is the original canonical resname
-    (``"CYS"``, ``"ASN"``, ...) as it appears in the input molecule, and
+    covalently bonded to a non-canonical residue. ``residue.resname``
+    is the original canonical resname (``"CYS"``, ``"ASN"``, ...) and
     ``new_resname`` carries the proposed custom 3-char resname that
     parameterization will use. ``drop_h`` lists the displaced sidechain
-    hydrogen atom names that should be removed when the rename is
-    applied (e.g. ``["HG"]`` for a CYS-SG anchor, ``["HD22"]`` for an
-    ASN-ND2 anchor); empty when no displacement is expected.
+    hydrogen atom names to remove when the rename is applied
+    (e.g. ``["HG"]`` for a CYS-SG anchor, ``["HD22"]`` for an ASN-ND2
+    anchor); empty when no displacement is expected.
 
     ``is_n_term`` / ``is_c_term`` flag whether this residue sits at a
-    chain terminus. Terminal forms have different atoms (OXT on the
-    C-terminal carboxylate, extra ``H1``/``H2``/``H3`` on the N-terminal
-    amine) and different ff14SB atom types, so the parameterizer
-    consults the AMBER terminal residue libraries (``CCYX``, ``NCYX``,
-    ...) instead of the mid-chain template when these flags fire.
-
-    To apply the rename + H-drop to a molecule, pass the spec list to
-    :func:`moleculekit.tools.preparation.systemPrepare` via the
-    ``detect_specs`` argument; that runs PDB2PQR on the canonical
-    naming first (so terminal-atom placement and H addition stay
-    correct) and then mutates the prepared mol with the proposed
-    rename and the H-drop in one step."""
+    chain terminus; terminal forms need different parameters than
+    mid-chain ones, so they end up in their own bucket."""
 
     residue: UniqueResidueID
-    original_resname: str
     new_resname: str
-    drop_h: list  # list[str]: sidechain H atom names to remove on apply
+    drop_h: list[str]
     is_n_term: bool = False
     is_c_term: bool = False
 
@@ -211,28 +196,27 @@ for _rr in PROTEIN_RESIDUES:
     _PROTEIN_RESNAMES.update(_rr.resname_variants)
 
 
-_RESIDUE_FIELDS = ("resname", "resid", "insertion", "segid", "chain")
-
-
 def _residue_groups(mol):
-    """Return ``(a2r, groups)`` where ``a2r`` maps each atom index to a unique
-    residue id and ``groups`` is a list of per-residue dicts ordered by
-    residue index."""
-    a2r, idx_lists = mol.getResidues(fields=_RESIDUE_FIELDS, return_idx=True)
-    groups = []
+    """Return ``(a2r, residues, atom_idxs)`` where ``a2r`` maps each atom
+    index to a unique residue id, ``residues`` is a list of
+    :class:`UniqueResidueID` ordered by residue index, and ``atom_idxs``
+    holds the atom indices for each residue."""
+    fields = ("resname", "resid", "insertion", "segid", "chain")
+    a2r, idx_lists = mol.getResidues(fields=fields, return_idx=True)
+    residues, atom_idxs = [], []
     for atom_idx in idx_lists:
         first = int(atom_idx[0])
-        groups.append(
-            {
-                "atom_idx": np.asarray(atom_idx, dtype=np.int64),
-                "resname": str(mol.resname[first]),
-                "resid": int(mol.resid[first]),
-                "insertion": str(mol.insertion[first]),
-                "segid": str(mol.segid[first]),
-                "chain": str(mol.chain[first]),
-            }
+        residues.append(
+            UniqueResidueID(
+                resname=str(mol.resname[first]),
+                chain=str(mol.chain[first]),
+                resid=int(mol.resid[first]),
+                insertion=str(mol.insertion[first]),
+                segid=str(mol.segid[first]),
+            )
         )
-    return a2r, groups
+        atom_idxs.append(np.asarray(atom_idx, dtype=np.int64))
+    return a2r, residues, atom_idxs
 
 
 def _ensure_bonds(mol):
@@ -248,48 +232,35 @@ def _ensure_bonds(mol):
     return np.asarray(bonds, dtype=np.int64)
 
 
-def _residue_id(g):
-    return UniqueResidueID(
-        resname=g["resname"],
-        chain=g["chain"],
-        resid=g["resid"],
-        insertion=g["insertion"],
-        segid=g["segid"],
-    )
-
-
-def _has_peptide_neighbour(mol, group, side):
+def _has_peptide_neighbour(mol, atom_idx, side):
     """Return True if this residue has a peptide-bond neighbour on the
     given side (``"N"`` = previous residue's C atom; ``"C"`` = next
     residue's N atom). Falls back to a distance check (peptide N-C is
     ~1.32 A; we accept anything under 1.6 A) so sparse CIF inputs that
     only carry the special inter-residue bonds still get correct
     chain-terminus flags for canonical amino acids."""
-    self_name = side
     other_name = "C" if side == "N" else "N"
-    own_atoms = set(int(a) for a in group["atom_idx"])
-    self_atom_idxs = [
-        int(a) for a in group["atom_idx"] if str(mol.name[int(a)]) == self_name
-    ]
+    own_atoms = set(int(a) for a in atom_idx)
+    self_atom_idxs = [int(a) for a in atom_idx if str(mol.name[int(a)]) == side]
     if not self_atom_idxs:
         return False
+    other_mask = mol.name == other_name
+    other_mask[list(own_atoms)] = False
+    other_coords = mol.coords[other_mask, :, mol.frame]
     for self_atom in self_atom_idxs:
         for nb in mol.getNeighbors(self_atom):
-            nb = int(nb)
-            if nb in own_atoms:
+            if int(nb) in own_atoms:
                 continue
-            if str(mol.name[nb]) == other_name:
+            if str(mol.name[int(nb)]) == other_name:
                 return True
-        self_pos = mol.coords[self_atom, :, mol.frame]
-        for cand_idx in range(mol.numAtoms):
-            if cand_idx in own_atoms:
-                continue
-            if str(mol.name[cand_idx]) != other_name:
-                continue
-            cand_pos = mol.coords[cand_idx, :, mol.frame]
-            if float(np.linalg.norm(cand_pos - self_pos)) < 1.6:
+        if other_coords.size:
+            self_pos = mol.coords[self_atom, :, mol.frame]
+            if np.linalg.norm(other_coords - self_pos, axis=1).min() < 1.6:
                 return True
     return False
+
+
+_BUCKET_DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz"
 
 
 def _pick_bucket_resname(variant_or_resname, prefix_counter):
@@ -303,16 +274,12 @@ def _pick_bucket_resname(variant_or_resname, prefix_counter):
     prefix = (variant_or_resname or "X")[:2]
     n = prefix_counter.get(prefix, 0) + 1
     prefix_counter[prefix] = n
-    if n < 10:
-        digit = str(n)
-    elif n < 36:
-        digit = chr(ord("a") + n - 10)
-    else:
+    if n >= len(_BUCKET_DIGITS):
         raise RuntimeError(
             f"Too many distinct anchor buckets sharing prefix {prefix!r}; "
             f"unable to fit a unique 3-char resname."
         )
-    return f"{prefix}{digit}"
+    return f"{prefix}{_BUCKET_DIGITS[n]}"
 
 
 # ---------------------------------------------------------------------------
@@ -323,17 +290,16 @@ def _pick_bucket_resname(variant_or_resname, prefix_counter):
 def detectNonStandardResidues(mol):
     """Walk ``mol`` and return one spec per non-standard residue.
 
-    The detector is non-mutating: it only inspects ``mol``. For each
-    canonical amino-acid residue whose sidechain is covalently bonded to
-    a non-canonical residue it emits a :class:`CanonicalRenamedSpec`
-    that proposes a custom 3-char resname (e.g. ``CY1`` for the
-    CYS-SG-bonded-to-LFI bucket, ``NL1`` for ASN-ND2-bonded-to-NAG, ...)
-    plus the displaced sidechain hydrogen names from
-    :data:`ANCHOR_VARIANTS`. The proposed rename and the H-drop are
-    applied later by :func:`moleculekit.tools.preparation.systemPrepare`
-    (passed via ``detect_specs=specs``) so PDB2PQR can run on the
-    canonical naming and place terminal atoms / hydrogens correctly
-    before the rename is committed.
+    For each canonical amino-acid residue whose sidechain is covalently
+    bonded to a non-canonical residue, emits a
+    :class:`CanonicalRenamedSpec` that proposes a custom 3-char resname
+    (e.g. ``CY1`` for the CYS-SG-bonded-to-LFI bucket, ``NL1`` for
+    ASN-ND2-bonded-to-NAG, ...) plus the displaced sidechain hydrogen
+    names looked up via
+    :func:`moleculekit.tools._anchor_variants.lookup_anchor_variant`.
+    The proposed rename and the H-drop are applied later by
+    :func:`moleculekit.tools.preparation.systemPrepare` (passed via
+    ``detect_specs=specs``).
 
     Residues that share the same ``(canonical_resname, anchor_atom_name,
     partner_resname, n_term, c_term)`` key are assigned the *same*
@@ -342,8 +308,9 @@ def detectNonStandardResidues(mol):
     Chain-terminal residues end up in their own bucket because terminal
     forms genuinely have different atoms (OXT on C-terminal carboxylate,
     extra H1/H2/H3 on N-terminal amine) and different charges.
-    Residues whose anchor has no entry in :data:`ANCHOR_VARIANTS` (e.g.
-    SER OG) use their original resname's first two chars as the prefix.
+    Residues whose anchor has no entry in the anchor-variants table
+    (e.g. SER OG) use their original resname's first two chars as the
+    prefix.
 
     Parameters
     ----------
@@ -363,21 +330,26 @@ def detectNonStandardResidues(mol):
         :class:`CanonicalRenamedSpec` entries.
     """
     bonds = _ensure_bonds(mol)
-    a2r, groups = _residue_groups(mol)
-    n_res = len(groups)
+    a2r, residues, atom_idxs = _residue_groups(mol)
+    n_res = len(residues)
 
     # Walk every inter-residue bond once. For each non-canonical residue
     # we track its non-peptide partners (with the atom name on this side);
     # for every residue we track whether it has a peptide bond on its N
     # side and / or its C side, which feeds the chain-residency check and
     # the is_n_term / is_c_term flags on (Crosslinked)NCAASpec.
-    nonpep_partners = [[] for _ in range(n_res)]  # res -> [(other_res, this_atom_name)]
+    nonpep_partners = [set() for _ in range(n_res)]  # res -> {(other_res, this_atom_name)}
     has_peptide_bond = [False] * n_res
     peptide_attached_n = [False] * n_res
     peptide_attached_c = [False] * n_res
 
+    seen_bonds = set()
     for a1, a2 in bonds:
         a1, a2 = int(a1), int(a2)
+        bond_key = (a1, a2) if a1 < a2 else (a2, a1)
+        if bond_key in seen_bonds:
+            continue
+        seen_bonds.add(bond_key)
         r1, r2 = int(a2r[a1]), int(a2r[a2])
         if r1 == r2 or r1 < 0 or r2 < 0:
             continue
@@ -392,28 +364,43 @@ def detectNonStandardResidues(mol):
                 peptide_attached_c[r1] = True
                 peptide_attached_n[r2] = True
         else:
-            nonpep_partners[r1].append((r2, n1))
-            nonpep_partners[r2].append((r1, n2))
+            nonpep_partners[r1].add((r2, n1))
+            nonpep_partners[r2].add((r1, n2))
+
+    # Distance fallback: residues with a backbone N or C atom but no
+    # explicit peptide bond on that side may still be chain-resident -
+    # sparse CIF inputs frequently carry only the special inter-residue
+    # bonds (via ``_struct_conn``) and omit canonical peptide bonds.
+    for r_idx in range(n_res):
+        if not peptide_attached_n[r_idx] and _has_peptide_neighbour(
+            mol, atom_idxs[r_idx], "N"
+        ):
+            peptide_attached_n[r_idx] = True
+            has_peptide_bond[r_idx] = True
+        if not peptide_attached_c[r_idx] and _has_peptide_neighbour(
+            mol, atom_idxs[r_idx], "C"
+        ):
+            peptide_attached_c[r_idx] = True
+            has_peptide_bond[r_idx] = True
 
     chain_resident = [
-        groups[r]["resname"] in _PROTEIN_RESNAMES or has_peptide_bond[r]
+        residues[r].resname in _PROTEIN_RESNAMES or has_peptide_bond[r]
         for r in range(n_res)
     ]
 
-    # Plan the canonical renames + collect the displaced-H names per
-    # residue. Bucket key is (canonical_resname, anchor_atom_name,
-    # partner_resname, n_term, c_term); residues sharing a bucket get
-    # the same 3-char custom resname so the parameterizer emits one
-    # shared prepi.
-    canonical_renames = {}  # residue_idx -> (original_resname, new_resname, drop_h_list)
+    # Plan the canonical renames. Bucket key is (canonical_resname,
+    # anchor_atom_name, partner_resname, n_term, c_term); residues
+    # sharing a bucket get the same 3-char custom resname so the
+    # parameterizer emits one shared prepi.
+    canonical_renames = {}  # residue_idx -> CanonicalRenamedSpec
     bucket_to_resname = {}
     prefix_counter = {}
     for r_idx in range(n_res):
         partners = nonpep_partners[r_idx]
         if not partners:
             continue
-        g = groups[r_idx]
-        if g["resname"] not in _CANONICAL_RESNAMES:
+        residue = residues[r_idx]
+        if residue.resname not in _CANONICAL_RESNAMES:
             continue
         # Pick a non-canonical partner. Canonical-canonical non-peptide
         # bonds (e.g. disulfides) are handled by the existing amber.build
@@ -422,106 +409,62 @@ def detectNonStandardResidues(mol):
             (
                 (other_r, anchor_atom)
                 for other_r, anchor_atom in partners
-                if groups[other_r]["resname"] not in _CANONICAL_RESNAMES
+                if residues[other_r].resname not in _CANONICAL_RESNAMES
             ),
             None,
         )
         if non_canonical is None:
             continue
         other_r, anchor_atom = non_canonical
-        partner_resname = groups[other_r]["resname"]
-        entry = lookup_anchor_variant(g["resname"], anchor_atom)
+        partner_resname = residues[other_r].resname
+        entry = lookup_anchor_variant(residue.resname, anchor_atom)
 
-        # Chain-terminal residues end up in their own bucket. Sparse CIF
-        # inputs frequently omit the standard peptide bonds, so we fall
-        # back to a distance check when no explicit N-C bond was seen.
-        n_term = not peptide_attached_n[r_idx] and not _has_peptide_neighbour(
-            mol, g, "N"
-        )
-        c_term = not peptide_attached_c[r_idx] and not _has_peptide_neighbour(
-            mol, g, "C"
-        )
-        bucket_key = (g["resname"], anchor_atom, partner_resname, n_term, c_term)
+        # Chain-terminal residues end up in their own bucket.
+        n_term = not peptide_attached_n[r_idx]
+        c_term = not peptide_attached_c[r_idx]
+        bucket_key = (residue.resname, anchor_atom, partner_resname, n_term, c_term)
         if bucket_key in bucket_to_resname:
             new_resname = bucket_to_resname[bucket_key]
         else:
-            base = (
-                entry["variant"] if entry and entry["variant"] else g["resname"]
-            )
+            base = entry["variant"] if entry and entry["variant"] else residue.resname
             new_resname = _pick_bucket_resname(base, prefix_counter)
             bucket_to_resname[bucket_key] = new_resname
 
-        drop_h = list(entry["drop_h"]) if entry is not None else []
-        canonical_renames[r_idx] = (
-            g["resname"], new_resname, drop_h, n_term, c_term
+        canonical_renames[r_idx] = CanonicalRenamedSpec(
+            residue=residue,
+            new_resname=new_resname,
+            drop_h=list(entry["drop_h"]) if entry is not None else [],
+            is_n_term=n_term,
+            is_c_term=c_term,
         )
 
-    # Build specs from the pre-mutation residue groups so we still know
-    # the original resnames for non-canonical residues. For canonical
-    # anchors, swap in the new resname when constructing UniqueResidueID.
     specs = []
-    for r_idx, g in enumerate(groups):
-        if g["resname"] in _CANONICAL_RESNAMES:
+    for r_idx, residue in enumerate(residues):
+        if residue.resname in _CANONICAL_RESNAMES:
             continue
-        residue_id = _residue_id(g)
         nonpep_count = len(nonpep_partners[r_idx])
         if chain_resident[r_idx]:
             is_n_term = not peptide_attached_n[r_idx]
             is_c_term = not peptide_attached_c[r_idx]
-            if nonpep_count > 0:
-                specs.append(
-                    CrosslinkedNCAASpec(
-                        resname=g["resname"],
-                        residue=residue_id,
-                        is_n_term=is_n_term,
-                        is_c_term=is_c_term,
-                    )
+            cls = CrosslinkedNCAASpec if nonpep_count > 0 else NCAASpec
+            specs.append(
+                cls(
+                    resname=residue.resname,
+                    residue=residue,
+                    is_n_term=is_n_term,
+                    is_c_term=is_c_term,
                 )
-            else:
-                specs.append(
-                    NCAASpec(
-                        resname=g["resname"],
-                        residue=residue_id,
-                        is_n_term=is_n_term,
-                        is_c_term=is_c_term,
-                    )
-                )
-        else:
-            if nonpep_count >= 2:
-                specs.append(
-                    ScaffoldSpec(resname=g["resname"], residue=residue_id)
-                )
-            elif nonpep_count == 1:
-                specs.append(
-                    CovalentLigandSpec(resname=g["resname"], residue=residue_id)
-                )
-            else:
-                specs.append(
-                    LigandSpec(resname=g["resname"], residue=residue_id)
-                )
-
-    # One CanonicalRenamedSpec per renamed canonical residue, in residue-
-    # index order so the output is deterministic. ``residue`` carries
-    # the residue's *current* identity in mol (including the original
-    # canonical resname); the proposed rename is in ``new_resname``.
-    for r_idx in sorted(canonical_renames):
-        (
-            original_resname,
-            new_resname,
-            drop_h,
-            n_term_flag,
-            c_term_flag,
-        ) = canonical_renames[r_idx]
-        g = groups[r_idx]
-        specs.append(
-            CanonicalRenamedSpec(
-                residue=_residue_id(g),
-                original_resname=original_resname,
-                new_resname=new_resname,
-                drop_h=drop_h,
-                is_n_term=n_term_flag,
-                is_c_term=c_term_flag,
             )
-        )
+        elif nonpep_count >= 2:
+            specs.append(ScaffoldSpec(resname=residue.resname, residue=residue))
+        elif nonpep_count == 1:
+            specs.append(CovalentLigandSpec(resname=residue.resname, residue=residue))
+        else:
+            specs.append(LigandSpec(resname=residue.resname, residue=residue))
+
+    # Append CanonicalRenamedSpec entries in residue-index order so the
+    # output is deterministic.
+    for r_idx in sorted(canonical_renames):
+        specs.append(canonical_renames[r_idx])
 
     return specs
