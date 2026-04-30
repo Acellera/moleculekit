@@ -1,6 +1,16 @@
 data_https_models_rcsb_org_3ptb_bcif_gz
 #
 #
+_cell.length_a     54.89
+_cell.length_b     58.52
+_cell.length_c     67.63
+_cell.angle_alpha  90.0
+_cell.angle_beta   90.0
+_cell.angle_gamma  90.0
+_cell.Z_PDB        4
+##
+_symmetry.space_group_name_H-M  "P 21 21 21"
+##
 loop_
 _atom_site.group_PDB
 _atom_site.id
@@ -1653,15 +1663,15 @@ ATOM    1627  O   OD1  .  ASN  A  1  245  .   19.679    9.885  36.980  1.0  18.4
 ATOM    1628  N   ND2  .  ASN  A  1  245  .   20.188    8.572  35.247  1.0  18.49  0  245  ASN  A  ND2  1  
 ATOM    1629  O   OXT  .  ASN  A  1  245  .   18.437    4.875  39.012  1.0  18.49  0  245  ASN  A  OXT  1  
 HETATM  1630  Ca  CA   .  CA   A  2  480  .  -10.300    4.358  36.895  1.0  10.61  0  480  CA   A  CA   1  
-HETATM  1631  C   C1   .  BEN  A  3    1  .   -1.853   14.311  16.658  0.0    0.0  0    1  BEN  A  C1   1  
-HETATM  1632  C   C2   .  BEN  A  3    1  .   -2.107   15.653  16.758  0.0    0.0  0    1  BEN  A  C2   1  
-HETATM  1633  C   C3   .  BEN  A  3    1  .   -1.774   16.341  17.932  0.0    0.0  0    1  BEN  A  C3   1  
-HETATM  1634  C   C4   .  BEN  A  3    1  .   -1.175   15.662  19.005  0.0    0.0  0    1  BEN  A  C4   1  
-HETATM  1635  C   C5   .  BEN  A  3    1  .   -0.914   14.295  18.885  0.0    0.0  0    1  BEN  A  C5   1  
-HETATM  1636  C   C6   .  BEN  A  3    1  .   -1.257   13.634  17.708  0.0    0.0  0    1  BEN  A  C6   1  
-HETATM  1637  C   C    .  BEN  A  3    1  .   -2.193   13.627  15.496  0.0    0.0  0    1  BEN  A  C    1  
-HETATM  1638  N   N1   .  BEN  A  3    1  .   -2.797   14.235  14.491  0.0    0.0  1    1  BEN  A  N1   1  
-HETATM  1639  N   N2   .  BEN  A  3    1  .   -1.762   12.391  15.309  0.0    0.0  0    1  BEN  A  N2   1  
+HETATM  1631  C   C1   .  BEN  A  3    1  .   -1.853   14.311  16.658  1.0  19.86  0    1  BEN  A  C1   1  
+HETATM  1632  C   C2   .  BEN  A  3    1  .   -2.107   15.653  16.758  1.0  19.86  0    1  BEN  A  C2   1  
+HETATM  1633  C   C3   .  BEN  A  3    1  .   -1.774   16.341  17.932  1.0  19.86  0    1  BEN  A  C3   1  
+HETATM  1634  C   C4   .  BEN  A  3    1  .   -1.175   15.662  19.005  1.0  19.86  0    1  BEN  A  C4   1  
+HETATM  1635  C   C5   .  BEN  A  3    1  .   -0.914   14.295  18.885  1.0  19.86  0    1  BEN  A  C5   1  
+HETATM  1636  C   C6   .  BEN  A  3    1  .   -1.257   13.634  17.708  1.0  19.86  0    1  BEN  A  C6   1  
+HETATM  1637  C   C    .  BEN  A  3    1  .   -2.193   13.627  15.496  1.0  19.86  0    1  BEN  A  C    1  
+HETATM  1638  N   N1   .  BEN  A  3    1  .   -2.797   14.235  14.491  1.0  19.86  1    1  BEN  A  N1   1  
+HETATM  1639  N   N2   .  BEN  A  3    1  .   -1.762   12.391  15.309  1.0  19.86  0    1  BEN  A  N2   1  
 HETATM  1640  H   H1   .  BEN  A  3    1  .   -2.572   16.190  15.918  0.0    0.0  0    1  BEN  A  H1   1  
 HETATM  1641  H   H2   .  BEN  A  3    1  .   -1.983   17.418  18.014  0.0    0.0  0    1  BEN  A  H2   1  
 HETATM  1642  H   H3   .  BEN  A  3    1  .   -0.915   16.200  19.929  0.0    0.0  0    1  BEN  A  H3   1  
