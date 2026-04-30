@@ -125,6 +125,9 @@ def _test_templateResidueFromSmiles_multiresidue():
             exceptFields=[
                 "crystalinfo", "fileloc",
                 "chain", "segid", "resid", "serial", "coords",
+                # ``a.append(spacer)`` zeroes ``a.box``/``boxangles``
+                # because the spacer mol carries empty cell info.
+                "box", "boxangles",
             ],
             uqBonds=True,
         )
@@ -213,7 +216,11 @@ def _test_toRDKitMol(file):
         mol,
         mol2,
         checkFields=Molecule._all_fields,
-        exceptFields=["crystalinfo", "fileloc", "chain", "segid", "resid"],
+        exceptFields=[
+            "crystalinfo", "fileloc", "chain", "segid", "resid",
+            # Not roundtripped through RDKit (no native concept).
+            "beta", "occupancy", "record", "altloc", "box", "boxangles",
+        ],
         uqBonds=True,
     )
 
