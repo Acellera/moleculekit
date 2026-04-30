@@ -166,6 +166,19 @@ def _test_auto_freezing_and_force():
 
 @pytest.mark.parametrize("system", ("1A4W", "5VBL", "2QRV"))
 def _test_nonstandard_residues(tmp_path, system):
+    """The expected flow: caller runs ``detectNonStandardResidues`` to find
+    chain-resident NCAAs, templates each one via
+    ``mol.templateResidueFromSmiles``, then passes the spec list back to
+    ``systemPrepare`` via ``detect_specs=``. Reference data was generated
+    with the now-removed ``residue_smiles=`` argument; the new flow must
+    produce equivalent output.
+
+    2QRV's only non-canonical is the SAH cofactor (a free ligand, not an
+    NCAA). systemPrepare no longer adds free ligands to its FF library,
+    but we still call ``templateResidueFromSmiles`` on SAH so its bonds
+    survive the bond-capture/restore round-trip across PDB2PQR.
+    """
+    from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
     from moleculekit.tools.autosegment import autoSegment2
     from moleculekit.molecule import mol_equal
     import glob
@@ -174,32 +187,47 @@ def _test_nonstandard_residues(tmp_path, system):
         curr_dir, "test_systemprepare", "test-nonstandard-residues", system
     )
 
+    # RCSB-style carboxyl SMILES; ``_try_strip_unmatched_terminals`` in
+    # rdkittools drops the OXT -OH for mid-chain residues automatically.
     res_smiles = {
         "200": "c1cc(ccc1C[C@@H](C(=O)O)N)Cl",
-        "ALC": "C1CCC(CC1)C[C@@H](C=O)N",
-        "HRG": "C(CCNC(=N)N)C[C@@H](C=O)N",
-        "NLE": "CCCC[C@@H](C=O)N",
-        "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C=O",
-        "TYS": "c1cc(ccc1C[C@@H](C=O)N)OS(=O)(=O)O",
+        "ALC": "C1CCC(CC1)C[C@@H](C(=O)O)N",
+        "HRG": "C(CCNC(=N)N)C[C@@H](C(=O)O)N",
+        "NLE": "CCCC[C@@H](C(=O)O)N",
+        "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C(=O)O",
+        "TYS": "c1cc(ccc1C[C@@H](C(=O)O)N)OS(=O)(=O)O",
         "SAH": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CSCC[C@@H](C(=O)O)N)O)O)N",
     }
     mol = Molecule(os.path.join(test_home, f"{system}.pdb"))
     if system == "2QRV":
         mol.filter("chain D E K M")
         mol = autoSegment2(mol, fields=("chain", "segid"))
+    mol.remove("element H", _logger=False)
     mol.set("chain", "W", sel="water")
+
+    specs = detectNonStandardResidues(mol)
+    # Template every detected non-canonical residue we have a SMILES for
+    # so its connectivity and protonation are well-defined before
+    # systemPrepare. Only NCAA / crosslinked-NCAA specs get FF-templated
+    # inside systemPrepare; free ligands like SAH only need their bonds
+    # set so the bond-restore step preserves them.
+    for resn in {s.resname for s in specs}:
+        if resn in res_smiles:
+            mol.templateResidueFromSmiles(
+                f"resname '{resn}'", res_smiles[resn], addHs=True, _logger=False
+            )
 
     pmol, df = systemPrepare(
         mol,
         return_details=True,
         hold_nonpeptidic_bonds=True,
-        residue_smiles=res_smiles,
+        detect_specs=specs,
         outdir=os.path.join(tmp_path, "residue_cifs"),
     )
     pmol.write(os.path.join(tmp_path, "prepared.pdb"))
     if system == "2QRV":
-        # The LYS hydrogens are placed differently on Mac/Windows builds of pdb2pqr
-        # Remove them to make the test more stable
+        # The LYS hydrogens are placed differently on Mac/Windows builds
+        # of pdb2pqr. Remove them to make the test more stable.
         _ = pmol.remove("resname LYS and element H")
 
     _compare_results(
@@ -231,7 +259,6 @@ def _test_nonstandard_residue_hard_ignore_ns():
         mol,
         return_details=True,
         hold_nonpeptidic_bonds=True,
-        _molkit_ff=False,
         ignore_ns=True,
     )
     _compare_results(
@@ -285,19 +312,40 @@ def _test_cyclic_peptides():
 
 
 def _test_cyclic_peptides_noncanonical():
+    """4TOT_E is a cyclic peptide of seven NCAAs. Strip any input
+    hydrogens up-front so the test follows the canonical
+    ``templateResidueFromSmiles(addHs=True)`` pattern shared with the
+    other ``detect_specs``-based tests."""
+    from moleculekit.tools.nonstandard_residues import (
+        detectNonStandardResidues,
+        NCAASpec,
+        CrosslinkedNCAASpec,
+    )
+
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-cyclic-peptides")
     mol = Molecule(os.path.join(test_home, "4TOT_E.pdb"))
+    mol.remove("element H", _logger=False)
 
     smiles = {
-        "33X": "CC(CO)NC",
-        "34E": "CN[C@@H]([C@H](C)CN1CCN(CCOC)CC1)C(O)",
-        "ABA": "CC[C@H](CO)N",
-        "BMT": "C/C=C/C[C@@H](C)[C@H]([C@@H](CO)NC)O",
-        "DAL": "C[C@H](CO)N",
-        "MLE": "CC(C)C[C@@H](CO)NC",
-        "MVA": "CC(C)[C@@H](CO)NC",
+        "DAL": "C[C@@H](C(=O)O)N",
+        "MLE": "CC(C)C[C@@H](C(=O)O)NC",
+        "MVA": "CC(C)[C@@H](C(=O)O)NC",
+        "BMT": "CC=CC[C@@H](C)[C@H](O)[C@@H](NC)C(=O)O",
+        "ABA": "CC[C@@H](C(=O)O)N",
+        "33X": "CN[C@H](C)C(=O)O",
+        "34E": "CN[C@@H]([C@H](C)CN1CCN(CCOC)CC1)C(=O)O",
     }
-    pmol, df = systemPrepare(mol, return_details=True, residue_smiles=smiles)
+
+    specs = detectNonStandardResidues(mol)
+    ncaa_resnames = {
+        s.resname for s in specs if isinstance(s, (NCAASpec, CrosslinkedNCAASpec))
+    }
+    for resn in ncaa_resnames:
+        mol.templateResidueFromSmiles(
+            f"resname '{resn}'", smiles[resn], addHs=True, _logger=False
+        )
+
+    pmol, df = systemPrepare(mol, return_details=True, detect_specs=specs)
 
     _compare_results(
         os.path.join(test_home, "4TOT_E_prepared.pdb"),
