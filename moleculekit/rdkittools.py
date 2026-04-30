@@ -306,7 +306,47 @@ def template_residue_from_smiles(
     import numpy as np
 
     selidx = mol.atomselect(sel, indexes=True)
-    # Check that indexes are all sequential (no gaps)
+    if len(selidx) == 0:
+        raise RuntimeError(
+            f"Selection {sel!r} matched no atoms; nothing to template."
+        )
+
+    # Selections that span multiple residues (e.g. ``resname MLE`` when
+    # the same resname appears at three different resids, or three
+    # contiguous NAG residues) get templated one residue at a time with
+    # the same SMILES. Identities are snapshotted up front because
+    # templating mutates ``mol`` (removes the matched atoms and inserts
+    # a re-protonated copy), which would invalidate any cached atom
+    # indexes for the later residues.
+    keys = list(
+        dict.fromkeys(
+            zip(
+                mol.resid[selidx],
+                mol.insertion[selidx],
+                mol.chain[selidx],
+                mol.segid[selidx],
+            )
+        )
+    )
+    if len(keys) > 1:
+        for resid, insertion, chain, segid in keys:
+            mask = (
+                (mol.resid == resid)
+                & (mol.insertion == insertion)
+                & (mol.chain == chain)
+                & (mol.segid == segid)
+            )
+            template_residue_from_smiles(
+                mol,
+                mask,
+                smiles,
+                sanitizeSmiles=sanitizeSmiles,
+                addHs=addHs,
+                onlyOnAtoms=onlyOnAtoms,
+                guessBonds=guessBonds,
+                _logger=_logger,
+            )
+        return
     if not np.all(np.diff(selidx) == 1):
         raise RuntimeError(
             "The selection contains gaps in the atom indexes. Please select a single molecule residue only."

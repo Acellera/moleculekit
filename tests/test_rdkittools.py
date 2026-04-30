@@ -61,6 +61,75 @@ def _test_templateResidueFromSmiles():
     _cmp(mol, ref_mol)
 
 
+def _test_templateResidueFromSmiles_multiresidue():
+    """A selection that spans multiple residues with the same resname
+    (e.g. ``resname BEN`` when there are several BEN copies in the
+    structure) templates every matched residue with the same SMILES.
+    Holds whether the selected atoms are contiguous in the index array
+    or scattered with other residues between them. The result for each
+    copy is identical to running ``templateResidueFromSmiles`` on a
+    single isolated BEN."""
+    import numpy as np
+
+    testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
+    start_file = os.path.join(testdir, "BEN.pdb")
+    smiles = "[NH2+]=C(N)c1ccccc1"
+
+    # Reference: template a single BEN.
+    ref = Molecule(start_file)
+    ref.templateResidueFromSmiles(
+        "resname BEN", smiles, addHs=True, guessBonds=True
+    )
+
+    # Build a synthetic mol with three BEN copies. The copies are
+    # separated by a spacer residue so the selection ``resname BEN``
+    # returns a non-contiguous index array.
+    spacer = Molecule().empty(2)
+    spacer.name[:] = ["O", "O"]
+    spacer.element[:] = ["O", "O"]
+    spacer.resname[:] = "WAT"
+    spacer.resid[:] = 99
+    spacer.chain[:] = "S"
+    spacer.segid[:] = "S"
+    spacer.record[:] = "HETATM"
+    spacer.coords = np.array(
+        [[20.0, 0.0, 0.0], [21.0, 0.0, 0.0]], dtype=np.float32
+    )[:, :, np.newaxis]
+
+    one = Molecule(start_file)
+    a = one.copy()
+    a.chain[:] = "A"
+    a.segid[:] = "A"
+    a.resid[:] = 1
+    for chain, resid in (("B", 2), ("C", 3)):
+        b = one.copy()
+        b.chain[:] = chain
+        b.segid[:] = chain
+        b.resid[:] = resid
+        a.append(spacer, collisions=False)
+        a.append(b, collisions=False)
+
+    a.templateResidueFromSmiles(
+        "resname BEN", smiles, addHs=True, guessBonds=True
+    )
+
+    # Each BEN copy in ``a`` must equal the single-BEN reference (modulo
+    # chain/segid/resid/coords which we set per copy and which differ
+    # from the reference's "1"/""/"" defaults).
+    for chain, resid in (("A", 1), ("B", 2), ("C", 3)):
+        sub = a.copy(sel=f'chain {chain} and resname BEN')
+        assert mol_equal(
+            sub,
+            ref,
+            checkFields=Molecule._all_fields,
+            exceptFields=[
+                "crystalinfo", "fileloc",
+                "chain", "segid", "resid", "serial", "coords",
+            ],
+            uqBonds=True,
+        )
+
+
 def _test_templateResidueFromSmiles_incorrect_smiles():
     import numpy as np
 
