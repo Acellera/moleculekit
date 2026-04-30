@@ -3,10 +3,9 @@ parameterization before building.
 
 A "non-standard residue" is any residue whose ``resname`` is not in
 moleculekit's canonical amino-acid / nucleic / water / ion sets.
-:func:`detectNonStandardResidues` walks the molecule, mutates ``mol`` to
-rename / re-protonate any canonical amino-acid residue that is
-covalently bonded to a non-canonical residue, and returns one spec per
-non-standard residue (plus one per renamed canonical residue):
+:func:`detectNonStandardResidues` inspects the molecule and returns one
+spec per non-standard residue (plus one per canonical residue covalently
+bonded to a non-canonical one):
 
   - :class:`NCAASpec` - chain-resident NCAA with no sidechain crosslink
     (e.g. selenomethionine, norleucine, a D-amino acid).
@@ -21,13 +20,19 @@ non-standard residue (plus one per renamed canonical residue):
     inhibitor, NAG-Asn glycan stem, single-Cys heme).
   - :class:`LigandSpec` - free non-canonical residue with no covalent
     bonds (small-molecule binding-pocket ligand, fatty acid).
-  - :class:`CanonicalRenamedSpec` - one per canonical residue the
-    detector renamed (e.g. CYS bonded to a scaffold becomes ``CY1``).
+  - :class:`CanonicalRenamedSpec` - one per canonical amino-acid residue
+    that detect identified as bonded to a non-canonical residue. The
+    spec proposes a custom 3-char resname (e.g. ``CY1`` for the
+    CYS-SG-bonded-to-LFI bucket) and lists the displaced sidechain
+    hydrogen names (``["HG"]`` for a CYS-SG anchor, ``["HD22"]`` for an
+    ASN-ND2 anchor).
 
-The actual parameterization (running antechamber, splitting per-residue,
-emitting custombonds for ``amber.build``) lives in
-``htmd.builder.scaffolded_peptide.parameterizeFromSpecs``, which consumes
-this list together with the mutated ``mol``.
+Detect is non-mutating: pass the spec list to
+:func:`moleculekit.tools.preparation.systemPrepare` via
+``detect_specs=specs`` to apply the proposed renames + H-drops on the
+prepared molecule. Parameterization (running antechamber, splitting
+per-residue, emitting custombonds for ``amber.build``) lives in
+``htmd.builder.scaffolded_peptide.parameterizeFromSpecs``.
 """
 
 from __future__ import annotations
@@ -127,16 +132,36 @@ class LigandSpec:
 
 @dataclass
 class CanonicalRenamedSpec:
-    """A canonical amino-acid residue that the detector renamed because at
-    least one of its sidechain heavy atoms is covalently bonded to a non-
-    canonical residue. The detector mutates ``mol`` so this residue's
-    resname is already ``new_resname`` and the displaced hydrogens (per
-    :data:`ANCHOR_VARIANTS`) have been removed - i.e.
-    ``residue.resname == new_resname`` always holds."""
+    """A canonical amino-acid residue that the detector identified as
+    covalently bonded to a non-canonical residue. The detector itself is
+    non-mutating: ``residue.resname`` is the original canonical resname
+    (``"CYS"``, ``"ASN"``, ...) as it appears in the input molecule, and
+    ``new_resname`` carries the proposed custom 3-char resname that
+    parameterization will use. ``drop_h`` lists the displaced sidechain
+    hydrogen atom names that should be removed when the rename is
+    applied (e.g. ``["HG"]`` for a CYS-SG anchor, ``["HD22"]`` for an
+    ASN-ND2 anchor); empty when no displacement is expected.
+
+    ``is_n_term`` / ``is_c_term`` flag whether this residue sits at a
+    chain terminus. Terminal forms have different atoms (OXT on the
+    C-terminal carboxylate, extra ``H1``/``H2``/``H3`` on the N-terminal
+    amine) and different ff14SB atom types, so the parameterizer
+    consults the AMBER terminal residue libraries (``CCYX``, ``NCYX``,
+    ...) instead of the mid-chain template when these flags fire.
+
+    To apply the rename + H-drop to a molecule, pass the spec list to
+    :func:`moleculekit.tools.preparation.systemPrepare` via the
+    ``detect_specs`` argument; that runs PDB2PQR on the canonical
+    naming first (so terminal-atom placement and H addition stay
+    correct) and then mutates the prepared mol with the proposed
+    rename and the H-drop in one step."""
 
     residue: UniqueResidueID
     original_resname: str
     new_resname: str
+    drop_h: list  # list[str]: sidechain H atom names to remove on apply
+    is_n_term: bool = False
+    is_c_term: bool = False
 
 
 PerResidueSpec = Union[
@@ -298,14 +323,17 @@ def _pick_bucket_resname(variant_or_resname, prefix_counter):
 def detectNonStandardResidues(mol):
     """Walk ``mol`` and return one spec per non-standard residue.
 
-    Mutates ``mol`` in place: every canonical amino-acid residue whose
-    sidechain is covalently bonded to a non-canonical residue is renamed
-    to a custom 3-char resname (e.g. ``CY1`` for the CYS-SG-bonded-to-
-    LFI bucket, ``NL1`` for ASN-ND2-bonded-to-NAG, ...) and the
-    sidechain hydrogens listed in :data:`ANCHOR_VARIANTS` (``HG`` for
-    Cys SG, ``HD22`` for Asn ND2, ...) are removed. The custom resname
-    keeps the residue out of tLeap's built-in libraries so the
-    parameterizer's antechamber-derived prepi is the one that loads.
+    The detector is non-mutating: it only inspects ``mol``. For each
+    canonical amino-acid residue whose sidechain is covalently bonded to
+    a non-canonical residue it emits a :class:`CanonicalRenamedSpec`
+    that proposes a custom 3-char resname (e.g. ``CY1`` for the
+    CYS-SG-bonded-to-LFI bucket, ``NL1`` for ASN-ND2-bonded-to-NAG, ...)
+    plus the displaced sidechain hydrogen names from
+    :data:`ANCHOR_VARIANTS`. The proposed rename and the H-drop are
+    applied later by :func:`moleculekit.tools.preparation.systemPrepare`
+    (passed via ``detect_specs=specs``) so PDB2PQR can run on the
+    canonical naming and place terminal atoms / hydrogens correctly
+    before the rename is committed.
 
     Residues that share the same ``(canonical_resname, anchor_atom_name,
     partner_resname, n_term, c_term)`` key are assigned the *same*
@@ -316,8 +344,6 @@ def detectNonStandardResidues(mol):
     extra H1/H2/H3 on N-terminal amine) and different charges.
     Residues whose anchor has no entry in :data:`ANCHOR_VARIANTS` (e.g.
     SER OG) use their original resname's first two chars as the prefix.
-
-    To preserve the input molecule, call ``mol.copy()`` first.
 
     Parameters
     ----------
@@ -374,12 +400,12 @@ def detectNonStandardResidues(mol):
         for r in range(n_res)
     ]
 
-    # Plan the canonical renames + displaced-H drops without applying them
-    # yet. Bucket key is (canonical_resname, anchor_atom_name,
-    # partner_resname); residues sharing a bucket get the same 3-char
-    # custom resname so the parameterizer emits one shared prepi.
-    canonical_renames = {}  # residue_idx -> (original_resname, new_resname)
-    drop_atom_idxs = set()
+    # Plan the canonical renames + collect the displaced-H names per
+    # residue. Bucket key is (canonical_resname, anchor_atom_name,
+    # partner_resname, n_term, c_term); residues sharing a bucket get
+    # the same 3-char custom resname so the parameterizer emits one
+    # shared prepi.
+    canonical_renames = {}  # residue_idx -> (original_resname, new_resname, drop_h_list)
     bucket_to_resname = {}
     prefix_counter = {}
     for r_idx in range(n_res):
@@ -406,12 +432,9 @@ def detectNonStandardResidues(mol):
         partner_resname = groups[other_r]["resname"]
         entry = lookup_anchor_variant(g["resname"], anchor_atom)
 
-        # Bucket key includes terminus flags: chain-terminal residues
-        # have different atoms (OXT on C-term, extra H1/H2/H3 on N-term)
-        # and different charges than mid-chain ones, so they need their
-        # own parameterization. Sparse CIF inputs frequently omit the
-        # standard peptide bonds, so we fall back to a distance check
-        # when no explicit N-C bond was seen.
+        # Chain-terminal residues end up in their own bucket. Sparse CIF
+        # inputs frequently omit the standard peptide bonds, so we fall
+        # back to a distance check when no explicit N-C bond was seen.
         n_term = not peptide_attached_n[r_idx] and not _has_peptide_neighbour(
             mol, g, "N"
         )
@@ -428,13 +451,10 @@ def detectNonStandardResidues(mol):
             new_resname = _pick_bucket_resname(base, prefix_counter)
             bucket_to_resname[bucket_key] = new_resname
 
-        canonical_renames[r_idx] = (g["resname"], new_resname)
-        if entry is not None:
-            for h_name in entry["drop_h"]:
-                for ai in g["atom_idx"]:
-                    if str(mol.name[int(ai)]) == h_name:
-                        drop_atom_idxs.add(int(ai))
-                        break
+        drop_h = list(entry["drop_h"]) if entry is not None else []
+        canonical_renames[r_idx] = (
+            g["resname"], new_resname, drop_h, n_term, c_term
+        )
 
     # Build specs from the pre-mutation residue groups so we still know
     # the original resnames for non-canonical residues. For canonical
@@ -481,32 +501,27 @@ def detectNonStandardResidues(mol):
                 )
 
     # One CanonicalRenamedSpec per renamed canonical residue, in residue-
-    # index order so the output is deterministic.
+    # index order so the output is deterministic. ``residue`` carries
+    # the residue's *current* identity in mol (including the original
+    # canonical resname); the proposed rename is in ``new_resname``.
     for r_idx in sorted(canonical_renames):
-        original_resname, new_resname = canonical_renames[r_idx]
+        (
+            original_resname,
+            new_resname,
+            drop_h,
+            n_term_flag,
+            c_term_flag,
+        ) = canonical_renames[r_idx]
         g = groups[r_idx]
-        renamed_residue_id = UniqueResidueID(
-            resname=new_resname,
-            chain=g["chain"],
-            resid=g["resid"],
-            insertion=g["insertion"],
-            segid=g["segid"],
-        )
         specs.append(
             CanonicalRenamedSpec(
-                residue=renamed_residue_id,
+                residue=_residue_id(g),
                 original_resname=original_resname,
                 new_resname=new_resname,
+                drop_h=drop_h,
+                is_n_term=n_term_flag,
+                is_c_term=c_term_flag,
             )
         )
-
-    # Apply the planned mutations to mol. Renames are safe at any time
-    # (no atom-count change); H drops change mol.numAtoms, so go last.
-    for r_idx, (_, new_resname) in canonical_renames.items():
-        mol.resname[groups[r_idx]["atom_idx"]] = new_resname
-    if drop_atom_idxs:
-        drop_mask = np.zeros(mol.numAtoms, dtype=bool)
-        drop_mask[list(drop_atom_idxs)] = True
-        mol.remove(drop_mask, _logger=False)
 
     return specs

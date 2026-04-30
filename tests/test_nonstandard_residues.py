@@ -46,20 +46,20 @@ def _test_anchor_variants_lookup():
 
 def _test_8qfz_scaffolded_peptide():
     """8QFZ chain B: LFI scaffold thio-ether bonded to three CYS sidechains
-    at resids 11, 17, 22. CYS 11 is N-terminal (no peptide bond on the N
-    side), CYS 22 is C-terminal (no peptide bond on the C side), CYS 17
-    is mid-chain. Each chain-position bucket gets its own custom resname
-    so terminal forms (which carry OXT or H1/H2/H3 in solution) don't
-    collapse onto the mid-chain template. The fixture has no explicit HG
-    hydrogens so no atoms are dropped; the rename still happens."""
+    at resids 11, 17, 22. CYS 11 is N-terminal, CYS 22 is C-terminal,
+    CYS 17 is mid-chain. Each chain-position bucket gets its own custom
+    resname so terminal forms (which carry OXT or H1/H2/H3 in solution)
+    don't collapse onto the mid-chain template. Detect itself is
+    non-mutating: it only emits the proposed rename + drop_h list."""
     mol = Molecule(QFZ_B_CIF)
     n_atoms_before = mol.numAtoms
-    assert (mol.resname == "CYS").sum() > 0
+    resnames_before = sorted(set(str(r) for r in mol.resname))
 
     specs = detectNonStandardResidues(mol)
 
-    assert (mol.resname == "CYS").sum() == 0
+    # Detect is non-mutating.
     assert mol.numAtoms == n_atoms_before
+    assert sorted(set(str(r) for r in mol.resname)) == resnames_before
 
     scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
     renames = [s for s in specs if isinstance(s, CanonicalRenamedSpec)]
@@ -72,49 +72,31 @@ def _test_8qfz_scaffolded_peptide():
     assert len(new_names) == 3, f"expected three distinct renames, got {new_names}"
     for n in new_names:
         assert len(n) == 3 and n.startswith("CY")
-        assert (mol.resname == n).sum() > 0
     for r in renames:
-        # spec UID resname matches the actual resname applied to mol.
-        assert r.residue.resname == r.new_resname
+        # spec.residue carries the original (pre-rename) state.
+        assert r.residue.resname == r.original_resname == "CYS"
+        # drop_h carries the displaced HG name from ANCHOR_VARIANTS.
+        assert r.drop_h == ["HG"]
 
-    # No other spec types for this fixture.
     assert all(isinstance(s, (ScaffoldSpec, CanonicalRenamedSpec)) for s in specs)
 
 
-def _test_h_drop_for_canonical_anchor():
-    """Insert an HG atom into one of the LFI-anchored cysteines (right
-    after that residue's existing atoms so it ends up in the same residue
-    group), then verify detect removes it as part of the rename."""
+def _test_h_drop_listed_in_spec():
+    """The displaced sidechain hydrogen names are reported per-spec so
+    that downstream tools (``systemPrepare`` with ``detect_specs=...``)
+    can drop them after PDB2PQR has placed all hydrogens. Detect itself
+    does not remove atoms."""
     mol = Molecule(QFZ_B_CIF)
-    cys_resid = int(sorted(set(mol.resid[mol.resname == "CYS"]))[0])
-    cys_atom_idxs = mol.atomselect(f"resname CYS and resid {cys_resid}", indexes=True)
-    sg_idx = int(
-        mol.atomselect(f"resname CYS and resid {cys_resid} and name SG", indexes=True)[
-            0
-        ]
-    )
-    insert_at = int(cys_atom_idxs[-1]) + 1
-
-    hg = Molecule().empty(1)
-    hg.name[:] = ["HG"]
-    hg.element[:] = ["H"]
-    hg.resname[:] = "CYS"
-    hg.resid[:] = cys_resid
-    hg.chain[:] = mol.chain[sg_idx]
-    hg.segid[:] = mol.segid[sg_idx]
-    hg.coords = (mol.coords[sg_idx, :, mol.frame] + np.array([1.0, 0.0, 0.0]))[
-        np.newaxis, :, np.newaxis
-    ].astype(np.float32)
-    hg.record[:] = "ATOM"
     n_before = mol.numAtoms
-    mol.insert(hg, insert_at)
-    # SG's index is unchanged because we inserted after it; HG sits at insert_at.
-    mol.addBond(sg_idx, insert_at, "1")
-
-    detectNonStandardResidues(mol)
-    # The injected HG must be gone after detect.
+    specs = detectNonStandardResidues(mol)
+    # mol untouched.
     assert mol.numAtoms == n_before
-    assert (mol.name == "HG").sum() == 0
+    renames = [s for s in specs if isinstance(s, CanonicalRenamedSpec)]
+    assert renames, "expected canonical rename specs for the LFI-anchored cysteines"
+    for r in renames:
+        assert r.drop_h == ["HG"], (
+            f"expected drop_h=['HG'] for CYS, got {r.drop_h}"
+        )
 
 
 def _test_min_anchors_threshold_emits_covalent_ligand():
@@ -180,11 +162,15 @@ def _test_5vbl_ncaas_and_free_ligand():
 
 def _test_1r1j_covalent_glycosylation():
     """1R1J: three NAG-Asn N-glycosylation sites. Each NAG has one bond to
-    an Asn ND2; all three (ASN, ND2, NAG) buckets are identical so the
-    detector emits one CovalentLigandSpec per NAG plus three
-    CanonicalRenamedSpec entries that all share the same new resname."""
+    an Asn ND2; all three (ASN, ND2, NAG) buckets share the same chain
+    position (mid-chain) so the detector emits one CovalentLigandSpec
+    per NAG plus three CanonicalRenamedSpec entries that share the same
+    new resname."""
     mol = Molecule(R1J_PDB)
+    n_before = mol.numAtoms
     specs = detectNonStandardResidues(mol)
+    # Detect is non-mutating.
+    assert mol.numAtoms == n_before
 
     cov = [s for s in specs if isinstance(s, CovalentLigandSpec) and s.resname == "NAG"]
     asn_renames = [
@@ -198,10 +184,14 @@ def _test_1r1j_covalent_glycosylation():
     assert len(new_names) == 1, f"expected one shared rename, got {new_names}"
     shared = next(iter(new_names))
     assert len(shared) == 3 and shared.startswith("NL")
+    # Detect didn't mutate mol, so the residues still carry their original
+    # ASN resname. Look them up by resid + the (pre-rename) original_resname.
     for r in asn_renames:
         rid = int(r.residue.resid)
-        names = _residue_atom_names(mol, shared, rid)
+        names = _residue_atom_names(mol, r.original_resname, rid)
         assert "ND2" in names
+        # The displaced HD22 hydrogen is reported via drop_h, not removed.
+        assert r.drop_h == ["HD22"]
 
 
 def _test_8qu4_ncaa_crosslink():
