@@ -541,6 +541,24 @@ def template_residue_from_smiles(
     new_residue.segid[:] = residue.segid[0]
     new_residue.insertion[:] = residue.insertion[0]
 
+    # Restore per-atom metadata that doesn't round-trip through RDKit
+    # (beta, occupancy, record, altloc) by matching atoms back to the
+    # original residue by name. Atoms whose names didn't survive the
+    # roundtrip — newly-added Hs and any other atoms with non-unique
+    # names — keep the defaults from ``fromRDKitMol``.
+    orig_by_name = {}
+    for orig_idx, name in enumerate(residue.name):
+        if name in orig_by_name:
+            orig_by_name[name] = None  # ambiguous; skip
+        else:
+            orig_by_name[name] = orig_idx
+    for new_idx, name in enumerate(new_residue.name):
+        orig_idx = orig_by_name.get(name)
+        if orig_idx is None:
+            continue
+        for field in ("beta", "occupancy", "record", "altloc"):
+            getattr(new_residue, field)[new_idx] = getattr(residue, field)[orig_idx]
+
     mol.remove(selidx, _logger=False)
     mol.insert(new_residue, selidx[0])
 
