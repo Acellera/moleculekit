@@ -580,6 +580,14 @@ def _capture_bonds(mol):
 
     if mol.bonds is None or len(mol.bonds) == 0:
         return []
+    if mol.bondtype is None or len(mol.bondtype) != len(mol.bonds):
+        raise RuntimeError(
+            f"mol.bondtype has length "
+            f"{0 if mol.bondtype is None else len(mol.bondtype)} but "
+            f"mol.bonds has length {len(mol.bonds)}. They must be the same. "
+            "Use ``mol.guessBonds()`` to populate both consistently, or "
+            "assign ``mol.bonds`` and ``mol.bondtype`` together."
+        )
     out = []
     for i, (a, b) in enumerate(mol.bonds):
         a, b = int(a), int(b)

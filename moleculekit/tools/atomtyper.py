@@ -128,8 +128,7 @@ def prepareProteinForAtomtyping(
     if (
         guessBonds
     ):  # Need to guess bonds at the start for atom selection and for autoSegment
-        mol.bondtype = np.array([], dtype=object)
-        mol.bonds = mol._guessBonds()
+        mol.guessBonds()
 
     protsel = mol.atomselect("protein")
     metalsel = mol.atomselect(f"element {' '.join(metal_atypes)}")
@@ -169,7 +168,7 @@ def prepareProteinForAtomtyping(
         )
 
     if guessBonds:
-        protmol.bonds = protmol._guessBonds()
+        protmol.guessBonds()
         # TODO: Should we remove bonds between metals and protein?
 
     if segment:

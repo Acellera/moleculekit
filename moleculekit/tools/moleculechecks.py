@@ -42,7 +42,7 @@ def isLigandOptimized(mol, atol=1e-06):
         return True
 
     if not len(mol.bonds):
-        mol.bonds = mol._guessBonds()
+        mol.guessBonds()
 
     _, dihedrals = calculateAnglesAndDihedrals(mol.bonds)
     for dih in dihedrals:
