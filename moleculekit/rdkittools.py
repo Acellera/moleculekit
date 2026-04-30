@@ -218,6 +218,44 @@ def _try_strip_unmatched_terminals(
             return None
         neighbor = heavy_neighbors[0]
         bond = rmol_smi.GetBondBetweenAtoms(idx, neighbor.GetIdx())
+
+        # MCS uses ``CompareAny`` on bonds and ``CompareElements`` on atoms,
+        # so on a ``C(=O)O`` carbonyl the residue's lone O is paired
+        # arbitrarily with either the =O or the -OH. If MCS picked the OH
+        # we end up here with the =O unmatched and double-bonded. Swap:
+        # strip the OH (single-bonded) sibling instead, so the next-pass
+        # MCS pairs the residue's O with the =O.
+        if (
+            bond.GetBondType() == Chem.BondType.DOUBLE
+            and atom.GetSymbol() == "O"
+            and neighbor.GetSymbol() == "C"
+            and no_oxt
+        ):
+            sibling_oh_idx = None
+            for sb in neighbor.GetBonds():
+                sib = sb.GetOtherAtom(neighbor)
+                if (
+                    sib.GetIdx() != idx
+                    and sib.GetSymbol() == "O"
+                    and sb.GetBondType() == Chem.BondType.SINGLE
+                    and sib.GetIdx() in atom_mapping
+                ):
+                    # Sibling must be a terminal -OH (carbonyl C is its
+                    # only heavy neighbor). Refuses to strip an ester /
+                    # ether O whose other side is alkyl, since stripping
+                    # a non-terminal atom would disconnect the rest of
+                    # the SMILES on next-pass MCS.
+                    sib_heavy = [
+                        n for n in sib.GetNeighbors() if n.GetSymbol() != "H"
+                    ]
+                    if len(sib_heavy) != 1:
+                        continue
+                    sibling_oh_idx = sib.GetIdx()
+                    break
+            if sibling_oh_idx is not None:
+                to_strip.append(sibling_oh_idx)
+                continue
+
         if bond.GetBondType() != Chem.BondType.SINGLE:
             return None
         if neighbor.GetIdx() not in atom_mapping:
@@ -464,21 +502,13 @@ def template_residue_from_smiles(
         rbond.SetBondType(btype)
 
     # For atoms that are covalently bonded to other residues, the SMILES
-    # template assumes those bonds are hydrogens. Reduce the implicit H
+    # template assumes those bonds are hydrogens. Reduce the explicit H
     # count on each boundary atom by the order of its external bonds so
-    # that AddHs (and downstream sanitization) doesn't over-protonate.
+    # that AddHs doesn't over-protonate.
     rmol_to_smi = dict(zip(at1, at2))
     boundary_ext_order = {}
     for local_idx, _, bt in cross_bonds:
         boundary_ext_order[local_idx] = boundary_ext_order.get(local_idx, 0) + _bondtype_order.get(bt, 1)
-    for local_idx, ext_order in boundary_ext_order.items():
-        if local_idx not in rmol_to_smi:
-            continue
-        smi_atom = rmol_smi.GetAtomWithIdx(rmol_to_smi[local_idx])
-        target_hs = max(0, int(smi_atom.GetTotalNumHs()) - int(ext_order))
-        atom = rmol.GetAtomWithIdx(local_idx)
-        atom.SetNumExplicitHs(target_hs)
-        atom.SetNoImplicit(True)
 
     # Protonate the residue according to the SMILES template
     if addHs:
@@ -487,6 +517,21 @@ def template_residue_from_smiles(
 
         # Don't sanitize to not lose bond orders
         rmol = Chem.RemoveHs(rmol, sanitize=True)
+
+        # Boundary H counts must be set AFTER RemoveHs: RemoveHs increments
+        # NumExplicitHs by the number of removed H neighbors, so applying
+        # this before would double-count (one for the boundary subtraction
+        # and one for the existing H atom on the boundary heavy atom that
+        # RemoveHs is about to strip).
+        for local_idx, ext_order in boundary_ext_order.items():
+            if local_idx not in rmol_to_smi:
+                continue
+            smi_atom = rmol_smi.GetAtomWithIdx(rmol_to_smi[local_idx])
+            target_hs = max(0, int(smi_atom.GetTotalNumHs()) - int(ext_order))
+            atom = rmol.GetAtomWithIdx(local_idx)
+            atom.SetNumExplicitHs(target_hs)
+            atom.SetNoImplicit(True)
+
         rmol = Chem.AddHs(rmol, addCoords=True, onlyOnAtoms=onlyOnAtoms)
         Chem.Kekulize(rmol)  # Sanitization ruins kekulization
 
