@@ -14,54 +14,34 @@ jobs:
         os: ["ubuntu-latest", "macos-latest", "windows-2022"]
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
-    defaults: # Needed for conda
-      run:
-        shell: bash -l {0}
-
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
           submodules: true
 
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: astral-sh/setup-uv@v6
         with:
           python-version: ${{ matrix.python-version }}
-          channels: acellera,conda-forge,defaults
+
+      - name: Install blast for OPM tests
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt-get update && sudo apt-get install -y ncbi-blast+
+
+      - name: Install blast for OPM tests
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: brew install blast
 
       - name: Lint with flake8
         run: |
-          pip install flake8==7.1.2 coverage
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-      # - name: Install cdpkit
-      #   # if: ${{ matrix.os == 'ubuntu-latest' }}
-      #   run: |
-      #     # for testing CDPKit SmallMol
-      #     pip install CDPKit
-
-      - name: Install blast for OPM tests
-        if: ${{ matrix.os != 'windows-2022' }}
-        run: conda install -c bioconda blast -y -q
+          uvx flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          uvx flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
       - name: Install moleculekit
-        run: |
-          pip install build pytest pytest-xdist
-          python -m build
-          pip install dist/moleculekit-*.whl
-
-      - name: List conda environment
-        run: conda list
+        run: uv sync --group test
 
       - name: Test
-        run: |
-          pytest -n auto ./tests/ --durations=20
+        run: uv run pytest -n auto ./tests/ --durations=20
         env:
           LOCAL_PDB_REPO: ./tests/pdb/
           SKIP_SPEED_TESTS: True
-
-      # - name: Upload coverage to Codecov
-      #   uses: codecov/codecov-action@v3
