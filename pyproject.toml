@@ -61,7 +61,21 @@ openmm = [
 
 [dependency-groups]
 test = ["pytest>=8.4.2", "pytest-xdist"]
+docs = [
+  "nbconvert",
+  "sphinx",
+  "pydata-sphinx-theme",
+  "sphinx-argparse",
+  "sphinx-notfound-page",
+  "sphinx-sitemap",
+  "sphinx-autodoc-typehints",
+]
 dev = [{ include-group = "test" }, "ipython>=8.18.1"]
+
+[tool.uv]
+# pdb2pqr 3.6.x pins docutils<0.18 but Sphinx needs newer; pdb2pqr works fine at runtime
+# with current docutils, so override the constraint.
+override-dependencies = ["docutils>=0.20"]
 
 [tool.pytest.ini_options]
 python_functions = "_test*"

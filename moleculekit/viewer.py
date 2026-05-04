@@ -150,9 +150,6 @@ def getCurrentViewer(launch_fn, view_fn, get_mols_fn):
 
 
 def _monitoringThread(view_fn, get_mols_fn):
-    global viewingMols
-    global showing
-
     import time
 
     curr_mols = {key: val.copy() for key, val in viewingMols.items()}

@@ -58,7 +58,7 @@ def _printDFS(n):
     _marked = dict()
 
     def _printDFS_aux(nn):
-        nonlocal _tempmarked, _marked, _L
+        nonlocal _L
         if nn in _tempmarked:
             raise Exception(
                 "Not a DAG! There may be cyclic dependencies in the colvars."
