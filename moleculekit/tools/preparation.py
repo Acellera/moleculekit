@@ -562,6 +562,53 @@ def _fix_protonation_resnames(mol):
             mol.resname[resatm] = "HIE"
 
 
+def _fix_backbone_amide_h_names(mol):
+    """Rename a misnamed backbone amide H to ``H`` on canonical amino acid
+    residues. Some PDBs (e.g. cyclic peptides like 5VAV) name the lone
+    peptide-bonded amide hydrogen ``H1`` instead of ``H``, which breaks
+    PDB2PQR's reference-template walk with
+    "Found gap in biomolecule structure for atom ... H1". We identify the
+    amide H geometrically: among hydrogens in the residue, the unique one
+    bonded to backbone N (within typical N-H bond distance) is the amide
+    H. A true N-terminal NH3+ has multiple Hs bonded to N and is left
+    untouched.
+    """
+    from moleculekit.residues import PROTEIN_RESIDUES
+
+    canonical = {rr.resname for rr in PROTEIN_RESIDUES} | {
+        v for rr in PROTEIN_RESIDUES for v in rr.resname_variants
+    }
+    nh_min, nh_max = 0.8, 1.2  # typical N-H bond length ~1.01 Å
+    coords = mol.coords[:, :, 0]
+    uqres = mol.getResidues(return_idx=False)
+    for uq in set(uqres):
+        resatm = uqres == uq
+        resname = mol.resname[resatm][0]
+        if resname not in canonical or resname == "PRO":
+            continue
+        res_idx = np.where(resatm)[0]
+        n_atoms = res_idx[mol.name[res_idx] == "N"]
+        if not len(n_atoms):
+            continue
+        n_idx = int(n_atoms[0])
+        h_idx = res_idx[mol.element[res_idx] == "H"]
+        if not len(h_idx):
+            continue
+        d = np.linalg.norm(coords[h_idx] - coords[n_idx], axis=1)
+        bonded = h_idx[(d >= nh_min) & (d <= nh_max)]
+        if len(bonded) != 1:
+            continue
+        target = int(bonded[0])
+        old = mol.name[target]
+        if old == "H":
+            continue
+        mol.name[target] = "H"
+        logger.info(
+            f"Renamed backbone amide {old} to H on {resname} "
+            f"{mol.resid[n_idx]} {mol.chain[n_idx]}"
+        )
+
+
 def _capture_bonds(mol):
     """Walk ``mol.bonds`` and return a list of
     ``(UniqueAtomID, UniqueAtomID, is_h_bond, bondtype)`` tuples for
@@ -915,6 +962,7 @@ def systemPrepare(
 
     _prepare_nucleics(mol_in)
     _fix_protonation_resnames(mol_in)
+    _fix_backbone_amide_h_names(mol_in)
 
     definition, forcefield = _get_custom_ff()
     if not ignore_ns:
