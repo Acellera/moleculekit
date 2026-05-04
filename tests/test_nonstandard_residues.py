@@ -142,7 +142,13 @@ def _test_1r1j_covalent_glycosylation():
     an Asn ND2; all three (ASN, ND2, NAG) buckets share the same chain
     position (mid-chain) so the detector emits one CovalentLigandSpec
     per NAG plus three CanonicalRenamedSpec entries that share the same
-    new resname."""
+    new resname.
+
+    The OIR inhibitor in 1R1J is a thiorphan-class non-covalent Zn-chelator:
+    its O19 and S26 contact the active-site Zn (PDB ``LINK`` records, loaded
+    as bonds) but it has no covalent bond to the protein. Metal-coordination
+    contacts must not be counted as covalent crosslinks, so OIR is a
+    LigandSpec rather than a ScaffoldSpec."""
     mol = Molecule(R1J_PDB)
     specs = detectNonStandardResidues(mol)
 
@@ -164,6 +170,13 @@ def _test_1r1j_covalent_glycosylation():
         assert "ND2" in names
         # The displaced HD22 hydrogen is reported via drop_h, not removed.
         assert r.drop_h == ["HD22"]
+
+    oir = [s for s in specs if s.residue.resname == "OIR"]
+    assert len(oir) == 1
+    assert isinstance(oir[0], LigandSpec), (
+        f"OIR coordinates Zn via O19/S26 but has no covalent partner; "
+        f"expected LigandSpec, got {type(oir[0]).__name__}"
+    )
 
 
 def _test_8qu4_ncaa_crosslink():

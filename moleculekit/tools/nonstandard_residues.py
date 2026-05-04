@@ -353,6 +353,15 @@ def detectNonStandardResidues(mol):
         r1, r2 = int(a2r[a1]), int(a2r[a2])
         if r1 == r2 or r1 < 0 or r2 < 0:
             continue
+        # Metal-coordination contacts (e.g. PDB LINK records between a Zn ion
+        # and a Zn-chelating inhibitor) are stored as bonds but are not
+        # covalent. Skipping them keeps such inhibitors classified as free
+        # ligands rather than scaffolds.
+        if (
+            residues[r1].resname in _ION_RESNAMES
+            or residues[r2].resname in _ION_RESNAMES
+        ):
+            continue
         n1, n2 = str(mol.name[a1]), str(mol.name[a2])
         if {n1, n2} == {"N", "C"}:
             has_peptide_bond[r1] = True
