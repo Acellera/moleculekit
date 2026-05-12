@@ -458,34 +458,42 @@ def _get_hold_residues(
     # Add residues which have forced protonations to the residues which should not be titrated
     _no_titr += list(_force_prot.keys())
 
+    # Standard protein residues sitting at a covalent junction to a
+    # non-protein molecule. Each entry: ((resid, chain, insertion), resname,
+    # anchor_atom_name). These residues must not be titrated or geometry-
+    # optimized (that could disturb the covalent linkage), but they should
+    # still get their hydrogens added by PDB2PQR; the hydrogen displaced by
+    # the covalent bond is removed afterwards (see _drop_displaced_anchor_h).
+    _frozen = []
     if len(nonpeptidic_bonds) != 0:
         for nn in nonpeptidic_bonds:
             r1 = UniqueResidueID.fromMolecule(mol_in, idx=nn[0])
-            r1 = f"{r1.resname}:{r1.chain}:{r1.resid}{r1.insertion}"
             r2 = UniqueResidueID.fromMolecule(mol_in, idx=nn[1])
-            r2 = f"{r2.resname}:{r2.chain}:{r2.resid}{r2.insertion}"
             logger.info(
-                f"Freezing protein residue {r1} bonded to non-protein molecule {r2}"
+                f"Freezing protein residue {r1.resname}:{r1.chain}:{r1.resid}{r1.insertion} "
+                f"bonded to non-protein molecule {r2.resname}:{r2.chain}:{r2.resid}{r2.insertion}"
             )
-            val = [
-                (
-                    mol_in.resid[nn[0]].item(),
-                    mol_in.chain[nn[0]],
-                    mol_in.insertion[nn[0]],
-                ),
-                (
-                    mol_in.resid[nn[1]].item(),
-                    mol_in.chain[nn[1]],
-                    mol_in.insertion[nn[1]],
-                ),
-            ]
-            _no_opt += val
-            _no_titr += val
-            if val[0] not in _force_prot:
-                # Only disable protonation if there is no force-protonation
-                _no_prot += val
+            prot_key = (
+                mol_in.resid[nn[0]].item(),
+                mol_in.chain[nn[0]],
+                mol_in.insertion[nn[0]],
+            )
+            other_key = (
+                mol_in.resid[nn[1]].item(),
+                mol_in.chain[nn[1]],
+                mol_in.insertion[nn[1]],
+            )
+            _no_opt += [prot_key, other_key]
+            _no_titr += [prot_key, other_key]
+            # Never let PDB2PQR protonate the non-protein partner; it is
+            # templated separately. The protein junction residue is left out
+            # of _no_prot on purpose so PDB2PQR still hydrogenates it.
+            _no_prot.append(other_key)
+            _frozen.append(
+                (prot_key, str(mol_in.resname[nn[0]]), str(mol_in.name[nn[0]]))
+            )
 
-    return _no_opt, _no_prot, _no_titr
+    return _no_opt, _no_prot, _no_titr, _frozen
 
 
 def _check_frozen_histidines(mol_in, _no_prot):
@@ -505,6 +513,62 @@ def _check_frozen_histidines(mol_in, _no_prot):
         raise RuntimeError(
             f"Histidines {res} are not auto-titrated. You need to manually define protonation states for them using the force_protonation argument."
         )
+
+
+def _drop_displaced_anchor_h(mol, frozen):
+    """Remove the hydrogen displaced when a standard protein residue forms
+    a covalent bond to a non-protein molecule. PDB2PQR doesn't know about
+    that bond, so it hydrogenates the residue with the full canonical
+    complement (e.g. ``HG`` on a thioether-bonded Cys ``SG``, both
+    ``HD21``/``HD22`` on an N-glycosylated Asn ``ND2``); the hydrogen at the
+    attachment point has to come back off. ``frozen`` is the list returned
+    by :func:`_get_hold_residues` (``((resid, chain, insertion), resname,
+    anchor_atom_name)`` tuples).
+
+    The set of recognised junctions lives in :data:`_anchor_variants`. It
+    covers the common ones (Cys SG, Asn ND2, Ser OG, Thr OG1, Tyr OH, Lys
+    NZ, His ND1/NE2). For an unrecognised residue/atom we can't tell which
+    hydrogen is displaced from which is a real sidechain hydrogen. Most
+    unlisted anchors - a deprotonated carboxyl oxygen, a Met SD, ... - carry
+    no hydrogen at all, so PDB2PQR's canonical hydrogens are already correct
+    and there is nothing to do. If, however, PDB2PQR did put a hydrogen on
+    the anchor atom we raise, since the residue would otherwise be built with
+    the wrong topology at the junction - the caller should pin its protonation
+    explicitly (e.g. ``force_protonation``) or add the residue/atom pair to
+    :data:`_anchor_variants`."""
+    if not frozen:
+        return
+    from moleculekit.tools._anchor_variants import lookup_anchor_variant
+
+    drop_mask = np.zeros(mol.numAtoms, dtype=bool)
+    bad = []
+    for (resid, chain, insertion), resname, anchor_name in frozen:
+        res_mask = (
+            (mol.resid == int(resid))
+            & (mol.chain == str(chain))
+            & (mol.insertion == str(insertion))
+        )
+        variant = lookup_anchor_variant(resname, anchor_name)
+        if variant is None:
+            anchor_idx = np.where(res_mask & (mol.name == str(anchor_name)))[0]
+            if len(anchor_idx) and any(
+                mol.element[nb] == "H" for nb in mol.getNeighbors(int(anchor_idx[0]))
+            ):
+                bad.append(f"{resname}:{chain}:{resid}{insertion} (atom {anchor_name})")
+            continue
+        for h_name in variant["drop_h"]:
+            drop_mask |= res_mask & (mol.name == h_name)
+    if bad:
+        raise RuntimeError(
+            "The following residues are covalently bonded to a non-protein molecule "
+            f"through an atom that is not a recognised anchor: {', '.join(bad)}. "
+            "systemPrepare can't tell which hydrogen the bond displaces, so the residue "
+            "would be built with an extra hydrogen at the junction. Pin its protonation "
+            "state explicitly with the force_protonation argument, or add the residue/atom "
+            "pair to moleculekit.tools._anchor_variants."
+        )
+    if drop_mask.any():
+        mol.remove(drop_mask, _logger=False)
 
 
 def _prepare_nucleics(mol):
@@ -982,10 +1046,10 @@ def systemPrepare(
             # Rename to desired protonation state
             mol_in.set("resname", resn, sel=sel)
 
-    _no_opt, _no_prot, _no_titr = _get_hold_residues(
+    _no_opt, _no_prot, _no_titr, _frozen = _get_hold_residues(
         mol_in, no_opt, no_prot, no_titr, force_protonation, nonpept
     )
-    _check_frozen_histidines(mol_in, _no_prot)
+    _check_frozen_histidines(mol_in, _no_prot + [key for key, _, _ in _frozen])
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpin = os.path.join(tmpdir, "input.pdb")
@@ -1021,6 +1085,10 @@ def systemPrepare(
     # stripped them.
     if _preserved_bonds:
         _restore_bonds(mol_out, _preserved_bonds)
+
+    # PDB2PQR hydrogenated the frozen junction residues with the full
+    # canonical complement; drop the hydrogen displaced by the covalent bond.
+    _drop_displaced_anchor_h(mol_out, _frozen)
 
     df = _create_table(mol_orig, mol_out, pka_df)
 

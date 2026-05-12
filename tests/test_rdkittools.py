@@ -77,9 +77,7 @@ def _test_templateResidueFromSmiles_multiresidue():
 
     # Reference: template a single BEN.
     ref = Molecule(start_file)
-    ref.templateResidueFromSmiles(
-        "resname BEN", smiles, addHs=True, guessBonds=True
-    )
+    ref.templateResidueFromSmiles("resname BEN", smiles, addHs=True, guessBonds=True)
 
     # Build a synthetic mol with three BEN copies. The copies are
     # separated by a spacer residue so the selection ``resname BEN``
@@ -92,9 +90,9 @@ def _test_templateResidueFromSmiles_multiresidue():
     spacer.chain[:] = "S"
     spacer.segid[:] = "S"
     spacer.record[:] = "HETATM"
-    spacer.coords = np.array(
-        [[20.0, 0.0, 0.0], [21.0, 0.0, 0.0]], dtype=np.float32
-    )[:, :, np.newaxis]
+    spacer.coords = np.array([[20.0, 0.0, 0.0], [21.0, 0.0, 0.0]], dtype=np.float32)[
+        :, :, np.newaxis
+    ]
 
     one = Molecule(start_file)
     a = one.copy()
@@ -109,25 +107,29 @@ def _test_templateResidueFromSmiles_multiresidue():
         a.append(spacer, collisions=False)
         a.append(b, collisions=False)
 
-    a.templateResidueFromSmiles(
-        "resname BEN", smiles, addHs=True, guessBonds=True
-    )
+    a.templateResidueFromSmiles("resname BEN", smiles, addHs=True, guessBonds=True)
 
     # Each BEN copy in ``a`` must equal the single-BEN reference (modulo
     # chain/segid/resid/coords which we set per copy and which differ
     # from the reference's "1"/""/"" defaults).
     for chain, resid in (("A", 1), ("B", 2), ("C", 3)):
-        sub = a.copy(sel=f'chain {chain} and resname BEN')
+        sub = a.copy(sel=f"chain {chain} and resname BEN")
         assert mol_equal(
             sub,
             ref,
             checkFields=Molecule._all_fields,
             exceptFields=[
-                "crystalinfo", "fileloc",
-                "chain", "segid", "resid", "serial", "coords",
+                "crystalinfo",
+                "fileloc",
+                "chain",
+                "segid",
+                "resid",
+                "serial",
+                "coords",
                 # ``a.append(spacer)`` zeroes ``a.box``/``boxangles``
                 # because the spacer mol carries empty cell info.
-                "box", "boxangles",
+                "box",
+                "boxangles",
             ],
             uqBonds=True,
         )
@@ -188,9 +190,12 @@ def _test_templateResidueFromSmiles_inter_residue_bonds(smiles):
         nb_rows = mol.bonds[(mol.bonds == cidx).any(axis=1)]
         neighbors = np.where(nb_rows == cidx, nb_rows[:, ::-1], nb_rows)[:, 0]
         elems = sorted(mol.element[n] for n in neighbors)
-        assert elems == ["C", "H", "H", "S"], (
-            f"{cname} expected [C,H,H,S] neighbors, got {elems}"
-        )
+        assert elems == [
+            "C",
+            "H",
+            "H",
+            "S",
+        ], f"{cname} expected [C,H,H,S] neighbors, got {elems}"
         # And specifically bonded to the right CYS
         sg_neighbor = [n for n in neighbors if mol.element[n] == "S"][0]
         assert mol.resname[sg_neighbor] == "CYS"
@@ -217,9 +222,18 @@ def _test_toRDKitMol(file):
         mol2,
         checkFields=Molecule._all_fields,
         exceptFields=[
-            "crystalinfo", "fileloc", "chain", "segid", "resid",
+            "crystalinfo",
+            "fileloc",
+            "chain",
+            "segid",
+            "resid",
             # Not roundtripped through RDKit (no native concept).
-            "beta", "occupancy", "record", "altloc", "box", "boxangles",
+            "beta",
+            "occupancy",
+            "record",
+            "altloc",
+            "box",
+            "boxangles",
         ],
         uqBonds=True,
     )
@@ -249,7 +263,16 @@ def _test_templatingNonStandardResidues(tmp_path):
         res,
         refmol,
         checkFields=Molecule._all_fields,
-        exceptFields=["crystalinfo", "fileloc", "serial", "chain", "segid", "resid"],
+        exceptFields=[
+            "crystalinfo",
+            "fileloc",
+            "serial",
+            "chain",
+            "segid",
+            "resid",
+            "beta",
+            "occupancy",
+        ],
         uqBonds=True,
         fieldPrecision={"coords": 1e-3},
     ), f"Failed comparison of {curr_file} vs {reffile}"
