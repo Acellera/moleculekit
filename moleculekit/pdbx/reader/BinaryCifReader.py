@@ -42,127 +42,151 @@ class BinaryCifReader(object):
         self.__storeStringsAsBytes = storeStringsAsBytes
         self.__defaultStringEncoding = defaultStringEncoding
 
-    def deserialize(self, locator, timeout=None):
+    def deserialize(self, locator, timeout=None, attempts=3):
         """Deserialize the input binary CIF file stored in the file/URL locator path.
 
         Args:
             locator (str): input file path or URL
             timeout (float): timeout for fetching a remote url
+            attempts (int): number of times to retry a failed remote fetch
 
         Returns:
             list: list DataContainer objects
         """
         import os
 
-        cL = []
-        try:
-            if os.path.exists(locator):  # FIXED BY STEFAN: if self.__isLocal(locator):
-                with (
-                    gzip.open(locator, mode="rb")
-                    if locator[-3:] == ".gz"
-                    else open(locator, "rb")
-                ) as fh:
-                    cL = self.__deserialize(
-                        fh, storeStringsAsBytes=self.__storeStringsAsBytes
-                    )
-            else:
-                if locator.endswith(".gz"):
-                    customHeader = {"Accept-Encoding": "gzip"}
-                    with closing(
-                        requests.get(locator, headers=customHeader, timeout=timeout)
-                    ) as fh:
-                        ufh = gzip.GzipFile(fileobj=io.BytesIO(fh.content))
-                        cL = self.__deserialize(
-                            ufh, storeStringsAsBytes=self.__storeStringsAsBytes
-                        )
-                else:
-                    with closing(requests.get(locator, timeout=timeout)) as fh:
-                        cL = self.__deserialize(
-                            io.BytesIO(fh.content),
-                            storeStringsAsBytes=self.__storeStringsAsBytes,
-                        )
+        if os.path.exists(locator):  # FIXED BY STEFAN: if self.__isLocal(locator):
+            with (
+                gzip.open(locator, mode="rb")
+                if locator[-3:] == ".gz"
+                else open(locator, "rb")
+            ) as fh:
+                return self.__deserialize(
+                    fh, storeStringsAsBytes=self.__storeStringsAsBytes
+                )
 
-        except Exception as e:
-            logger.exception("Failing with %s", str(e))
-        return cL
+        content = self.__fetch(locator, timeout=timeout, attempts=attempts)
+        if locator.endswith(".gz"):
+            content = gzip.GzipFile(fileobj=io.BytesIO(content))
+        else:
+            content = io.BytesIO(content)
+        return self.__deserialize(
+            content, storeStringsAsBytes=self.__storeStringsAsBytes
+        )
+
+    def __fetch(self, locator, timeout=None, attempts=3):
+        """Fetch the raw bytes of a remote (binary) CIF file, with retries.
+
+        Raises a RuntimeError if every attempt fails or if the server returns a
+        non-gzip payload (e.g. an HTML error/maintenance page) for a ``.gz`` url.
+        """
+        import time
+
+        headers = {"Accept-Encoding": "gzip"} if locator.endswith(".gz") else {}
+        last_err = None
+        for attempt in range(attempts):
+            try:
+                with closing(
+                    requests.get(locator, headers=headers, timeout=timeout)
+                ) as resp:
+                    resp.raise_for_status()
+                    content = resp.content
+                if locator.endswith(".gz") and content[:2] != b"\x1f\x8b":
+                    raise ValueError(
+                        f"Expected a gzipped file but got {content[:64]!r}. "
+                        "The server likely returned an error page instead of the structure."
+                    )
+                return content
+            except requests.HTTPError as e:
+                status = e.response.status_code if e.response is not None else None
+                if status is not None and 400 <= status < 500 and status != 429:
+                    raise RuntimeError(f"Failed to fetch {locator}: {e}") from e
+                last_err = e
+            except Exception as e:
+                last_err = e
+            logger.warning(
+                "Failed to fetch %s (attempt %d/%d): %s",
+                locator,
+                attempt + 1,
+                attempts,
+                str(last_err),
+            )
+            if attempt + 1 < attempts:
+                time.sleep(5)
+        raise RuntimeError(f"Failed to fetch {locator}: {last_err}")
 
     def __deserialize(self, fh, storeStringsAsBytes=False):
         cL = []
-        try:
-            dec = BinaryCifDecoders(storeStringsAsBytes=storeStringsAsBytes)
-            bD = msgpack.unpack(fh)
+        dec = BinaryCifDecoders(storeStringsAsBytes=storeStringsAsBytes)
+        bD = msgpack.unpack(fh)
+        #
+        logger.debug("bD.keys() %r", bD.keys())
+        logger.debug("bD['dataBlocks'] %s", bD[self.__toBytes("dataBlocks")])
+        #
+        for dataBlock in bD[self.__toBytes("dataBlocks")]:
+            header = (
+                self.__fromBytes(dataBlock[self.__toBytes("header")])
+                if self.__toBytes("header") in dataBlock
+                else None
+            )
+            logger.debug("header %r", header)
+            logger.debug("dataBlock %r", dataBlock)
             #
-            logger.debug("bD.keys() %r", bD.keys())
-            logger.debug("bD['dataBlocks'] %s", bD[self.__toBytes("dataBlocks")])
-            #
-            for dataBlock in bD[self.__toBytes("dataBlocks")]:
-                header = (
-                    self.__fromBytes(dataBlock[self.__toBytes("header")])
-                    if self.__toBytes("header") in dataBlock
-                    else None
-                )
-                logger.debug("header %r", header)
-                logger.debug("dataBlock %r", dataBlock)
+            dc = DataContainer(header)
+            categoryList = (
+                dataBlock[self.__toBytes("categories")]
+                if self.__toBytes("categories") in dataBlock
+                else []
+            )
+            for category in categoryList:
+                catName = self.__fromBytes(category[self.__toBytes("name")])[1:]
+                colList = category[self.__toBytes("columns")]
+                logger.debug("catName %r columns %r", catName, colList)
+                colD = OrderedDict()
+                atNameList = []
+                for col in colList:
+                    logger.debug("col.keys() %r", col.keys())
+                    atName = self.__fromBytes(col[self.__toBytes("name")])
+                    atData = col[self.__toBytes("data")]
+                    logger.debug(
+                        "atData encoding (%d) data (%d)",
+                        len(atData[self.__toBytes("encoding")]),
+                        len(atData[self.__toBytes("data")]),
+                    )
+                    atMask = col[self.__toBytes("mask")]
+                    logger.debug("catName %r atName %r", catName, atName)
+                    logger.debug(" >atData.data    %r", atData[self.__toBytes("data")])
+                    logger.debug(
+                        " >atData.encoding (%d) %r",
+                        len(atData[self.__toBytes("encoding")]),
+                        atData[self.__toBytes("encoding")],
+                    )
+                    logger.debug(" >mask %r", atMask)
+                    tVal = dec.decode(
+                        col[self.__toBytes("data")][self.__toBytes("data")],
+                        col[self.__toBytes("data")][self.__toBytes("encoding")],
+                    )
+                    if col[self.__toBytes("mask")]:
+                        mVal = dec.decode(
+                            col[self.__toBytes("mask")][self.__toBytes("data")],
+                            col[self.__toBytes("mask")][self.__toBytes("encoding")],
+                        )
+                        tVal = [
+                            "?" if m == 2 else "." if m == 1 else d
+                            for d, m in zip(tVal, mVal)
+                        ]
+                    colD[atName] = tVal
+                    atNameList.append(atName)
                 #
-                dc = DataContainer(header)
-                categoryList = (
-                    dataBlock[self.__toBytes("categories")]
-                    if self.__toBytes("categories") in dataBlock
-                    else []
-                )
-                for category in categoryList:
-                    catName = self.__fromBytes(category[self.__toBytes("name")])[1:]
-                    colList = category[self.__toBytes("columns")]
-                    logger.debug("catName %r columns %r", catName, colList)
-                    colD = OrderedDict()
-                    atNameList = []
-                    for col in colList:
-                        logger.debug("col.keys() %r", col.keys())
-                        atName = self.__fromBytes(col[self.__toBytes("name")])
-                        atData = col[self.__toBytes("data")]
-                        logger.debug(
-                            "atData encoding (%d) data (%d)",
-                            len(atData[self.__toBytes("encoding")]),
-                            len(atData[self.__toBytes("data")]),
-                        )
-                        atMask = col[self.__toBytes("mask")]
-                        logger.debug("catName %r atName %r", catName, atName)
-                        logger.debug(
-                            " >atData.data    %r", atData[self.__toBytes("data")]
-                        )
-                        logger.debug(
-                            " >atData.encoding (%d) %r",
-                            len(atData[self.__toBytes("encoding")]),
-                            atData[self.__toBytes("encoding")],
-                        )
-                        logger.debug(" >mask %r", atMask)
-                        tVal = dec.decode(
-                            col[self.__toBytes("data")][self.__toBytes("data")],
-                            col[self.__toBytes("data")][self.__toBytes("encoding")],
-                        )
-                        if col[self.__toBytes("mask")]:
-                            mVal = dec.decode(
-                                col[self.__toBytes("mask")][self.__toBytes("data")],
-                                col[self.__toBytes("mask")][self.__toBytes("encoding")],
-                            )
-                            tVal = [
-                                "?" if m == 2 else "." if m == 1 else d
-                                for d, m in zip(tVal, mVal)
-                            ]
-                        colD[atName] = tVal
-                        atNameList.append(atName)
-                    #
-                    cObj = DataCategory(catName, attributeNameList=atNameList)
-                    genL = [colGen for colGen in colD.values()]
-                    for rowTup in zip(*genL):
-                        row = list(rowTup)
-                        logger.debug("row %r", row)
-                        cObj.append(row)
-                    #
-                    dc.append(cObj)
-                cL.append(dc)
-        except Exception as e:
-            logger.exception("Failing with %s", str(e))
+                cObj = DataCategory(catName, attributeNameList=atNameList)
+                genL = [colGen for colGen in colD.values()]
+                for rowTup in zip(*genL):
+                    row = list(rowTup)
+                    logger.debug("row %r", row)
+                    cObj.append(row)
+                #
+                dc.append(cObj)
+            cL.append(dc)
         return cL
 
     def __isLocal(self, locator):
