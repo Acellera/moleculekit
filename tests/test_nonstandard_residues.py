@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from moleculekit.molecule import Molecule
+from moleculekit.molecule import Molecule, UniqueResidueID
 from moleculekit.tools._anchor_variants import lookup_anchor_variant
 from moleculekit.residues import ORIGINAL_RESIDUE_NAME_TABLE
 from moleculekit.tools.nonstandard_residues import (
@@ -11,6 +11,7 @@ from moleculekit.tools.nonstandard_residues import (
     CovalentLigandSpec,
     LigandSpec,
     CanonicalRenamedSpec,
+    _disambiguate_terminus_resnames,
 )
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
@@ -41,6 +42,26 @@ def _drop_crosslinks(mol, resname, n):
         keep_idx.append(i)
     mol.bonds = mol.bonds[keep_idx]
     mol.bondtype = mol.bondtype[keep_idx]
+    return mol
+
+
+def _make_vbl_with_z_alc_nterminal():
+    """Duplicate 5VBL chain A into a new chain Z (offset 100 Å so the
+    distance-based peptide-bond fallback doesn't see chain A's C atoms
+    as neighbours of chain Z's N atoms) and drop chain-Z residues N-side
+    of the duplicated ALC so chain Z's ALC ends up N-terminal."""
+    mol = Molecule(VBL_PDB)
+    a_resid = int(np.unique(mol.resid[mol.resname == "ALC"])[0])
+    dup = mol.copy()
+    dup.filter(np.where(dup.chain == "A")[0], _logger=False)
+    dup.chain[:] = "Z"
+    dup.segid[:] = "Z"
+    dup.resid[:] = dup.resid + 1000
+    dup.coords += 100.0
+    mol.append(dup, collisions=False)
+    z_alc_resid = a_resid + 1000
+    drop_mask = (mol.chain == "Z") & (mol.resid < z_alc_resid)
+    mol.remove(np.where(drop_mask)[0], _logger=False)
     return mol
 
 
@@ -293,3 +314,350 @@ def _test_distinct_partner_resnames_get_distinct_renames():
     assert len(new_names) == 2, f"expected two buckets, got {new_names}"
     for n in new_names:
         assert len(n) == 3 and n.startswith("CY")
+
+
+def _test_ncaa_spec_default_new_resname():
+    """new_resname defaults to None on both NCAA spec types and accepts a string when given."""
+    rid = UniqueResidueID(
+        resname="ALC", chain="A", resid=1, insertion="", segid="A"
+    )
+    s1 = NCAASpec(resname="ALC", residue=rid, is_n_term=False, is_c_term=False)
+    assert s1.new_resname is None
+    s2 = NCAASpec(
+        resname="ALC",
+        residue=rid,
+        is_n_term=True,
+        is_c_term=False,
+        new_resname="NALC",
+    )
+    assert s2.new_resname == "NALC"
+
+    s3 = CrosslinkedNCAASpec(
+        resname="ALC", residue=rid, is_n_term=False, is_c_term=False
+    )
+    assert s3.new_resname is None
+    s4 = CrosslinkedNCAASpec(
+        resname="ALC",
+        residue=rid,
+        is_n_term=False,
+        is_c_term=True,
+        new_resname="CALC",
+    )
+    assert s4.new_resname == "CALC"
+
+
+def _test_disambiguate_single_config_no_rename():
+    """One NCAA resname, all instances mid-chain -> no rename."""
+    rid_a = UniqueResidueID(
+        resname="ALC", chain="A", resid=1, insertion="", segid="A"
+    )
+    rid_b = UniqueResidueID(
+        resname="ALC", chain="A", resid=2, insertion="", segid="A"
+    )
+    specs = [
+        NCAASpec(resname="ALC", residue=rid_a, is_n_term=False, is_c_term=False),
+        NCAASpec(resname="ALC", residue=rid_b, is_n_term=False, is_c_term=False),
+    ]
+    _disambiguate_terminus_resnames(specs)
+    assert all(s.new_resname is None for s in specs)
+
+
+def _test_disambiguate_two_configs_renames_nonmid():
+    """Same NCAA resname appearing mid-chain AND N-term: mid keeps the
+    original (new_resname=None), N-term gets NALC."""
+    rid_mid = UniqueResidueID(
+        resname="ALC", chain="A", resid=2, insertion="", segid="A"
+    )
+    rid_n = UniqueResidueID(
+        resname="ALC", chain="A", resid=1, insertion="", segid="A"
+    )
+    s_mid = NCAASpec(
+        resname="ALC", residue=rid_mid, is_n_term=False, is_c_term=False
+    )
+    s_n = NCAASpec(
+        resname="ALC", residue=rid_n, is_n_term=True, is_c_term=False
+    )
+    _disambiguate_terminus_resnames([s_mid, s_n])
+    assert s_mid.new_resname is None
+    assert s_n.new_resname == "NALC"
+
+
+def _test_disambiguate_three_configs():
+    """Mid + N + C-term all present -> mid stays, N -> NALC, C -> CALC."""
+    def _spec(i, n, c):
+        return NCAASpec(
+            resname="ALC",
+            residue=UniqueResidueID(
+                resname="ALC", chain="A", resid=i, insertion="", segid="A"
+            ),
+            is_n_term=n,
+            is_c_term=c,
+        )
+
+    s_mid = _spec(2, False, False)
+    s_n = _spec(1, True, False)
+    s_c = _spec(3, False, True)
+    _disambiguate_terminus_resnames([s_mid, s_n, s_c])
+    assert s_mid.new_resname is None
+    assert s_n.new_resname == "NALC"
+    assert s_c.new_resname == "CALC"
+
+
+def _test_disambiguate_both_terminus_uses_b_prefix():
+    """A single-residue chain (both is_n_term and is_c_term True) coexisting
+    with a mid-chain instance of the same resname uses the B prefix."""
+    rid_mid = UniqueResidueID(
+        resname="ALC", chain="A", resid=2, insertion="", segid="A"
+    )
+    rid_both = UniqueResidueID(
+        resname="ALC", chain="B", resid=1, insertion="", segid="B"
+    )
+    s_mid = NCAASpec(
+        resname="ALC", residue=rid_mid, is_n_term=False, is_c_term=False
+    )
+    s_both = NCAASpec(
+        resname="ALC", residue=rid_both, is_n_term=True, is_c_term=True
+    )
+    _disambiguate_terminus_resnames([s_mid, s_both])
+    assert s_mid.new_resname is None
+    assert s_both.new_resname == "BALC"
+
+
+def _test_disambiguate_applies_to_crosslinked_ncaa():
+    """The disambiguator treats CrosslinkedNCAASpec the same as NCAASpec."""
+    rid_mid = UniqueResidueID(
+        resname="MK8", chain="A", resid=2, insertion="", segid="A"
+    )
+    rid_n = UniqueResidueID(
+        resname="MK8", chain="A", resid=1, insertion="", segid="A"
+    )
+    s_mid = CrosslinkedNCAASpec(
+        resname="MK8", residue=rid_mid, is_n_term=False, is_c_term=False
+    )
+    s_n = CrosslinkedNCAASpec(
+        resname="MK8", residue=rid_n, is_n_term=True, is_c_term=False
+    )
+    _disambiguate_terminus_resnames([s_mid, s_n])
+    assert s_mid.new_resname is None
+    assert s_n.new_resname == "NMK8"
+
+
+def _test_disambiguate_independent_groups():
+    """Two different NCAA resnames, each with a single config, both
+    stay un-renamed. Disambiguation is per-resname, not global."""
+    s_alc = NCAASpec(
+        resname="ALC",
+        residue=UniqueResidueID(
+            resname="ALC", chain="A", resid=1, insertion="", segid="A"
+        ),
+        is_n_term=False,
+        is_c_term=False,
+    )
+    s_hrg = NCAASpec(
+        resname="HRG",
+        residue=UniqueResidueID(
+            resname="HRG", chain="A", resid=2, insertion="", segid="A"
+        ),
+        is_n_term=True,
+        is_c_term=False,
+    )
+    _disambiguate_terminus_resnames([s_alc, s_hrg])
+    assert s_alc.new_resname is None
+    assert s_hrg.new_resname is None
+
+
+def _test_disambiguate_4char_input_raises():
+    """If disambiguation is required AND the input resname is 4+ chars,
+    the prefixed name would exceed the 4-char AMBER prepi unit-name limit."""
+    import pytest as _pytest
+
+    s_mid = NCAASpec(
+        resname="ABCD",
+        residue=UniqueResidueID(
+            resname="ABCD", chain="A", resid=1, insertion="", segid="A"
+        ),
+        is_n_term=False,
+        is_c_term=False,
+    )
+    s_n = NCAASpec(
+        resname="ABCD",
+        residue=UniqueResidueID(
+            resname="ABCD", chain="A", resid=2, insertion="", segid="A"
+        ),
+        is_n_term=True,
+        is_c_term=False,
+    )
+    with _pytest.raises(RuntimeError, match="ABCD"):
+        _disambiguate_terminus_resnames([s_mid, s_n])
+
+
+def _test_disambiguate_ignores_other_spec_types():
+    """The disambiguator only touches NCAASpec / CrosslinkedNCAASpec.
+    Other specs (LigandSpec, ScaffoldSpec, etc.) are left untouched."""
+    rid = UniqueResidueID(
+        resname="OLC", chain="B", resid=1, insertion="", segid="B"
+    )
+    other = LigandSpec(resname="OLC", residue=rid)
+    s_mid = NCAASpec(
+        resname="ALC",
+        residue=UniqueResidueID(
+            resname="ALC", chain="A", resid=1, insertion="", segid="A"
+        ),
+        is_n_term=False,
+        is_c_term=False,
+    )
+    _disambiguate_terminus_resnames([other, s_mid])
+    assert other.resname == "OLC"
+    assert s_mid.new_resname is None
+
+
+def _test_detect_no_rename_when_all_one_config():
+    """5VBL has 200/ALC/HRG/NLE/OIC each appearing exactly once and the
+    one C-terminal residue is 200 (no other resname appears at the C
+    terminus). After Task 3 the detector still emits new_resname=None
+    for all of them - no disambiguation needed."""
+    mol = Molecule(VBL_PDB)
+    specs = detectNonStandardResidues(mol)
+    ncaas = [s for s in specs if isinstance(s, NCAASpec)]
+    assert len(ncaas) >= 5
+    for s in ncaas:
+        assert s.new_resname is None, (
+            f"{s.resname} unexpectedly got new_resname={s.new_resname!r}"
+        )
+
+
+def _test_detect_renames_when_resname_shared_across_configs():
+    """Take 5VBL, duplicate its peptide chain into chain Z with a resid
+    offset, then drop the chain-Z residues that sit N-side of the
+    duplicated ALC so chain Z's ALC becomes N-terminal. Now ALC appears
+    both mid-chain (chain A) and N-terminal (chain Z): the detector
+    emits new_resname=NALC for the N-term spec and None for the
+    mid-chain spec."""
+    mol = _make_vbl_with_z_alc_nterminal()
+
+    specs = detectNonStandardResidues(mol)
+    alc_specs = [
+        s
+        for s in specs
+        if isinstance(s, NCAASpec) and s.residue.resname == "ALC"
+    ]
+    assert len(alc_specs) == 2, (
+        f"expected 2 ALC specs (chain A mid + chain Z N-term), got "
+        f"{len(alc_specs)}"
+    )
+
+    by_chain = {str(s.residue.chain): s for s in alc_specs}
+    assert by_chain["A"].is_n_term is False and by_chain["A"].is_c_term is False
+    assert by_chain["A"].new_resname is None
+    assert by_chain["Z"].is_n_term is True
+    assert by_chain["Z"].new_resname == "NALC"
+
+
+def _test_detect_unaffected_groups_left_alone():
+    """When ALC needs disambiguation but HRG does not, only ALC specs
+    get new_resname set."""
+    mol = _make_vbl_with_z_alc_nterminal()
+
+    specs = detectNonStandardResidues(mol)
+    hrg_specs = [
+        s
+        for s in specs
+        if isinstance(s, NCAASpec) and s.residue.resname == "HRG"
+    ]
+    for s in hrg_specs:
+        assert s.new_resname is None, (
+            f"HRG spec on chain {s.residue.chain} unexpectedly renamed to "
+            f"{s.new_resname!r}; only ALC should be disambiguated."
+        )
+
+
+def _test_apply_detect_spec_renames_for_ncaa():
+    """The rename helper sets mol.resname to spec.new_resname when set
+    on an NCAASpec; other residues with the same input resname are
+    untouched."""
+    from moleculekit.tools.preparation import _apply_detect_spec_renames
+
+    mol = Molecule(VBL_PDB)
+    alc_resids = np.unique(mol.resid[mol.resname == "ALC"])
+    target_resid = int(alc_resids[0])
+    alc_mask = (mol.resname == "ALC") & (mol.resid == target_resid)
+    target_chain = str(mol.chain[np.where(alc_mask)[0][0]])
+    target_segid = str(mol.segid[np.where(alc_mask)[0][0]])
+    target_insertion = str(mol.insertion[np.where(alc_mask)[0][0]])
+
+    spec = NCAASpec(
+        resname="ALC",
+        residue=UniqueResidueID(
+            resname="ALC",
+            chain=target_chain,
+            resid=target_resid,
+            insertion=target_insertion,
+            segid=target_segid,
+        ),
+        is_n_term=True,
+        is_c_term=False,
+        new_resname="NALC",
+    )
+
+    _apply_detect_spec_renames(mol, [spec])
+
+    target_mask = (
+        (mol.segid == target_segid)
+        & (mol.chain == target_chain)
+        & (mol.resid == target_resid)
+        & (mol.insertion == target_insertion)
+    )
+    assert (mol.resname[target_mask] == "NALC").all()
+    other_alc = (mol.resname == "ALC") & ~target_mask
+    if other_alc.any():
+        assert (mol.resname[other_alc] == "ALC").all()
+
+
+def _test_apply_detect_spec_renames_skips_none():
+    """new_resname=None leaves mol.resname untouched."""
+    from moleculekit.tools.preparation import _apply_detect_spec_renames
+
+    mol = Molecule(VBL_PDB)
+    before = mol.resname.copy()
+
+    alc_resid = int(np.unique(mol.resid[mol.resname == "ALC"])[0])
+    spec = NCAASpec(
+        resname="ALC",
+        residue=UniqueResidueID(
+            resname="ALC", chain="A", resid=alc_resid, insertion="", segid="A"
+        ),
+        is_n_term=False,
+        is_c_term=False,
+        new_resname=None,
+    )
+    _apply_detect_spec_renames(mol, [spec])
+    assert (mol.resname == before).all()
+
+
+def _test_apply_detect_spec_renames_canonical_drops_h():
+    """For CanonicalRenamedSpec the helper applies the rename AND drops
+    listed sidechain hydrogens, matching the existing systemPrepare
+    behavior."""
+    from moleculekit.tools.preparation import _apply_detect_spec_renames
+
+    mol = Molecule().empty(4)
+    mol.name[:] = ["CA", "CB", "SG", "HG"]
+    mol.element[:] = ["C", "C", "S", "H"]
+    mol.resname[:] = "CYS"
+    mol.resid[:] = 1
+    mol.chain[:] = "A"
+    mol.segid[:] = "A"
+    mol.insertion[:] = ""
+    mol.coords = np.zeros((4, 3, 1), dtype=np.float32)
+
+    spec = CanonicalRenamedSpec(
+        residue=UniqueResidueID(
+            resname="CYS", chain="A", resid=1, insertion="", segid="A"
+        ),
+        new_resname="CY1",
+        drop_h=["HG"],
+    )
+    _apply_detect_spec_renames(mol, [spec])
+    assert (mol.resname == "CY1").all()
+    assert "HG" not in set(mol.name)
+    assert mol.numAtoms == 3

@@ -772,6 +772,51 @@ def _find_atom_relaxed(mol, uaid):
     return None
 
 
+def _apply_detect_spec_renames(mol, detect_specs):
+    """Apply caller-supplied custom resnames from ``detect_specs`` to
+    ``mol`` in place after PDB2PQR's terminus / hydrogen logic has run.
+    Handles three spec types:
+
+    - :class:`CanonicalRenamedSpec`: ``new_resname`` is always set and
+      ``drop_h`` lists displaced sidechain hydrogens to remove.
+    - :class:`NCAASpec` / :class:`CrosslinkedNCAASpec`: ``new_resname``
+      is optional (``None`` means keep the original resname); no H drop.
+
+    Matching residues by ``(segid, chain, resid, insertion)``."""
+    from moleculekit.tools.nonstandard_residues import (
+        CanonicalRenamedSpec,
+        NCAASpec,
+        CrosslinkedNCAASpec,
+    )
+
+    drop_mask = np.zeros(mol.numAtoms, dtype=bool)
+    for spec in detect_specs:
+        if isinstance(spec, CanonicalRenamedSpec):
+            new_resname = spec.new_resname
+            drop_h = spec.drop_h
+        elif isinstance(spec, (NCAASpec, CrosslinkedNCAASpec)):
+            new_resname = spec.new_resname
+            drop_h = []
+        else:
+            continue
+        if not new_resname:
+            continue
+        rid = spec.residue
+        res_mask = (
+            (mol.segid == str(rid.segid))
+            & (mol.chain == str(rid.chain))
+            & (mol.resid == int(rid.resid))
+            & (mol.insertion == str(rid.insertion))
+        )
+        if not res_mask.any():
+            continue
+        mol.resname[res_mask] = str(new_resname)
+        for h_name in drop_h:
+            drop_mask |= res_mask & (mol.name == h_name)
+    if drop_mask.any():
+        mol.remove(drop_mask, _logger=False)
+
+
 def systemPrepare(
     mol_in: Molecule,
     titration=True,
@@ -1105,31 +1150,8 @@ def systemPrepare(
             # TODO: I think this only works if the protein is assumed aligned to the membrane and the membrane is centered at Z=0
             _warn_buried_residues(df, mol_out, hydrophobic_thickness)
 
-    # Apply any caller-supplied custom resnames + displaced-H drops now
-    # that PDB2PQR's terminus / hydrogen logic has run on the canonical
-    # naming. Rename happens in place; matching residues by
-    # (segid, chain, resid, insertion).
     if detect_specs:
-        from moleculekit.tools.nonstandard_residues import CanonicalRenamedSpec
-
-        drop_mask = np.zeros(mol_out.numAtoms, dtype=bool)
-        for spec in detect_specs:
-            if not isinstance(spec, CanonicalRenamedSpec):
-                continue
-            rid = spec.residue
-            res_mask = (
-                (mol_out.segid == str(rid.segid))
-                & (mol_out.chain == str(rid.chain))
-                & (mol_out.resid == int(rid.resid))
-                & (mol_out.insertion == str(rid.insertion))
-            )
-            if not res_mask.any():
-                continue
-            mol_out.resname[res_mask] = str(spec.new_resname)
-            for h_name in spec.drop_h:
-                drop_mask |= res_mask & (mol_out.name == h_name)
-        if drop_mask.any():
-            mol_out.remove(drop_mask, _logger=False)
+        _apply_detect_spec_renames(mol_out, detect_specs)
 
     logger.setLevel(old_level)
 

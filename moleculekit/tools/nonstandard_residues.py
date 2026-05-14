@@ -72,12 +72,16 @@ class NCAASpec:
     standard peptide (N-C) bonds to canonical amino acids, with no other
     inter-residue covalent bonds. Examples: selenomethionine (MSE),
     norleucine (NLE), D-amino acids, backbone-modified residues. The
-    parameterizer treats it as a free residue with ACE/NME caps."""
+    parameterizer treats it as a free residue with ACE/NME caps.
+
+    If ``new_resname`` is set, the build pipeline uses it instead of
+    ``resname``."""
 
     resname: str
     residue: UniqueResidueID
     is_n_term: bool
     is_c_term: bool
+    new_resname: str | None = None
 
 
 @dataclass
@@ -86,12 +90,15 @@ class CrosslinkedNCAASpec:
     bonded into the backbone) that *also* has one or more non-peptide
     sidechain bonds to other residues - a stapled-peptide residue, an NCAA
     whose sidechain is glycosylated, etc. The parameterizer combines this
-    residue with its crosslink partners in a single antechamber compute."""
+    residue with its crosslink partners in a single antechamber compute.
+
+    See :attr:`NCAASpec.new_resname` for the meaning of ``new_resname``."""
 
     resname: str
     residue: UniqueResidueID
     is_n_term: bool
     is_c_term: bool
+    new_resname: str | None = None
 
 
 @dataclass
@@ -282,6 +289,51 @@ def _pick_bucket_resname(variant_or_resname, prefix_counter):
     return f"{prefix}{_BUCKET_DIGITS[n]}"
 
 
+# Terminus disambiguation.
+
+
+def _disambiguate_terminus_resnames(specs):
+    """Mutate ``NCAASpec`` / ``CrosslinkedNCAASpec`` entries in-place,
+    setting ``new_resname`` when more than one ``(is_n_term, is_c_term)``
+    combination is present for the same input resname. The prepi unit
+    name is the residue resname, so two specs sharing a resname but
+    differing in terminus produce two prepis whose second
+    ``loadAmberPrep`` clobbers the first in tLeap. Mid-chain forms
+    keep ``new_resname=None``; N-terminal -> ``"N"+resname``; C-terminal
+    -> ``"C"+resname``; both-terminus -> ``"B"+resname``.
+
+    Raise ``RuntimeError`` if disambiguation is required for an input
+    resname already 4+ characters long, since prefixing would exceed the
+    4-character AMBER prepi unit-name limit."""
+    by_resname = {}
+    for spec in specs:
+        if not isinstance(spec, (NCAASpec, CrosslinkedNCAASpec)):
+            continue
+        by_resname.setdefault(spec.residue.resname, []).append(spec)
+
+    for resname, group in by_resname.items():
+        configs = {(s.is_n_term, s.is_c_term) for s in group}
+        if len(configs) < 2:
+            continue
+        if len(resname) >= 4:
+            raise RuntimeError(
+                f"Residue {resname!r} appears with more than one terminus "
+                f"configuration ({sorted(configs)}) and needs a disambiguating "
+                f"prefix, but the input resname is already {len(resname)} "
+                f"characters long. Prefixing would exceed the 4-character "
+                f"AMBER prepi unit-name limit. Rename the residue to a "
+                f"3-character form before running detectNonStandardResidues."
+            )
+        for spec in group:
+            n, c = spec.is_n_term, spec.is_c_term
+            if n and c:
+                spec.new_resname = f"B{resname}"
+            elif n:
+                spec.new_resname = f"N{resname}"
+            elif c:
+                spec.new_resname = f"C{resname}"
+
+
 # ---------------------------------------------------------------------------
 # Public API.
 # ---------------------------------------------------------------------------
@@ -311,6 +363,13 @@ def detectNonStandardResidues(mol):
     Residues whose anchor has no entry in the anchor-variants table
     (e.g. SER OG) use their original resname's first two chars as the
     prefix.
+
+    Chain-resident NCAAs that appear with more than one terminus
+    configuration in the same molecule are disambiguated by setting
+    ``new_resname`` on the non-mid-chain specs (``"N"+resname`` for
+    N-term, ``"C"+resname`` for C-term, ``"B"+resname`` for a single-
+    residue chain). When all instances of a resname share the same
+    terminus configuration, ``new_resname`` stays ``None``.
 
     Parameters
     ----------
@@ -479,5 +538,7 @@ def detectNonStandardResidues(mol):
     # output is deterministic.
     for r_idx in sorted(canonical_renames):
         specs.append(canonical_renames[r_idx])
+
+    _disambiguate_terminus_resnames(specs)
 
     return specs
