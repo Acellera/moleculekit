@@ -527,6 +527,100 @@ def _test_capture_and_restore_bonds():
 
 
 
+def _test_bond_orphan_hydrogens_rename_and_added():
+    """``_bond_orphan_hydrogens`` must reattach hydrogens that the by-name
+    restore step couldn't resolve. Two scenarios are exercised:
+
+    1. PDB2PQR renamed template Hs (H1 -> H amide, H2 -> HA alpha): the
+       captured N-H1 / CA-H2 bonds drop silently in ``_restore_bonds``
+       because no H1 / H2 atoms exist in the post-prep mol, but the
+       hydrogens themselves remain at the same coordinates under the new
+       names. The orphan-H pass must bond them by geometry to the
+       closest same-residue heavy atom.
+    2. PDB2PQR added a brand-new H for a protonation-state change
+       (HIS -> HIP gains HE2): that H was never in ``_preserved_bonds``
+       so the by-name restore has nothing for it. The orphan-H pass
+       must still attach it.
+
+    A non-orphan H (already bonded) must be left untouched, and an H
+    farther than the X-H cutoff must NOT be bonded so we don't invent
+    cross-residue connectivity.
+    """
+    from moleculekit.tools.preparation import _bond_orphan_hydrogens
+
+    # Mol with one residue (resid 1) and a stray atom in resid 2.
+    # Residue 1: N (0), CA (1), H/amide (2, was H1), HA/alpha (3, was H2),
+    #            HE2 (4, added by PDB2PQR), and a pre-existing C (5)
+    #            bonded to CA so we can verify it's preserved.
+    # Residue 2: a lone O (6) and a far-away H (7) that must NOT bond
+    #            across residues.
+    mol = Molecule().empty(8)
+    mol.coords = np.zeros((8, 3, 1), dtype=np.float32)
+    # Place atoms so each orphan H is within ~1.0 A of its heavy partner.
+    mol.coords[0, :, 0] = [0.0, 0.0, 0.0]  # N
+    mol.coords[1, :, 0] = [1.5, 0.0, 0.0]  # CA
+    mol.coords[2, :, 0] = [-1.0, 0.0, 0.0]  # H (renamed from H1, bonded to N)
+    mol.coords[3, :, 0] = [1.5, 1.0, 0.0]  # HA (renamed from H2, bonded to CA)
+    mol.coords[4, :, 0] = [0.0, 1.0, 0.0]  # HE2 (added by PDB2PQR, near N)
+    mol.coords[5, :, 0] = [3.0, 0.0, 0.0]  # C, bonded to CA already
+    mol.coords[6, :, 0] = [10.0, 10.0, 10.0]  # O in another residue
+    mol.coords[7, :, 0] = [20.0, 20.0, 20.0]  # H far from everything
+
+    mol.name[:] = ["N", "CA", "H", "HA", "HE2", "C", "O", "H"]
+    mol.element[:] = ["N", "C", "H", "H", "H", "C", "O", "H"]
+    mol.resname[:] = ["RES"] * 6 + ["XXX", "XXX"]
+    mol.resid[:] = [1, 1, 1, 1, 1, 1, 2, 2]
+    mol.chain[:] = ["A"] * 8
+    mol.segid[:] = ["P"] * 8
+    mol.insertion[:] = [""] * 8
+
+    # CA-C bond is the only pre-existing bond — emulates a heavy-heavy
+    # bond restored successfully by ``_restore_bonds``.
+    mol.bonds = np.array([[1, 5]], dtype=np.uint32)
+    mol.bondtype = np.array(["1"], dtype=object)
+
+    _bond_orphan_hydrogens(mol)
+
+    bondset = {frozenset((int(a), int(b))) for a, b in mol.bonds}
+    assert frozenset((1, 5)) in bondset, "pre-existing heavy bond was lost"
+    assert frozenset((0, 2)) in bondset, "N-H (renamed from H1) must be bonded"
+    assert frozenset((1, 3)) in bondset, "CA-HA (renamed from H2) must be bonded"
+    assert frozenset((0, 4)) in bondset, "newly-added HE2 must be bonded to N"
+    # Far-away H in another residue with no nearby heavy atom: must not
+    # invent a bond despite a same-residue heavy O 14 A away.
+    assert not any(7 in pair for pair in bondset), (
+        "H farther than X-H cutoff from every same-residue heavy atom must not bond"
+    )
+    # Heavy-heavy connectivity untouched.
+    assert len(mol.bonds) == len(mol.bondtype), "bonds/bondtype length mismatch"
+
+
+def _test_bond_orphan_hydrogens_idempotent():
+    """Running ``_bond_orphan_hydrogens`` twice must be a no-op the
+    second time — all Hs are already bonded after the first pass."""
+    from moleculekit.tools.preparation import _bond_orphan_hydrogens
+
+    mol = Molecule().empty(3)
+    mol.coords = np.zeros((3, 3, 1), dtype=np.float32)
+    mol.coords[0, :, 0] = [0.0, 0.0, 0.0]
+    mol.coords[1, :, 0] = [1.0, 0.0, 0.0]
+    mol.coords[2, :, 0] = [-1.0, 0.0, 0.0]
+    mol.name[:] = ["N", "H1", "H2"]
+    mol.element[:] = ["N", "H", "H"]
+    mol.resname[:] = ["RES"] * 3
+    mol.resid[:] = [1, 1, 1]
+    mol.chain[:] = ["A"] * 3
+    mol.segid[:] = ["P"] * 3
+    mol.bonds = np.zeros((0, 2), dtype=np.uint32)
+    mol.bondtype = np.array([], dtype=object)
+
+    _bond_orphan_hydrogens(mol)
+    n_after_first = len(mol.bonds)
+    _bond_orphan_hydrogens(mol)
+    assert len(mol.bonds) == n_after_first, "second pass must not add bonds"
+    assert n_after_first == 2, "expected exactly 2 N-H bonds"
+
+
 def _heavy_bond_signatures(mol, sel):
     """Return a set of frozenset signatures for heavy-atom bonds whose
     endpoints both belong to ``sel``. Each signature is a pair of

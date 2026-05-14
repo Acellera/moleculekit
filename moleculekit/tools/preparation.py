@@ -11,7 +11,6 @@ from moleculekit.molecule import Molecule, UniqueResidueID
 from moleculekit.tools.backbone import check_backbone
 from moleculekit.util import sequenceID
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -772,6 +771,70 @@ def _find_atom_relaxed(mol, uaid):
     return None
 
 
+def _bond_orphan_hydrogens(mol, max_xh=1.5):
+    """Bond every hydrogen that has no bonds after the capture/restore
+    round-trip to its closest same-residue heavy atom within standard
+    covalent X-H distance. Two cases produce orphan Hs:
+
+    1. PDB2PQR renames template-added backbone hydrogens to AMBER
+       conventions (H1 -> H amide, H2 -> HA alpha). ``_capture_bonds``
+       recorded the input names, so ``_restore_bonds`` looks up "H1" /
+       "H2" in the prepared mol, can't find them, and drops the bond
+       silently (``is_h_bond=True``). The hydrogens themselves remain
+       under the new names; they're just unbonded.
+    2. PDB2PQR adds new hydrogens for protonation-state changes (e.g.
+       HIS -> HIP gains HE2). Those Hs were never in ``_preserved_bonds``
+       so the by-name restore has nothing to add for them.
+
+    Heavy-atom connectivity is unaffected — only orphan Hs are touched,
+    so this is safe to run after every prep.
+    """
+    if mol.numAtoms == 0 or mol.element is None:
+        return
+
+    h_mask = mol.element == "H"
+    if not h_mask.any():
+        return
+
+    if mol.bonds is None or len(mol.bonds) == 0:
+        bonded_atoms = set()
+    else:
+        bonded_atoms = set(int(i) for i in np.asarray(mol.bonds).ravel())
+
+    orphan_h = [int(i) for i in np.where(h_mask)[0] if int(i) not in bonded_atoms]
+    if not orphan_h:
+        return
+
+    coords = mol.coords[:, :, 0]
+    uqres = mol.getResidues(
+        fields=("segid", "chain", "resid", "insertion"), return_idx=False
+    )
+    heavy_mask = ~h_mask
+
+    new_bonds = []
+    for h_idx in orphan_h:
+        same_res = uqres == uqres[h_idx]
+        heavy_idx = np.where(same_res & heavy_mask)[0]
+        if not len(heavy_idx):
+            continue
+        d = np.linalg.norm(coords[heavy_idx] - coords[h_idx], axis=1)
+        j = int(np.argmin(d))
+        if d[j] <= max_xh:
+            new_bonds.append([int(heavy_idx[j]), int(h_idx)])
+
+    if not new_bonds:
+        return
+
+    arr = np.asarray(new_bonds, dtype=np.uint32)
+    btype_arr = np.array(["1"] * len(new_bonds), dtype=object)
+    if mol.bonds is None or len(mol.bonds) == 0:
+        mol.bonds = arr
+        mol.bondtype = btype_arr
+    else:
+        mol.bonds = np.vstack([mol.bonds, arr])
+        mol.bondtype = np.hstack([mol.bondtype, btype_arr])
+
+
 def _apply_detect_spec_renames(mol, detect_specs):
     """Apply caller-supplied custom resnames from ``detect_specs`` to
     ``mol`` in place after PDB2PQR's terminus / hydrogen logic has run.
@@ -1130,6 +1193,11 @@ def systemPrepare(
     # stripped them.
     if _preserved_bonds:
         _restore_bonds(mol_out, _preserved_bonds)
+
+    # PDB2PQR renames template-added backbone Hs (H1/H2 -> H/HA) and may
+    # add new Hs for protonation-state changes; both leave hydrogens that
+    # the by-name restore can't reattach. Rebond them by geometry.
+    _bond_orphan_hydrogens(mol_out)
 
     # PDB2PQR hydrogenated the frozen junction residues with the full
     # canonical complement; drop the hydrogen displaced by the covalent bond.
