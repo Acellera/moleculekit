@@ -3079,6 +3079,45 @@ def mol_equal(
     >>> mol_equal(mol1, mol2, exceptFields=['record', 'name'])
     >>> mol_equal(mol1, mol2, fieldPrecision={'coords': 1e-5})
     """
+    if mol1.numAtoms != mol2.numAtoms:
+        if _logger:
+            logger.warning(
+                f"Molecules differ in atom count: mol1 has {mol1.numAtoms} atoms, "
+                f"mol2 has {mol2.numAtoms}."
+            )
+
+            def _atom_ids(mol):
+                return [
+                    (str(seg), str(ch), int(rid), str(ins), str(rn), str(nm))
+                    for seg, ch, rid, ins, rn, nm in zip(
+                        mol.segid,
+                        mol.chain,
+                        mol.resid,
+                        mol.insertion,
+                        mol.resname,
+                        mol.name,
+                    )
+                ]
+
+            ids1 = _atom_ids(mol1)
+            ids2 = _atom_ids(mol2)
+            only_in_1 = sorted(set(ids1) - set(ids2))
+            only_in_2 = sorted(set(ids2) - set(ids1))
+            max_show = 20
+
+            def _fmt(ids):
+                shown = ", ".join(
+                    f"{rn}{rid}{ins}:{ch}:{nm}"
+                    for _seg, ch, rid, ins, rn, nm in ids[:max_show]
+                )
+                if len(ids) > max_show:
+                    shown += f", ... ({len(ids) - max_show} more)"
+                return shown or "(none)"
+
+            logger.warning(f"Atoms only in mol1 ({len(only_in_1)}): {_fmt(only_in_1)}")
+            logger.warning(f"Atoms only in mol2 ({len(only_in_2)}): {_fmt(only_in_2)}")
+        return False
+
     difffields = []
     checkFields = list(checkFields)
     if exceptFields is not None:

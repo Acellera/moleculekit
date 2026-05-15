@@ -30,7 +30,7 @@ Keys are ``(resname, atom_name)``. Values are dicts with these fields:
   canonical-side atom types of cross-junction bonded terms. Absent for
   anchors htmd hasn't yet parameterized (the new GLU/ASP/ASN/GLN amide-
   carbonyl entries) - htmd's lookup tolerates absence and falls back to
-  the spec's ``original_resname`` canonical template.
+  the spec's ``resname`` canonical template.
 
 Variant-to-base resname normalisation (e.g. ``CYX -> CYS``, ``LYN -> LYS``)
 is delegated to :data:`moleculekit.residues.ORIGINAL_RESIDUE_NAME_TABLE`.
@@ -114,7 +114,7 @@ ANCHOR_TABLE = {
     # ---- New canonical-canonical amide-carbonyl anchors ---------------
     # No ff_variant (renamed to auto-generated X## by detector); no
     # ff14sb_type fields yet (htmd hasn't parameterized these junctions
-    # specifically and falls back to original_resname's canonical
+    # specifically and falls back to resname's canonical
     # template for the splice).
     ("GLU", "CD"): {
         "displaced_heavy": ("OE2",),

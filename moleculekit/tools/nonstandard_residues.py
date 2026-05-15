@@ -74,7 +74,7 @@ class ChainResidueSpec:
 
     Fields:
 
-    - ``original_resname``: the residue's resname in the input
+    - ``resname``: the residue's resname in the input
       ``Molecule`` (``"GLU"``, ``"NLE"``, ``"CYS"``, ...).
     - ``residue``: :class:`UniqueResidueID` for the residue (segid /
       chain / resid / insertion).
@@ -83,7 +83,7 @@ class ChainResidueSpec:
         * Canonical AA at a junction: ``"CYX"`` for both ends of a
           CYS-SG <-> CYS-SG disulfide; an auto-generated 3-char ``XX#``
           name otherwise, shared across residues sharing the bucket
-          ``(original_resname, anchor_atom, partner_resname, n_term,
+          ``(resname, anchor_atom, partner_resname, n_term,
           c_term)`` so antechamber runs once per unique chemistry.
         * NCAA appearing with multiple terminus configurations: the
           existing :func:`_disambiguate_terminus_resnames` prefixes
@@ -109,7 +109,7 @@ class ChainResidueSpec:
     - ``is_n_term`` / ``is_c_term``: chain termini flags.
     """
 
-    original_resname: str
+    resname: str
     residue: UniqueResidueID
     new_resname: str | None = None
     anchor_atom: str | None = None
@@ -303,11 +303,11 @@ def _disambiguate_terminus_resnames(specs):
         if not isinstance(spec, ChainResidueSpec):
             continue
         # Disambiguation only applies to NCAA-style entries (those whose
-        # original_resname is NOT a canonical AA - canonical anchors are
+        # resname is NOT a canonical AA - canonical anchors are
         # already bucketed by terminus via the (n_term, c_term) bucket key).
-        if spec.original_resname in PROTEIN_RESNAMES:
+        if spec.resname in PROTEIN_RESNAMES:
             continue
-        by_resname.setdefault(spec.original_resname, []).append(spec)
+        by_resname.setdefault(spec.resname, []).append(spec)
 
     for resname, group in by_resname.items():
         configs = {(s.is_n_term, s.is_c_term) for s in group}
@@ -532,7 +532,7 @@ def detectNonStandardResidues(mol):
         if chain_resident[r_idx] or is_renamed_canonical:
             specs.append(
                 ChainResidueSpec(
-                    original_resname=residue.resname,
+                    resname=residue.resname,
                     residue=residue,
                     new_resname=canonical_renames.get(r_idx),
                     anchor_atom=anchor_atoms.get(r_idx),

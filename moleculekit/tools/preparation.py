@@ -91,7 +91,6 @@ def _generate_nonstandard_residues_ff(
     mol,
     definition,
     forcefield,
-    outdir=None,
     detect_specs=None,
 ):
     import tempfile
@@ -100,7 +99,6 @@ def _generate_nonstandard_residues_ff(
         _process_custom_residue,
         _mol_to_dat_def,
         _mol_to_xml_def,
-        _prepare_for_parameterize,
     )
     from moleculekit.tools.nonstandard_residues import ChainResidueSpec
 
@@ -118,8 +116,8 @@ def _generate_nonstandard_residues_ff(
             # Resname under which the residue appears in mol RIGHT NOW.
             # _template_renamed_canonical_residues has already applied any
             # rename to a custom name; for plain NCAAs with no rename,
-            # original_resname is what's in mol.
-            current_resname = spec.new_resname or spec.original_resname
+            # resname is what's in mol.
+            current_resname = spec.new_resname or spec.resname
             spec_by_resname.setdefault(str(current_resname), spec)
 
     not_in_ff = [r for r in spec_by_resname if not forcefield.has_residue(r)]
@@ -167,10 +165,6 @@ def _generate_nonstandard_residues_ff(
 
             _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
             _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
-            if outdir is not None:
-                os.makedirs(outdir, exist_ok=True)
-                pres = _prepare_for_parameterize(cres)
-                pres.write(os.path.join(outdir, f"{res}.cif"))
             logger.info(f"Succesfully templated non-canonical residue {res}.")
 
         definition, forcefield = _get_custom_ff(user_ff=tmpdir)
@@ -218,7 +212,7 @@ _PDB2PQR_KNOWN_VARIANTS = {
 
 def _template_renamed_canonical_residues(mol, specs):
     """Rename + re-template every ChainResidueSpec whose
-    ``original_resname`` is a canonical AA and that has a
+    ``resname`` is a canonical AA and that has a
     ``new_resname``. Mutates ``mol`` in place.
 
     For renames TO a known PDB2PQR variant (CYX, LYN, HID, ...) the
@@ -245,14 +239,14 @@ def _template_renamed_canonical_residues(mol, specs):
     for spec in specs:
         if not isinstance(spec, ChainResidueSpec):
             continue
-        if spec.original_resname not in PROTEIN_RESNAMES:
+        if spec.resname not in PROTEIN_RESNAMES:
             continue
         if not spec.new_resname:
             continue
 
         rid = spec.residue
         res_mask = (
-            (mol.resname == str(spec.original_resname))
+            (mol.resname == str(spec.resname))
             & (mol.chain == str(rid.chain))
             & (mol.resid == int(rid.resid))
             & (mol.insertion == str(rid.insertion))
@@ -262,7 +256,7 @@ def _template_renamed_canonical_residues(mol, specs):
         if len(res_atom_idxs) == 0:
             raise RuntimeError(
                 f"Residue {rid} from ChainResidueSpec not found in mol "
-                f"(resname filter {spec.original_resname!r} returned 0)."
+                f"(resname filter {spec.resname!r} returned 0)."
             )
 
         # Rename.
@@ -274,12 +268,12 @@ def _template_renamed_canonical_residues(mol, specs):
         if not spec.anchor_atom:
             raise RuntimeError(
                 f"ChainResidueSpec for {rid.chain}:{rid.resid}{rid.insertion} "
-                f"({spec.original_resname}->{spec.new_resname}) has no "
+                f"({spec.resname}->{spec.new_resname}) has no "
                 f"anchor_atom but needs re-templating. The detector should "
                 f"have populated this field."
             )
 
-        smiles = canonical_anchor_smiles(spec.original_resname, spec.anchor_atom)
+        smiles = canonical_anchor_smiles(spec.resname, spec.anchor_atom)
 
         # res_mask was computed against the original resname and the
         # atoms still live at the same indices after the rename above,
@@ -305,7 +299,7 @@ def _canonicalize_ncaa_h_names(mol, detect_specs):
         if not isinstance(spec, ChainResidueSpec):
             continue
         rid = spec.residue
-        current_resname = spec.new_resname or spec.original_resname
+        current_resname = spec.new_resname or spec.resname
         res_mask = (
             (mol.resname == str(current_resname))
             & (mol.segid == str(rid.segid))
@@ -901,7 +895,6 @@ def systemPrepare(
     hydrophobic_thickness=None,
     plot_pka=None,
     _logger_level="ERROR",
-    outdir=None,
     ignore_ns=False,
     titrate=None,
     detect_specs=None,
@@ -997,8 +990,6 @@ def systemPrepare(
         ignoring the covalent bond, meaning it may break the bonds or add hydrogen atoms between the bonds.
     plot_pka : str
         Provide a file path with .png extension to draw the titration diagram for the system residues.
-    outdir : str
-        A path where to save custom residue cif files used for building
     ignore_ns : bool
         If False systemPrepare will issue an error when it fails to protonate non-canonical residues in the protein.
         If True it will leave non-canonical residues unprotonated.
@@ -1153,7 +1144,7 @@ def systemPrepare(
     definition, forcefield = _get_custom_ff()
     if not ignore_ns:
         definition, forcefield = _generate_nonstandard_residues_ff(
-            mol_in, definition, forcefield, outdir, detect_specs=detect_specs
+            mol_in, definition, forcefield, detect_specs=detect_specs
         )
         _canonicalize_ncaa_h_names(mol_in, detect_specs)
 

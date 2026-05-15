@@ -102,12 +102,12 @@ def _test_8qfz_scaffolded_peptide():
     scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
     renames = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname in PROTEIN_RESNAMES
+        if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
 
     assert len(scaffolds) == 1 and scaffolds[0].resname == "LFI"
     assert len(renames) == 3
-    assert {r.original_resname for r in renames} == {"CYS"}
+    assert {r.resname for r in renames} == {"CYS"}
     new_names = {r.new_resname for r in renames}
     # Three distinct chain positions -> three distinct rename targets.
     assert len(new_names) == 3, f"expected three distinct renames, got {new_names}"
@@ -127,13 +127,13 @@ def _test_single_anchor_demotes_scaffold_to_covalent_ligand():
     cov = [s for s in specs if isinstance(s, CovalentLigandSpec)]
     renames = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname in PROTEIN_RESNAMES
+        if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
     scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
 
     assert scaffolds == []
     assert len(cov) == 1 and cov[0].resname == "LFI"
-    assert len(renames) == 1 and renames[0].original_resname == "CYS"
+    assert len(renames) == 1 and renames[0].resname == "CYS"
 
 
 def _test_5vbl_ncaas_and_free_ligand():
@@ -145,18 +145,18 @@ def _test_5vbl_ncaas_and_free_ligand():
 
     ncaas = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname not in PROTEIN_RESNAMES
+        if isinstance(s, ChainResidueSpec) and s.resname not in PROTEIN_RESNAMES
         and s.anchor_atom is None
     ]
     crosslinked = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname not in PROTEIN_RESNAMES
+        if isinstance(s, ChainResidueSpec) and s.resname not in PROTEIN_RESNAMES
         and s.anchor_atom is not None
     ]
     ligands = [s for s in specs if isinstance(s, LigandSpec)]
     renames = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname in PROTEIN_RESNAMES
+        if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
     scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
     cov = [s for s in specs if isinstance(s, CovalentLigandSpec)]
@@ -164,14 +164,14 @@ def _test_5vbl_ncaas_and_free_ligand():
     assert crosslinked == [] and scaffolds == [] and cov == []
     # 5VBL's GLU 10 - LYS 13 isopeptide produces 2 renames; chain B has 4 CYS
     # disulfide renames (CYX); total renames >= 2.
-    glu_lys_renames = [r for r in renames if r.original_resname in ("GLU", "LYS")]
+    glu_lys_renames = [r for r in renames if r.resname in ("GLU", "LYS")]
     assert len(glu_lys_renames) == 2
-    assert {r.original_resname for r in glu_lys_renames} == {"GLU", "LYS"}
+    assert {r.resname for r in glu_lys_renames} == {"GLU", "LYS"}
 
-    assert sorted(s.original_resname for s in ncaas) == ["200", "ALC", "HRG", "NLE", "OIC"]
+    assert sorted(s.resname for s in ncaas) == ["200", "ALC", "HRG", "NLE", "OIC"]
     # Resid 17 = "200" is the C-terminal NCAA: no peptide tail bond.
     for s in ncaas:
-        if s.original_resname == "200":
+        if s.resname == "200":
             assert s.is_c_term and not s.is_n_term
         else:
             assert not s.is_n_term and not s.is_c_term
@@ -199,7 +199,7 @@ def _test_1r1j_covalent_glycosylation():
     asn_renames = [
         s
         for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname == "ASN"
+        if isinstance(s, ChainResidueSpec) and s.resname == "ASN"
         and s.new_resname is not None
     ]
     assert len(cov) == 3
@@ -210,7 +210,7 @@ def _test_1r1j_covalent_glycosylation():
     assert len(shared) == 3 and shared.startswith("X")
     for r in asn_renames:
         rid = int(r.residue.resid)
-        names = _residue_atom_names(mol, r.original_resname, rid)
+        names = _residue_atom_names(mol, r.resname, rid)
         assert "ND2" in names
 
     oir = [s for s in specs if s.residue.resname == "OIR"]
@@ -230,17 +230,17 @@ def _test_8qu4_ncaa_crosslink():
 
     crosslinked = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname not in PROTEIN_RESNAMES
+        if isinstance(s, ChainResidueSpec) and s.resname not in PROTEIN_RESNAMES
         and s.anchor_atom is not None
     ]
     renames = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname in PROTEIN_RESNAMES
+        if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
     scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
 
     assert renames == [] and scaffolds == []
-    assert sorted(s.original_resname for s in crosslinked) == ["MK8", "NLE"]
+    assert sorted(s.resname for s in crosslinked) == ["MK8", "NLE"]
     # Both residues are mid-chain (not termini).
     for s in crosslinked:
         assert not s.is_n_term and not s.is_c_term
@@ -289,16 +289,16 @@ def _test_scaffold_anchored_on_ncaa_sidechains():
     scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
     crosslinked = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname not in PROTEIN_RESNAMES
+        if isinstance(s, ChainResidueSpec) and s.resname not in PROTEIN_RESNAMES
         and s.anchor_atom is not None
     ]
     renames = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname in PROTEIN_RESNAMES
+        if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
 
     assert len(scaffolds) == 1 and scaffolds[0].resname == "SCF"
-    assert sorted(s.original_resname for s in crosslinked) == ["MK8", "NLE"]
+    assert sorted(s.resname for s in crosslinked) == ["MK8", "NLE"]
     assert renames == []
 
 
@@ -319,19 +319,19 @@ def _test_canonical_to_ncaa_crosslink():
     specs = detectNonStandardResidues(mol)
     crosslinked = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname not in PROTEIN_RESNAMES
+        if isinstance(s, ChainResidueSpec) and s.resname not in PROTEIN_RESNAMES
         and s.anchor_atom is not None
     ]
     renames = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname in PROTEIN_RESNAMES
+        if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
 
-    assert len(crosslinked) == 1 and crosslinked[0].original_resname == "NLE"
+    assert len(crosslinked) == 1 and crosslinked[0].resname == "NLE"
     assert len(renames) == 1
     # CYS-SG bonded to an NCAA (not CYS/CYX) gets an auto-generated XX# rename
     # (CYX is only assigned for CYS-SG <-> CYS-SG disulfide bonds).
-    assert renames[0].original_resname == "CYS"
+    assert renames[0].resname == "CYS"
     assert renames[0].anchor_atom == "SG"
     assert renames[0].new_resname is not None and renames[0].new_resname.startswith("X")
 
@@ -358,7 +358,7 @@ def _test_distinct_partner_resnames_get_distinct_renames():
     specs = detectNonStandardResidues(a)
     renames = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname in PROTEIN_RESNAMES
+        if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
     assert len(renames) == 2
     new_names = sorted({r.new_resname for r in renames})
@@ -372,10 +372,10 @@ def _test_ncaa_spec_default_new_resname():
     rid = UniqueResidueID(
         resname="ALC", chain="A", resid=1, insertion="", segid="A"
     )
-    s1 = ChainResidueSpec(original_resname="ALC", residue=rid, is_n_term=False, is_c_term=False)
+    s1 = ChainResidueSpec(resname="ALC", residue=rid, is_n_term=False, is_c_term=False)
     assert s1.new_resname is None
     s2 = ChainResidueSpec(
-        original_resname="ALC",
+        resname="ALC",
         residue=rid,
         is_n_term=True,
         is_c_term=False,
@@ -384,12 +384,12 @@ def _test_ncaa_spec_default_new_resname():
     assert s2.new_resname == "NALC"
 
     s3 = ChainResidueSpec(
-        original_resname="ALC", residue=rid, is_n_term=False, is_c_term=False,
+        resname="ALC", residue=rid, is_n_term=False, is_c_term=False,
         anchor_atom="CE",
     )
     assert s3.new_resname is None
     s4 = ChainResidueSpec(
-        original_resname="ALC",
+        resname="ALC",
         residue=rid,
         is_n_term=False,
         is_c_term=True,
@@ -408,8 +408,8 @@ def _test_disambiguate_single_config_no_rename():
         resname="ALC", chain="A", resid=2, insertion="", segid="A"
     )
     specs = [
-        ChainResidueSpec(original_resname="ALC", residue=rid_a, is_n_term=False, is_c_term=False),
-        ChainResidueSpec(original_resname="ALC", residue=rid_b, is_n_term=False, is_c_term=False),
+        ChainResidueSpec(resname="ALC", residue=rid_a, is_n_term=False, is_c_term=False),
+        ChainResidueSpec(resname="ALC", residue=rid_b, is_n_term=False, is_c_term=False),
     ]
     _disambiguate_terminus_resnames(specs)
     assert all(s.new_resname is None for s in specs)
@@ -425,10 +425,10 @@ def _test_disambiguate_two_configs_renames_nonmid():
         resname="ALC", chain="A", resid=1, insertion="", segid="A"
     )
     s_mid = ChainResidueSpec(
-        original_resname="ALC", residue=rid_mid, is_n_term=False, is_c_term=False
+        resname="ALC", residue=rid_mid, is_n_term=False, is_c_term=False
     )
     s_n = ChainResidueSpec(
-        original_resname="ALC", residue=rid_n, is_n_term=True, is_c_term=False
+        resname="ALC", residue=rid_n, is_n_term=True, is_c_term=False
     )
     _disambiguate_terminus_resnames([s_mid, s_n])
     assert s_mid.new_resname is None
@@ -439,7 +439,7 @@ def _test_disambiguate_three_configs():
     """Mid + N + C-term all present -> mid stays, N -> NALC, C -> CALC."""
     def _spec(i, n, c):
         return ChainResidueSpec(
-            original_resname="ALC",
+            resname="ALC",
             residue=UniqueResidueID(
                 resname="ALC", chain="A", resid=i, insertion="", segid="A"
             ),
@@ -466,10 +466,10 @@ def _test_disambiguate_both_terminus_uses_b_prefix():
         resname="ALC", chain="B", resid=1, insertion="", segid="B"
     )
     s_mid = ChainResidueSpec(
-        original_resname="ALC", residue=rid_mid, is_n_term=False, is_c_term=False
+        resname="ALC", residue=rid_mid, is_n_term=False, is_c_term=False
     )
     s_both = ChainResidueSpec(
-        original_resname="ALC", residue=rid_both, is_n_term=True, is_c_term=True
+        resname="ALC", residue=rid_both, is_n_term=True, is_c_term=True
     )
     _disambiguate_terminus_resnames([s_mid, s_both])
     assert s_mid.new_resname is None
@@ -485,11 +485,11 @@ def _test_disambiguate_applies_to_crosslinked_ncaa():
         resname="MK8", chain="A", resid=1, insertion="", segid="A"
     )
     s_mid = ChainResidueSpec(
-        original_resname="MK8", residue=rid_mid, is_n_term=False, is_c_term=False,
+        resname="MK8", residue=rid_mid, is_n_term=False, is_c_term=False,
         anchor_atom="CE",
     )
     s_n = ChainResidueSpec(
-        original_resname="MK8", residue=rid_n, is_n_term=True, is_c_term=False,
+        resname="MK8", residue=rid_n, is_n_term=True, is_c_term=False,
         anchor_atom="CE",
     )
     _disambiguate_terminus_resnames([s_mid, s_n])
@@ -501,7 +501,7 @@ def _test_disambiguate_independent_groups():
     """Two different NCAA resnames, each with a single config, both
     stay un-renamed. Disambiguation is per-resname, not global."""
     s_alc = ChainResidueSpec(
-        original_resname="ALC",
+        resname="ALC",
         residue=UniqueResidueID(
             resname="ALC", chain="A", resid=1, insertion="", segid="A"
         ),
@@ -509,7 +509,7 @@ def _test_disambiguate_independent_groups():
         is_c_term=False,
     )
     s_hrg = ChainResidueSpec(
-        original_resname="HRG",
+        resname="HRG",
         residue=UniqueResidueID(
             resname="HRG", chain="A", resid=2, insertion="", segid="A"
         ),
@@ -527,7 +527,7 @@ def _test_disambiguate_4char_input_raises():
     import pytest as _pytest
 
     s_mid = ChainResidueSpec(
-        original_resname="ABCD",
+        resname="ABCD",
         residue=UniqueResidueID(
             resname="ABCD", chain="A", resid=1, insertion="", segid="A"
         ),
@@ -535,7 +535,7 @@ def _test_disambiguate_4char_input_raises():
         is_c_term=False,
     )
     s_n = ChainResidueSpec(
-        original_resname="ABCD",
+        resname="ABCD",
         residue=UniqueResidueID(
             resname="ABCD", chain="A", resid=2, insertion="", segid="A"
         ),
@@ -547,14 +547,14 @@ def _test_disambiguate_4char_input_raises():
 
 
 def _test_disambiguate_ignores_other_spec_types():
-    """The disambiguator only touches ChainResidueSpec entries with non-protein original_resname.
+    """The disambiguator only touches ChainResidueSpec entries with non-protein resname.
     Other specs (LigandSpec, ScaffoldSpec, etc.) are left untouched."""
     rid = UniqueResidueID(
         resname="OLC", chain="B", resid=1, insertion="", segid="B"
     )
     other = LigandSpec(resname="OLC", residue=rid)
     s_mid = ChainResidueSpec(
-        original_resname="ALC",
+        resname="ALC",
         residue=UniqueResidueID(
             resname="ALC", chain="A", resid=1, insertion="", segid="A"
         ),
@@ -575,12 +575,12 @@ def _test_detect_no_rename_when_all_one_config():
     specs = detectNonStandardResidues(mol)
     ncaas = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname not in PROTEIN_RESNAMES
+        if isinstance(s, ChainResidueSpec) and s.resname not in PROTEIN_RESNAMES
     ]
     assert len(ncaas) >= 5
     for s in ncaas:
         assert s.new_resname is None, (
-            f"{s.original_resname} unexpectedly got new_resname={s.new_resname!r}"
+            f"{s.resname} unexpectedly got new_resname={s.new_resname!r}"
         )
 
 
@@ -597,7 +597,7 @@ def _test_detect_renames_when_resname_shared_across_configs():
     alc_specs = [
         s
         for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname == "ALC"
+        if isinstance(s, ChainResidueSpec) and s.resname == "ALC"
     ]
     assert len(alc_specs) == 2, (
         f"expected 2 ALC specs (chain A mid + chain Z N-term), got "
@@ -620,7 +620,7 @@ def _test_detect_unaffected_groups_left_alone():
     hrg_specs = [
         s
         for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname == "HRG"
+        if isinstance(s, ChainResidueSpec) and s.resname == "HRG"
     ]
     for s in hrg_specs:
         assert s.new_resname is None, (
@@ -644,7 +644,7 @@ def _test_apply_detect_spec_renames_for_ncaa():
     target_insertion = str(mol.insertion[np.where(alc_mask)[0][0]])
 
     spec = ChainResidueSpec(
-        original_resname="ALC",
+        resname="ALC",
         residue=UniqueResidueID(
             resname="ALC",
             chain=target_chain,
@@ -680,7 +680,7 @@ def _test_apply_detect_spec_renames_skips_none():
 
     alc_resid = int(np.unique(mol.resid[mol.resname == "ALC"])[0])
     spec = ChainResidueSpec(
-        original_resname="ALC",
+        resname="ALC",
         residue=UniqueResidueID(
             resname="ALC", chain="A", resid=alc_resid, insertion="", segid="A"
         ),
@@ -708,7 +708,7 @@ def _test_apply_detect_spec_renames_just_renames():
     mol.coords = np.zeros((4, 3, 1), dtype=np.float32)
 
     spec = ChainResidueSpec(
-        original_resname="CYS",
+        resname="CYS",
         residue=UniqueResidueID(
             resname="CYS", chain="A", resid=1, insertion="", segid="A"
         ),
@@ -798,9 +798,9 @@ def _test_5vbl_glu_lys_isopeptide_emits_chain_residue_specs():
     canonical_crosslinks = [
         s for s in specs
         if isinstance(s, ChainResidueSpec)
-        and s.original_resname in ("GLU", "LYS")
+        and s.resname in ("GLU", "LYS")
     ]
-    by_resname = {s.original_resname: s for s in canonical_crosslinks}
+    by_resname = {s.resname: s for s in canonical_crosslinks}
     assert set(by_resname) == {"GLU", "LYS"}
     glu, lys = by_resname["GLU"], by_resname["LYS"]
     assert glu.residue.resid == 10 and lys.residue.resid == 13
@@ -829,7 +829,7 @@ def _test_cyx_disulfide_emits_chain_residue_specs():
     specs = detectNonStandardResidues(cys2)
     cys_specs = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname == "CYS"
+        if isinstance(s, ChainResidueSpec) and s.resname == "CYS"
     ]
     assert len(cys_specs) == 2
     assert {s.new_resname for s in cys_specs} == {"CYX"}
@@ -847,7 +847,7 @@ def _test_8qfz_three_cys_distinct_buckets():
     specs = detectNonStandardResidues(mol)
     cys_specs = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname == "CYS"
+        if isinstance(s, ChainResidueSpec) and s.resname == "CYS"
     ]
     assert len(cys_specs) == 3
     new_names = {s.new_resname for s in cys_specs}
@@ -867,7 +867,7 @@ def _test_1r1j_three_asn_share_bucket():
     specs = detectNonStandardResidues(mol)
     asn_specs = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname == "ASN"
+        if isinstance(s, ChainResidueSpec) and s.resname == "ASN"
         and s.new_resname is not None
     ]
     assert len(asn_specs) == 3
@@ -921,11 +921,11 @@ def _test_template_renamed_canonical_residues_5vbl():
     # GLU 10 renamed to XX#; OE2 dropped (heavy-atom leaving group).
     glu_spec = next(
         s for s in specs
-        if s.original_resname == "GLU" and s.residue.resid == 10
+        if s.resname == "GLU" and s.residue.resid == 10
     )
     lys_spec = next(
         s for s in specs
-        if s.original_resname == "LYS" and s.residue.resid == 13
+        if s.resname == "LYS" and s.residue.resid == 13
     )
     glu_names = _residue_atom_names(mol_out, glu_spec.new_resname, 10)
     lys_names = _residue_atom_names(mol_out, lys_spec.new_resname, 13)
@@ -997,12 +997,12 @@ def _test_3rkp_asn_lys_pilin_isopeptide():
     specs = detectNonStandardResidues(mol)
     asn_specs = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname == "ASN"
+        if isinstance(s, ChainResidueSpec) and s.resname == "ASN"
         and s.new_resname is not None
     ]
     lys_specs = [
         s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.original_resname == "LYS"
+        if isinstance(s, ChainResidueSpec) and s.resname == "LYS"
         and s.new_resname is not None
     ]
     assert len(asn_specs) >= 1
@@ -1036,11 +1036,11 @@ def _test_systemprepare_5vbl_glu_lys_isopeptide_end_to_end():
 
     glu = next(
         s for s in specs
-        if s.original_resname == "GLU" and s.residue.resid == 10
+        if s.resname == "GLU" and s.residue.resid == 10
     )
     lys = next(
         s for s in specs
-        if s.original_resname == "LYS" and s.residue.resid == 13
+        if s.resname == "LYS" and s.residue.resid == 13
     )
     assert any(prepared.resname == glu.new_resname)
     assert any(prepared.resname == lys.new_resname)
@@ -1082,7 +1082,7 @@ def _test_systemprepare_8qfz_canonical_to_ncaa_end_to_end():
     cys_renames = [
         s for s in specs
         if isinstance(s, ChainResidueSpec)
-        and s.original_resname == "CYS"
+        and s.resname == "CYS"
         and s.new_resname
     ]
     assert len(cys_renames) == 3

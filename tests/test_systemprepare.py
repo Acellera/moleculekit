@@ -3,7 +3,6 @@ from moleculekit.tools.preparation import systemPrepare, _table_dtypes
 import numpy as np
 import os
 import pytest
-import sys
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -63,9 +62,12 @@ def _compare_results(refpdb, refdf_f, pmol: Molecule, df):
     refmol.filter("not water", _logger=False)
     pmol.filter("not water", _logger=False)
     coords_prec = 1e-3
-    assert mol_equal(
+    if not mol_equal(
         refmol, pmol, exceptFields=["serial"], fieldPrecision={"coords": coords_prec}
-    ), f"Failed comparison of {refpdb} vs {pmol.fileloc}"
+    ):
+        pmol_out = tempname(suffix=".pdb")
+        pmol.write(pmol_out, writebonds=False)
+        raise AssertionError(f"Failed comparison of {refpdb} vs {pmol_out}")
 
 
 @pytest.mark.parametrize("pdb", ["3PTB", "1A25", "1U5U", "1UNC", "6A5J"])
@@ -222,7 +224,6 @@ def _test_nonstandard_residues(tmp_path, system):
         return_details=True,
         hold_nonpeptidic_bonds=True,
         detect_specs=specs,
-        outdir=os.path.join(tmp_path, "residue_cifs"),
     )
     pmol.write(os.path.join(tmp_path, "prepared.pdb"))
     if system == "2QRV":
@@ -318,8 +319,7 @@ def _test_cyclic_peptides_noncanonical():
     other ``detect_specs``-based tests."""
     from moleculekit.tools.nonstandard_residues import (
         detectNonStandardResidues,
-        NCAASpec,
-        CrosslinkedNCAASpec,
+        ChainResidueSpec,
     )
 
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-cyclic-peptides")
@@ -337,9 +337,7 @@ def _test_cyclic_peptides_noncanonical():
     }
 
     specs = detectNonStandardResidues(mol)
-    ncaa_resnames = {
-        s.resname for s in specs if isinstance(s, (NCAASpec, CrosslinkedNCAASpec))
-    }
+    ncaa_resnames = {s.resname for s in specs if isinstance(s, ChainResidueSpec)}
     for resn in ncaa_resnames:
         mol.templateResidueFromSmiles(
             f"resname '{resn}'", smiles[resn], addHs=True, _logger=False
@@ -526,7 +524,6 @@ def _test_capture_and_restore_bonds():
     assert h.messages, "missing heavy atom must warn"
 
 
-
 def _test_bond_orphan_hydrogens_rename_and_added():
     """``_bond_orphan_hydrogens`` must reattach hydrogens that the by-name
     restore step couldn't resolve. Two scenarios are exercised:
@@ -588,9 +585,9 @@ def _test_bond_orphan_hydrogens_rename_and_added():
     assert frozenset((0, 4)) in bondset, "newly-added HE2 must be bonded to N"
     # Far-away H in another residue with no nearby heavy atom: must not
     # invent a bond despite a same-residue heavy O 14 A away.
-    assert not any(7 in pair for pair in bondset), (
-        "H farther than X-H cutoff from every same-residue heavy atom must not bond"
-    )
+    assert not any(
+        7 in pair for pair in bondset
+    ), "H farther than X-H cutoff from every same-residue heavy atom must not bond"
     # Heavy-heavy connectivity untouched.
     assert len(mol.bonds) == len(mol.bondtype), "bonds/bondtype length mismatch"
 
@@ -634,10 +631,20 @@ def _heavy_bond_signatures(mol, sel):
             continue
         if mol.element[a] == "H" or mol.element[b] == "H":
             continue
-        ka = (str(mol.segid[a]), str(mol.chain[a]), int(mol.resid[a]),
-              str(mol.insertion[a]), str(mol.name[a]))
-        kb = (str(mol.segid[b]), str(mol.chain[b]), int(mol.resid[b]),
-              str(mol.insertion[b]), str(mol.name[b]))
+        ka = (
+            str(mol.segid[a]),
+            str(mol.chain[a]),
+            int(mol.resid[a]),
+            str(mol.insertion[a]),
+            str(mol.name[a]),
+        )
+        kb = (
+            str(mol.segid[b]),
+            str(mol.chain[b]),
+            int(mol.resid[b]),
+            str(mol.insertion[b]),
+            str(mol.name[b]),
+        )
         sigs.add(frozenset([ka, kb]))
     return sigs
 
@@ -680,6 +687,3 @@ def _test_5vbl_templated_bonds_preserved():
         f"systemPrepare dropped {len(missing)} heavy bond(s) of templated "
         f"residues: {sorted(missing)}"
     )
-
-
-
