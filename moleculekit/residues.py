@@ -189,3 +189,85 @@ for rr in PROTEIN_RESIDUES + NUCLEIC_RESIDUES:
 SINGLE_LETTER_MODIFIED_RESIDUE_NAME_TABLE = {
     rr.resname: rr.single_letter for rr in MODIFIED_PROTEIN_RESIDUES
 }
+
+
+# SMILES for each residue (canonical + force-field variants).
+# Canonical 20 + SEC/PYL + modified-protein + RNA/DNA bases are OpenEye
+# SMILES_CANONICAL from the RCSB chemical component dictionary.
+# Variants are hand-derived from the parent residue:
+#   - Protein protonation variants: AMBER/CHARMM naming.
+#   - Nucleic 5'/3' terminals: AMBER convention (5'-terminal = no 5'-phosphate;
+#     3'-terminal = same as canonical, which already exposes a free 3'-OH).
+RESIDUE_SMILES = {
+    "ALA": "C[C@@H](C(=O)O)N",
+    "ARG": "C(C[C@@H](C(=O)O)N)CNC(=[NH2+])N",
+    "AR0": "C(C[C@@H](C(=O)O)N)CN=C(N)N",
+    "ASN": "C([C@@H](C(=O)O)N)C(=O)N",
+    "ASP": "C([C@@H](C(=O)O)N)C(=O)[O-]",
+    "ASH": "C([C@@H](C(=O)O)N)C(=O)O",
+    "CYS": "C([C@@H](C(=O)O)N)S",
+    "CYM": "C([C@@H](C(=O)O)N)[S-]",
+    "CYX": "C([C@@H](C(=O)O)N)[S-]",
+    "GLN": "C(CC(=O)N)[C@@H](C(=O)O)N",
+    "GLU": "C(CC(=O)[O-])[C@@H](C(=O)O)N",
+    "GLH": "C(CC(=O)O)[C@@H](C(=O)O)N",
+    "GLY": "C(C(=O)O)N",
+    "HIS": "c1c(nc[nH]1)C[C@@H](C(=O)O)N",
+    "HID": "c1c([nH]cn1)C[C@@H](C(=O)O)N",
+    "HIE": "c1c(nc[nH]1)C[C@@H](C(=O)O)N",
+    "HIP": "c1c([nH+]c[nH]1)C[C@@H](C(=O)O)N",
+    "HSD": "c1c([nH]cn1)C[C@@H](C(=O)O)N",
+    "HSE": "c1c(nc[nH]1)C[C@@H](C(=O)O)N",
+    "HSP": "c1c([nH+]c[nH]1)C[C@@H](C(=O)O)N",
+    "ILE": "CC[C@H](C)[C@@H](C(=O)O)N",
+    "LEU": "CC(C)C[C@@H](C(=O)O)N",
+    "LYS": "C(CC[NH3+])C[C@@H](C(=O)O)N",
+    "LSN": "C(CCN)C[C@@H](C(=O)O)N",
+    "LYN": "C(CCN)C[C@@H](C(=O)O)N",
+    "MET": "CSCC[C@@H](C(=O)O)N",
+    "PHE": "c1ccc(cc1)C[C@@H](C(=O)O)N",
+    "PRO": "C1C[C@H](NC1)C(=O)O",
+    "SER": "C([C@@H](C(=O)O)N)O",
+    "THR": "C[C@H]([C@@H](C(=O)O)N)O",
+    "TRP": "c1ccc2c(c1)c(c[nH]2)C[C@@H](C(=O)O)N",
+    "TYR": "c1cc(ccc1C[C@@H](C(=O)O)N)O",
+    "VAL": "CC(C)[C@@H](C(=O)O)N",
+    "SEC": "C([C@@H](C(=O)O)N)[SeH]",
+    "PYL": "C[C@@H]1CC=N[C@H]1C(=O)NCCCC[C@@H](C(=O)O)N",
+    "MSE": "C[Se]CC[C@@H](C(=O)O)N",
+    "MLZ": "CNCCCC[C@@H](C(=O)O)N",
+    "MLY": "CN(C)CCCC[C@@H](C(=O)O)N",
+    "M3L": "C[N+](C)(C)CCCC[C@@H](C(=O)O)N",
+    "SEP": "C([C@@H](C(=O)O)N)OP(=O)(O)O",
+    "TPO": "C[C@H]([C@@H](C(=O)O)N)OP(=O)(O)O",
+    "PTR": "c1cc(ccc1C[C@@H](C(=O)O)N)OP(=O)(O)O",
+    # RNA bases (canonical = 5'-phosphate + free 3'-OH)
+    "G": "c1nc2c(n1[C@H]3[C@@H]([C@@H]([C@H](O3)COP(=O)(O)O)O)O)N=C(NC2=O)N",
+    "G5": "c1nc2c(n1[C@H]3[C@@H]([C@@H]([C@H](O3)CO)O)O)N=C(NC2=O)N",
+    "G3": "c1nc2c(n1[C@H]3[C@@H]([C@@H]([C@H](O3)COP(=O)(O)O)O)O)N=C(NC2=O)N",
+    "C": "C1=CN(C(=O)N=C1N)[C@H]2[C@@H]([C@@H]([C@H](O2)COP(=O)(O)O)O)O",
+    "C5": "C1=CN(C(=O)N=C1N)[C@H]2[C@@H]([C@@H]([C@H](O2)CO)O)O",
+    "C3": "C1=CN(C(=O)N=C1N)[C@H]2[C@@H]([C@@H]([C@H](O2)COP(=O)(O)O)O)O",
+    "U": "C1=CN(C(=O)NC1=O)[C@H]2[C@@H]([C@@H]([C@H](O2)COP(=O)(O)O)O)O",
+    "U5": "C1=CN(C(=O)NC1=O)[C@H]2[C@@H]([C@@H]([C@H](O2)CO)O)O",
+    "U3": "C1=CN(C(=O)NC1=O)[C@H]2[C@@H]([C@@H]([C@H](O2)COP(=O)(O)O)O)O",
+    "A": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)COP(=O)(O)O)O)O)N",
+    "A5": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CO)O)O)N",
+    "A3": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)COP(=O)(O)O)O)O)N",
+    # DNA bases (RCSB canonical; "T" reuses the DT skeleton since RCSB has no T chemcomp)
+    "T": "CC1=CN(C(=O)NC1=O)[C@H]2C[C@@H]([C@H](O2)COP(=O)(O)O)O",
+    "T5": "CC1=CN(C(=O)NC1=O)[C@H]2C[C@@H]([C@H](O2)CO)O",
+    "T3": "CC1=CN(C(=O)NC1=O)[C@H]2C[C@@H]([C@H](O2)COP(=O)(O)O)O",
+    "DG": "c1nc2c(n1[C@H]3C[C@@H]([C@H](O3)COP(=O)(O)O)O)N=C(NC2=O)N",
+    "DG5": "c1nc2c(n1[C@H]3C[C@@H]([C@H](O3)CO)O)N=C(NC2=O)N",
+    "DG3": "c1nc2c(n1[C@H]3C[C@@H]([C@H](O3)COP(=O)(O)O)O)N=C(NC2=O)N",
+    "DC": "C1[C@@H]([C@H](O[C@H]1N2C=CC(=NC2=O)N)COP(=O)(O)O)O",
+    "DC5": "C1[C@@H]([C@H](O[C@H]1N2C=CC(=NC2=O)N)CO)O",
+    "DC3": "C1[C@@H]([C@H](O[C@H]1N2C=CC(=NC2=O)N)COP(=O)(O)O)O",
+    "DA": "c1nc(c2c(n1)n(cn2)[C@H]3C[C@@H]([C@H](O3)COP(=O)(O)O)O)N",
+    "DA5": "c1nc(c2c(n1)n(cn2)[C@H]3C[C@@H]([C@H](O3)CO)O)N",
+    "DA3": "c1nc(c2c(n1)n(cn2)[C@H]3C[C@@H]([C@H](O3)COP(=O)(O)O)O)N",
+    "DT": "CC1=CN(C(=O)NC1=O)[C@H]2C[C@@H]([C@H](O2)COP(=O)(O)O)O",
+    "DT5": "CC1=CN(C(=O)NC1=O)[C@H]2C[C@@H]([C@H](O2)CO)O",
+    "DT3": "CC1=CN(C(=O)NC1=O)[C@H]2C[C@@H]([C@H](O2)COP(=O)(O)O)O",
+}
