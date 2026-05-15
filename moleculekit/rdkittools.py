@@ -409,6 +409,56 @@ def template_residue_from_smiles(
             else:
                 cross_bonds.append((b - sel_start, a, bt))
 
+    # PDB inputs often arrive without explicit peptide / phosphodiester bonds
+    # (CONECT records cover only HET groups). Without them, the boundary
+    # atoms look free-standing and AddHs over-protonates them. Mirror the
+    # proximity check used by ``_has_peptide_neighbour`` in
+    # nonstandard_residues so a caller doesn't have to run ``mol.guessBonds``
+    # first.
+    sel_names = mol.name[selidx]
+    sel_elems = mol.element[selidx]
+
+    def _add_cross_by_proximity(local_idx, other_mask_full, threshold):
+        if local_idx in {li for li, _, _ in cross_bonds}:
+            return
+        own_pos = mol.coords[selidx[local_idx], :, mol.frame]
+        other_mask = other_mask_full.copy()
+        other_mask[selidx] = False
+        candidates = np.where(other_mask)[0]
+        if not len(candidates):
+            return
+        d = np.linalg.norm(
+            mol.coords[candidates, :, mol.frame] - own_pos, axis=1
+        )
+        within = d < threshold
+        if not within.any():
+            return
+        partner = int(candidates[np.argmin(np.where(within, d, np.inf))])
+        cross_bonds.append((local_idx, partner, "1"))
+
+    # Peptide N-C bonds (~1.33 A, threshold 1.6 A)
+    if {"N", "CA", "C"}.issubset(sel_names):
+        for own_side, other_name in (("N", "C"), ("C", "N")):
+            hits = np.where(sel_names == own_side)[0]
+            if len(hits):
+                _add_cross_by_proximity(
+                    int(hits[0]), mol.name == other_name, threshold=1.6
+                )
+
+    # Nucleic acid phosphodiester P-O3' bonds (~1.6 A, threshold 1.8 A).
+    # Two directions: (1) own P to external O3' of previous residue,
+    # (2) own O3' to external P of next residue. The O3' check also runs for
+    # 5'-terminal residues that lack their own P but still bond to next.
+    if "P" in sel_elems:
+        for own_p_idx in np.where(sel_elems == "P")[0]:
+            _add_cross_by_proximity(
+                int(own_p_idx), mol.element == "O", threshold=1.8
+            )
+    for own_o3_idx in np.where(sel_names == "O3'")[0]:
+        _add_cross_by_proximity(
+            int(own_o3_idx), mol.element == "P", threshold=1.8
+        )
+
     residue = mol.copy(sel=selidx)
     if guessBonds:
         residue.guessBonds()
