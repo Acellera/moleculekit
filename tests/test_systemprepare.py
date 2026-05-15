@@ -74,7 +74,7 @@ def _compare_results(refpdb, refdf_f, pmol: Molecule, df):
 def _test_systemPrepare(pdb):
     test_home = os.path.join(curr_dir, "test_systemprepare", pdb)
     mol = Molecule(os.path.join(test_home, f"{pdb}.pdb"))
-    pmol, df = systemPrepare(mol, return_details=True)
+    pmol, _, df = systemPrepare(mol, return_details=True)
     _compare_results(
         os.path.join(test_home, f"{pdb}_prepared.pdb"),
         os.path.join(test_home, f"{pdb}_prepared.csv"),
@@ -86,7 +86,7 @@ def _test_systemPrepare(pdb):
 def _test_systemprepare_ligand():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-prepare-with-ligand")
     mol = Molecule(os.path.join(test_home, "5EK0_A.pdb"))
-    pmol, df = systemPrepare(mol, return_details=True)
+    pmol, _, df = systemPrepare(mol, return_details=True)
     _compare_results(
         os.path.join(test_home, "5EK0_A_prepared.pdb"),
         os.path.join(test_home, "5EK0_A_prepared.csv"),
@@ -95,7 +95,7 @@ def _test_systemprepare_ligand():
     )
     # Now remove the ligands and check again what the pka is
     mol.filter('not resname PX4 "5P2"')
-    pmol, df = systemPrepare(mol, return_details=True)
+    pmol, _, df = systemPrepare(mol, return_details=True)
     _compare_results(
         os.path.join(test_home, "5EK0_A_prepared_nolig.pdb"),
         os.path.join(test_home, "5EK0_A_prepared_nolig.csv"),
@@ -105,18 +105,18 @@ def _test_systemprepare_ligand():
 
 
 def _test_reprotonate():
-    pmol, df = systemPrepare(Molecule("3PTB"), return_details=True)
+    pmol, _, df = systemPrepare(Molecule("3PTB"), return_details=True)
     assert df.protonation[df.resid == 40].iloc[0] == "HIE"
     assert df.protonation[df.resid == 57].iloc[0] == "HIP"
     assert df.protonation[df.resid == 91].iloc[0] == "HID"
 
     pmol.mutateResidue("protein and resid 40", "HID")
-    _, df2 = systemPrepare(pmol, titration=False, return_details=True)
+    _, _, df2 = systemPrepare(pmol, titration=False, return_details=True)
     assert df2.protonation[df2.resid == 40].iloc[0] == "HID"
     assert df2.protonation[df2.resid == 57].iloc[0] == "HIP"
     assert df2.protonation[df2.resid == 91].iloc[0] == "HID"
 
-    pmol, df = systemPrepare(
+    pmol, _, df = systemPrepare(
         Molecule("3PTB"),
         force_protonation=(
             ("protein and resid 40", "HID"),
@@ -133,7 +133,7 @@ def _test_auto_freezing():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-auto-freezing")
     mol = Molecule(os.path.join(test_home, "2B5I.pdb"))
 
-    pmol, df = systemPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
+    pmol, _, df = systemPrepare(mol, return_details=True, hold_nonpeptidic_bonds=True)
     _compare_results(
         os.path.join(test_home, "2B5I_prepared.pdb"),
         os.path.join(test_home, "2B5I_prepared.csv"),
@@ -146,7 +146,7 @@ def _test_auto_freezing_and_force():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-auto-freezing")
     mol = Molecule(os.path.join(test_home, "5DPX_A.pdb"))
 
-    pmol, df = systemPrepare(
+    pmol, _, df = systemPrepare(
         mol,
         return_details=True,
         hold_nonpeptidic_bonds=True,
@@ -219,7 +219,7 @@ def _test_nonstandard_residues(tmp_path, system):
                 f"resname '{resn}'", res_smiles[resn], addHs=True, _logger=False
             )
 
-    pmol, df = systemPrepare(
+    pmol, _, df = systemPrepare(
         mol,
         return_details=True,
         hold_nonpeptidic_bonds=True,
@@ -256,7 +256,7 @@ def _test_nonstandard_residue_hard_ignore_ns():
     )
     mol = Molecule(os.path.join(test_home, "5VBL", "5VBL.pdb"))
 
-    pmol, df = systemPrepare(
+    pmol, _, df = systemPrepare(
         mol,
         return_details=True,
         hold_nonpeptidic_bonds=True,
@@ -274,7 +274,7 @@ def _test_rna_protein_complex():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-rna-protein-complex")
     mol = Molecule(os.path.join(test_home, "3WBM.pdb"))
 
-    pmol, df = systemPrepare(mol, return_details=True)
+    pmol, _, df = systemPrepare(mol, return_details=True)
 
     _compare_results(
         os.path.join(test_home, "3WBM_prepared.pdb"),
@@ -288,7 +288,7 @@ def _test_dna():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-dna")
     mol = Molecule(os.path.join(test_home, "1BNA.pdb"))
 
-    pmol, df = systemPrepare(mol, return_details=True)
+    pmol, _, df = systemPrepare(mol, return_details=True)
 
     _compare_results(
         os.path.join(test_home, "1BNA_prepared.pdb"),
@@ -302,7 +302,7 @@ def _test_cyclic_peptides():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-cyclic-peptides")
     mol = Molecule(os.path.join(test_home, "5VAV.pdb"))
 
-    pmol, df = systemPrepare(mol, return_details=True)
+    pmol, _, df = systemPrepare(mol, return_details=True)
 
     _compare_results(
         os.path.join(test_home, "5VAV_prepared.pdb"),
@@ -343,7 +343,7 @@ def _test_cyclic_peptides_noncanonical():
             f"resname '{resn}'", smiles[resn], addHs=True, _logger=False
         )
 
-    pmol, df = systemPrepare(mol, return_details=True, detect_specs=specs)
+    pmol, _, df = systemPrepare(mol, return_details=True, detect_specs=specs)
 
     _compare_results(
         os.path.join(test_home, "4TOT_E_prepared.pdb"),
@@ -359,7 +359,7 @@ def _test_nucleiclike_ligand():
     test_home = os.path.join(curr_dir, "test_systemprepare", "3U5S")
     mol = Molecule(os.path.join(test_home, "3U5S.pdb"))
 
-    pmol, df = systemPrepare(mol, return_details=True, ignore_ns=True)
+    pmol, _, df = systemPrepare(mol, return_details=True, ignore_ns=True)
 
     _compare_results(
         os.path.join(test_home, "3U5S_prepared.pdb"),
@@ -374,13 +374,13 @@ def _test_disabling_titration():
     mol = Molecule(os.path.join(test_home, "1AID.pdb"))
     mol.remove("water")
 
-    pmol_ref, df_ref = systemPrepare(mol, return_details=True)
+    pmol_ref, _, df_ref = systemPrepare(mol, return_details=True)
 
     assert df_ref.protonation[df_ref.resid == 25].iloc[0] == "ASH"
     assert df_ref.protonation[df_ref.resid == 69].iloc[0] == "HID"
     assert df_ref.protonation[df_ref.resid == 69].iloc[1] == "HID"
 
-    pmol, df = systemPrepare(mol, return_details=True, titrate="HIS")
+    pmol, _, df = systemPrepare(mol, return_details=True, titrate="HIS")
 
     assert df.protonation[df.resid == 25].iloc[0] == "ASP"
     assert df.protonation[df.resid == 69].iloc[0] == "HID"
@@ -679,7 +679,7 @@ def _test_5vbl_templated_bonds_preserved():
     expected = _heavy_bond_signatures(mol, sel)
     assert expected, "templated NCAAs must have heavy bonds in input"
 
-    pmol = systemPrepare(mol, ignore_ns=True, verbose=False)
+    pmol, _ = systemPrepare(mol, ignore_ns=True, verbose=False)
     got = _heavy_bond_signatures(pmol, sel)
 
     missing = expected - got

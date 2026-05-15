@@ -32,7 +32,7 @@ def _test_protonated_protein():
     prot = Molecule("3ptb")
     prot.filter("protein")
     prot_protonated = prot.copy()
-    prot_protonated = systemPrepare(prot_protonated)
+    prot_protonated, _ = systemPrepare(prot_protonated)
 
     assert not isProteinProtonated(prot)
     assert isProteinProtonated(prot_protonated)

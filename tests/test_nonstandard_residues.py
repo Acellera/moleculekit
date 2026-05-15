@@ -1032,7 +1032,7 @@ def _test_systemprepare_5vbl_glu_lys_isopeptide_end_to_end():
 
     mol = Molecule(VBL_PDB)
     specs = detectNonStandardResidues(mol)
-    prepared = systemPrepare(mol, detect_specs=specs, verbose=False)
+    prepared, _ = systemPrepare(mol, detect_specs=specs, verbose=False)
 
     glu = next(
         s for s in specs
@@ -1078,7 +1078,7 @@ def _test_systemprepare_8qfz_canonical_to_ncaa_end_to_end():
 
     mol = Molecule(QFZ_B_CIF)
     specs = detectNonStandardResidues(mol)
-    prepared = systemPrepare(mol, detect_specs=specs, verbose=False)
+    prepared, _ = systemPrepare(mol, detect_specs=specs, verbose=False)
     cys_renames = [
         s for s in specs
         if isinstance(s, ChainResidueSpec)

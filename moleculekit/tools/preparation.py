@@ -999,28 +999,32 @@ def systemPrepare(
     detect_specs : list
         Per-residue specs from
         :func:`moleculekit.tools.nonstandard_residues.detectNonStandardResidues`.
-        For chain-resident non-canonical amino acids
-        (:class:`NCAASpec` / :class:`CrosslinkedNCAASpec`) the caller is
-        expected to have already templated each residue via
-        ``mol.templateResidueFromSmiles`` before calling ``systemPrepare``;
-        the spec tells the parameterizer which residue instance to extract
-        for force-field generation. :class:`CanonicalRenamedSpec` entries
-        are applied as resname renames + sidechain-H drops on the prepared
-        molecule (e.g. CYS -> CY1 with HG removed for a cysteine bonded to
-        a non-canonical scaffold).
+        When left as ``None`` (the default), ``systemPrepare`` runs
+        :func:`detectNonStandardResidues` itself so the canonical-anchor
+        rename + SMILES re-template path fires for non-peptide bonds the
+        caller may not have known about (e.g. a TYR coordinating a heme
+        Fe, a CYS-Cys disulfide). Pass an explicit list to bypass the
+        auto-detection (or pass ``ignore_ns=True`` to skip the path
+        entirely). The detect_specs list is always returned so it can be
+        forwarded to the downstream parameterizer / builder.
 
     Returns
     -------
     mol_out : moleculekit.molecule.Molecule
-        the molecule titrated and optimized. The molecule object contains an additional attribute,
+        the molecule titrated and optimized.
+    detect_specs : list
+        The non-standard-residue specs that were applied (the caller's
+        ``detect_specs`` argument if supplied, otherwise the result of
+        :func:`detectNonStandardResidues`). ``None`` when ``ignore_ns``
+        is True.
     details : pandas.DataFrame
-        A table of residues with the corresponding protonation states, pKas, and other information
-
+        A table of residues with the corresponding protonation states, pKas, and other information.
+        Returned only when ``return_details`` is True.
 
     Examples
     --------
     >>> tryp = Molecule('3PTB')
-    >>> tryp_op, df = systemPrepare(tryp, return_details=True)
+    >>> tryp_op, specs, df = systemPrepare(tryp, return_details=True)
     >>> tryp_op.write('/tmp/3PTB_prepared.pdb')
     >>> df.to_excel("/tmp/tryp-report.csv")
     >>> df                                                        # doctest: +NORMALIZE_WHITESPACE
@@ -1039,20 +1043,26 @@ def systemPrepare(
 
     [287 rows x 8 columns]
 
-    >>> tryp_op = systemPrepare(tryp, pH=1.0)
+    >>> tryp_op, specs = systemPrepare(tryp, pH=1.0)
     >>> tryp_op.write('/tmp/3PTB_pH1.pdb')
 
     The following will force the preparation to freeze residues 36 and 49 in place
-    >>> tryp_op = systemPrepare(tryp, no_opt=["protein and resid 36", "chain A and resid 49"])
+    >>> tryp_op, specs = systemPrepare(tryp, no_opt=["protein and resid 36", "chain A and resid 49"])
 
     The following will disable protonation on residue 32 of the protein
-    >>> tryp_op = systemPrepare(tryp, no_prot=["protein and resid 32",])
+    >>> tryp_op, specs = systemPrepare(tryp, no_prot=["protein and resid 32",])
 
     The following will disable titration and protonation on residue 32
-    >>> tryp_op = systemPrepare(tryp, no_titr=["protein and resid 32",], no_prot=["protein and resid 32",])
+    >>> tryp_op, specs = systemPrepare(tryp, no_titr=["protein and resid 32",], no_prot=["protein and resid 32",])
 
     The following will force residue 40 protonation to HIE and 57 to HIP
-    >>> tryp_op = systemPrepare(tryp, force_protonation=[("protein and resid 40", "HIE"), ("protein and resid 57", "HIP")])
+    >>> tryp_op, specs = systemPrepare(tryp, force_protonation=[("protein and resid 40", "HIE"), ("protein and resid 57", "HIP")])
+
+    The returned ``specs`` can be passed to htmd's parameterization /
+    builder for non-canonical residues (NCAAs, sidechain crosslinks,
+    metal-coordinating residues), e.g.
+    >>> # from htmd.builder.nonstandard import parameterizeFromSpecs
+    >>> # parameterizeFromSpecs(specs, tryp_op, outdir="./params")
     """
     try:
         from pdb2pqr.config import VERSION
@@ -1065,6 +1075,17 @@ def systemPrepare(
 
     # We don't want to modify the original molecule in place so we create a new molecule
     mol_in = mol_in.copy(frames=[0])
+
+    # Auto-detect non-standard residue specs when the caller didn't supply
+    # them, so the canonical-anchor renames + SMILES re-template path fires
+    # for cases the caller didn't know about (TYR-O coordinating a heme Fe,
+    # CYS-S thiolate to a metal centre, ...). Pass-through when the caller
+    # supplied detect_specs; skip entirely when ignore_ns is set.
+    if detect_specs is None and not ignore_ns:
+        from moleculekit.tools.nonstandard_residues import (
+            detectNonStandardResidues,
+        )
+        detect_specs = detectNonStandardResidues(mol_in)
 
     # Rename + re-template canonical AAs with sidechain crosslinks
     # BEFORE PDB2PQR sees them. Renamed residues either land on a
@@ -1226,8 +1247,8 @@ def systemPrepare(
     logger.setLevel(old_level)
 
     if return_details:
-        return mol_out, df
-    return mol_out
+        return mol_out, detect_specs, df
+    return mol_out, detect_specs
 
 
 def _biomolecule_to_molecule(biomolecule):

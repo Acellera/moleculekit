@@ -160,7 +160,7 @@ def prepareProteinForAtomtyping(
             protmol = autoSegment2(
                 protmol, fields=("segid", "chain"), basename="K", _logger=verbose
             )  # We need segments to prepare the protein
-        protmol = systemPrepare(
+        protmol, _ = systemPrepare(
             protmol,
             pH=pH,
             verbose=verbose,
