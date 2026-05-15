@@ -7,11 +7,13 @@ moleculekit's canonical amino-acid / nucleic / water / ion sets.
 mutating it) and returns one spec per non-standard residue, plus one
 per canonical residue covalently bonded to a non-canonical one:
 
-  - :class:`NCAASpec` - chain-resident NCAA with no sidechain crosslink
-    (e.g. selenomethionine, norleucine, a D-amino acid).
-  - :class:`CrosslinkedNCAASpec` - chain-resident NCAA whose sidechain
-    *is* covalently bonded to one or more other residues (a stapled-
-    peptide residue, a glycosylated NCAA).
+  - :class:`ChainResidueSpec` - one spec per chain-resident residue that
+    needs special handling during AMBER parameterization: a non-canonical
+    amino acid embedded in a polypeptide chain (selenomethionine,
+    norleucine, a stapled NCAA, etc.) OR a canonical amino acid whose
+    sidechain is covalently bonded to something other than its peptide
+    neighbours (a Cys forming a thioether or disulfide, an Asn
+    N-glycosylated by a sugar, a Glu CD - Lys NZ isopeptide).
   - :class:`ScaffoldSpec` - free non-canonical residue with two or more
     non-peptide bonds to other residues (the central scaffold of a
     bicyclic peptide, a multi-anchor covalent inhibitor).
@@ -20,12 +22,6 @@ per canonical residue covalently bonded to a non-canonical one:
     inhibitor, NAG-Asn glycan stem, single-Cys heme).
   - :class:`LigandSpec` - free non-canonical residue with no covalent
     bonds (small-molecule binding-pocket ligand, fatty acid).
-  - :class:`CanonicalRenamedSpec` - one per canonical amino-acid residue
-    that detect identified as bonded to a non-canonical residue. The
-    spec proposes a custom 3-char resname (e.g. ``CY1`` for the
-    CYS-SG-bonded-to-LFI bucket) and lists the displaced sidechain
-    hydrogen names (``["HG"]`` for a CYS-SG anchor, ``["HD22"]`` for an
-    ASN-ND2 anchor).
 
 Pass the spec list to :func:`moleculekit.tools.preparation.systemPrepare`
 via ``detect_specs=specs`` to apply the proposed renames + H-drops on
@@ -67,38 +63,64 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class NCAASpec:
-    """A non-canonical amino acid embedded in a polypeptide chain via
-    standard peptide (N-C) bonds to canonical amino acids, with no other
-    inter-residue covalent bonds. Examples: selenomethionine (MSE),
-    norleucine (NLE), D-amino acids, backbone-modified residues. The
-    parameterizer treats it as a free residue with ACE/NME caps.
+class ChainResidueSpec:
+    """One spec per chain-resident residue that needs special handling
+    during AMBER parameterization: a non-canonical amino acid embedded
+    in a polypeptide chain (selenomethionine, norleucine, a stapled
+    NCAA, etc.) OR a canonical amino acid whose sidechain is covalently
+    bonded to something other than its peptide neighbours (a Cys
+    forming a thioether or disulfide, an Asn N-glycosylated by a sugar,
+    a Glu CD - Lys NZ isopeptide).
 
-    If ``new_resname`` is set, the build pipeline uses it instead of
-    ``resname``."""
+    Fields:
 
-    resname: str
+    - ``original_resname``: the residue's resname in the input
+      ``Molecule`` (``"GLU"``, ``"NLE"``, ``"CYS"``, ...).
+    - ``residue``: :class:`UniqueResidueID` for the residue (segid /
+      chain / resid / insertion).
+    - ``new_resname``: the resname to rename to before downstream
+      parameterization. Set whenever a rename is needed:
+        * Canonical AA at a junction: ``"CYX"`` for both ends of a
+          CYS-SG↔CYS-SG disulfide; an auto-generated 3-char ``X##``
+          name otherwise, shared across residues sharing the bucket
+          ``(original_resname, anchor_atom, partner_resname, n_term,
+          c_term)`` so antechamber runs once per unique chemistry.
+        * NCAA appearing with multiple terminus configurations: the
+          existing :func:`_disambiguate_terminus_resnames` prefixes
+          ``"N"``/``"C"``/``"B"`` so each terminus form gets its own
+          prepi (otherwise tLeap's second ``loadAmberPrep`` would
+          clobber the first).
+        * ``None`` when no rename is needed (plain mid-chain NCAA,
+          single-terminus-config NCAA, etc.).
+    - ``has_nonpeptide_bond``: whether the residue carries at least one
+      non-peptide inter-residue bond. Captures what the old
+      ``CrosslinkedNCAASpec``/``NCAASpec`` type distinction encoded.
+    - ``anchor_atom``: the name of the residue's sidechain atom that
+      participates in the non-peptide bond (``"SG"`` for a Cys-thioether,
+      ``"CD"`` for a Glu CD-LYS NZ isopeptide, ``"NZ"`` for the Lys end
+      of the same isopeptide, ``"CE"`` for an NLE staple, ...). ``None``
+      when ``has_nonpeptide_bond`` is False. For residues with multiple
+      non-peptide partners the detector picks the deterministically-
+      first partner (sorted by partner residue index, then anchor atom
+      name) - the same one used as the bucket key.
+    - ``is_n_term`` / ``is_c_term``: chain termini flags.
+    """
+
+    original_resname: str
     residue: UniqueResidueID
-    is_n_term: bool
-    is_c_term: bool
     new_resname: str | None = None
+    anchor_atom: str | None = None
+    is_n_term: bool = False
+    is_c_term: bool = False
+    has_nonpeptide_bond: bool = False
 
 
-@dataclass
-class CrosslinkedNCAASpec:
-    """A non-canonical amino acid embedded in a polypeptide chain (peptide-
-    bonded into the backbone) that *also* has one or more non-peptide
-    sidechain bonds to other residues - a stapled-peptide residue, an NCAA
-    whose sidechain is glycosylated, etc. The parameterizer combines this
-    residue with its crosslink partners in a single antechamber compute.
-
-    See :attr:`NCAASpec.new_resname` for the meaning of ``new_resname``."""
-
-    resname: str
-    residue: UniqueResidueID
-    is_n_term: bool
-    is_c_term: bool
-    new_resname: str | None = None
+# --- Temporary back-compat aliases (removed in Task 5) ----------------
+# preparation.py imports these names; Tasks 5 + 6 migrate it to
+# ChainResidueSpec, at which point this block goes away.
+NCAASpec = ChainResidueSpec
+CrosslinkedNCAASpec = ChainResidueSpec
+CanonicalRenamedSpec = ChainResidueSpec
 
 
 @dataclass
@@ -134,35 +156,12 @@ class LigandSpec:
     residue: UniqueResidueID
 
 
-@dataclass
-class CanonicalRenamedSpec:
-    """A canonical amino-acid residue that the detector identified as
-    covalently bonded to a non-canonical residue. ``residue.resname``
-    is the original canonical resname (``"CYS"``, ``"ASN"``, ...) and
-    ``new_resname`` carries the proposed custom 3-char resname that
-    parameterization will use. ``drop_h`` lists the displaced sidechain
-    hydrogen atom names to remove when the rename is applied
-    (e.g. ``["HG"]`` for a CYS-SG anchor, ``["HD22"]`` for an ASN-ND2
-    anchor); empty when no displacement is expected.
-
-    ``is_n_term`` / ``is_c_term`` flag whether this residue sits at a
-    chain terminus; terminal forms need different parameters than
-    mid-chain ones, so they end up in their own bucket."""
-
-    residue: UniqueResidueID
-    new_resname: str
-    drop_h: list[str]
-    is_n_term: bool = False
-    is_c_term: bool = False
-
 
 PerResidueSpec = Union[
-    NCAASpec,
-    CrosslinkedNCAASpec,
+    ChainResidueSpec,
     ScaffoldSpec,
     CovalentLigandSpec,
     LigandSpec,
-    CanonicalRenamedSpec,
 ]
 
 
@@ -198,9 +197,9 @@ _CANONICAL_RESNAMES = _canonical_resnames()
 # special inter-residue bonds (via ``_struct_conn`` or ``CONECT``) and omit
 # canonical peptide bonds, so we can't rely on explicit N-C bonds alone to
 # flag chain residency for canonical amino acids.
-_PROTEIN_RESNAMES = set(PROTEIN_RESIDUE_NAMES)
+PROTEIN_RESNAMES = set(PROTEIN_RESIDUE_NAMES)
 for _rr in PROTEIN_RESIDUES:
-    _PROTEIN_RESNAMES.update(_rr.resname_variants)
+    PROTEIN_RESNAMES.update(_rr.resname_variants)
 
 
 def _residue_groups(mol):
@@ -293,7 +292,7 @@ def _pick_bucket_resname(variant_or_resname, prefix_counter):
 
 
 def _disambiguate_terminus_resnames(specs):
-    """Mutate ``NCAASpec`` / ``CrosslinkedNCAASpec`` entries in-place,
+    """Mutate :class:`ChainResidueSpec` entries for NCAAs in-place,
     setting ``new_resname`` when more than one ``(is_n_term, is_c_term)``
     combination is present for the same input resname. The prepi unit
     name is the residue resname, so two specs sharing a resname but
@@ -307,9 +306,14 @@ def _disambiguate_terminus_resnames(specs):
     4-character AMBER prepi unit-name limit."""
     by_resname = {}
     for spec in specs:
-        if not isinstance(spec, (NCAASpec, CrosslinkedNCAASpec)):
+        if not isinstance(spec, ChainResidueSpec):
             continue
-        by_resname.setdefault(spec.residue.resname, []).append(spec)
+        # Disambiguation only applies to NCAA-style entries (those whose
+        # original_resname is NOT a canonical AA - canonical anchors are
+        # already bucketed by terminus via the (n_term, c_term) bucket key).
+        if spec.original_resname in PROTEIN_RESNAMES:
+            continue
+        by_resname.setdefault(spec.original_resname, []).append(spec)
 
     for resname, group in by_resname.items():
         configs = {(s.is_n_term, s.is_c_term) for s in group}
@@ -344,12 +348,12 @@ def detectNonStandardResidues(mol):
 
     For each canonical amino-acid residue whose sidechain is covalently
     bonded to a non-canonical residue, emits a
-    :class:`CanonicalRenamedSpec` that proposes a custom 3-char resname
-    (e.g. ``CY1`` for the CYS-SG-bonded-to-LFI bucket, ``NL1`` for
-    ASN-ND2-bonded-to-NAG, ...) plus the displaced sidechain hydrogen
-    names looked up via
+    :class:`ChainResidueSpec` with ``has_nonpeptide_bond=True`` that
+    proposes a custom 3-char resname (e.g. ``CY1`` for the
+    CYS-SG-bonded-to-LFI bucket, ``NL1`` for ASN-ND2-bonded-to-NAG,
+    ...) looked up via
     :func:`moleculekit.tools._anchor_variants.lookup_anchor_variant`.
-    The proposed rename and the H-drop are applied later by
+    The proposed rename is applied later by
     :func:`moleculekit.tools.preparation.systemPrepare` (passed via
     ``detect_specs=specs``).
 
@@ -383,10 +387,9 @@ def detectNonStandardResidues(mol):
     Returns
     -------
     list[PerResidueSpec]
-        A flat list mixing :class:`NCAASpec`,
-        :class:`CrosslinkedNCAASpec`, :class:`ScaffoldSpec`,
-        :class:`CovalentLigandSpec`, :class:`LigandSpec`, and
-        :class:`CanonicalRenamedSpec` entries.
+        A flat list mixing :class:`ChainResidueSpec`,
+        :class:`ScaffoldSpec`, :class:`CovalentLigandSpec`, and
+        :class:`LigandSpec` entries.
     """
     bonds = _ensure_bonds(mol)
     a2r, residues, atom_idxs = _residue_groups(mol)
@@ -396,7 +399,7 @@ def detectNonStandardResidues(mol):
     # we track its non-peptide partners (with the atom name on this side);
     # for every residue we track whether it has a peptide bond on its N
     # side and / or its C side, which feeds the chain-residency check and
-    # the is_n_term / is_c_term flags on (Crosslinked)NCAASpec.
+    # the is_n_term / is_c_term flags on ChainResidueSpec.
     nonpep_partners = [set() for _ in range(n_res)]  # res -> {(other_res, this_atom_name)}
     has_peptide_bond = [False] * n_res
     peptide_attached_n = [False] * n_res
@@ -452,7 +455,7 @@ def detectNonStandardResidues(mol):
             has_peptide_bond[r_idx] = True
 
     chain_resident = [
-        residues[r].resname in _PROTEIN_RESNAMES or has_peptide_bond[r]
+        residues[r].resname in PROTEIN_RESNAMES or has_peptide_bond[r]
         for r in range(n_res)
     ]
 
@@ -460,7 +463,7 @@ def detectNonStandardResidues(mol):
     # anchor_atom_name, partner_resname, n_term, c_term); residues
     # sharing a bucket get the same 3-char custom resname so the
     # parameterizer emits one shared prepi.
-    canonical_renames = {}  # residue_idx -> CanonicalRenamedSpec
+    canonical_renames = {}  # residue_idx -> ChainResidueSpec (canonical-AA-at-junction)
     bucket_to_resname = {}
     prefix_counter = {}
     for r_idx in range(n_res):
@@ -472,7 +475,7 @@ def detectNonStandardResidues(mol):
         # are also "canonical" in the no-need-to-parameterize sense, but
         # they have no sidechain hydrogen to displace and no protein
         # template to swap to.
-        if residue.resname not in _PROTEIN_RESNAMES:
+        if residue.resname not in PROTEIN_RESNAMES:
             continue
         # Pick a non-canonical partner. Canonical-canonical non-peptide
         # bonds (e.g. disulfides) are handled by the existing amber.build
@@ -502,12 +505,14 @@ def detectNonStandardResidues(mol):
             new_resname = _pick_bucket_resname(base, prefix_counter)
             bucket_to_resname[bucket_key] = new_resname
 
-        canonical_renames[r_idx] = CanonicalRenamedSpec(
+        canonical_renames[r_idx] = ChainResidueSpec(
+            original_resname=residue.resname,
             residue=residue,
             new_resname=new_resname,
-            drop_h=list(entry["drop_h"]) if entry is not None else [],
+            anchor_atom=anchor_atom,
             is_n_term=n_term,
             is_c_term=c_term,
+            has_nonpeptide_bond=True,
         )
 
     specs = []
@@ -518,13 +523,20 @@ def detectNonStandardResidues(mol):
         if chain_resident[r_idx]:
             is_n_term = not peptide_attached_n[r_idx]
             is_c_term = not peptide_attached_c[r_idx]
-            cls = CrosslinkedNCAASpec if nonpep_count > 0 else NCAASpec
+            has_nonpeptide_bond = nonpep_count > 0
+            # Deterministically pick the anchor atom: sort partners by
+            # (partner_residue_index, anchor_atom_name) and take the first.
+            anchor_atom = None
+            if has_nonpeptide_bond:
+                anchor_atom = sorted(nonpep_partners[r_idx])[0][1]
             specs.append(
-                cls(
-                    resname=residue.resname,
+                ChainResidueSpec(
+                    original_resname=residue.resname,
                     residue=residue,
                     is_n_term=is_n_term,
                     is_c_term=is_c_term,
+                    has_nonpeptide_bond=has_nonpeptide_bond,
+                    anchor_atom=anchor_atom,
                 )
             )
         elif nonpep_count >= 2:
@@ -534,7 +546,7 @@ def detectNonStandardResidues(mol):
         else:
             specs.append(LigandSpec(resname=residue.resname, residue=residue))
 
-    # Append CanonicalRenamedSpec entries in residue-index order so the
+    # Append canonical-AA-at-junction ChainResidueSpec entries in residue-index order so the
     # output is deterministic.
     for r_idx in sorted(canonical_renames):
         specs.append(canonical_renames[r_idx])
