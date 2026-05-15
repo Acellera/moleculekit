@@ -102,14 +102,10 @@ def _generate_nonstandard_residues_ff(
         _mol_to_xml_def,
         _prepare_for_parameterize,
     )
-    from moleculekit.tools.nonstandard_residues import (
-        NCAASpec,
-        CrosslinkedNCAASpec,
-    )
+    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
 
-    # Only chain-resident non-canonical amino acids
-    # (NCAASpec / CrosslinkedNCAASpec) need FF templating here. Free /
-    # covalent / scaffold ligands are handled separately (or held by
+    # Only chain-resident non-canonical amino acids need FF templating here.
+    # Free / covalent / scaffold ligands are handled separately (or held by
     # ``hold_nonpeptidic_bonds``); canonical AAs are already in the FF.
     # The residue is expected to have been templated upstream by
     # ``mol.templateResidueFromSmiles`` so we can extract it from ``mol``
@@ -117,8 +113,14 @@ def _generate_nonstandard_residues_ff(
     spec_by_resname = {}
     if detect_specs:
         for spec in detect_specs:
-            if isinstance(spec, (NCAASpec, CrosslinkedNCAASpec)):
-                spec_by_resname.setdefault(str(spec.resname), spec)
+            if not isinstance(spec, ChainResidueSpec):
+                continue
+            # Resname under which the residue appears in mol RIGHT NOW.
+            # _template_renamed_canonical_residues has already applied any
+            # rename to a custom name; for plain NCAAs with no rename,
+            # original_resname is what's in mol.
+            current_resname = spec.new_resname or spec.original_resname
+            spec_by_resname.setdefault(str(current_resname), spec)
 
     not_in_ff = [r for r in spec_by_resname if not forcefield.has_residue(r)]
 
@@ -204,6 +206,87 @@ def _detect_nonpeptidic_bonds(mol):
     return np.vstack([b_prot_idx, b_other_idx]).T
 
 
+# PDB2PQR's built-in protein force-field templates cover these resnames
+# directly; renaming a canonical AA to one of them is sufficient and no
+# SMILES re-template is needed (PDB2PQR's hydrogen logic places the right
+# atoms for the variant).
+_PDB2PQR_KNOWN_VARIANTS = {
+    "CYX", "CYM", "LYN", "HID", "HIE", "HIP",
+    "TYM", "ASH", "GLH", "AR0",
+}
+
+
+def _template_renamed_canonical_residues(mol, specs):
+    """Rename + re-template every ChainResidueSpec whose
+    ``original_resname`` is a canonical AA and that has a
+    ``new_resname``. Mutates ``mol`` in place.
+
+    For renames TO a known PDB2PQR variant (CYX, LYN, HID, ...) the
+    helper just renames; PDB2PQR's built-in template handles
+    protonation.
+
+    For renames TO an auto-generated custom name (X##) the helper also
+    calls :meth:`Molecule.templateResidueFromSmiles` with the canonical
+    SMILES variant returned by
+    :func:`moleculekit.tools._anchor_variants.canonical_anchor_smiles`.
+    rdkit's valence math then places the right hydrogens at the
+    junction (1 H on LYS NZ secondary amide, 0 H on GLU CD amide
+    carbonyl, ...); heavy atoms displaced by the crosslink are
+    auto-stripped by
+    :func:`moleculekit.rdkittools._try_strip_unmatched_terminals`
+    inside ``templateResidueFromSmiles`` (signal A:
+    ``rdkittools.py:265-269``).
+    """
+    from moleculekit.tools.nonstandard_residues import (
+        ChainResidueSpec, PROTEIN_RESNAMES,
+    )
+    from moleculekit.tools._anchor_variants import canonical_anchor_smiles
+
+    for spec in specs:
+        if not isinstance(spec, ChainResidueSpec):
+            continue
+        if spec.original_resname not in PROTEIN_RESNAMES:
+            continue
+        if not spec.new_resname:
+            continue
+
+        rid = spec.residue
+        res_mask = (
+            (mol.resname == str(spec.original_resname))
+            & (mol.chain == str(rid.chain))
+            & (mol.resid == int(rid.resid))
+            & (mol.insertion == str(rid.insertion))
+            & (mol.segid == str(rid.segid))
+        )
+        res_atom_idxs = np.where(res_mask)[0]
+        if len(res_atom_idxs) == 0:
+            raise RuntimeError(
+                f"Residue {rid} from ChainResidueSpec not found in mol "
+                f"(resname filter {spec.original_resname!r} returned 0)."
+            )
+
+        # Rename.
+        mol.resname[res_atom_idxs] = str(spec.new_resname)
+
+        if str(spec.new_resname) in _PDB2PQR_KNOWN_VARIANTS:
+            continue  # PDB2PQR handles it natively
+
+        if not spec.anchor_atom:
+            raise RuntimeError(
+                f"ChainResidueSpec for {rid.chain}:{rid.resid}{rid.insertion} "
+                f"({spec.original_resname}->{spec.new_resname}) has no "
+                f"anchor_atom but needs re-templating. The detector should "
+                f"have populated this field."
+            )
+
+        smiles = canonical_anchor_smiles(spec.original_resname, spec.anchor_atom)
+
+        # res_mask was computed against the original resname and the
+        # atoms still live at the same indices after the rename above,
+        # so it's still the correct selection here.
+        mol.templateResidueFromSmiles(res_mask, smiles, addHs=True, guessBonds=True)
+
+
 def _canonicalize_ncaa_h_names(mol, detect_specs):
     """Rename the amide H and alpha H of each chain-resident NCAA in
     ``mol`` to the AMBER conventions ``H`` and ``HA``. The FF template
@@ -216,17 +299,15 @@ def _canonicalize_ncaa_h_names(mol, detect_specs):
     """
     if not detect_specs:
         return
-    from moleculekit.tools.nonstandard_residues import (
-        NCAASpec,
-        CrosslinkedNCAASpec,
-    )
+    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
 
     for spec in detect_specs:
-        if not isinstance(spec, (NCAASpec, CrosslinkedNCAASpec)):
+        if not isinstance(spec, ChainResidueSpec):
             continue
         rid = spec.residue
+        current_resname = spec.new_resname or spec.original_resname
         res_mask = (
-            (mol.resname == str(spec.resname))
+            (mol.resname == str(current_resname))
             & (mol.segid == str(rid.segid))
             & (mol.chain == str(rid.chain))
             & (mol.resid == int(rid.resid))
@@ -514,61 +595,6 @@ def _check_frozen_histidines(mol_in, _no_prot):
         )
 
 
-def _drop_displaced_anchor_h(mol, frozen):
-    """Remove the hydrogen displaced when a standard protein residue forms
-    a covalent bond to a non-protein molecule. PDB2PQR doesn't know about
-    that bond, so it hydrogenates the residue with the full canonical
-    complement (e.g. ``HG`` on a thioether-bonded Cys ``SG``, both
-    ``HD21``/``HD22`` on an N-glycosylated Asn ``ND2``); the hydrogen at the
-    attachment point has to come back off. ``frozen`` is the list returned
-    by :func:`_get_hold_residues` (``((resid, chain, insertion), resname,
-    anchor_atom_name)`` tuples).
-
-    The set of recognised junctions lives in :data:`_anchor_variants`. It
-    covers the common ones (Cys SG, Asn ND2, Ser OG, Thr OG1, Tyr OH, Lys
-    NZ, His ND1/NE2). For an unrecognised residue/atom we can't tell which
-    hydrogen is displaced from which is a real sidechain hydrogen. Most
-    unlisted anchors - a deprotonated carboxyl oxygen, a Met SD, ... - carry
-    no hydrogen at all, so PDB2PQR's canonical hydrogens are already correct
-    and there is nothing to do. If, however, PDB2PQR did put a hydrogen on
-    the anchor atom we raise, since the residue would otherwise be built with
-    the wrong topology at the junction - the caller should pin its protonation
-    explicitly (e.g. ``force_protonation``) or add the residue/atom pair to
-    :data:`_anchor_variants`."""
-    if not frozen:
-        return
-    from moleculekit.tools._anchor_variants import lookup_anchor_variant
-
-    drop_mask = np.zeros(mol.numAtoms, dtype=bool)
-    bad = []
-    for (resid, chain, insertion), resname, anchor_name in frozen:
-        res_mask = (
-            (mol.resid == int(resid))
-            & (mol.chain == str(chain))
-            & (mol.insertion == str(insertion))
-        )
-        variant = lookup_anchor_variant(resname, anchor_name)
-        if variant is None:
-            anchor_idx = np.where(res_mask & (mol.name == str(anchor_name)))[0]
-            if len(anchor_idx) and any(
-                mol.element[nb] == "H" for nb in mol.getNeighbors(int(anchor_idx[0]))
-            ):
-                bad.append(f"{resname}:{chain}:{resid}{insertion} (atom {anchor_name})")
-            continue
-        for h_name in variant["drop_h"]:
-            drop_mask |= res_mask & (mol.name == h_name)
-    if bad:
-        raise RuntimeError(
-            "The following residues are covalently bonded to a non-protein molecule "
-            f"through an atom that is not a recognised anchor: {', '.join(bad)}. "
-            "systemPrepare can't tell which hydrogen the bond displaces, so the residue "
-            "would be built with an extra hydrogen at the junction. Pin its protonation "
-            "state explicitly with the force_protonation argument, or add the residue/atom "
-            "pair to moleculekit.tools._anchor_variants."
-        )
-    if drop_mask.any():
-        mol.remove(drop_mask, _logger=False)
-
 
 def _prepare_nucleics(mol):
     resnames = ("T", "U", "G", "C", "A", "DG", "DC", "DA", "DT", "RU", "RG", "RC", "RA")
@@ -786,7 +812,7 @@ def _bond_orphan_hydrogens(mol, max_xh=1.5):
        HIS -> HIP gains HE2). Those Hs were never in ``_preserved_bonds``
        so the by-name restore has nothing to add for them.
 
-    Heavy-atom connectivity is unaffected — only orphan Hs are touched,
+    Heavy-atom connectivity is unaffected - only orphan Hs are touched,
     so this is safe to run after every prep.
     """
     if mol.numAtoms == 0 or mol.element is None:
@@ -836,33 +862,19 @@ def _bond_orphan_hydrogens(mol, max_xh=1.5):
 
 
 def _apply_detect_spec_renames(mol, detect_specs):
-    """Apply caller-supplied custom resnames from ``detect_specs`` to
-    ``mol`` in place after PDB2PQR's terminus / hydrogen logic has run.
-    Handles three spec types:
-
-    - :class:`CanonicalRenamedSpec`: ``new_resname`` is always set and
-      ``drop_h`` lists displaced sidechain hydrogens to remove.
-    - :class:`NCAASpec` / :class:`CrosslinkedNCAASpec`: ``new_resname``
-      is optional (``None`` means keep the original resname); no H drop.
+    """Apply ``ChainResidueSpec.new_resname`` to ``mol`` in place. This
+    is a safety net: ``_template_renamed_canonical_residues`` already
+    applies the same rename pre-PDB2PQR. The post-PDB2PQR rename here
+    catches specs whose rename was skipped upstream (or whose residue
+    was reconstructed by PDB2PQR under the original name).
 
     Matching residues by ``(segid, chain, resid, insertion)``."""
-    from moleculekit.tools.nonstandard_residues import (
-        CanonicalRenamedSpec,
-        NCAASpec,
-        CrosslinkedNCAASpec,
-    )
+    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
 
-    drop_mask = np.zeros(mol.numAtoms, dtype=bool)
     for spec in detect_specs:
-        if isinstance(spec, CanonicalRenamedSpec):
-            new_resname = spec.new_resname
-            drop_h = spec.drop_h
-        elif isinstance(spec, (NCAASpec, CrosslinkedNCAASpec)):
-            new_resname = spec.new_resname
-            drop_h = []
-        else:
+        if not isinstance(spec, ChainResidueSpec):
             continue
-        if not new_resname:
+        if not spec.new_resname:
             continue
         rid = spec.residue
         res_mask = (
@@ -871,13 +883,8 @@ def _apply_detect_spec_renames(mol, detect_specs):
             & (mol.resid == int(rid.resid))
             & (mol.insertion == str(rid.insertion))
         )
-        if not res_mask.any():
-            continue
-        mol.resname[res_mask] = str(new_resname)
-        for h_name in drop_h:
-            drop_mask |= res_mask & (mol.name == h_name)
-    if drop_mask.any():
-        mol.remove(drop_mask, _logger=False)
+        if res_mask.any():
+            mol.resname[res_mask] = str(spec.new_resname)
 
 
 def systemPrepare(
@@ -1068,6 +1075,13 @@ def systemPrepare(
     # We don't want to modify the original molecule in place so we create a new molecule
     mol_in = mol_in.copy(frames=[0])
 
+    # Rename + re-template canonical AAs with sidechain crosslinks
+    # BEFORE PDB2PQR sees them. Renamed residues either land on a
+    # PDB2PQR-known variant (CYX, LYN, ...) or get a custom resname
+    # whose hydrogens come from templateResidueFromSmiles.
+    if detect_specs:
+        _template_renamed_canonical_residues(mol_in, detect_specs)
+
     # Capture all bonds before the PDB2PQR roundtrip strips them, so we
     # can restore them on mol_out at the end. This preserves both
     # cross-residue connectivity (peptide N-C bonds, disulfides,
@@ -1199,9 +1213,6 @@ def systemPrepare(
     # the by-name restore can't reattach. Rebond them by geometry.
     _bond_orphan_hydrogens(mol_out)
 
-    # PDB2PQR hydrogenated the frozen junction residues with the full
-    # canonical complement; drop the hydrogen displaced by the covalent bond.
-    _drop_displaced_anchor_h(mol_out, _frozen)
 
     df = _create_table(mol_orig, mol_out, pka_df)
 
