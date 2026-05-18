@@ -763,9 +763,11 @@ def extend_residue_from_smiles(
             )
 
     if len(residue.bonds) == 0:
-        raise RuntimeError(
-            "The selection contains no bonds. Please set the bonds of the residue or guess them with guessBonds=True"
-        )
+        if _logger:
+            logger.info(
+                "The selection contains no bonds. Guessing them from coordinates."
+            )
+        residue.guessBonds()
 
     if extension_smiles is not None:
         # --- Extension SMILES mode ---

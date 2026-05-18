@@ -420,6 +420,39 @@ def _test_extend_residue_from_smiles_double_bond():
     assert np.all(ben.bondtype == ref_bondtype)
 
 
+def _test_extend_residue_from_smiles_missing_bonds():
+    import numpy as np
+
+    mol_direct = Molecule("3ptb")
+    mol_direct.bonds = np.empty((0, 2), dtype=mol_direct.bonds.dtype)
+    mol_direct.bondtype = np.empty((0,), dtype=mol_direct.bondtype.dtype)
+
+    mol_direct.extendResidueFromSmiles(
+        sel="resname BEN",
+        new_smiles="[NH2+]=C(N)c1cc(C(C)(C)C)ccc1",
+    )
+
+    mol_templated = Molecule("3ptb")
+    mol_templated.templateResidueFromSmiles(
+        "resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True
+    )
+    mol_templated.extendResidueFromSmiles(
+        sel="resname BEN",
+        new_smiles="[NH2+]=C(N)c1cc(C(C)(C)C)ccc1",
+    )
+
+    ben_direct = mol_direct.copy(sel="resname BEN")
+    ben_templated = mol_templated.copy(sel="resname BEN")
+
+    assert ben_direct.numAtoms == ben_templated.numAtoms == 30
+    assert ben_direct.numBonds == ben_templated.numBonds == 30
+    assert sorted(ben_direct.element.tolist()) == sorted(
+        ben_templated.element.tolist()
+    )
+    assert not np.any(np.isnan(ben_direct.coords))
+    assert not np.any(np.isinf(ben_direct.coords))
+
+
 def _test_extend_residue_from_new_smiles():
     import numpy as np
 
