@@ -1019,11 +1019,7 @@ def _test_systemprepare_5vbl_glu_lys_isopeptide_end_to_end():
     """systemPrepare on 5VBL with the canonical-canonical GLU-LYS
     isopeptide: renames GLU 10 / LYS 13, runs PDB2PQR with the
     pre-templated mol, returns a prepared mol where CD-NZ is still
-    bonded and NZ has the expected (single) H of an amide nitrogen.
-
-    NOTE: This may fail because moleculekit previously didn't handle
-    canonical-canonical isopeptides at all. Failures here are
-    diagnostic - leave them be."""
+    bonded and NZ has the expected (single) H of an amide nitrogen."""
     try:
         from moleculekit.tools.preparation import systemPrepare
     except ImportError:
@@ -1031,6 +1027,25 @@ def _test_systemprepare_5vbl_glu_lys_isopeptide_end_to_end():
         pytest.skip("pdb2pqr not available")
 
     mol = Molecule(VBL_PDB)
+    # 5VBL has NCAAs (HRG, ALC, NLE, OIC, 200, OLC) which must be
+    # pre-templated before systemPrepare. Otherwise PDB2PQR adds Hs
+    # that aren't covered by ``_restore_termini_bonds`` (the crystal
+    # input has no Hs, so capture has nothing to restore for the
+    # sidechain Hs) and ``_assert_specs_bonded`` flags them.
+    mol.remove("element H", _logger=False)
+    smiles = {
+        "200": "c1cc(ccc1C[C@@H](C(=O)O)N)Cl",
+        "ALC": "C1CCC(CC1)C[C@@H](C=O)N",
+        "HRG": "C(CCNC(=N)N)C[C@@H](C=O)N",
+        "NLE": "CCCC[C@@H](C=O)N",
+        "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C=O",
+        "OLC": "CCCCCCCC(O)OC[C@H](O)CO",
+    }
+    for resname, smi in smiles.items():
+        if (mol.resname == resname).any():
+            mol.templateResidueFromSmiles(
+                f'resname "{resname}"', smi, addHs=True, _logger=False
+            )
     specs = detectNonStandardResidues(mol)
     prepared, _ = systemPrepare(mol, detect_specs=specs, verbose=False)
 
