@@ -858,6 +858,66 @@ def _restore_termini_bonds(mol):
         mol.bondtype = np.hstack([mol.bondtype, btype_arr])
 
 
+def _assert_specs_bonded(mol, detect_specs):
+    """Defensive check: every atom in a custom-renamed canonical residue
+    must be bonded after the PDB2PQR roundtrip + ``_restore_termini_bonds``.
+    These residues end up in cluster parameterization (antechamber +
+    parmchk2) where an unbonded atom types as ``DU`` and crashes the
+    pipeline.
+
+    Residues renamed to a PDB2PQR-known variant (``CYX``, ``LYN``,
+    ``HID`` ...) are excluded: ff14SB has those templates natively, so
+    tLeap handles their bonds via its own templates plus the
+    ``bond`` / ``loadAmberPrep`` glue - they never reach cluster
+    parameterization and orphan atoms here are harmless.
+
+    If PDB2PQR ever applies a new patch to a custom-renamed residue
+    that adds atoms with names we don't handle (the current
+    ``_restore_termini_bonds`` covers OXT, HO, H2, H3), this assert
+    flags it loudly instead of letting the bug ship to the cluster
+    step.
+    """
+    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
+
+    if mol.bonds is None or len(mol.bonds) == 0:
+        bonded = set()
+    else:
+        bonded = set(int(i) for i in np.asarray(mol.bonds).ravel())
+
+    bad = []
+    for spec in detect_specs:
+        if not isinstance(spec, ChainResidueSpec):
+            continue
+        if not spec.new_resname:
+            continue
+        if str(spec.new_resname) in _PDB2PQR_KNOWN_VARIANTS:
+            continue
+        rid = spec.residue
+        current_resname = spec.new_resname
+        res_mask = (
+            (mol.resname == str(current_resname))
+            & (mol.segid == str(rid.segid))
+            & (mol.chain == str(rid.chain))
+            & (mol.resid == int(rid.resid))
+            & (mol.insertion == str(rid.insertion))
+        )
+        for idx in np.where(res_mask)[0]:
+            if int(idx) not in bonded:
+                bad.append(
+                    f"{current_resname}{rid.resid}{rid.insertion}:"
+                    f"{rid.chain}:{mol.name[idx]}"
+                )
+    if bad:
+        raise RuntimeError(
+            f"systemPrepare: renamed canonical residues have unbonded "
+            f"atoms after the PDB2PQR roundtrip: {bad}. "
+            f"_restore_termini_bonds currently handles only the standard "
+            f"terminal patch atoms (OXT, HO, H2, H3). If PDB2PQR has "
+            f"started applying a new patch to these residues, extend the "
+            f"helper with the new atom -> partner pairs."
+        )
+
+
 def _apply_detect_spec_renames(mol, detect_specs):
     """Apply ``ChainResidueSpec.new_resname`` to ``mol`` in place. This
     is a safety net: ``_template_renamed_canonical_residues`` already
@@ -1228,11 +1288,16 @@ def systemPrepare(
     if _preserved_bonds:
         _restore_bonds(mol_out, _preserved_bonds)
 
-    # PDB2PQR renames template-added backbone Hs (H1/H2 -> H/HA) and may
-    # add new Hs for protonation-state changes; both leave hydrogens that
-    # the by-name restore can't reattach. Rebond them by geometry.
+    # PDB2PQR's CTERM / NEUTRAL-CTERM / NTERM / NEUTRAL-NTERM patches
+    # are the only patches we expect to add atoms to renamed canonical
+    # residues; their additions (OXT, HO, H2, H3) are all reattached
+    # by name here. Anything else is unhandled and breaks downstream
+    # cluster parameterization (orphan atoms type as ``DU`` in
+    # antechamber); the assert below catches that case.
     _restore_termini_bonds(mol_out)
 
+    if detect_specs:
+        _assert_specs_bonded(mol_out, detect_specs)
 
     df = _create_table(mol_orig, mol_out, pka_df)
 
