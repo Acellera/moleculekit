@@ -260,7 +260,7 @@ def _test_nonstandard_residue_hard_ignore_ns():
         mol,
         return_details=True,
         hold_nonpeptidic_bonds=True,
-        ignore_ns=True,
+        detect_specs=[],
     )
     _compare_results(
         os.path.join(test_home, "5VBL", "5VBL_prepared_ignore_ns.pdb"),
@@ -359,7 +359,7 @@ def _test_nucleiclike_ligand():
     test_home = os.path.join(curr_dir, "test_systemprepare", "3U5S")
     mol = Molecule(os.path.join(test_home, "3U5S.pdb"))
 
-    pmol, _, df = systemPrepare(mol, return_details=True, ignore_ns=True)
+    pmol, _, df = systemPrepare(mol, return_details=True, detect_specs=[])
 
     _compare_results(
         os.path.join(test_home, "3U5S_prepared.pdb"),
@@ -655,7 +655,7 @@ def _test_5vbl_templated_bonds_preserved():
     five NCAAs (HRG, ALC, OIC, NLE, 200) plus a Zn ion and an OLC
     ligand; we template the NCAAs via templateResidueFromSmiles (the
     canonical entry point — ``residue_smiles=`` on systemPrepare is
-    being deprecated) and run with ``ignore_ns=True`` so pdb2pqr leaves
+    being deprecated) and run with ``detect_specs=[]`` so pdb2pqr leaves
     the NCAAs alone but the bond capture/restore round-trip still has
     to put their connectivity back.
     """
@@ -679,11 +679,57 @@ def _test_5vbl_templated_bonds_preserved():
     expected = _heavy_bond_signatures(mol, sel)
     assert expected, "templated NCAAs must have heavy bonds in input"
 
-    pmol, _ = systemPrepare(mol, ignore_ns=True, verbose=False)
+    pmol, _ = systemPrepare(mol, detect_specs=[], verbose=False)
     got = _heavy_bond_signatures(pmol, sel)
 
     missing = expected - got
     assert not missing, (
         f"systemPrepare dropped {len(missing)} heavy bond(s) of templated "
         f"residues: {sorted(missing)}"
+    )
+
+
+def _test_no_oxt_on_midchain_residue():
+    """Regression: PDB2PQR must not place OXT on a residue that's
+    followed by another protein residue in the same chain. This guards
+    against the bug where renaming a C-terminal residue to a custom
+    resname (XX## via the spec pipeline) caused PDB2PQR to demote the
+    previous residue to 'C-terminus' and add OXT to it.
+
+    Triggering structure: 8QFZ chain B, where CYS 22 is the C-terminus
+    and gets renamed to XX# by the new spec pipeline. Before the fix,
+    PHE 21 (the residue before XX#) ended up with OXT because PDB2PQR
+    didn't recognise XX# as a protein residue. After the fix (always
+    registering custom-named canonical anchors via
+    _generate_nonstandard_residues_ff) XX# is recognised and OXT
+    correctly lands on it instead of PHE 21.
+    """
+    from moleculekit.util import sequenceID
+
+    fixture = os.path.join(
+        curr_dir, "test_nonstandard_residues", "8QFZ_B.cif"
+    )
+    mol = Molecule(fixture)
+    pmol, _ = systemPrepare(mol, verbose=False)
+
+    # Group atoms into residues, then identify the last residue per
+    # (segid, chain) protein segment.
+    res_idx = sequenceID((pmol.resid, pmol.insertion, pmol.chain, pmol.segid))
+    protein_mask = pmol.atomselect("protein")
+
+    bad = []
+    for i in np.where(pmol.name == "OXT")[0]:
+        if not protein_mask[i]:
+            continue  # OXT on non-protein (e.g. nucleic O3') is unrelated
+        seg, chain = str(pmol.segid[i]), str(pmol.chain[i])
+        seg_mask = (pmol.segid == seg) & (pmol.chain == chain) & protein_mask
+        last_res = int(res_idx[seg_mask].max())
+        if int(res_idx[i]) != last_res:
+            bad.append(
+                f"{pmol.resname[i]}{pmol.resid[i]}{pmol.insertion[i]}:{chain}"
+            )
+    assert not bad, (
+        f"Found OXT on non-C-terminal residue(s): {bad}. "
+        f"PDB2PQR placed OXT on a residue that's followed by another "
+        f"protein residue in the same chain."
     )

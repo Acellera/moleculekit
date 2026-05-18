@@ -895,7 +895,6 @@ def systemPrepare(
     hydrophobic_thickness=None,
     plot_pka=None,
     _logger_level="ERROR",
-    ignore_ns=False,
     titrate=None,
     detect_specs=None,
 ):
@@ -990,9 +989,6 @@ def systemPrepare(
         ignoring the covalent bond, meaning it may break the bonds or add hydrogen atoms between the bonds.
     plot_pka : str
         Provide a file path with .png extension to draw the titration diagram for the system residues.
-    ignore_ns : bool
-        If False systemPrepare will issue an error when it fails to protonate non-canonical residues in the protein.
-        If True it will leave non-canonical residues unprotonated.
     titrate : list[str]
         Select which aminoacids can be titrated. For example pass titrate=["HIS", "ARG"] to only allow titration
         of histidines and arginines. If set to None it will titrate all amino acids in the above table.
@@ -1004,9 +1000,10 @@ def systemPrepare(
         rename + SMILES re-template path fires for non-peptide bonds the
         caller may not have known about (e.g. a TYR coordinating a heme
         Fe, a CYS-Cys disulfide). Pass an explicit list to bypass the
-        auto-detection (or pass ``ignore_ns=True`` to skip the path
-        entirely). The detect_specs list is always returned so it can be
-        forwarded to the downstream parameterizer / builder.
+        auto-detection; pass ``detect_specs=[]`` to skip non-standard
+        residue handling entirely. The detect_specs list is always
+        returned so it can be forwarded to the downstream parameterizer
+        / builder.
 
     Returns
     -------
@@ -1015,8 +1012,8 @@ def systemPrepare(
     detect_specs : list
         The non-standard-residue specs that were applied (the caller's
         ``detect_specs`` argument if supplied, otherwise the result of
-        :func:`detectNonStandardResidues`). ``None`` when ``ignore_ns``
-        is True.
+        :func:`detectNonStandardResidues`). An empty list when the
+        caller passed ``detect_specs=[]``.
     details : pandas.DataFrame
         A table of residues with the corresponding protonation states, pKas, and other information.
         Returned only when ``return_details`` is True.
@@ -1079,9 +1076,9 @@ def systemPrepare(
     # Auto-detect non-standard residue specs when the caller didn't supply
     # them, so the canonical-anchor renames + SMILES re-template path fires
     # for cases the caller didn't know about (TYR-O coordinating a heme Fe,
-    # CYS-S thiolate to a metal centre, ...). Pass-through when the caller
-    # supplied detect_specs; skip entirely when ignore_ns is set.
-    if detect_specs is None and not ignore_ns:
+    # CYS-S thiolate to a metal centre, ...). Pass an explicit list (or
+    # ``detect_specs=[]``) to bypass this.
+    if detect_specs is None:
         from moleculekit.tools.nonstandard_residues import (
             detectNonStandardResidues,
         )
@@ -1163,11 +1160,10 @@ def systemPrepare(
     _fix_backbone_amide_h_names(mol_in)
 
     definition, forcefield = _get_custom_ff()
-    if not ignore_ns:
-        definition, forcefield = _generate_nonstandard_residues_ff(
-            mol_in, definition, forcefield, detect_specs=detect_specs
-        )
-        _canonicalize_ncaa_h_names(mol_in, detect_specs)
+    definition, forcefield = _generate_nonstandard_residues_ff(
+        mol_in, definition, forcefield, detect_specs=detect_specs
+    )
+    _canonicalize_ncaa_h_names(mol_in, detect_specs)
 
     nonpept = []
     if hold_nonpeptidic_bonds:
