@@ -309,29 +309,48 @@ def template_residue_from_smiles(
     guessBonds: bool = False,
     _logger: bool = True,
 ):
-    """Template a residue from a SMILES string
+    """Assign bonds, bond orders, formal charges and (optionally) hydrogens
+    to a residue from a SMILES template.
 
-    This function will assign bonds, bond orders and formal charges to a residue according to a corresponding SMILES string.
-    In addition it can also protonate the residue.
+    See :meth:`moleculekit.molecule.Molecule.templateResidueFromSmiles` for
+    the full description; this is the underlying implementation. The
+    ``mol`` argument is mutated in place.
 
     Parameters
     ----------
     mol : Molecule
-        The molecule to template the residue in
-    sel : str
-        The atom selection of the residue which we want to template
+        The molecule containing the residue(s) to template. Mutated in
+        place.
+    sel : str or numpy.ndarray
+        VMD-style atom selection or boolean mask. May span multiple
+        residues with the same chemistry; each residue is templated in
+        sequence with the same SMILES.
     smiles : str
-        The SMILES string of the template residue
+        SMILES string of the template residue. RCSB-style (fully
+        protonated, explicit charges, full heavy-atom set) works best.
     sanitizeSmiles : bool
-        If True the SMILES string will be sanitized
+        If True, sanitize the SMILES with RDKit before matching.
     addHs : bool
-        If True the residue will be protonated
+        If True, add hydrogens after bond orders are transferred. Boundary
+        atoms (those involved in cross-residue covalent bonds) have their
+        explicit H count reduced by the order of the external bond so they
+        are not over-protonated.
     onlyOnAtoms : str
-        If not None, only the atoms in this atom selection will be protonated
+        VMD-style selection within the residue restricting which heavy
+        atoms get hydrogens added. Only used when ``addHs=True``.
     guessBonds : bool
-        Set to True to guess bonds for the residue we are templating
+        If True, run distance-based bond guessing on the residue before
+        templating. Use when ``mol.bonds`` is empty.
     _logger : bool
-        If True the logger will be used to print information
+        If False, suppress informational logging.
+
+    Raises
+    ------
+    RuntimeError
+        If the selection is empty, has gaps in atom indexes, contains
+        multiple residues with conflicting metadata, has no bonds, or the
+        SMILES contains heavy atoms that cannot be matched (even after
+        stripping recognized terminal atoms).
 
     Examples
     --------

@@ -338,55 +338,93 @@ def _disambiguate_terminus_resnames(specs):
 
 
 def detectNonStandardResidues(mol):
-    """Walk ``mol`` and return one spec per residue that needs special
-    parameterization handling.
+    """Walk ``mol`` and emit one spec per residue that needs special
+    handling by a downstream parameterizer / builder.
 
-    For non-canonical chain-resident residues (NCAAs like selenomet,
-    norleucine, stapled-peptide residues) and for canonical AAs whose
-    sidechain is covalently bonded to anything other than its peptide
-    neighbours (Cys-Cys disulfide, Cys-thioether, Asn-N-glycan, Glu-Lys
-    isopeptide, ...), emits a :class:`ChainResidueSpec`. Canonical AAs
-    at a junction always receive ``new_resname``: ``"CYX"`` for both
-    ends of a CYS-SG <-> CYS-SG disulfide; an auto-generated 3-char
-    ``XX#`` name otherwise. Residues that share the same
-    ``(canonical_resname, anchor_atom_name, partner_resname, n_term,
-    c_term)`` key are assigned the *same* resname so the parameterizer
-    emits one prepi shared across them (e.g. all mid-chain
-    ASN-ND2-bonded-to-NAG residues collapse to one ``XX#``).
-    Chain-terminal residues end up in their own bucket because terminal
-    forms genuinely have different atoms (OXT on C-terminal carboxylate,
-    extra H1/H2/H3 on N-terminal amine) and different charges.
+    Inspects ``mol.bonds`` (without mutating the molecule) and classifies
+    every non-canonical residue plus every canonical residue at a
+    non-peptide junction into one of four spec types:
+
+    - :class:`ChainResidueSpec` — chain-resident residue that needs
+      special parameterization: a non-canonical amino acid embedded in a
+      polypeptide chain (selenomethionine, norleucine, stapled-peptide
+      residues, ...) OR a canonical AA whose sidechain is covalently
+      bonded to anything other than its peptide neighbours (Cys-Cys
+      disulfide, Cys thioether to a heme, Asn N-glycan, Glu-Lys
+      isopeptide, Tyr coordinating a metal, ...). Canonical AAs at a
+      junction always receive ``new_resname``: ``"CYX"`` for both ends
+      of a CYS-SG <-> CYS-SG disulfide; an auto-generated 3-char
+      ``XX#`` name otherwise. Residues that share the same
+      ``(canonical_resname, anchor_atom, partner_resname, is_n_term,
+      is_c_term)`` bucket key collapse to the *same* ``XX#`` so the
+      parameterizer emits one prepi shared across them (e.g. all
+      mid-chain ASN-ND2-bonded-to-NAG residues land on one bucket).
+      Chain-terminal forms get their own buckets because they carry
+      extra atoms (``OXT`` on the C-terminus, ``H1/H2/H3`` on the
+      N-terminus) and different charges.
+    - :class:`ScaffoldSpec` — non-chain-resident residue with 2+
+      non-peptide bonds (bicyclic-peptide central scaffold,
+      multi-anchor covalent inhibitor).
+    - :class:`CovalentLigandSpec` — non-chain-resident residue with
+      exactly one non-peptide bond (single-anchor covalent inhibitor,
+      NAG-Asn glycan stem, single-Cys heme).
+    - :class:`LigandSpec` — non-chain-resident residue with no covalent
+      bonds (free small-molecule ligand, fatty acid).
 
     Chain-resident NCAAs that appear with more than one terminus
-    configuration in the same molecule are disambiguated by setting
-    ``new_resname`` on the non-mid-chain specs (``"N"+resname`` for
+    configuration in the same molecule are disambiguated post hoc by
+    setting ``new_resname`` on the terminal specs (``"N"+resname`` for
     N-term, ``"C"+resname`` for C-term, ``"B"+resname`` for a single-
-    residue chain). When all instances of a resname share the same
+    residue chain). When every instance of an NCAA shares the same
     terminus configuration, ``new_resname`` stays ``None``.
 
-    Non-chain-resident residues with covalent bonds become
-    :class:`ScaffoldSpec` (2+ partners) or :class:`CovalentLigandSpec`
-    (1 partner); free residues become :class:`LigandSpec`.
-
-    Raises ``RuntimeError`` if a canonical residue is bonded at an
-    anchor atom that's not in
-    :data:`moleculekit.tools._anchor_variants.ANCHOR_TABLE`.
+    Metal-coordination contacts (e.g. PDB ``LINK`` records between a Zn
+    ion and a Zn-chelating inhibitor) are stored as bonds in
+    ``mol.bonds`` but are *not* covalent for parameterization purposes,
+    so they're skipped — such inhibitors stay classified as free
+    :class:`LigandSpec` entries.
 
     Parameters
     ----------
     mol : :class:`moleculekit.molecule.Molecule`
         Input molecule. Should already carry covalent bonds (read from a
-        PDB ``CONECT`` block or a CIF ``_struct_conn`` block, or set up
-        via ``mol.templateResidueFromSmiles``); if ``mol.bonds`` is empty,
-        the detector falls back to distance-based bond guessing via
-        ``mol._guessBonds()``.
+        PDB ``CONECT`` block, a CIF ``_struct_conn`` block, or set up via
+        :meth:`Molecule.templateResidueFromSmiles`). If ``mol.bonds`` is
+        empty, the detector falls back to distance-based bond guessing
+        via ``mol._guessBonds()`` and logs a warning. The molecule is
+        not mutated.
 
     Returns
     -------
     list[PerResidueSpec]
-        A flat list mixing :class:`ChainResidueSpec`,
-        :class:`ScaffoldSpec`, :class:`CovalentLigandSpec`, and
-        :class:`LigandSpec` entries.
+        Flat list mixing :class:`ChainResidueSpec`, :class:`ScaffoldSpec`,
+        :class:`CovalentLigandSpec`, and :class:`LigandSpec` entries.
+        Ordered by residue index in ``mol``. Empty when the molecule has
+        no non-standard residues and no sidechain crosslinks.
+
+    Raises
+    ------
+    RuntimeError
+        If a canonical residue is bonded at an anchor atom that is not
+        listed in
+        :data:`moleculekit.tools._anchor_variants.ANCHOR_TABLE` (the
+        anchor needs to be registered there before the residue can be
+        re-templated). Also raised if an NCAA resname is 4+ characters
+        long and requires terminus-disambiguation prefixing, which would
+        exceed AMBER's 4-character prepi unit-name limit.
+
+    Examples
+    --------
+    >>> from moleculekit.molecule import Molecule
+    >>> from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
+    >>> mol = Molecule("3ptb")  # doctest: +SKIP
+    >>> specs = detectNonStandardResidues(mol)  # doctest: +SKIP
+
+    The returned ``specs`` can be forwarded to
+    :func:`moleculekit.tools.preparation.systemPrepare` via
+    ``detect_specs=specs`` to apply the planned renames and re-templating
+    on the prepared molecule, or to a downstream builder for
+    parameterization.
     """
     bonds = _ensure_bonds(mol)
     a2r, residues, atom_idxs = _residue_groups(mol)

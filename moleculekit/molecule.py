@@ -2728,33 +2728,80 @@ class Molecule(object):
         guessBonds=False,
         _logger=True,
     ):
-        """Template a residue from a SMILES string
+        """Assign bonds, bond orders, formal charges and (optionally) hydrogens
+        to a residue from a SMILES template.
 
-        This function will assign bonds, bond orders and formal charges to a residue according to a corresponding SMILES string.
-        In addition it can also protonate the residue.
+        Uses RDKit's Maximum Common Substructure (MCS) matching between the
+        residue's current bond graph and the SMILES template to transfer bond
+        orders and formal charges. The molecule is mutated in place: the
+        matched residue's atoms are replaced by the templated copy.
+
+        Multiple residues can be templated in one call when ``sel`` spans
+        several copies (e.g. ``"resname NAG"`` for several NAG residues, or
+        a boolean mask covering multiple chain residues). Each residue is
+        templated individually with the same SMILES, in residue order.
+
+        Cross-residue covalent bonds (peptide N-C, nucleic acid
+        phosphodiester P-O3', and any bond already present in ``mol.bonds``
+        that crosses the residue boundary) are detected and the boundary
+        atoms' H counts are reduced accordingly so ``addHs=True`` does not
+        over-protonate them. If ``mol.bonds`` is empty for the residue,
+        pass ``guessBonds=True`` to populate it via distance-based guessing.
+
+        If the SMILES template has heavy atoms that don't map onto the
+        residue (typically a leaving group displaced by a covalent link, or
+        the terminal -OH / -OXT on a mid-chain amino acid SMILES), the
+        function attempts to strip those terminal atoms automatically and
+        retry the MCS match. If the mismatch can't be resolved this way, a
+        ``RuntimeError`` is raised.
 
         Parameters
         ----------
-        sel : str
-            The atom selection of the residue which we want to template
+        sel : str or numpy.ndarray
+            VMD-style atom selection or boolean mask of the residue(s) to
+            template. May span multiple residues with the same chemistry.
         smiles : str
-            The SMILES string of the template residue
+            SMILES string of the template residue. RCSB-style ligand SMILES
+            (i.e. fully protonated, with explicit formal charges and the
+            full set of heavy atoms) work best.
         sanitizeSmiles : bool
-            If True the SMILES string will be sanitized
+            If True, the SMILES is sanitized by RDKit before matching.
         addHs : bool
-            If True the residue will be protonated
+            If True, hydrogens are added to the residue using RDKit's
+            ``AddHs`` after bond orders are transferred, respecting the
+            boundary-bond H-count corrections described above.
         onlyOnAtoms : str
-            If not None, only the atoms in this atom selection will be protonated
+            VMD-style selection within the residue restricting which heavy
+            atoms get hydrogens added. Only used when ``addHs=True``.
         guessBonds : bool
-            Set to True to guess bonds for the residue we are templating
+            If True, run distance-based bond guessing on the residue before
+            templating. Use this when ``mol.bonds`` is empty for the
+            selection (e.g. PDB inputs without CONECT records).
         _logger : bool
-            If True the logger will be used to print information
+            If False, suppress informational logging.
+
+        Raises
+        ------
+        RuntimeError
+            If the selection is empty, spans multiple residues with gaps in
+            atom indexes, has no bonds, or the SMILES contains heavy atoms
+            that cannot be matched (even after auto-stripping recognized
+            terminal atoms).
 
         Examples
         --------
         >>> mol = Molecule("3ptb")
         >>> mol.templateResidueFromSmiles("resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True)
         >>> mol.templateResidueFromSmiles("resname GLY and resid 18", "C(C(=O))N", addHs=True)
+
+        Template every copy of a sugar at once (each residue templated
+        individually with the same SMILES):
+
+        >>> mol.templateResidueFromSmiles(  # doctest: +SKIP
+        ...     "resname NAG",
+        ...     "CC(=O)NC1C(O)C(O)C(CO)OC1O",
+        ...     addHs=True,
+        ... )
         """
         from moleculekit.rdkittools import template_residue_from_smiles
 

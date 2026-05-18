@@ -967,17 +967,15 @@ def systemPrepare(
     titrate=None,
     detect_specs=None,
 ):
-    """Prepare molecular systems through protonation and h-bond optimization.
+    """Prepare a molecular system by adding hydrogens, assigning protonation
+    states, and optimizing the H-bond network.
 
-    The preparation routine protonates and optimizes protein and nucleic residues.
-    It will also take into account any non-protein, non-nucleic molecules for the pKa calculation
-    but will not attempt to protonate or optimize those.
+    Wraps PDB2PQR + PROPKA. Protein and nucleic residues are protonated and
+    optimized; non-protein, non-nucleic residues contribute to the pKa
+    calculation but are not themselves protonated or optimized here. The
+    input molecule is not mutated — a new :class:`Molecule` is returned.
 
-    Returns a Molecule object, where residues have been renamed to follow
-    internal conventions on protonation (below). Coordinates are changed to
-    optimize the H-bonding network.
-
-    The following residue names are used in the returned molecule:
+    The returned molecule uses the following protonation-aware resnames:
 
     === ===============================
     ASH Neutral ASP
@@ -1004,88 +1002,104 @@ def systemPrepare(
     ARG       AR0     -
     ========= ======= =========
 
-    A detailed table about the residues modified is returned (as a second return value) when
-    return_details is True .
-
-    If hydrophobic_thickness is set to a positive value 2*h, a warning is produced for titratable residues
-    having -h<z<h and are buried in the protein by less than 75%. Note that the heuristic for the
-    detection of membrane-exposed residues is very crude; the "buried fraction" computation
-    (from propKa) is approximate; also, in the presence of cavities,
-    residues may be solvent-exposed independently from their z location.
-
-
     Notes
     -----
 
-    Features:
-     - assigns protonation states via propKa
-     - flips residues to optimize H-bonding network
-     - debumps collisions
-     - fills in missing atoms, e.g. hydrogen atoms
+    What this function does:
 
+    - Assigns protonation states via PROPKA.
+    - Flips Asn/Gln/His sidechains to optimize the H-bond network.
+    - Debumps clashes introduced by added hydrogens.
+    - Adds missing heavy atoms and hydrogens via PDB2PQR's force-field
+      templates.
+    - Detects non-standard residues and sidechain crosslinks (disulfides,
+      metal-coordinating Cys/His/Tyr, isopeptides, glycosylations, ...)
+      and renames the affected residues to canonical variants (``CYX``,
+      ``XX#`` buckets) so PDB2PQR's templates apply and the bonds are
+      preserved. See ``detect_specs`` below.
+
+    If ``hydrophobic_thickness`` is set to a positive value ``2*h``, a
+    warning is produced for titratable residues with ``-h < z < h`` that
+    are buried by less than 75%. The heuristic is crude (it assumes the
+    protein is aligned with the membrane centered at ``z=0``) and the
+    "buried fraction" estimate (from PROPKA) is approximate, so cavity-
+    facing residues may appear solvent-exposed regardless of ``z``.
 
     Parameters
     ----------
     mol_in : moleculekit.molecule.Molecule
-        the object to be optimized
+        Input molecule. Not mutated — an internal copy is taken on the
+        first frame only.
     titration : bool
-        If set to True it will use propka to set the titration state of residues. Otherwise it will just add and optimize the hydrogens.
+        If True, run PROPKA to assign titration states. If False, just add
+        and optimize hydrogens at the input resnames' default protonation.
     pH : float
-        pH to decide titration
-    verbose : bool
-        verbosity
-    return_details : bool
-        whether to return just the prepared Molecule (False, default) or a molecule *and* a pandas DataFrame
-        object including computed properties
-    hydrophobic_thickness : float
-        the thickness of the membrane in which the protein is embedded, or None if globular protein.
-        Used to provide a warning about membrane-exposed residues.
-    force_protonation : list of tuples
-        Allows the user to force specific protonations on residues. This can be done by providing a list of tuples,
-        one for each residue we want to force. i.e. [("protein and resid 40", "HID")] will force the protonation of
-        the first atomselection to the second resname. Atomselections should be valid VMD atomselections.
-    no_opt : list of str
-        Allows the user to disable optimization for specific residues. For example if the user determines that a
-        residue flip or change of coordinates performed by this method causes issues in the structure, they can
-        disable optimization on that residue by passing an atomselection for the residue to hold. i.e. ["protein and resid 23"].
-    no_prot : list of str
-        Same as no_opt but disables the addition of hydrogens to specific residues.
-    no_titr : list of str
-        Same as no_opt but disables the titration of specific residues.
+        Solution pH used by PROPKA to pick titration states. Default 7.4.
+    force_protonation : list of tuple[str, str], optional
+        Force specific protonation states on individual residues. Each
+        entry is ``(atomselection, resname)``, e.g.
+        ``[("protein and resid 40", "HID")]`` forces residue 40 to HID.
+        Atom selections use VMD syntax.
+    no_opt : list of str, optional
+        Atom selections of residues to exclude from H-bond / sidechain
+        flip optimization. Use this when an optimizer flip would degrade
+        a known-good structure (e.g. a residue in a metal site).
+    no_prot : list of str, optional
+        Atom selections of residues to exclude from hydrogen addition.
+    no_titr : list of str, optional
+        Atom selections of residues to exclude from titration.
     hold_nonpeptidic_bonds : bool
-        When set to True, systemPrepare will automatically not optimize, protonate or titrate protein residues
-        which are covalently bound to non-protein molecules. When set to False, systemPrepare will optimize them
-        ignoring the covalent bond, meaning it may break the bonds or add hydrogen atoms between the bonds.
-    plot_pka : str
-        Provide a file path with .png extension to draw the titration diagram for the system residues.
-    titrate : list[str]
-        Select which aminoacids can be titrated. For example pass titrate=["HIS", "ARG"] to only allow titration
-        of histidines and arginines. If set to None it will titrate all amino acids in the above table.
-    detect_specs : list
+        When True (default), protein residues that are covalently bonded
+        to non-protein partners are automatically added to ``no_opt``,
+        ``no_prot`` and ``no_titr`` so their bonds aren't broken and
+        their boundary atoms aren't over-protonated. Set to False to let
+        PDB2PQR/PROPKA process them ignoring the non-peptide bond.
+    verbose : bool
+        If False, demote this module's logger to WARNING for the call.
+    return_details : bool
+        If True, additionally return a pandas DataFrame with per-residue
+        protonation / pKa info.
+    hydrophobic_thickness : float, optional
+        Membrane thickness ``2*h`` in Angstrom (None for globular
+        proteins). Triggers a warning for titratable residues that fall
+        inside the bilayer and are not well-buried (see Notes).
+    plot_pka : str, optional
+        Path to a ``.png`` file. When set, writes a titration diagram for
+        the system's titratable residues.
+    titrate : list[str], optional
+        Restrict titration to a subset of the canonical AAs in the table
+        above (e.g. ``["HIS", "ARG"]``). All other AAs in the table are
+        added to ``no_titr``. When None (default), every AA in the table
+        is titratable.
+    detect_specs : list[PerResidueSpec], optional
         Per-residue specs from
         :func:`moleculekit.tools.nonstandard_residues.detectNonStandardResidues`.
         When left as ``None`` (the default), ``systemPrepare`` runs
-        :func:`detectNonStandardResidues` itself so the canonical-anchor
-        rename + SMILES re-template path fires for non-peptide bonds the
-        caller may not have known about (e.g. a TYR coordinating a heme
-        Fe, a CYS-Cys disulfide). Pass an explicit list to bypass the
-        auto-detection; pass ``detect_specs=[]`` to skip non-standard
-        residue handling entirely. The detect_specs list is always
-        returned so it can be forwarded to the downstream parameterizer
-        / builder.
+        :func:`detectNonStandardResidues` itself so canonical residues at
+        non-peptide junctions are renamed (e.g. CYS-Cys disulfide ->
+        ``CYX``, a TYR coordinating a heme Fe -> a ``TY#`` bucket) and
+        their sidechains re-templated before PDB2PQR runs. Pass an
+        explicit list to bypass the auto-detection; pass
+        ``detect_specs=[]`` to skip non-standard residue handling
+        entirely. The applied specs are always returned so they can be
+        forwarded to the downstream parameterizer / builder.
 
     Returns
     -------
     mol_out : moleculekit.molecule.Molecule
-        the molecule titrated and optimized.
-    detect_specs : list
+        The protonated and optimized molecule.
+    detect_specs : list[PerResidueSpec]
         The non-standard-residue specs that were applied (the caller's
-        ``detect_specs`` argument if supplied, otherwise the result of
-        :func:`detectNonStandardResidues`). An empty list when the
-        caller passed ``detect_specs=[]``.
+        ``detect_specs`` argument if supplied, otherwise the auto-detected
+        list). Empty when ``detect_specs=[]`` was passed in.
     details : pandas.DataFrame
-        A table of residues with the corresponding protonation states, pKas, and other information.
-        Returned only when ``return_details`` is True.
+        Per-residue protonation states, pKas and buried fractions.
+        Returned only when ``return_details=True``.
+
+    Raises
+    ------
+    ImportError
+        If ``pdb2pqr`` is not installed.
 
     Examples
     --------
@@ -1109,24 +1123,34 @@ def systemPrepare(
 
     [287 rows x 8 columns]
 
+    Acidic pH:
+
     >>> tryp_op, specs = systemPrepare(tryp, pH=1.0)
     >>> tryp_op.write('/tmp/3PTB_pH1.pdb')
 
-    The following will force the preparation to freeze residues 36 and 49 in place
+    Freeze residues 36 and 49 in place:
+
     >>> tryp_op, specs = systemPrepare(tryp, no_opt=["protein and resid 36", "chain A and resid 49"])
 
-    The following will disable protonation on residue 32 of the protein
+    Disable protonation on residue 32:
+
     >>> tryp_op, specs = systemPrepare(tryp, no_prot=["protein and resid 32",])
 
-    The following will disable titration and protonation on residue 32
+    Disable titration *and* protonation on residue 32:
+
     >>> tryp_op, specs = systemPrepare(tryp, no_titr=["protein and resid 32",], no_prot=["protein and resid 32",])
 
-    The following will force residue 40 protonation to HIE and 57 to HIP
+    Force residue 40 to HIE and 57 to HIP:
+
     >>> tryp_op, specs = systemPrepare(tryp, force_protonation=[("protein and resid 40", "HIE"), ("protein and resid 57", "HIP")])
 
-    The returned ``specs`` can be passed to htmd's parameterization /
-    builder for non-canonical residues (NCAAs, sidechain crosslinks,
-    metal-coordinating residues), e.g.
+    Skip non-standard residue detection entirely (legacy behavior):
+
+    >>> tryp_op, specs = systemPrepare(tryp, detect_specs=[])
+
+    Forward ``specs`` to a downstream builder for non-canonical residues
+    (NCAAs, sidechain crosslinks, metal-coordinating residues):
+
     >>> # from htmd.builder.nonstandard import parameterizeFromSpecs
     >>> # parameterizeFromSpecs(specs, tryp_op, outdir="./params")
     """
