@@ -453,10 +453,14 @@ def detectNonStandardResidues(mol):
         # Metal-coordination contacts (e.g. PDB LINK records between a Zn ion
         # and a Zn-chelating inhibitor) are stored as bonds but are not
         # covalent. Skipping them keeps such inhibitors classified as free
-        # ligands rather than scaffolds.
+        # ligands rather than scaffolds. Bonds touching waters get the
+        # same treatment: waters can appear in LINK records (coordinating
+        # waters, water bridges) but are never real covalent partners.
         if (
             residues[r1].resname in _ION_RESNAMES
             or residues[r2].resname in _ION_RESNAMES
+            or residues[r1].resname in WATER_RESIDUE_NAMES
+            or residues[r2].resname in WATER_RESIDUE_NAMES
         ):
             continue
         n1, n2 = str(mol.name[a1]), str(mol.name[a2])

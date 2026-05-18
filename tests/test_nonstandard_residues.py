@@ -900,6 +900,30 @@ def _test_unknown_canonical_anchor_raises():
         detectNonStandardResidues(mol)
 
 
+def _test_bonds_to_waters_are_ignored():
+    """Bonds between a canonical residue and a water (e.g. a PDB LINK
+    record to a coordinating water) must be skipped: waters are not
+    covalent partners, so they must neither trigger an
+    ``Unsupported canonical-sidechain crosslink anchor`` error nor get
+    classified as covalent ligands."""
+    mol = Molecule().empty(5)
+    mol.name[:] = ["N", "CA", "C", "O", "OW"]
+    mol.element[:] = ["N", "C", "C", "O", "O"]
+    mol.resname[:] = ["HID", "HID", "HID", "HID", "WAT"]
+    mol.resid[:] = [1, 1, 1, 1, 2]
+    mol.chain[:] = "A"
+    mol.segid[:] = "A"
+    mol.insertion[:] = ""
+    mol.coords = np.zeros((5, 3, 1), dtype=np.float32)
+    # HID backbone O (idx 3) "bonded" to water O (idx 4) - the spurious
+    # contact the detector used to flag as an unknown HID-O anchor.
+    mol.bonds = np.array([[3, 4]], dtype=np.int64)
+    mol.bondtype = np.array(["1"], dtype=object)
+
+    specs = detectNonStandardResidues(mol)
+    assert specs == []
+
+
 def _test_template_renamed_canonical_residues_5vbl():
     """Calling _template_renamed_canonical_residues on 5VBL specs
     renames GLU 10 to XX#, LYS 13 to XX#, drops OE2 on GLU, places
