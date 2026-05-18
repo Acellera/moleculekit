@@ -821,10 +821,12 @@ def _restore_termini_bonds(mol):
 
     # Each entry: (orphan_name, partner_name) - bond the first to the
     # second within the same residue, but only if the orphan is
-    # currently unbonded.
+    # currently unbonded. ``HO`` / ``HXT`` are different conventions
+    # for the same acidic H on the C-terminal carboxyl OXT.
     patches = [
         ("OXT", "C"),
         ("HO", "OXT"),
+        ("HXT", "OXT"),
         ("H2", "N"),
         ("H3", "N"),
     ]
@@ -888,12 +890,16 @@ def _assert_specs_bonded(mol, detect_specs):
     for spec in detect_specs:
         if not isinstance(spec, ChainResidueSpec):
             continue
-        if not spec.new_resname:
-            continue
-        if str(spec.new_resname) in _PDB2PQR_KNOWN_VARIANTS:
+        # PDB2PQR-known variants (CYX/LYN/HID/...) are handled by ff14SB
+        # natively; their orphan atoms here don't reach cluster
+        # parameterization and are harmless.
+        if (
+            spec.new_resname
+            and str(spec.new_resname) in _PDB2PQR_KNOWN_VARIANTS
+        ):
             continue
         rid = spec.residue
-        current_resname = spec.new_resname
+        current_resname = spec.new_resname or spec.resname
         res_mask = (
             (mol.resname == str(current_resname))
             & (mol.segid == str(rid.segid))
