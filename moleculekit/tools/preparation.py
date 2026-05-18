@@ -791,29 +791,23 @@ def _find_atom_relaxed(mol, uaid):
     return None
 
 
-def _bond_orphan_hydrogens(mol, max_xh=1.5):
-    """Bond every hydrogen that has no bonds after the capture/restore
-    round-trip to its closest same-residue heavy atom within standard
-    covalent X-H distance. Two cases produce orphan Hs:
+def _restore_termini_bonds(mol):
+    """Re-attach the terminal atoms PDB2PQR adds after ``_capture_bonds``
+    has already run. These are the only post-capture atoms we care
+    about keeping bonded in the prepared mol because they're the only
+    ones that participate in cluster parameterization (where unbonded
+    atoms type as ``DU`` and break antechamber). Bonds in regular
+    residues whose Hs PDB2PQR added or renamed are intentionally left
+    unbonded - tLeap resolves those by name via the ff14SB templates.
 
-    1. PDB2PQR renames template-added backbone hydrogens to AMBER
-       conventions (H1 -> H amide, H2 -> HA alpha). ``_capture_bonds``
-       recorded the input names, so ``_restore_bonds`` looks up "H1" /
-       "H2" in the prepared mol, can't find them, and drops the bond
-       silently (``is_h_bond=True``). The hydrogens themselves remain
-       under the new names; they're just unbonded.
-    2. PDB2PQR adds new hydrogens for protonation-state changes (e.g.
-       HIS -> HIP gains HE2). Those Hs were never in ``_preserved_bonds``
-       so the by-name restore has nothing to add for them.
-
-    Heavy-atom connectivity is unaffected - only orphan Hs are touched,
-    so this is safe to run after every prep.
+    Patches handled (all use the standard AMBER names):
+        - CTERM:        OXT -> C
+        - NEUTRAL-CTERM: HO  -> OXT (acid hydrogen, if present)
+        - NTERM:        H2, H3 -> N (extra NH3+ hydrogens; H is the
+                                     pre-existing amide H, already
+                                     bonded by ``_restore_bonds``)
     """
     if mol.numAtoms == 0 or mol.element is None:
-        return
-
-    h_mask = mol.element == "H"
-    if not h_mask.any():
         return
 
     if mol.bonds is None or len(mol.bonds) == 0:
@@ -821,26 +815,35 @@ def _bond_orphan_hydrogens(mol, max_xh=1.5):
     else:
         bonded_atoms = set(int(i) for i in np.asarray(mol.bonds).ravel())
 
-    orphan_h = [int(i) for i in np.where(h_mask)[0] if int(i) not in bonded_atoms]
-    if not orphan_h:
-        return
-
-    coords = mol.coords[:, :, 0]
     uqres = mol.getResidues(
         fields=("segid", "chain", "resid", "insertion"), return_idx=False
     )
-    heavy_mask = ~h_mask
+
+    # Each entry: (orphan_name, partner_name) - bond the first to the
+    # second within the same residue, but only if the orphan is
+    # currently unbonded.
+    patches = [
+        ("OXT", "C"),
+        ("HO", "OXT"),
+        ("H2", "N"),
+        ("H3", "N"),
+    ]
 
     new_bonds = []
-    for h_idx in orphan_h:
-        same_res = uqres == uqres[h_idx]
-        heavy_idx = np.where(same_res & heavy_mask)[0]
-        if not len(heavy_idx):
+    for orphan_name, partner_name in patches:
+        orphan_idxs = np.where(mol.name == orphan_name)[0]
+        if not len(orphan_idxs):
             continue
-        d = np.linalg.norm(coords[heavy_idx] - coords[h_idx], axis=1)
-        j = int(np.argmin(d))
-        if d[j] <= max_xh:
-            new_bonds.append([int(heavy_idx[j]), int(h_idx)])
+        for o_idx in orphan_idxs:
+            o_idx = int(o_idx)
+            if o_idx in bonded_atoms:
+                continue
+            partner_idx = np.where(
+                (uqres == uqres[o_idx]) & (mol.name == partner_name)
+            )[0]
+            if len(partner_idx) != 1:
+                continue
+            new_bonds.append([int(partner_idx[0]), o_idx])
 
     if not new_bonds:
         return
@@ -1228,7 +1231,7 @@ def systemPrepare(
     # PDB2PQR renames template-added backbone Hs (H1/H2 -> H/HA) and may
     # add new Hs for protonation-state changes; both leave hydrogens that
     # the by-name restore can't reattach. Rebond them by geometry.
-    _bond_orphan_hydrogens(mol_out)
+    _restore_termini_bonds(mol_out)
 
 
     df = _create_table(mol_orig, mol_out, pka_df)
