@@ -1091,6 +1091,16 @@ def systemPrepare(
     if detect_specs:
         _template_renamed_canonical_residues(mol_in, detect_specs)
 
+    # Canonicalize the rdkit-generic H names (H1, H2, ...) produced by
+    # templateResidueFromSmiles to AMBER conventions (H on N, HA on CA)
+    # BEFORE capturing bonds. If we capture first, the captured atom
+    # names include rdkit's H3 / H4 / ..., and PDB2PQR may later create
+    # an atom with the same generic name (e.g. the third N-terminal
+    # NH3+ H is named "H3" by PDB2PQR) at a different position. The
+    # name-based bond restore then resolves the captured bond to the
+    # wrong atom.
+    _canonicalize_ncaa_h_names(mol_in, detect_specs)
+
     # Capture all bonds before the PDB2PQR roundtrip strips them, so we
     # can restore them on mol_out at the end. This preserves both
     # cross-residue connectivity (peptide N-C bonds, disulfides,
@@ -1163,7 +1173,6 @@ def systemPrepare(
     definition, forcefield = _generate_nonstandard_residues_ff(
         mol_in, definition, forcefield, detect_specs=detect_specs
     )
-    _canonicalize_ncaa_h_names(mol_in, detect_specs)
 
     nonpept = []
     if hold_nonpeptidic_bonds:

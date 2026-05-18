@@ -733,3 +733,47 @@ def _test_no_oxt_on_midchain_residue():
         f"PDB2PQR placed OXT on a residue that's followed by another "
         f"protein residue in the same chain."
     )
+
+
+def _test_hydrogen_bonds_match_geometry():
+    """Regression: every restored H bond must connect the H to its
+    geometrically nearest heavy atom (within typical covalent X-H
+    distance ~1.3 A).
+
+    Trigger: 8QFZ chain B XX1 (N-terminal CYS templated as a canonical
+    anchor with a sidechain crosslink). Before the fix, bond capture
+    grabbed rdkit's generic name 'H3' for CA's hydrogen, and PDB2PQR
+    later created its own atom named 'H3' (the third N-terminal NH3+
+    H) at a different position. The name-based bond restore resolved
+    the captured CA-H3 bond to PDB2PQR's new H3, leaving CA with 5
+    bonds and a 2.04 A phantom C-H bond. Antechamber then typed CA as
+    DU and the cluster parameterization crashed.
+
+    The fix moves _canonicalize_ncaa_h_names (H1->H, H3->HA) to run
+    BEFORE bond capture so captured names are stable AMBER names that
+    don't collide with anything PDB2PQR may add later.
+    """
+    fixture = os.path.join(
+        curr_dir, "test_nonstandard_residues", "8QFZ_B.cif"
+    )
+    mol = Molecule(fixture)
+    pmol, _ = systemPrepare(mol, verbose=False)
+
+    bad = []
+    for a, b in pmol.bonds:
+        a, b = int(a), int(b)
+        ea, eb = pmol.element[a], pmol.element[b]
+        if ea != "H" and eb != "H":
+            continue
+        d = float(np.linalg.norm(pmol.coords[a, :, 0] - pmol.coords[b, :, 0]))
+        if d > 1.3:
+            h_idx, hv_idx = (a, b) if ea == "H" else (b, a)
+            bad.append(
+                f"{pmol.resname[hv_idx]}{pmol.resid[hv_idx]}:"
+                f"{pmol.chain[hv_idx]}:{pmol.name[hv_idx]}-{pmol.name[h_idx]} "
+                f"d={d:.2f}"
+            )
+    assert not bad, (
+        f"Hydrogens bonded to topologically wrong heavy atom (d > 1.3 A): "
+        f"{bad}"
+    )
