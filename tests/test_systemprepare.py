@@ -446,12 +446,16 @@ def _test_backbone_fixing():
 
 
 def _test_capture_and_restore_bonds():
-    """_capture_bonds must capture every bond (intra- and inter-residue),
-    and _restore_bonds must silently drop bonds whose missing endpoint
-    is hydrogen while still warning when a heavy atom goes missing.
+    """_capture_bonds must capture every bond touching a non-canonical
+    or spec-listed residue, drop bonds entirely inside canonical / non-
+    spec residues, and _restore_bonds must silently drop bonds whose
+    missing endpoint is hydrogen while warning when a heavy atom goes
+    missing.
     """
     import logging
     from moleculekit.tools.preparation import _capture_bonds, _restore_bonds
+    from moleculekit.tools.nonstandard_residues import LigandSpec
+    from moleculekit.molecule import UniqueResidueID
 
     class _CaptureWarnings(logging.Handler):
         def __init__(self):
@@ -481,8 +485,9 @@ def _test_capture_and_restore_bonds():
     mol.bonds = np.array([[0, 1], [1, 2], [0, 3]], dtype=np.uint32)
     mol.bondtype = np.array(["2", "1", "ar"], dtype=object)  # mixed types
 
-    captured = _capture_bonds(mol)
-    assert len(captured) == 3, "all bonds (incl. intra-residue) must be captured"
+    # Non-canonical resnames trigger capture even with empty specs.
+    captured = _capture_bonds(mol, detect_specs=[])
+    assert len(captured) == 3, "non-canonical resnames must trigger capture"
     assert [t[3] for t in captured] == ["2", "1", "ar"], "bondtype must be captured"
 
     h_flags = [t[2] for t in captured]
@@ -522,6 +527,34 @@ def _test_capture_and_restore_bonds():
         prep_logger.removeHandler(h)
     assert len(mol4.bonds) == 2, "C1-N bond must be dropped"
     assert h.messages, "missing heavy atom must warn"
+
+    # Bonds entirely inside canonical, non-spec residues must be dropped.
+    # Builders rebuild them from FF templates more correctly than a
+    # name-based restore can (PDB2PQR renames RNA OP1/OP2 -> O1P/O2P).
+    mol_can = Molecule().empty(3)
+    mol_can.coords = np.zeros((3, 3, 1), dtype=np.float32)
+    mol_can.coords[:, 0, 0] = [0.0, 1.5, 3.0]
+    mol_can.name[:] = ["N", "CA", "C"]
+    mol_can.element[:] = ["N", "C", "C"]
+    mol_can.resname[:] = ["ALA", "ALA", "ALA"]
+    mol_can.resid[:] = [1, 1, 1]
+    mol_can.chain[:] = ["A"] * 3
+    mol_can.segid[:] = ["P"] * 3
+    mol_can.bonds = np.array([[0, 1], [1, 2]], dtype=np.uint32)
+    mol_can.bondtype = np.array(["1", "1"], dtype=object)
+    assert _capture_bonds(mol_can, detect_specs=[]) == [], (
+        "bonds inside a canonical, non-spec residue must be dropped"
+    )
+
+    # Listing the canonical residue in detect_specs flips capture back on.
+    spec = LigandSpec(
+        resname="ALA",
+        residue=UniqueResidueID(
+            resname="ALA", chain="A", resid=1, insertion="", segid="P"
+        ),
+    )
+    captured_can = _capture_bonds(mol_can, detect_specs=[spec])
+    assert len(captured_can) == 2, "spec-listed canonical residue must be captured"
 
 
 def _test_restore_termini_bonds_terminal_atoms():

@@ -692,21 +692,37 @@ def _fix_backbone_amide_h_names(mol):
         )
 
 
-def _capture_bonds(mol):
+def _capture_bonds(mol, detect_specs):
     """Walk ``mol.bonds`` and return a list of
     ``(UniqueAtomID, UniqueAtomID, is_h_bond, bondtype)`` tuples for
-    every bond in the molecule. Used by :func:`systemPrepare` to preserve
-    connectivity (peptide N-C bonds, disulfides, glycosidic bonds,
-    stapled-peptide sidechain bonds, scaffolded-peptide thioethers,
-    intra-ligand bonds, ...) across the PDB2PQR roundtrip, which strips
-    ``mol.bonds`` entirely. Captured as ``UniqueAtomID`` pairs so
-    resname / index changes through PDB2PQR don't break the round-trip.
-    ``is_h_bond`` lets the restore step silently drop bonds whose H
-    endpoint pdb2pqr removed (e.g. when re-protonating), while still
-    warning when a heavy-heavy bond breaks. Bondtype is carried through
-    so single/double/aromatic order is preserved.
+    every bond touching a residue that needs preservation across the
+    PDB2PQR roundtrip (which strips ``mol.bonds`` entirely).
+
+    A residue needs preservation when either:
+
+    * it appears in ``detect_specs`` (a non-canonical residue, or a
+      canonical AA at a non-peptide junction like a CYS-CYS disulfide,
+      ASN N-glycosylation, etc.), or
+    * its resname is not in
+      :data:`moleculekit.tools.nonstandard_residues._CANONICAL_RESNAMES`
+      (covers NCAAs / ligands the caller templated themselves but
+      bypassed spec auto-detection via ``detect_specs=[]``).
+
+    Bonds where both endpoints live in canonical, non-spec residues are
+    dropped: downstream builders (tLeap, OpenMM, ...) rebuild them from
+    FF templates more correctly than a name-based restore can. PDB2PQR
+    also renames some canonical atoms (RNA ``OP1``/``OP2`` -> ``O1P``/
+    ``O2P``), which would make a blanket restore noisily fail.
+
+    Captured as ``UniqueAtomID`` pairs so resname / index changes
+    through PDB2PQR don't break the round-trip. ``is_h_bond`` lets the
+    restore step silently drop bonds whose H endpoint pdb2pqr removed
+    (e.g. when re-protonating), while still warning when a heavy-heavy
+    bond breaks. Bondtype is carried through so single/double/aromatic
+    order is preserved.
     """
     from moleculekit.molecule import UniqueAtomID
+    from moleculekit.tools.nonstandard_residues import _CANONICAL_RESNAMES
 
     if mol.bonds is None or len(mol.bonds) == 0:
         return []
@@ -718,9 +734,28 @@ def _capture_bonds(mol):
             "Use ``mol.guessBonds()`` to populate both consistently, or "
             "assign ``mol.bonds`` and ``mol.bondtype`` together."
         )
+
+    # Per-atom flag: True if the atom belongs to a residue whose bonds
+    # must survive the roundtrip. Match spec residues by
+    # (segid, chain, resid, insertion); resname is excluded because
+    # ``_template_renamed_canonical_residues`` may have already mutated
+    # ``mol.resname`` while leaving ``spec.residue.resname`` untouched.
+    needs_capture = ~np.isin(mol.resname, list(_CANONICAL_RESNAMES))
+    if detect_specs:
+        for spec in detect_specs:
+            r = spec.residue
+            needs_capture |= (
+                (mol.segid == str(r.segid))
+                & (mol.chain == str(r.chain))
+                & (mol.resid == int(r.resid))
+                & (mol.insertion == str(r.insertion))
+            )
+
     out = []
     for i, (a, b) in enumerate(mol.bonds):
         a, b = int(a), int(b)
+        if not (needs_capture[a] or needs_capture[b]):
+            continue
         is_h_bond = "H" in mol.element[[a, b]]
         out.append(
             (
@@ -1194,14 +1229,16 @@ def systemPrepare(
     # wrong atom.
     _canonicalize_ncaa_h_names(mol_in, detect_specs)
 
-    # Capture all bonds before the PDB2PQR roundtrip strips them, so we
-    # can restore them on mol_out at the end. This preserves both
-    # cross-residue connectivity (peptide N-C bonds, disulfides,
-    # glycosidic bonds, stapled-peptide sidechain bonds, scaffolded-
-    # peptide thioethers, ...) and intra-residue connectivity (organic
-    # ligand bonds, custom-residue bonds) that pdb2pqr can't regenerate
-    # from FF templates.
-    _preserved_bonds = _capture_bonds(mol_in)
+    # Capture bonds touching spec / non-canonical residues before the
+    # PDB2PQR roundtrip strips them, so we can restore them on mol_out
+    # at the end. This preserves the connectivity downstream builders
+    # can't regenerate (disulfides, glycosidic bonds, stapled-peptide
+    # sidechain bonds, scaffolded-peptide thioethers, intra-ligand
+    # bonds, ...). Bonds entirely inside canonical, non-spec residues
+    # are intentionally dropped: builders rebuild them more correctly
+    # from FF templates, and PDB2PQR can rename canonical atoms (RNA
+    # OP1/OP2 -> O1P/O2P), which would make a blanket restore fail.
+    _preserved_bonds = _capture_bonds(mol_in, detect_specs)
 
     old_level = logger.getEffectiveLevel()
     if not verbose:
