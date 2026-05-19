@@ -763,6 +763,16 @@ def extend_residue_from_smiles(
             )
 
     if len(residue.bonds) == 0:
+        if extension_smiles is not None:
+            raise RuntimeError(
+                "The selection contains no bonds. In extension_smiles mode "
+                "the residue's bond orders are carried into the output, so "
+                "guessed single bonds would corrupt the result. Run "
+                "Molecule.templateResidueFromSmiles on the residue first to "
+                "assign correct bond orders, or use new_smiles mode instead "
+                "(which takes bond orders from the SMILES and skips the "
+                "templating step)."
+            )
         if _logger:
             logger.info(
                 "The selection contains no bonds. Guessing them from coordinates."

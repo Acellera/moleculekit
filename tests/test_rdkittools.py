@@ -452,6 +452,18 @@ def _test_extend_residue_from_smiles_missing_bonds():
     assert not np.any(np.isnan(ben_direct.coords))
     assert not np.any(np.isinf(ben_direct.coords))
 
+    # extension_smiles mode must NOT auto-guess: guessed single bonds would
+    # corrupt the residue's bond orders in the output.
+    mol_ext = Molecule("3ptb")
+    mol_ext.bonds = np.empty((0, 2), dtype=mol_ext.bonds.dtype)
+    mol_ext.bondtype = np.empty((0,), dtype=mol_ext.bondtype.dtype)
+    with pytest.raises(RuntimeError, match="no bonds"):
+        mol_ext.extendResidueFromSmiles(
+            sel="resname BEN",
+            extension_smiles="*C(C)(C)C",
+            target_atom_sel="resname BEN and name N1",
+        )
+
 
 def _test_extend_residue_from_new_smiles():
     import numpy as np
