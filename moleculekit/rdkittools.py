@@ -186,6 +186,30 @@ def molecule_to_rdkitmol(
     return Chem.Mol(_rdmol)
 
 
+def _demote_dative_to_single(rmol_smi):
+    """Convert DATIVE bonds (e.g. Fe<-N in [N][Fe][N] coordination) to SINGLE.
+
+    RDKit's ``MolFromSmiles`` interprets metal-N notation like ``[N][Fe][N]``
+    as creating dative bonds. The SMARTS string produced by ``FindMCS`` does
+    not roundtrip-match those bonds with ``GetSubstructMatch``, so MCS would
+    succeed structurally but the substructure match against the template
+    returns zero atoms. Demoting to single bonds keeps the connectivity and
+    lets the match proceed; the residue's own bonds (from ``guessBonds`` or
+    file CONECT records) are already represented as single bonds.
+    """
+    from rdkit import Chem
+
+    rw = Chem.RWMol(rmol_smi)
+    changed = False
+    for bond in list(rw.GetBonds()):
+        if bond.GetBondType() == Chem.BondType.DATIVE:
+            a1, a2 = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
+            rw.RemoveBond(a1, a2)
+            rw.AddBond(a1, a2, Chem.BondType.SINGLE)
+            changed = True
+    return rw.GetMol() if changed else rmol_smi
+
+
 def _try_strip_unmatched_terminals(
     rmol_smi, unmatched_heavy_idx, residue, atom_mapping, boundary_local_idxs
 ):
@@ -496,8 +520,18 @@ def template_residue_from_smiles(
         sanitize=False, kekulize=False, assignStereo=False, _logger=_logger
     )
     rmol_smi = Chem.MolFromSmiles(smiles, sanitize=sanitizeSmiles)
+    if rmol_smi is None:
+        raise RuntimeError(
+            f"RDKit failed to parse the SMILES template '{smiles}'. "
+            "Check the RDKit parser error printed above for the offending position."
+        )
     rmol_smi = Chem.RemoveAllHs(rmol_smi)
+    if rmol_smi is None:
+        raise RuntimeError(
+            f"RDKit failed to remove hydrogens from the SMILES template '{smiles}'."
+        )
     Chem.Kekulize(rmol_smi)
+    rmol_smi = _demote_dative_to_single(rmol_smi)
 
     res = rdFMCS.FindMCS(
         [rmol, rmol_smi],
@@ -527,7 +561,13 @@ def template_residue_from_smiles(
                     f"Modified SMILES: '{modified_smiles}'"
                 )
             rmol_smi = Chem.MolFromSmiles(modified_smiles, sanitize=sanitizeSmiles)
+            if rmol_smi is None:
+                raise RuntimeError(
+                    f"RDKit failed to parse the SMILES template '{modified_smiles}' "
+                    f"(derived from '{smiles}' after stripping unmatched terminal atoms)."
+                )
             Chem.Kekulize(rmol_smi)
+            rmol_smi = _demote_dative_to_single(rmol_smi)
             res = rdFMCS.FindMCS(
                 [rmol, rmol_smi],
                 bondCompare=rdFMCS.BondCompare.CompareAny,
@@ -603,6 +643,12 @@ def template_residue_from_smiles(
 
         rmol = Chem.AddHs(rmol, addCoords=True, onlyOnAtoms=onlyOnAtoms)
         Chem.Kekulize(rmol)  # Sanitization ruins kekulization
+
+    # Sanitization (RemoveHs above, or implicit ones inside AddHs/Kekulize)
+    # can re-introduce DATIVE bonds on metal coordination centres like the
+    # Fe-N bonds of heme. Demote them again so they map cleanly to single
+    # bonds in the resulting Molecule rather than the catch-all "un".
+    rmol = _demote_dative_to_single(rmol)
 
     new_residue = Molecule.fromRDKitMol(rmol)
     new_residue.resid[:] = residue.resid[0]
@@ -792,6 +838,10 @@ def extend_residue_from_smiles(
         base_num_atoms = base_mol.GetNumAtoms()
 
         ext_mol = Chem.MolFromSmiles(extension_smiles, sanitize=sanitizeSmiles)
+        if ext_mol is None:
+            raise RuntimeError(
+                f"RDKit failed to parse the extension SMILES '{extension_smiles}'."
+            )
         ext_mol = Chem.AddHs(ext_mol)
         Chem.Kekulize(ext_mol)
 
@@ -838,6 +888,10 @@ def extend_residue_from_smiles(
         )
 
         new_mol_noh = Chem.MolFromSmiles(new_smiles, sanitize=sanitizeSmiles)
+        if new_mol_noh is None:
+            raise RuntimeError(
+                f"RDKit failed to parse the SMILES template '{new_smiles}'."
+            )
         Chem.Kekulize(new_mol_noh)
 
         # Match on heavy atoms only; including explicit Hs causes
