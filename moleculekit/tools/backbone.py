@@ -242,7 +242,7 @@ def _iterate_residues(mol: Molecule):
         c_terminal = next_idx is None
         if prev_idx is not None:
             n_terminal |= (prev_chain != curr_chain) or not prev_has_bb
-        if next_chain is not None:
+        if next_idx is not None:
             c_terminal |= (curr_chain != next_chain) or not next_has_bb
 
         is_terminal = n_terminal or c_terminal
