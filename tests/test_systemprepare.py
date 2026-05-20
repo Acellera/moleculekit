@@ -701,6 +701,49 @@ def _test_5vbl_templated_bonds_preserved():
     )
 
 
+def _test_systemprepare_errors_on_untemplated_ncaa():
+    """Regression: when ``detect_specs`` contains a chain-resident NCAA
+    that the caller forgot to template via
+    ``Molecule.templateResidueFromSmiles``, ``systemPrepare`` must fail
+    fast with an actionable message — not let PDB2PQR match the NCAA to
+    its nearest canonical (e.g. ALC -> LEU, NLE -> LYS) and then crash
+    late in ``_assert_specs_bonded`` blaming ``_restore_termini_bonds``.
+
+    Triggering pattern: 5VBL with HRG/OIC/200 templated but ALC and NLE
+    left untemplated. Before the fix this raised
+    ``RuntimeError: ... renamed canonical residues have unbonded atoms
+    ... ['ALC9:A:H', 'NLE15:A:H']`` from inside the PDB2PQR roundtrip.
+    After the fix, ``_assert_specs_templated`` fires before PDB2PQR with
+    a message naming the untemplated NCAAs and pointing at
+    ``templateResidueFromSmiles``.
+    """
+    from moleculekit.tools.preparation import systemPrepare
+
+    # Template every NCAA in 5VBL EXCEPT ALC and NLE.
+    smiles = {
+        "HRG": "C(CCNC(=N)N)C[C@@H](C(=O)O)N",
+        "OIC": "C1CCC2C(C1)CC(N2)C(=O)O",
+        "200": "c1cc(ccc1CC(C(=O)O)N)Cl",
+    }
+
+    mol = Molecule("5VBL")
+    mol.filter("not water", _logger=False)
+    for resname, smi in smiles.items():
+        mol.templateResidueFromSmiles(
+            f"resname '{resname}'", smi, addHs=True, _logger=False
+        )
+
+    with pytest.raises(RuntimeError, match="have not been templated") as exc:
+        systemPrepare(mol, verbose=False)
+
+    msg = str(exc.value)
+    assert "ALC9:A" in msg, f"error should name ALC9:A, got: {msg}"
+    assert "NLE15:A" in msg, f"error should name NLE15:A, got: {msg}"
+    assert "templateResidueFromSmiles" in msg, (
+        f"error should point at templateResidueFromSmiles, got: {msg}"
+    )
+
+
 def _test_no_oxt_on_midchain_residue():
     """Regression: PDB2PQR must not place OXT on a residue that's
     followed by another protein residue in the same chain. This guards

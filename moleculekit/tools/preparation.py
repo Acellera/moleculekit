@@ -895,6 +895,69 @@ def _restore_termini_bonds(mol):
         mol.bondtype = np.hstack([mol.bondtype, btype_arr])
 
 
+def _assert_specs_templated(mol, detect_specs):
+    """Raise if any chain-resident non-canonical residue in ``detect_specs``
+    has not been templated by the caller. NCAAs must be templated via
+    ``mol.templateResidueFromSmiles(..., addHs=True)`` before they're
+    handed to ``systemPrepare`` — otherwise PDB2PQR matches them to
+    their nearest canonical (e.g. ALC -> LEU, NLE -> LYS) and adds an H
+    that ``_restore_termini_bonds`` can't re-attach, failing late in
+    ``_assert_specs_bonded`` with a misleading "renamed canonical
+    residues have unbonded atoms" message.
+
+    A templated NCAA has both hydrogens AND a fully-bonded heavy-atom
+    skeleton. We check both: heavy-atom H presence catches the
+    no-template case; the all-atoms-bonded check additionally catches
+    partial inputs where the user added Hs by hand but skipped bonds.
+
+    Canonical AAs at a junction (``resname in PROTEIN_RESNAMES``, e.g.
+    a CYS that becomes CYX) are re-templated inside ``systemPrepare`` by
+    ``_template_renamed_canonical_residues`` and so are skipped here.
+    """
+    from moleculekit.tools.nonstandard_residues import (
+        ChainResidueSpec, PROTEIN_RESNAMES,
+    )
+
+    if mol.bonds is None or len(mol.bonds) == 0:
+        bonded = set()
+    else:
+        bonded = set(int(i) for i in np.asarray(mol.bonds).ravel())
+
+    bad = []
+    for spec in detect_specs:
+        if not isinstance(spec, ChainResidueSpec):
+            continue
+        if spec.resname in PROTEIN_RESNAMES:
+            continue
+        rid = spec.residue
+        res_mask = (
+            (mol.resname == str(spec.resname))
+            & (mol.segid == str(rid.segid))
+            & (mol.chain == str(rid.chain))
+            & (mol.resid == int(rid.resid))
+            & (mol.insertion == str(rid.insertion))
+        )
+        idxs = np.where(res_mask)[0]
+        if len(idxs) == 0:
+            continue
+        has_h = bool((mol.element[idxs] == "H").any())
+        all_bonded = all(int(i) in bonded for i in idxs)
+        if not has_h or not all_bonded:
+            bad.append(
+                f"{spec.resname}{rid.resid}{rid.insertion}:{rid.chain}"
+            )
+    if bad:
+        raise RuntimeError(
+            f"systemPrepare: chain-resident non-canonical residue(s) "
+            f"{bad} are in detect_specs but have not been templated "
+            f"(missing hydrogens or unbonded atoms). Call "
+            f"mol.templateResidueFromSmiles(<sel>, <smiles>, addHs=True) "
+            f"for each NCAA before passing it via detect_specs, so its "
+            f"bonds and hydrogens are well-defined before the PDB2PQR "
+            f"roundtrip."
+        )
+
+
 def _assert_specs_bonded(mol, detect_specs):
     """Defensive check: every atom in a custom-renamed canonical residue
     must be bonded after the PDB2PQR roundtrip + ``_restore_termini_bonds``.
@@ -1218,6 +1281,12 @@ def systemPrepare(
     # whose hydrogens come from templateResidueFromSmiles.
     if detect_specs:
         _template_renamed_canonical_residues(mol_in, detect_specs)
+        # Canonical-AA junctions are now templated by us above; anything
+        # still untemplated is a caller-supplied NCAA that wasn't fed
+        # through templateResidueFromSmiles. Fail fast here rather than
+        # let PDB2PQR match it to a near-canonical and crash late in
+        # _assert_specs_bonded with a misleading message.
+        _assert_specs_templated(mol_in, detect_specs)
 
     # Canonicalize the rdkit-generic H names (H1, H2, ...) produced by
     # templateResidueFromSmiles to AMBER conventions (H on N, HA on CA)
