@@ -210,6 +210,95 @@ _PDB2PQR_KNOWN_VARIANTS = {
 }
 
 
+def _restore_trimmed_canonical_sidechains(mol, detect_specs):
+    """Reconstruct the heavy-atom sidechain of every canonical protein
+    residue in ``mol`` whose sidechain is **completely** missing,
+    using :func:`moleculekit.tools.mutate.mutate_residue` (Dunbrack
+    backbone-dependent rotamer library, lowest-clash rotamer).
+
+    Restoration only fires when the residue's heavy atoms are a
+    subset of backbone + CB. Any residue carrying even one atom past
+    CB is left alone: a partial sidechain almost always signals an
+    intentional truncation (an isopeptide-bonded GLU keeps CG / CD
+    but loses OE1 / OE2; a covalent ligand on LYS keeps CG-CE but
+    loses NH3+ hydrogens; user-prepared structures may drop
+    sidechain atoms deliberately). Re-templating them with a Dunbrack
+    rotamer would silently introduce the omitted atoms again and
+    break the intended chemistry.
+
+    Excluded by construction:
+      - GLY (no sidechain) and ALA (CB is the whole sidechain).
+      - Non-canonical residues and any spec'd residues (NCAA or
+        canonical-anchor renames handled by
+        :func:`_template_renamed_canonical_residues`).
+      - Residues without a full N / CA / C backbone -
+        :func:`mutate_residue` requires it for Kabsch alignment.
+
+    Mutates ``mol`` in place. Logs every reconstructed residue.
+    """
+    from moleculekit.tools.mutate import mutate_residue
+    from moleculekit.residues import PROTEIN_RESIDUE_NAMES
+
+    BACKBONE_AND_CB = frozenset(
+        {"N", "CA", "C", "O", "OXT", "CB", "H", "H1", "H2", "H3", "HA"}
+    )
+    NO_RESTORE_RESNAMES = frozenset({"GLY", "ALA"})
+
+    spec_keys = set()
+    if detect_specs:
+        for spec in detect_specs:
+            r = spec.residue
+            spec_keys.add(
+                (str(r.segid), str(r.chain), int(r.resid), str(r.insertion))
+            )
+
+    # First pass: scan residues and record the IDs of the trimmed ones.
+    # Per-iteration we rebuild the boolean mask from these IDs because
+    # ``mutate_residue`` inserts new atoms and shifts every later
+    # index, invalidating any mask captured up front.
+    _, res_atom_idxs = mol.getResidues(return_idx=True)
+    targets = []
+    for atom_idxs in res_atom_idxs:
+        i0 = int(atom_idxs[0])
+        resname = str(mol.resname[i0])
+        if resname not in PROTEIN_RESIDUE_NAMES or resname in NO_RESTORE_RESNAMES:
+            continue
+        key = (
+            str(mol.segid[i0]),
+            str(mol.chain[i0]),
+            int(mol.resid[i0]),
+            str(mol.insertion[i0]),
+        )
+        if key in spec_keys:
+            continue
+        names_present = {str(n) for n in mol.name[atom_idxs]}
+        if not names_present.issubset(BACKBONE_AND_CB):
+            continue
+        if not {"N", "CA", "C"}.issubset(names_present):
+            continue
+        targets.append(key + (resname,))
+
+    for segid, chain, resid, insertion, resname in targets:
+        mask = (
+            (mol.segid == segid)
+            & (mol.chain == chain)
+            & (mol.resid == resid)
+            & (mol.insertion == insertion)
+        )
+        if not mask.any():
+            continue
+        try:
+            mutate_residue(mol, sel=mask, newres=resname, rotamer_mode="best")
+            logger.info(
+                f"Restored missing sidechain atoms for {resname}:{chain}:{resid}"
+            )
+        except Exception as exc:
+            logger.warning(
+                f"Could not restore sidechain for {resname}:{chain}:{resid}: "
+                f"{exc}. Falling back to PDB2PQR reconstruction."
+            )
+
+
 def _template_renamed_canonical_residues(mol, specs):
     """Rename + re-template every ChainResidueSpec whose
     ``resname`` is a canonical AA and that has a
@@ -282,14 +371,26 @@ def _template_renamed_canonical_residues(mol, specs):
 
 
 def _canonicalize_ncaa_h_names(mol, detect_specs):
-    """Rename the amide H and alpha H of each chain-resident NCAA in
-    ``mol`` to the AMBER conventions ``H`` and ``HA``. The FF template
-    written by :func:`_process_custom_residue` always uses these names,
-    so without this rename the auto-generated ``H1``/``H2``/... that
+    """Rename the amide H, alpha H, and carboxyl-OH H of each
+    chain-resident NCAA in ``mol`` to the AMBER conventions ``H``,
+    ``HA``, and ``HXT``. The FF template written by
+    :func:`_process_custom_residue` always uses these names, so
+    without this rename the auto-generated ``H1``/``H2``/... that
     ``mol.templateResidueFromSmiles(addHs=True)`` produces would not
     match the FF template and PDB2PQR's biomolecule pass would either
     treat the residue as N-terminal (expecting NH3+) or fail to walk
     the path to ``CA``.
+
+    The ``OXT -> HXT`` rename specifically avoids a name collision
+    PDB2PQR special-cases: the third NH3+ proton on an N-terminal
+    canonical residue is named ``H3``, and PDB2PQR's
+    ``set_reference_distance`` check trusts that name to mean an
+    N-terminal proton. RDKit's generic ``H1``/``H2``/``H3``/... naming
+    can place an ``H3`` on a non-N-terminal residue's carboxyl OXT,
+    which then trips the same check (PDB2PQR has no bond info for our
+    CustomResidue and so cannot walk the path to ``CA``). Renaming to
+    ``HXT`` (the AMBER carboxyl-OH name PDB2PQR already special-cases
+    via the ``HO`` alias path) sidesteps the collision.
     """
     if not detect_specs:
         return
@@ -312,7 +413,7 @@ def _canonicalize_ncaa_h_names(mol, detect_specs):
             continue
         res_set = set(int(i) for i in res_idx)
 
-        for backbone_name, h_target in (("N", "H"), ("CA", "HA")):
+        for backbone_name, h_target in (("N", "H"), ("CA", "HA"), ("OXT", "HXT")):
             bb_atoms = res_idx[mol.name[res_idx] == backbone_name]
             if not len(bb_atoms):
                 continue
@@ -1167,6 +1268,7 @@ def systemPrepare(
     _logger_level="ERROR",
     titrate=None,
     detect_specs=None,
+    restore_missing_sidechains=False,
 ):
     """Prepare a molecular system by adding hydrogens, assigning protonation
     states, and optimizing the H-bond network.
@@ -1377,6 +1479,16 @@ def systemPrepare(
             detectNonStandardResidues,
         )
         detect_specs = detectNonStandardResidues(mol_in)
+
+    # Restore canonical residues whose entire sidechain is missing
+    # using moleculekit's Dunbrack-rotamer mutator, so PDB2PQR's
+    # 10%-missing-atom threshold does not reject the structure on a
+    # partial input. Off by default - users who want it pass
+    # ``restore_missing_sidechains=True``. Runs BEFORE templating /
+    # bond capture so the reconstructed atoms participate in
+    # everything downstream.
+    if restore_missing_sidechains:
+        _restore_trimmed_canonical_sidechains(mol_in, detect_specs)
 
     # Rename + re-template canonical AAs with sidechain crosslinks
     # BEFORE PDB2PQR sees them. Renamed residues either land on a
