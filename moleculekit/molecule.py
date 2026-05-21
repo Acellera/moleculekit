@@ -905,8 +905,20 @@ class Molecule(object):
 
         Parameters
         ----------
-        sel : str
-            Atom selection string. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+        sel : str or np.ndarray
+            Either an atom selection string (see more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__),
+            a boolean mask of length ``numAtoms``, or an integer array of atom indices.
+            Non-string inputs short-circuit the selection engine entirely: the array is
+            returned (or converted to the requested form) without any parsing, which
+            lets you reuse a precomputed selection. The same trick works for any other
+            ``Molecule`` method that takes an atom selection string (``copy``, ``filter``,
+            ``remove``, ``get``, etc.) — pass a precomputed boolean mask or index array
+            in place of the string and the call skips re-parsing, which is significantly
+            faster when the same selection is reused many times. The mask or indices
+            must match the current state of the molecule though: any change to the
+            number or order of atoms (e.g. after ``filter``, ``remove``, ``append``,
+            sorting, or adding/removing hydrogens) makes them stale and they will
+            silently refer to the wrong atoms.
         indexes : bool
             If True returns the indexes instead of a bitmap
         strict: bool
@@ -923,9 +935,24 @@ class Molecule(object):
 
         Examples
         --------
-        >>> mol=tryp.copy()
-        >>> mol.atomselect('resname MOL')
+        >>> mol = Molecule("3ptb")
+        >>> mol.atomselect('resname BEN')
         array([False, False, False, ..., False, False, False], dtype=bool)
+        >>> mask = mol.resname == "BEN"  # equivalent to 'resname BEN'
+        >>> mol.atomselect(mask, indexes=True)  # boolean mask -> indices
+        array([1630, 1631, 1632, 1633, 1634, 1635, 1636, 1637, 1638], dtype=uint32)
+        >>> mask = (mol.resname == "BEN") & (mol.name == "C4")  # equivalent to 'resname BEN and name C4'
+        >>> mol.atomselect(mask)
+        array([False, False, False, ..., False, False, False])
+        >>> assert np.array_equal(mol.atomselect(mask), mol.atomselect("resname BEN and name C4"))
+        >>> mol.atomselect(np.array([0, 1, 2]))  # integer indices -> boolean mask
+        array([ True,  True,  True, ..., False, False, False])
+        >>> mol2 = mol.copy()
+        >>> _ = mol2.filter(mol2.resname == "BEN")  # same short-circuit works for any sel-taking method
+        >>> mol2.numAtoms
+        9
+        >>> mol.copy(sel=mol.resname == "BEN").numAtoms  # and for copy(sel=...)
+        9
         """
         from moleculekit.atomselect.atomselect import atomselect
 
