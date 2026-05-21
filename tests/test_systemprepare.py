@@ -744,6 +744,87 @@ def _test_systemprepare_errors_on_untemplated_ncaa():
     )
 
 
+def _test_5vbl_restore_missing_sidechains():
+    """``systemPrepare(restore_missing_sidechains=True)`` rebuilds the
+    full heavy-atom sidechain of every canonical residue whose input
+    sidechain is stripped down to backbone + CB.
+
+    Fixture ``5VBL_A.cif`` is a hand-trimmed chain-A copy of 5VBL where
+    five canonical residues (LYS1, PHE2, ARG3, ARG4, LYS12) are
+    truncated to N/CA/C/O/CB. PDB2PQR would normally reject this
+    structure (>10%% heavy atoms missing); with
+    ``restore_missing_sidechains=True`` moleculekit's Dunbrack-rotamer
+    mutator regrows the sidechains before the PDB2PQR roundtrip, the
+    5 NCAAs (HRG, ALC, OIC, NLE, 200) keep their templated atoms, and
+    every truncated residue ends up with its canonical heavy-atom set.
+    """
+    from moleculekit.tools.preparation import systemPrepare
+
+    fixture = os.path.join(curr_dir, "test_systemprepare", "5VBL_A.cif")
+    mol = Molecule(fixture)
+
+    # NCAAs in 5VBL — same SMILES as the rest of the 5VBL suite.
+    smiles = {
+        "HRG": "C(CCNC(=N)N)C[C@@H](C(=O)O)N",
+        "ALC": "C1CCC(CC1)CC(C(=O)O)N",
+        "OIC": "C1CCC2C(C1)CC(N2)C(=O)O",
+        "NLE": "CCCC[C@@H](C(=O)O)N",
+        "200": "c1cc(ccc1CC(C(=O)O)N)Cl",
+    }
+    for resname, smi in smiles.items():
+        mol.templateResidueFromSmiles(
+            f"resname '{resname}'", smi, addHs=True, _logger=False
+        )
+
+    # Canonical heavy-atom sets we expect after reconstruction. Keys are
+    # the truncated residues in the fixture (resid -> resname).
+    expected_heavy = {
+        (1, "LYS"): {"N", "CA", "C", "O", "CB", "CG", "CD", "CE", "NZ"},
+        (2, "PHE"): {"N", "CA", "C", "O", "CB", "CG", "CD1", "CD2", "CE1", "CE2", "CZ"},
+        (3, "ARG"): {"N", "CA", "C", "O", "CB", "CG", "CD", "NE", "CZ", "NH1", "NH2"},
+        (4, "ARG"): {"N", "CA", "C", "O", "CB", "CG", "CD", "NE", "CZ", "NH1", "NH2"},
+        (12, "LYS"): {"N", "CA", "C", "O", "CB", "CG", "CD", "CE", "NZ"},
+    }
+
+    # Sanity-check the fixture: each target residue must be truncated to
+    # backbone + CB on input, otherwise the test no longer exercises
+    # reconstruction.
+    for (resid, resname), _ in expected_heavy.items():
+        mask = (mol.resid == resid) & (mol.resname == resname)
+        heavy = set(mol.name[mask & (mol.element != "H")])
+        assert heavy == {"N", "CA", "C", "O", "CB"}, (
+            f"fixture {resname}{resid} should be backbone+CB only, got {heavy}"
+        )
+
+    pmol, _ = systemPrepare(mol, verbose=False, restore_missing_sidechains=True)
+
+    for (resid, resname), expected in expected_heavy.items():
+        mask = (pmol.resid == resid) & (pmol.resname == resname)
+        assert mask.any(), f"{resname}{resid} missing from output"
+        heavy = set(pmol.name[mask & (pmol.element != "H")])
+        assert heavy == expected, (
+            f"{resname}{resid} heavy atoms after systemPrepare: "
+            f"got {sorted(heavy)}, expected {sorted(expected)}"
+        )
+
+    # Templated NCAAs must survive the roundtrip with their heavy atoms
+    # intact (separate guarantee from sidechain reconstruction).
+    ncaa_residues = {
+        (8, "HRG"): 12,
+        (9, "ALC"): 11,
+        (14, "OIC"): 11,
+        (15, "NLE"): 8,
+        (17, "200"): 13,
+    }
+    for (resid, resname), n_heavy in ncaa_residues.items():
+        mask = (pmol.resid == resid) & (pmol.resname == resname)
+        assert mask.any(), f"NCAA {resname}{resid} lost from output"
+        heavy = (mask & (pmol.element != "H")).sum()
+        assert heavy == n_heavy, (
+            f"{resname}{resid}: expected {n_heavy} heavy atoms, got {heavy}"
+        )
+
+
 def _test_no_oxt_on_midchain_residue():
     """Regression: PDB2PQR must not place OXT on a residue that's
     followed by another protein residue in the same chain. This guards
