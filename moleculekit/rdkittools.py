@@ -6,6 +6,30 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# Element symbols treated as metallic coordinating partners by
+# :func:`template_residue_from_smiles`. A boundary heavy atom whose
+# external (cross-residue) bond goes to one of these has its leaving-
+# group hydrogens stripped (as for any cross-residue bond) AND its
+# formal charge reduced by one per metal-bond order, matching the
+# deprotonation chemistry of biological metal-thiolate / metal-alkoxide
+# / metal-carboxylate coordination (e.g. -SH + Zn -> -S-...Zn). For
+# non-metal cross-residue bonds (peptide N-C, disulfide S-S,
+# glycosidic O-C, ...) the H is stripped without a formal charge
+# change, because the bond is a normal covalent exchange rather than a
+# deprotonation. Distinct from
+# ``moleculekit.tools.nonstandard_residues._ION_RESNAMES``, which is a
+# residue-name set for spec detection and also covers non-metal anions
+# (Cl-, I-, oxyanions) that should not trigger deprotonation here.
+_METAL_ELEMENTS = frozenset(
+    "Li Na K Rb Cs "
+    "Be Mg Ca Sr Ba "
+    "Sc Ti V Cr Mn Fe Co Ni Cu Zn "
+    "Y Zr Nb Mo Tc Ru Rh Pd Ag Cd "
+    "Hf Ta W Re Os Ir Pt Au Hg "
+    "Al Ga In Sn Tl Pb Bi".split()
+)
+
+
 def rdkitmol_to_molecule(rmol):
     """Converts an RDKit molecule to a Molecule object
 
@@ -613,11 +637,21 @@ def template_residue_from_smiles(
     # For atoms that are covalently bonded to other residues, the SMILES
     # template assumes those bonds are hydrogens. Reduce the explicit H
     # count on each boundary atom by the order of its external bonds so
-    # that AddHs doesn't over-protonate.
+    # that AddHs doesn't over-protonate. Bonds whose external partner is
+    # a metal element are tracked separately: coordinating an -SH /
+    # -OH / -COOH to a metal is chemically a deprotonation, not just a
+    # bond swap, so the donor's formal charge is reduced by one per
+    # metal-bond order to keep the residue's net charge correct.
     rmol_to_smi = dict(zip(at1, at2))
     boundary_ext_order = {}
-    for local_idx, _, bt in cross_bonds:
-        boundary_ext_order[local_idx] = boundary_ext_order.get(local_idx, 0) + _bondtype_order.get(bt, 1)
+    boundary_metal_order = {}
+    for local_idx, ext_global_idx, bt in cross_bonds:
+        order = _bondtype_order.get(bt, 1)
+        boundary_ext_order[local_idx] = boundary_ext_order.get(local_idx, 0) + order
+        if str(mol.element[ext_global_idx]) in _METAL_ELEMENTS:
+            boundary_metal_order[local_idx] = (
+                boundary_metal_order.get(local_idx, 0) + order
+            )
 
     # Protonate the residue according to the SMILES template
     if addHs:
@@ -636,10 +670,23 @@ def template_residue_from_smiles(
             if local_idx not in rmol_to_smi:
                 continue
             smi_atom = rmol_smi.GetAtomWithIdx(rmol_to_smi[local_idx])
-            target_hs = max(0, int(smi_atom.GetTotalNumHs()) - int(ext_order))
+            smi_hs = int(smi_atom.GetTotalNumHs())
+            target_hs = max(0, smi_hs - int(ext_order))
             atom = rmol.GetAtomWithIdx(local_idx)
             atom.SetNumExplicitHs(target_hs)
             atom.SetNoImplicit(True)
+            # Metal-bonded boundary atoms have their H removal modelled as a
+            # deprotonation (donor keeps the bonding electrons, H leaves as
+            # H+); the donor's formal charge picks up -1 per metal-bond
+            # order, capped by how many Hs were actually stripped (so a
+            # SMILES that already encodes [S-]/[O-] etc. is not double-
+            # counted).
+            metal_order = boundary_metal_order.get(local_idx, 0)
+            if metal_order:
+                hs_stripped = smi_hs - target_hs
+                delta = min(metal_order, hs_stripped)
+                if delta:
+                    atom.SetFormalCharge(atom.GetFormalCharge() - delta)
 
         rmol = Chem.AddHs(rmol, addCoords=True, onlyOnAtoms=onlyOnAtoms)
         Chem.Kekulize(rmol)  # Sanitization ruins kekulization
