@@ -692,6 +692,52 @@ def _fix_backbone_amide_h_names(mol):
         )
 
 
+def _capture_formal_charges(mol, detect_specs):
+    """Capture the non-zero per-atom formal charges of every residue in
+    ``detect_specs`` as a list of ``(UniqueAtomID, charge)`` tuples, so
+    they survive the PDB2PQR roundtrip - which rebuilds the molecule with
+    ``formalcharge`` reset to zero.
+
+    Scoped to spec residues deliberately: those are the non-canonical
+    residues and renamed canonical anchors the caller set up via
+    :meth:`Molecule.templateResidueFromSmiles`, which PDB2PQR leaves
+    alone. Plain canonical residues are excluded - PDB2PQR may
+    legitimately change their protonation, and downstream
+    parameterization does not need their formal charges. Captured as
+    :class:`UniqueAtomID` so resname / index changes through PDB2PQR do
+    not break the round-trip.
+    """
+    from moleculekit.molecule import UniqueAtomID
+
+    if not detect_specs:
+        return []
+    in_spec = np.zeros(mol.numAtoms, dtype=bool)
+    for spec in detect_specs:
+        r = spec.residue
+        in_spec |= (
+            (mol.segid == str(r.segid))
+            & (mol.chain == str(r.chain))
+            & (mol.resid == int(r.resid))
+            & (mol.insertion == str(r.insertion))
+        )
+    out = []
+    for i in np.where(in_spec)[0]:
+        charge = int(mol.formalcharge[i])
+        if charge != 0:
+            out.append((UniqueAtomID.fromMolecule(mol, idx=int(i)), charge))
+    return out
+
+
+def _restore_formal_charges(mol, preserved_charges):
+    """Re-resolve each captured atom against ``mol`` and restore its
+    formal charge. Uses the same relaxed lookup as :func:`_restore_bonds`
+    so atoms in residues renamed by systemPrepare still resolve."""
+    for uaid, charge in preserved_charges:
+        idx = _find_atom_relaxed(mol, uaid)
+        if idx is not None:
+            mol.formalcharge[idx] = charge
+
+
 def _capture_bonds(mol, detect_specs):
     """Walk ``mol.bonds`` and return a list of
     ``(UniqueAtomID, UniqueAtomID, is_h_bond, bondtype)`` tuples for
@@ -893,6 +939,63 @@ def _restore_termini_bonds(mol):
     else:
         mol.bonds = np.vstack([mol.bonds, arr])
         mol.bondtype = np.hstack([mol.bondtype, btype_arr])
+
+
+def _apply_terminal_formal_charges(mol, detect_specs):
+    """Set ``formalcharge`` on the terminal atoms PDB2PQR adds to
+    chain-resident spec residues.
+
+    PDB2PQR's CTERM / NTERM patches add the terminal heavy atom or
+    extra hydrogens but always leave ``formalcharge`` at zero (PDB2PQR
+    discards formal charges entirely). After ``_restore_termini_bonds``
+    the bonds are back, so we can infer ionisation purely from the H
+    count on the backbone ``N`` and the terminal ``OXT``:
+
+      - 3 H on ``N``     -> NH3+ (charged NTERM patch)
+      - <3 H on ``N``    -> neutral NH2 (NEUTRAL-NTERM patch)
+      - 0 H on ``OXT``   -> COO-  (charged CTERM patch)
+      - >=1 H on ``OXT`` -> neutral COOH (NEUTRAL-CTERM patch)
+
+    Only applied to :class:`ChainResidueSpec` residues - those are the
+    ones we own and that downstream cluster parameterization sees.
+    PDB2PQR-driven protonation of plain canonical residues is left to
+    PDB2PQR.
+    """
+    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
+
+    def _count_h_neighbors(atom_idx):
+        return sum(
+            1 for nb in mol.getNeighbors(atom_idx) if mol.element[nb] == "H"
+        )
+
+    for spec in detect_specs:
+        if not isinstance(spec, ChainResidueSpec):
+            continue
+        if not (spec.is_n_term or spec.is_c_term):
+            continue
+        rid = spec.residue
+        current_resname = spec.new_resname or spec.resname
+        res_mask = (
+            (mol.resname == str(current_resname))
+            & (mol.segid == str(rid.segid))
+            & (mol.chain == str(rid.chain))
+            & (mol.resid == int(rid.resid))
+            & (mol.insertion == str(rid.insertion))
+        )
+        res_idx = np.where(res_mask)[0]
+        if len(res_idx) == 0:
+            continue
+        res_names = mol.name[res_idx]
+
+        if spec.is_n_term:
+            n_idx = res_idx[res_names == "N"]
+            if len(n_idx) == 1 and _count_h_neighbors(int(n_idx[0])) == 3:
+                mol.formalcharge[n_idx[0]] = 1
+
+        if spec.is_c_term:
+            oxt_idx = res_idx[res_names == "OXT"]
+            if len(oxt_idx) == 1 and _count_h_neighbors(int(oxt_idx[0])) == 0:
+                mol.formalcharge[oxt_idx[0]] = -1
 
 
 def _assert_specs_templated(mol, detect_specs):
@@ -1308,6 +1411,7 @@ def systemPrepare(
     # from FF templates, and PDB2PQR can rename canonical atoms (RNA
     # OP1/OP2 -> O1P/O2P), which would make a blanket restore fail.
     _preserved_bonds = _capture_bonds(mol_in, detect_specs)
+    _preserved_formal_charges = _capture_formal_charges(mol_in, detect_specs)
 
     old_level = logger.getEffectiveLevel()
     if not verbose:
@@ -1419,10 +1523,12 @@ def systemPrepare(
     mol_out.fileloc = mol_in.fileloc
     _fixup_water_names(mol_out)
 
-    # Restore the bonds we captured before the PDB2PQR roundtrip
-    # stripped them.
+    # Restore the bonds and formal charges we captured before the
+    # PDB2PQR roundtrip stripped / zeroed them.
     if _preserved_bonds:
         _restore_bonds(mol_out, _preserved_bonds)
+    if _preserved_formal_charges:
+        _restore_formal_charges(mol_out, _preserved_formal_charges)
 
     # PDB2PQR's CTERM / NEUTRAL-CTERM / NTERM / NEUTRAL-NTERM patches
     # are the only patches we expect to add atoms to renamed canonical
@@ -1431,6 +1537,8 @@ def systemPrepare(
     # cluster parameterization (orphan atoms type as ``DU`` in
     # antechamber); the assert below catches that case.
     _restore_termini_bonds(mol_out)
+    if detect_specs:
+        _apply_terminal_formal_charges(mol_out, detect_specs)
 
     if detect_specs:
         _assert_specs_bonded(mol_out, detect_specs)

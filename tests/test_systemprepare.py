@@ -832,3 +832,284 @@ def _test_hydrogen_bonds_match_geometry():
         f"Hydrogens bonded to topologically wrong heavy atom (d > 1.3 A): "
         f"{bad}"
     )
+
+
+def _build_spec_mol():
+    """Two-residue mol: a spec residue LIG (resid 1) and a canonical
+    residue ALA (resid 2). Used by the formal-charge unit tests."""
+    mol = Molecule().empty(5)
+    mol.coords = np.zeros((5, 3, 1), dtype=np.float32)
+    mol.name[:] = ["C1", "N1", "O1", "N", "CA"]
+    mol.element[:] = ["C", "N", "O", "N", "C"]
+    mol.resname[:] = ["LIG", "LIG", "LIG", "ALA", "ALA"]
+    mol.resid[:] = [1, 1, 1, 2, 2]
+    mol.chain[:] = ["A"] * 5
+    mol.segid[:] = ["P"] * 5
+    mol.insertion[:] = [""] * 5
+    mol.formalcharge[:] = [0, 1, -1, 1, 0]  # ALA N intentionally charged
+    return mol
+
+
+def _test_capture_formal_charges_empty_specs():
+    """``_capture_formal_charges`` must return an empty list when
+    ``detect_specs`` is empty - the function is scoped deliberately to
+    spec residues so callers without specs (free ligands only) skip the
+    capture cost entirely."""
+    from moleculekit.tools.preparation import _capture_formal_charges
+
+    mol = _build_spec_mol()
+    assert _capture_formal_charges(mol, detect_specs=[]) == []
+
+
+def _test_capture_formal_charges_scoped_to_specs():
+    """Only non-zero charges on atoms inside spec residues must be
+    captured. Zero charges are skipped, and charges on canonical
+    residues outside ``detect_specs`` must be ignored - PDB2PQR is
+    allowed to re-protonate canonicals, so we must not pin their formal
+    charges."""
+    from moleculekit.tools.preparation import _capture_formal_charges
+    from moleculekit.tools.nonstandard_residues import LigandSpec
+    from moleculekit.molecule import UniqueResidueID
+
+    mol = _build_spec_mol()
+    spec = LigandSpec(
+        resname="LIG",
+        residue=UniqueResidueID(
+            resname="LIG", chain="A", resid=1, insertion="", segid="P"
+        ),
+    )
+
+    captured = _capture_formal_charges(mol, detect_specs=[spec])
+    captured_by_name = {uaid.name: charge for uaid, charge in captured}
+    assert captured_by_name == {"N1": 1, "O1": -1}, (
+        f"only non-zero charges inside the spec residue must be captured; "
+        f"got {captured_by_name}"
+    )
+
+
+def _test_restore_formal_charges_survives_rename():
+    """``_restore_formal_charges`` must use the relaxed atom lookup so
+    captured charges still land on the right atom after the residue has
+    been renamed (CYS->CYX, LIG->LGX). The roundtrip target is a mol
+    whose formal charges have been zeroed (PDB2PQR resets them)."""
+    from moleculekit.tools.preparation import (
+        _capture_formal_charges,
+        _restore_formal_charges,
+    )
+    from moleculekit.tools.nonstandard_residues import LigandSpec
+    from moleculekit.molecule import UniqueResidueID
+
+    mol = _build_spec_mol()
+    spec = LigandSpec(
+        resname="LIG",
+        residue=UniqueResidueID(
+            resname="LIG", chain="A", resid=1, insertion="", segid="P"
+        ),
+    )
+    captured = _capture_formal_charges(mol, detect_specs=[spec])
+
+    mol2 = mol.copy()
+    mol2.resname[mol2.resid == 1] = "LGX"  # rename like CYS->CYX
+    mol2.formalcharge[:] = 0  # simulate PDB2PQR zeroing
+    _restore_formal_charges(mol2, captured)
+
+    by_name = {str(n): int(c) for n, c in zip(mol2.name, mol2.formalcharge)}
+    assert by_name["N1"] == 1, "N1 charge must be restored after rename"
+    assert by_name["O1"] == -1, "O1 charge must be restored after rename"
+    assert by_name["N"] == 0, (
+        "canonical ALA N must not be touched (not in detect_specs)"
+    )
+
+
+def _test_restore_formal_charges_drops_missing_atom():
+    """If an atom captured in the input mol has been removed by PDB2PQR
+    (rare, but possible for stray Hs), the restore must silently skip
+    it rather than raising. Mirrors the behaviour of ``_restore_bonds``
+    via the shared ``_find_atom_relaxed`` helper."""
+    from moleculekit.tools.preparation import (
+        _capture_formal_charges,
+        _restore_formal_charges,
+    )
+    from moleculekit.tools.nonstandard_residues import LigandSpec
+    from moleculekit.molecule import UniqueResidueID
+
+    mol = _build_spec_mol()
+    spec = LigandSpec(
+        resname="LIG",
+        residue=UniqueResidueID(
+            resname="LIG", chain="A", resid=1, insertion="", segid="P"
+        ),
+    )
+    captured = _capture_formal_charges(mol, detect_specs=[spec])
+
+    mol2 = mol.copy()
+    mol2.remove("name N1", _logger=False)
+    mol2.formalcharge[:] = 0
+    _restore_formal_charges(mol2, captured)  # must not raise
+
+    by_name = {str(n): int(c) for n, c in zip(mol2.name, mol2.formalcharge)}
+    assert by_name["O1"] == -1, "remaining captured atom must still be restored"
+    assert "N1" not in by_name
+
+
+def _build_terminus_mol(n_term_h_count, c_term_oxt_h_count):
+    """Build a single-residue protein-like mol with both N and OXT
+    backbone atoms, parametrised by how many hydrogens hang off each.
+
+    - ``n_term_h_count``: 3 = charged NH3+, 2 = neutral NH2.
+    - ``c_term_oxt_h_count``: 0 = COO-, 1 = neutral COOH.
+    """
+    n_h = n_term_h_count
+    oxt_h = c_term_oxt_h_count
+    n_atoms = 4 + n_h + oxt_h  # N, CA, C, OXT + Hs on N and OXT
+    mol = Molecule().empty(n_atoms)
+    mol.coords = np.zeros((n_atoms, 3, 1), dtype=np.float32)
+
+    names = ["N", "CA", "C", "OXT"]
+    elems = ["N", "C", "C", "O"]
+    bonds = [(0, 1), (1, 2), (2, 3)]  # N-CA, CA-C, C-OXT
+    next_idx = 4
+    for k in range(n_h):
+        names.append(["H", "H2", "H3"][k])
+        elems.append("H")
+        bonds.append((0, next_idx))  # N-H
+        next_idx += 1
+    for _ in range(oxt_h):
+        names.append("HO")
+        elems.append("H")
+        bonds.append((3, next_idx))  # OXT-H
+        next_idx += 1
+
+    mol.name[:] = names
+    mol.element[:] = elems
+    mol.resname[:] = ["GLY"] * n_atoms
+    mol.resid[:] = [1] * n_atoms
+    mol.chain[:] = ["A"] * n_atoms
+    mol.segid[:] = ["P"] * n_atoms
+    mol.insertion[:] = [""] * n_atoms
+    mol.formalcharge[:] = 0  # PDB2PQR zeroes these on output
+    mol.bonds = np.array(bonds, dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
+    return mol
+
+
+def _test_apply_terminal_formal_charges_charged_nterm_charged_cterm():
+    """3 H on backbone N -> NH3+ (formalcharge +1). 0 H on OXT -> COO-
+    (formalcharge -1). These are PDB2PQR's default CTERM / NTERM
+    patches at pH 7."""
+    from moleculekit.tools.preparation import _apply_terminal_formal_charges
+    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
+    from moleculekit.molecule import UniqueResidueID
+
+    mol = _build_terminus_mol(n_term_h_count=3, c_term_oxt_h_count=0)
+    spec = ChainResidueSpec(
+        resname="GLY",
+        residue=UniqueResidueID(
+            resname="GLY", chain="A", resid=1, insertion="", segid="P"
+        ),
+        is_n_term=True,
+        is_c_term=True,
+    )
+    _apply_terminal_formal_charges(mol, detect_specs=[spec])
+
+    by_name = {str(n): int(c) for n, c in zip(mol.name, mol.formalcharge)}
+    assert by_name["N"] == 1, "3 H on N must give NH3+ (+1)"
+    assert by_name["OXT"] == -1, "0 H on OXT must give COO- (-1)"
+
+
+def _test_apply_terminal_formal_charges_neutral_termini():
+    """The NEUTRAL-NTERM / NEUTRAL-CTERM patches leave fewer Hs on N (2)
+    and add an H to OXT, both of which the helper must read as neutral
+    and leave formalcharge at 0."""
+    from moleculekit.tools.preparation import _apply_terminal_formal_charges
+    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
+    from moleculekit.molecule import UniqueResidueID
+
+    mol = _build_terminus_mol(n_term_h_count=2, c_term_oxt_h_count=1)
+    spec = ChainResidueSpec(
+        resname="GLY",
+        residue=UniqueResidueID(
+            resname="GLY", chain="A", resid=1, insertion="", segid="P"
+        ),
+        is_n_term=True,
+        is_c_term=True,
+    )
+    _apply_terminal_formal_charges(mol, detect_specs=[spec])
+
+    by_name = {str(n): int(c) for n, c in zip(mol.name, mol.formalcharge)}
+    assert by_name["N"] == 0, "2 H on N is neutral NH2 - no charge"
+    assert by_name["OXT"] == 0, "1 H on OXT is neutral COOH - no charge"
+
+
+def _test_apply_terminal_formal_charges_skips_non_chain_spec():
+    """Only :class:`ChainResidueSpec` entries are touched. A
+    :class:`LigandSpec` (a free ligand) must be ignored even if it
+    happens to have backbone-named atoms."""
+    from moleculekit.tools.preparation import _apply_terminal_formal_charges
+    from moleculekit.tools.nonstandard_residues import LigandSpec
+    from moleculekit.molecule import UniqueResidueID
+
+    mol = _build_terminus_mol(n_term_h_count=3, c_term_oxt_h_count=0)
+    spec = LigandSpec(
+        resname="GLY",
+        residue=UniqueResidueID(
+            resname="GLY", chain="A", resid=1, insertion="", segid="P"
+        ),
+    )
+    _apply_terminal_formal_charges(mol, detect_specs=[spec])
+
+    by_name = {str(n): int(c) for n, c in zip(mol.name, mol.formalcharge)}
+    assert by_name["N"] == 0, "LigandSpec must be skipped, N untouched"
+    assert by_name["OXT"] == 0, "LigandSpec must be skipped, OXT untouched"
+
+
+def _test_apply_terminal_formal_charges_skips_midchain_spec():
+    """A ChainResidueSpec without either terminus flag (mid-chain NCAA)
+    must be left alone - terminal patches don't apply to it."""
+    from moleculekit.tools.preparation import _apply_terminal_formal_charges
+    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
+    from moleculekit.molecule import UniqueResidueID
+
+    mol = _build_terminus_mol(n_term_h_count=3, c_term_oxt_h_count=0)
+    spec = ChainResidueSpec(
+        resname="GLY",
+        residue=UniqueResidueID(
+            resname="GLY", chain="A", resid=1, insertion="", segid="P"
+        ),
+        is_n_term=False,
+        is_c_term=False,
+    )
+    _apply_terminal_formal_charges(mol, detect_specs=[spec])
+
+    by_name = {str(n): int(c) for n, c in zip(mol.name, mol.formalcharge)}
+    assert by_name["N"] == 0, "mid-chain spec must not get NTERM treatment"
+    assert by_name["OXT"] == 0, "mid-chain spec must not get CTERM treatment"
+
+
+def _test_apply_terminal_formal_charges_uses_new_resname():
+    """When a spec has been renamed (``new_resname`` set, e.g. CYS->CYX
+    or LIG->XX1 for a custom anchor), the helper must match on the
+    *renamed* resname - because that's what's in ``mol.resname`` after
+    ``_apply_detect_spec_renames``."""
+    from moleculekit.tools.preparation import _apply_terminal_formal_charges
+    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
+    from moleculekit.molecule import UniqueResidueID
+
+    mol = _build_terminus_mol(n_term_h_count=3, c_term_oxt_h_count=0)
+    # Mimic _apply_detect_spec_renames having renamed the residue:
+    mol.resname[:] = "CYX"
+
+    spec = ChainResidueSpec(
+        resname="CYS",  # original
+        residue=UniqueResidueID(
+            resname="CYS", chain="A", resid=1, insertion="", segid="P"
+        ),
+        new_resname="CYX",  # current resname in mol
+        is_n_term=True,
+        is_c_term=True,
+    )
+    _apply_terminal_formal_charges(mol, detect_specs=[spec])
+
+    by_name = {str(n): int(c) for n, c in zip(mol.name, mol.formalcharge)}
+    assert by_name["N"] == 1, "must match by new_resname; expected NH3+"
+    assert by_name["OXT"] == -1, "must match by new_resname; expected COO-"
