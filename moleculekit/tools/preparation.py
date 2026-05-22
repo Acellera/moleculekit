@@ -425,14 +425,21 @@ def _canonicalize_ncaa_h_names(mol, detect_specs):
 
 def _delete_no_titrate(pka_list, no_titr):
     pkas = []
+    logged = set()
     for res in pka_list:
         key = (res["res_num"], res["chain_id"].strip(), res["ins_code"].strip())
         if key not in no_titr:
             pkas.append(res)
-        else:
-            logger.info(
-                f"Skipping titration of residue {res['res_name']}:{key[1]}:{key[0]}{key[2]}"
-            )
+            continue
+        # PDB2PQR emits one pka_list row per ionizable site within a residue
+        # (e.g. HEM has 4 pyrrole Ns + 2 propionate COOHs = 6 rows). Log once
+        # per residue to avoid 6x duplicate "Skipping titration" lines.
+        if key in logged:
+            continue
+        logged.add(key)
+        logger.info(
+            f"Skipping titration of residue {res['res_name']}:{key[1]}:{key[0]}{key[2]}"
+        )
     return pkas
 
 
