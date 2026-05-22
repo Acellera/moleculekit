@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 import os
 
-
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -153,9 +152,8 @@ def _test_psf_writer():
         assert filelines == reflines, f"Failed comparison of {reffile} {tmpfile}"
 
 
-def _test_cif_mol2_atom_renaming():
+def _test_cif_mol2_atom_renaming(tmp_path):
     from moleculekit.molecule import Molecule
-    import tempfile
 
     # This ensures the right masses are written into the psf file from the elements
 
@@ -163,26 +161,25 @@ def _test_cif_mol2_atom_renaming():
     reffile2 = os.path.join(curr_dir, "test_writers", "BEN_ideal.mol2")
     mol = Molecule(os.path.join(curr_dir, "test_writers", "BEN_ideal.sdf"))
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpfile = os.path.join(tmpdir, "BEN_ideal.cif")
-        mol.write(tmpfile)
+    tmpfile = os.path.join(tmp_path, "BEN_ideal.cif")
+    mol.write(tmpfile)
 
-        with open(tmpfile, "r") as f:
-            filelines = f.readlines()
-        with open(reffile1, "r") as f:
-            reflines = f.readlines()
+    with open(tmpfile, "r") as f:
+        filelines = f.readlines()
+    with open(reffile1, "r") as f:
+        reflines = f.readlines()
 
-        assert filelines == reflines, f"Failed comparison of {reffile1} {tmpfile}"
+    assert filelines == reflines, f"Failed comparison of {reffile1} {tmpfile}"
 
-        tmpfile = os.path.join(tmpdir, "BEN_ideal.mol2")
-        mol.write(tmpfile)
+    tmpfile = os.path.join(tmp_path, "BEN_ideal.mol2")
+    mol.write(tmpfile)
 
-        with open(tmpfile, "r") as f:
-            filelines = f.readlines()
-        with open(reffile2, "r") as f:
-            reflines = f.readlines()
+    with open(tmpfile, "r") as f:
+        filelines = f.readlines()
+    with open(reffile2, "r") as f:
+        reflines = f.readlines()
 
-        assert filelines == reflines, f"Failed comparison of {reffile2} {tmpfile}"
+    assert filelines == reflines, f"Failed comparison of {reffile2} {tmpfile}"
 
 
 @pytest.mark.parametrize(

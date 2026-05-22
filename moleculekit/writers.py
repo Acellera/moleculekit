@@ -574,7 +574,7 @@ def MOL2write(mol, filename, explicitbonds=None):
             if isinstance(mol.resid[i], numbers.Integral):
                 f.write(f"{mol.resid[i]} {resnames[i]} ")
                 if isinstance(mol.charge[i], numbers.Real):
-                    f.write(f"{mol.charge[i]:12.4f}")
+                    f.write(f"{mol.charge[i]:14.6f}")
             f.write("\n")
 
         # # Disabled because RDKit has issues with this section
