@@ -1069,6 +1069,32 @@ def PDBread(
     # bondnames = ("serial1", "serial2", "serial3", "serial4", "serial5")
 
     """
+    COLUMNS         DATA  TYPE      FIELD           DEFINITION
+    -------------------------------------------------------------------------
+     1 -  6         Record name    "LINK  "
+    13 - 16         Atom           name1           Atom name.
+    17              Character      altLoc1         Alternate location indicator.
+    18 - 20         Residue name   resName1        Residue name.
+    22              Character      chainID1        Chain identifier.
+    23 - 26         Integer        resSeq1         Residue sequence number.
+    27              AChar          iCode1          Insertion code.
+    43 - 46         Atom           name2           Atom name.
+    47              Character      altLoc2         Alternate location indicator.
+    48 - 50         Residue name   resName2        Residue name.
+    52              Character      chainID2        Chain identifier.
+    53 - 56         Integer        resSeq2         Residue sequence number.
+    57              AChar          iCode2          Insertion code.
+    """
+    linkcolspecs = [
+        (12, 16), (16, 17), (17, 20), (21, 22), (22, 26), (26, 27),
+        (42, 46), (46, 47), (47, 50), (51, 52), (52, 56), (56, 57),
+    ]
+    linknames = (
+        "name1", "altloc1", "resname1", "chain1", "resid1", "insertion1",
+        "name2", "altloc2", "resname2", "chain2", "resid2", "insertion2",
+    )
+
+    """
     COLUMNS       DATA  TYPE    FIELD          DEFINITION
     -------------------------------------------------------------
      1 -  6       Record name   "CRYST1"
@@ -1125,6 +1151,7 @@ def PDBread(
     crystalinfo = {}
     parsedsymmetry = {prop: [] for prop in symmetrynames}
     parsedbonds = []
+    parsedlinks = []
 
     coords = []
     teridx = []
@@ -1189,6 +1216,10 @@ def PDBread(
                 modelcoords = []
             if line.startswith("CONECT"):
                 parsedbonds.append([line[s:e].strip() for s, e in bondcolspecs])
+            if line.startswith("LINK") and not line.startswith("LINKR"):
+                parsedlinks.append(
+                    {n: line[s:e].strip() for (s, e), n in zip(linkcolspecs, linknames)}
+                )
             if line.startswith("MODEL"):
                 if len(modelcoords):
                     coords.append(modelcoords)
@@ -1291,6 +1322,82 @@ def PDBread(
         topo.bonds = np.array(
             mapserials[topo.bonds[:]], dtype=Molecule._dtypes["bonds"]
         )
+
+    # LINK records carry inter-residue covalent and metal-coordination bonds
+    # that CONECT may or may not duplicate. Resolve each LINK partner by
+    # (chain, resid, insertion, name, altloc) and classify by element: if
+    # either endpoint is a metal, the bond is "mc"; otherwise "un" (no order).
+    if len(parsedlinks):
+        from collections import defaultdict
+        from moleculekit.periodictable import METAL_ELEMENTS
+
+        atom_key_to_idx = {}
+        for ai in range(len(topo.name)):
+            ins = topo.insertion[ai]
+            if ins in (".", "?"):
+                ins = ""
+            key = (
+                topo.chain[ai],
+                topo.resid[ai],
+                ins,
+                topo.name[ai],
+                topo.altloc[ai],
+            )
+            atom_key_to_idx.setdefault(key, ai)
+            atom_key_to_idx.setdefault(key[:4], ai)  # altloc-agnostic fallback
+
+        # Every (min, max) bond key may map to multiple rows because CONECT
+        # writes each bond twice (i->j and j->i). Track all rows so the
+        # in-place "mc" upgrade catches both copies.
+        existing_lookup = defaultdict(list)
+        if len(topo.bonds):
+            for i, (a, b) in enumerate(topo.bonds.tolist()):
+                existing_lookup[(min(a, b), max(a, b))].append(i)
+
+        bondtypes = ["un"] * (len(topo.bonds) if len(topo.bonds) else 0)
+        new_bonds = []
+        for lk in parsedlinks:
+            ins1 = "" if lk["insertion1"] in (".", "?") else lk["insertion1"]
+            ins2 = "" if lk["insertion2"] in (".", "?") else lk["insertion2"]
+            try:
+                resid1 = int(lk["resid1"])
+                resid2 = int(lk["resid2"])
+            except ValueError:
+                continue
+            k1_full = (lk["chain1"], resid1, ins1, lk["name1"], lk["altloc1"])
+            k2_full = (lk["chain2"], resid2, ins2, lk["name2"], lk["altloc2"])
+            a = atom_key_to_idx.get(k1_full, atom_key_to_idx.get(k1_full[:4]))
+            b = atom_key_to_idx.get(k2_full, atom_key_to_idx.get(k2_full[:4]))
+            if a is None or b is None:
+                continue
+            # topo.element may still be raw PDB-cased (e.g. "CA" before
+            # MolFactory normalizes it to "Ca"); compare case-insensitively.
+            el_a = topo.element[a].strip().capitalize()
+            el_b = topo.element[b].strip().capitalize()
+            bt = (
+                "mc"
+                if el_a in METAL_ELEMENTS or el_b in METAL_ELEMENTS
+                else "un"
+            )
+            k = (min(a, b), max(a, b))
+            if k in existing_lookup:
+                if bt == "mc":
+                    for idx in existing_lookup[k]:
+                        bondtypes[idx] = "mc"
+            else:
+                new_bonds.append([a, b])
+                existing_lookup[k].append(len(bondtypes))
+                bondtypes.append(bt)
+
+        if len(new_bonds):
+            if len(topo.bonds):
+                topo.bonds = np.vstack(
+                    [topo.bonds, np.array(new_bonds, dtype=Molecule._dtypes["bonds"])]
+                )
+            else:
+                topo.bonds = np.array(new_bonds, dtype=Molecule._dtypes["bonds"])
+        if len(bondtypes):
+            topo.bondtype = bondtypes
 
     # If no segid was read, use the TER rows to define segments
     if len(topo.segid) and np.all(np.array(topo.segid) == "") and currter != 0:
@@ -2158,6 +2265,15 @@ def CIFread(
             chem_comp_bond[resname][name2].append((name1, bondtype))
 
     # Parsing inter-residue bond data
+    # struct_conn conn_type_id values per the PDBx/mmCIF dictionary:
+    # https://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v40.dic/Items/_struct_conn_type.id.html
+    covalent_conn_types = (
+        "covale",
+        "covale_base",
+        "covale_phosphate",
+        "covale_sugar",
+        "modres",
+    )
     struct_conn = defaultdict(list)
     all_struct_conn_atoms = []
     if "struct_conn" in dataObj.getObjNameList():
@@ -2165,15 +2281,10 @@ def CIFread(
         for i in range(struct_conn_site.getRowCount()):
             row = struct_conn_site.getRow(i)
             conn_type_id = row[struct_conn_site.getAttributeIndex("conn_type_id")]
-            if covalentonly and conn_type_id not in (
-                "covale",
-                "covale_base",
-                "covale_phosphate",
-                "covale_sugar",
-                "modres",
-            ):
-                # Skip non-covalent bonds like disulfide and metal coordination
-                # For types check here: https://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v40.dic/Items/_struct_conn_type.id.html
+            is_metalc = conn_type_id == "metalc"
+            if covalentonly and not is_metalc and conn_type_id not in covalent_conn_types:
+                # Skip hydrog, disulf, saltbr, mismat (disulfides are recovered
+                # by distance-based bond guessing / systemPrepare's CYS->CYX rename).
                 continue
             chain1 = fixDefault(
                 row[struct_conn_site.getAttributeIndex("ptnr1_auth_asym_id")], str
@@ -2191,11 +2302,14 @@ def CIFread(
             insertion2 = fixDefault(
                 row[struct_conn_site.getAttributeIndex("pdbx_ptnr2_PDB_ins_code")], str
             )
-            bondtype = row[struct_conn_site.getAttributeIndex("pdbx_value_order")]
-            if bondtype == "?":
-                bondtype = "un"
+            if is_metalc:
+                bondtype = "mc"
             else:
-                bondtype = bondtype_mapping.get(bondtype.upper(), bondtype.upper())
+                bondtype = row[struct_conn_site.getAttributeIndex("pdbx_value_order")]
+                if bondtype == "?":
+                    bondtype = "un"
+                else:
+                    bondtype = bondtype_mapping.get(bondtype.upper(), bondtype.upper())
             id1 = (resid1, insertion1, chain1, name1)
             id2 = (resid2, insertion2, chain2, name2)
             struct_conn[id1].append((id2, bondtype))

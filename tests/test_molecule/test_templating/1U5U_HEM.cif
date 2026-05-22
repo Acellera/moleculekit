@@ -1,0 +1,130 @@
+data_HEM
+#
+#
+_cell.length_a     147.94
+_cell.length_b     76.679
+_cell.length_c     77.761
+_cell.angle_alpha  90.0
+_cell.angle_beta   109.66
+_cell.angle_gamma  90.0
+_cell.Z_PDB        8
+##
+_symmetry.space_group_name_H-M  "C 1 2 1"
+##
+_chem_comp.id                  HEM
+_chem_comp.type                NON-POLYMER
+_chem_comp.pdbx_formal_charge  0
+##
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+HEM  CHA  .  C   0  0.0  31.555  38.202  44.854  31.555  38.202  44.854  
+HEM  CHB  .  C   0  0.0  36.028  39.889  45.579  36.028  39.889  45.579  
+HEM  CHC  .  C   0  0.0  34.605  41.864  49.785  34.605  41.864  49.785  
+HEM  CHD  .  C   0  0.0  30.099  40.244  49.007  30.099  40.244  49.007  
+HEM  C1A  .  C   0  0.0  32.892  38.489  44.669  32.892  38.489  44.669  
+HEM  C2A  .  C   0  0.0  33.687  38.120  43.500  33.687  38.120  43.500  
+HEM  C3A  .  C   0  0.0  34.944  38.600  43.705  34.944  38.600  43.705  
+HEM  C4A  .  C   0  0.0  34.928  39.268  45.001  34.928  39.268  45.001  
+HEM  CMA  .  C   0  0.0  36.152  38.497  42.799  36.152  38.497  42.799  
+HEM  CAA  .  C   0  0.0  33.176  37.361  42.302  33.176  37.361  42.302  
+HEM  CBA  .  C   0  0.0  33.411  35.867  42.345  33.411  35.867  42.345  
+HEM  CGA  .  C   0  0.0  32.874  35.157  41.112  32.874  35.157  41.112  
+HEM  O1A  .  O   0  0.0  31.915  34.363  41.249  31.915  34.363  41.249  
+HEM  O2A  .  O   0  0.0  33.411  35.423  40.003  33.411  35.423  40.003  
+HEM  C1B  .  C   0  0.0  36.063  40.557  46.790  36.063  40.557  46.790  
+HEM  C2B  .  C   0  0.0  37.242  41.182  47.359  37.242  41.182  47.359  
+HEM  C3B  .  C   0  0.0  36.835  41.739  48.550  36.835  41.739  48.550  
+HEM  C4B  .  C   0  0.0  35.417  41.457  48.701  35.417  41.457  48.701  
+HEM  CMB  .  C   0  0.0  38.614  41.191  46.715  38.614  41.191  46.715  
+HEM  CAB  .  C   0  0.0  37.617  42.507  49.551  37.617  42.507  49.551  
+HEM  CBB  .  C   0  0.0  38.778  42.176  50.108  38.778  42.176  50.108  
+HEM  C1C  .  C   0  0.0  33.245  41.627  49.973  33.245  41.627  49.973  
+HEM  C2C  .  C   0  0.0  32.441  42.090  51.102  32.441  42.090  51.102  
+HEM  C3C  .  C   0  0.0  31.157  41.634  50.880  31.157  41.634  50.880  
+HEM  C4C  .  C   0  0.0  31.192  40.891  49.613  31.192  40.891  49.613  
+HEM  CMC  .  C   0  0.0  32.992  42.909  52.252  32.992  42.909  52.252  
+HEM  CAC  .  C   0  0.0  29.936  41.814  51.708  29.936  41.814  51.708  
+HEM  CBC  .  C   0  0.0  29.827  41.699  53.036  29.827  41.699  53.036  
+HEM  C1D  .  C   0  0.0  30.074  39.523  47.809  30.074  39.523  47.809  
+HEM  C2D  .  C   0  0.0  28.912  38.852  47.256  28.912  38.852  47.256  
+HEM  C3D  .  C   0  0.0  29.332  38.255  46.084  29.332  38.255  46.084  
+HEM  C4D  .  C   0  0.0  30.740  38.587  45.917  30.740  38.587  45.917  
+HEM  CMD  .  C   0  0.0  27.536  38.817  47.877  27.536  38.817  47.877  
+HEM  CAD  .  C   0  0.0  28.499  37.403  45.157  28.499  37.403  45.157  
+HEM  CBD  .  C   0  0.0  28.599  35.945  45.725  28.599  35.945  45.725  
+HEM  CGD  .  C   0  0.0  27.833  34.895  44.929  27.833  34.895  44.929  
+HEM  O1D  .  O   0  0.0  28.479  33.920  44.463  28.479  33.920  44.463  
+HEM  O2D  .  O   0  0.0  26.587  35.039  44.817  26.587  35.039  44.817  
+HEM  NA   .  N   0  0.0  33.681  39.199  45.554  33.681  39.199  45.554  
+HEM  NB   .  N   0  0.0  34.982  40.730  47.629  34.982  40.730  47.629  
+HEM  NC   .  N   0  0.0  32.457  40.918  49.114  32.457  40.918  49.114  
+HEM  ND   .  N   0  0.0  31.161  39.330  46.982  31.161  39.330  46.982  
+HEM  FE   .  Fe  0  0.0  33.066  40.015  47.342  33.066  40.015  47.342  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+HEM  C1A  CHA  SING  
+HEM  C2A  C1A  DOUB  
+HEM  C3A  C2A  SING  
+HEM  C4A  CHB  SING  
+HEM  C4A  C3A  DOUB  
+HEM  CMA  C3A  SING  
+HEM  CAA  C2A  SING  
+HEM  CBA  CAA  SING  
+HEM  CGA  CBA  SING  
+HEM  O1A  CGA  DOUB  
+HEM  O2A  CGA  SING  
+HEM  C1B  CHB  DOUB  
+HEM  C2B  C1B  SING  
+HEM  C3B  C2B  DOUB  
+HEM  C4B  CHC  SING  
+HEM  C4B  C3B  SING  
+HEM  CMB  C2B  SING  
+HEM  CAB  C3B  SING  
+HEM  CBB  CAB  DOUB  
+HEM  C1C  CHC  DOUB  
+HEM  C2C  C1C  SING  
+HEM  C3C  C2C  DOUB  
+HEM  C4C  CHD  DOUB  
+HEM  C4C  C3C  SING  
+HEM  CMC  C2C  SING  
+HEM  CAC  C3C  SING  
+HEM  CBC  CAC  DOUB  
+HEM  C1D  CHD  SING  
+HEM  C2D  C1D  SING  
+HEM  C3D  C2D  DOUB  
+HEM  C4D  CHA  DOUB  
+HEM  C4D  C3D  SING  
+HEM  CMD  C2D  SING  
+HEM  CAD  C3D  SING  
+HEM  CBD  CAD  SING  
+HEM  CGD  CBD  SING  
+HEM  O1D  CGD  DOUB  
+HEM  O2D  CGD  SING  
+HEM  NA   C1A  SING  
+HEM  NA   C4A  SING  
+HEM  NB   C1B  SING  
+HEM  NB   C4B  DOUB  
+HEM  NC   C1C  SING  
+HEM  NC   C4C  SING  
+HEM  ND   C1D  DOUB  
+HEM  ND   C4D  SING  
+HEM  FE   NA   SING  
+HEM  FE   NB   SING  
+HEM  FE   NC   SING  
+HEM  FE   ND   SING  
+##

@@ -804,6 +804,66 @@ def _test_bcif_pdb(pdbid):
     )
 
 
+@pytest.mark.parametrize(
+    "pdbid,expected",
+    [
+        ("3ptb", 6),  # Ca2+ coordinated by 4 protein O + 2 water O
+        ("1u5u", 4),  # 2x HEM iron coordinated by TYR-OH and HOH (chains A, B)
+    ],
+)
+def _test_bcif_metal_coordination_mc(pdbid, expected):
+    """bcif reader should emit 'mc' bondtype for struct_conn metalc rows
+    rather than dropping them."""
+    bciffile = os.path.join(curr_dir, "pdb", f"{pdbid.lower()}.bcif.gz")
+    mol = Molecule(bciffile)
+    n_mc = int((mol.bondtype == "mc").sum())
+    assert n_mc == expected, f"{pdbid}: expected {expected} mc bonds, got {n_mc}"
+    # Every mc bond touches a metal element.
+    from moleculekit.periodictable import METAL_ELEMENTS
+
+    mc_idx = (mol.bondtype == "mc").nonzero()[0]
+    for bi in mc_idx:
+        i, j = mol.bonds[bi]
+        assert (
+            mol.element[i] in METAL_ELEMENTS or mol.element[j] in METAL_ELEMENTS
+        ), f"mc bond {i}-{j} ({mol.element[i]}-{mol.element[j]}) has no metal endpoint"
+
+
+@pytest.mark.parametrize(
+    "pdbid,expected",
+    [
+        ("3ptb", 6),
+        ("1u5u", 4),
+    ],
+)
+def _test_pdb_link_metal_coordination_mc(pdbid, expected):
+    """PDB reader should emit 'mc' bondtype for LINK records touching metal
+    elements; non-metal LINKs stay 'un'."""
+    pdbfile = os.path.join(curr_dir, "pdb", f"{pdbid.lower()}.pdb")
+    mol = Molecule(pdbfile)
+    n_mc = int((mol.bondtype == "mc").sum())
+    assert n_mc == expected, f"{pdbid}: expected {expected} mc bonds, got {n_mc}"
+
+
+def _test_bcif_mc_round_trip():
+    """Writing a Molecule with 'mc' bonds to bcif/CIF and re-reading must
+    preserve the 'mc' bondtype (via struct_conn conn_type_id=metalc)."""
+    import tempfile
+
+    mol = Molecule(os.path.join(curr_dir, "pdb", "1u5u.bcif.gz"))
+    n_mc = int((mol.bondtype == "mc").sum())
+    assert n_mc == 4
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for ext in ("bcif.gz", "cif"):
+            outfile = os.path.join(tmpdir, f"out.{ext}")
+            mol.write(outfile)
+            mol2 = Molecule(outfile)
+            assert int((mol2.bondtype == "mc").sum()) == n_mc, (
+                f"{ext}: round-trip dropped mc bonds"
+            )
+
+
 @pytest.mark.parametrize("pdbid", ["3ptb", "3hyd", "6a5j", "5vbl", "7q5b"])
 @pytest.mark.parametrize("ext", ["bcif", "bcif.gz"])
 def _test_bcif_write(pdbid, ext):

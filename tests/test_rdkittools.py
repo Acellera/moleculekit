@@ -239,6 +239,108 @@ def _test_toRDKitMol(file):
     )
 
 
+def _test_rdkit_dative_round_trips_as_mc():
+    """RDKit DATIVE bonds <-> moleculekit 'mc' bondtype."""
+    from rdkit import Chem
+    from moleculekit.molecule import Molecule
+
+    # NH3 -> Zn <- NH3 (two dative bonds)
+    rmol = Chem.MolFromSmiles("[NH3]->[Zn+2]<-[NH3]")
+    assert rmol is not None
+    mol = Molecule.fromRDKitMol(rmol)
+    assert (mol.bondtype == "mc").sum() == 2
+    # Round-trip back to RDKit must restore DATIVE
+    rmol2 = mol.toRDKitMol(sanitize=False, kekulize=False, assignStereo=False)
+    dative = [
+        b for b in rmol2.GetBonds() if b.GetBondType() == Chem.BondType.DATIVE
+    ]
+    assert len(dative) == 2
+
+
+def _test_templateResidueFromSmiles_preserves_dative():
+    """SMILES with explicit -> dative arrows must surface as 'mc' bonds in
+    the templated Molecule, not get demoted to single."""
+    import numpy as np
+    from moleculekit.molecule import Molecule
+
+    # Build a one-residue Molecule for [Zn(NH3)2]2+ with explicit bonds.
+    mol = Molecule().empty(3)
+    mol.element[:] = ["N", "Zn", "N"]
+    mol.name[:] = ["N1", "ZN", "N2"]
+    mol.resname[:] = "MOL"
+    mol.record[:] = "HETATM"
+    mol.resid[:] = 1
+    mol.chain[:] = "A"
+    mol.coords = np.array(
+        [[0.0, 0.0, 0.0], [1.8, 0.0, 0.0], [3.6, 0.0, 0.0]], dtype=np.float32
+    ).reshape(3, 3, 1)
+    mol.bonds = np.array([[0, 1], [1, 2]], dtype=np.uint32)
+    mol.bondtype = np.array(["1", "1"], dtype=object)
+
+    mol.templateResidueFromSmiles(
+        "resname MOL", "[NH3]->[Zn+2]<-[NH3]", addHs=False, guessBonds=False
+    )
+    # The two N-Zn bonds must come back as 'mc' (preserved through the
+    # MCS demote-and-restore round-trip).
+    assert (mol.bondtype == "mc").sum() == 2
+
+
+def _test_templateResidueFromSmiles_HEM_input_has_mc_bonds():
+    """If the residue's own bonds already carry 'mc' bondtypes (e.g. a HEM
+    reloaded from a CIF moleculekit previously wrote), templating must
+    still succeed: rmol carries BondType.DATIVE for those, which would
+    break FindMCS / GetSubstructMatch without an explicit demote on the
+    residue side as well as the SMILES side. Uses guessBonds=False so the
+    preset 'mc' bonds reach the RDKit conversion intact."""
+    import numpy as np
+    from moleculekit.molecule import Molecule
+
+    testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
+    mol = Molecule(os.path.join(testdir, "1U5U_HEM.cif"))
+
+    fe_idx = int(np.where(mol.name == "FE")[0][0])
+    for i in range(len(mol.bonds)):
+        a, b = mol.bonds[i]
+        if a == fe_idx or b == fe_idx:
+            mol.bondtype[i] = "mc"
+    assert (mol.bondtype == "mc").sum() == 4
+
+    smiles = "C=CC1=C(C)c2cc3c(C)c(CCC(=O)[O-])c4cc5[n]6->[Fe@SP2+3]7(<-[n]2c1cc1c(C)c(C=C)c(cc6C(C)=C5CCC(=O)[O-])[n-]->71)<-[n-]34"
+    mol.templateResidueFromSmiles("all", smiles, addHs=True, guessBonds=False)
+    assert (mol.bondtype == "mc").sum() == 4
+
+
+def _test_templateResidueFromSmiles_HEM_dative_Fe_N():
+    """Real-world check: templating HEM extracted from 1U5U with the
+    canonical heme SMILES that uses ``->[Fe@SP2+3]`` dative arrows must
+    produce 4 'mc' Fe-N bonds in the output (one per pyrrole nitrogen).
+    The source CIF has those bonds as plain singles from the CCD; the
+    SMILES is the source of truth for the dative-ness."""
+    import numpy as np
+    from moleculekit.molecule import Molecule
+
+    testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
+    mol = Molecule(os.path.join(testdir, "1U5U_HEM.cif"))
+    # CCD HEM has Fe-N as "1" (single), no "mc" yet.
+    assert (mol.bondtype == "mc").sum() == 0
+
+    smiles = "C=CC1=C(C)c2cc3c(C)c(CCC(=O)[O-])c4cc5[n]6->[Fe@SP2+3]7(<-[n]2c1cc1c(C)c(C=C)c(cc6C(C)=C5CCC(=O)[O-])[n-]->71)<-[n-]34"
+    mol.templateResidueFromSmiles("all", smiles, addHs=True, guessBonds=True)
+
+    mc_idx = (mol.bondtype == "mc").nonzero()[0]
+    assert len(mc_idx) == 4
+    # All 4 mc bonds must connect Fe to one of the pyrrole nitrogens.
+    fe_local = (mol.element == "Fe").nonzero()[0]
+    assert len(fe_local) == 1
+    fe = int(fe_local[0])
+    partners = []
+    for bi in mc_idx:
+        a, b = int(mol.bonds[bi, 0]), int(mol.bonds[bi, 1])
+        assert fe in (a, b)
+        partners.append(b if a == fe else a)
+    assert sorted(mol.name[partners].tolist()) == ["NA", "NB", "NC", "ND"]
+
+
 def _test_templatingNonStandardResidues(tmp_path):
     test_home = os.path.join(
         curr_dir, "test_systemprepare", "test-nonstandard-residues"

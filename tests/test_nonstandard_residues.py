@@ -83,6 +83,53 @@ def _test_anchor_variants_lookup():
     assert lookup_anchor("UNK", "X1") is None
 
 
+def _test_1u5u_heme_iron_tyr_coordination():
+    """1U5U: Fe in HEM is axially coordinated by TYR353-OH (chains A and B).
+    The bcif reader stores this as an 'mc' bond. detectNonStandardResidues
+    treats it as a non-peptide partner: HEM becomes a CovalentLigandSpec
+    (not a free LigandSpec) and TYR353 gets a ChainResidueSpec with
+    anchor_atom='OH', because the Tyr's protonation state (Tyr-O-) changes
+    when coordinated and needs a custom prepi.
+
+    Coordinations to standalone ion residues (3PTB's Ca2+) and to water
+    (HEM-Fe...HOH) are still skipped via the ion/water residue-name filter."""
+    mol = Molecule("1u5u")
+    specs = detectNonStandardResidues(mol)
+
+    tyrs = [
+        s for s in specs
+        if isinstance(s, ChainResidueSpec) and s.resname == "TYR"
+    ]
+    hems = [s for s in specs if isinstance(s, CovalentLigandSpec) and s.resname == "HEM"]
+
+    # One TYR353 per chain (A, B) gets flagged, anchored on OH.
+    assert len(tyrs) == 2
+    assert {t.residue.chain for t in tyrs} == {"A", "B"}
+    assert all(t.anchor_atom == "OH" and t.residue.resid == 353 for t in tyrs)
+    # Both TYR353s land in the same bucket (same canonical/anchor/partner)
+    # so they share one custom resname.
+    assert len({t.new_resname for t in tyrs}) == 1
+
+    # HEM is demoted from free LigandSpec to CovalentLigandSpec.
+    assert len(hems) == 2
+    assert {h.residue.chain for h in hems} == {"A", "B"}
+    assert not any(
+        isinstance(s, LigandSpec) and s.resname == "HEM" for s in specs
+    )
+
+
+def _test_3ptb_calcium_coordination_skips_ion_residue():
+    """3PTB: Ca2+ ion coordinated by 4 protein O + 2 waters. The ion lives
+    in its own residue (resname 'CA'), which is in _ION_RESNAMES, so every
+    Ca-O 'mc' bond is filtered out by detectNonStandardResidues. Only the
+    BEN ligand surfaces as a spec."""
+    mol = Molecule("3ptb")
+    specs = detectNonStandardResidues(mol)
+    assert len(specs) == 1
+    assert isinstance(specs[0], LigandSpec)
+    assert specs[0].resname == "BEN"
+
+
 def _test_8qfz_scaffolded_peptide():
     """8QFZ chain B: LFI scaffold thio-ether bonded to three CYS sidechains
     at resids 11, 17, 22. CYS 11 is N-terminal, CYS 22 is C-terminal,

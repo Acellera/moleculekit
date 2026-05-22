@@ -584,6 +584,7 @@ def MOL2write(mol, filename, explicitbonds=None):
         #     for i in idx:
         #         f.write(f"{i+1} 1\ncharge {mol.formalcharge[i]}\n")
 
+        # MOL2 has no metal-coordination bond type; downgrade "mc" to "un".
         f.write("@<TRIPOS>BOND\n")
         for i in range(unique_bonds.shape[0]):
             bt = "un"
@@ -599,6 +600,8 @@ def MOL2write(mol, filename, explicitbonds=None):
                     len(tmp) == 1
                 ), f"There should only exist one bond type for atoms {unique_bonds[i, 0]} {unique_bonds[i, 1]}"
                 bt = tmp[0]
+                if bt == "mc":
+                    bt = "un"
             f.write(
                 "{:6d} {:5d} {:5d} {:>4s}\n".format(
                     i + 1, unique_bonds[i, 0] + 1, unique_bonds[i, 1] + 1, bt
@@ -612,7 +615,9 @@ def SDFwrite(mol, filename):
             "Cannot write 'un' bond types to SDF. Please specify the molecule bond orders."
         )
 
-    bondmap = {"1": 1, "2": 2, "3": 3, "ar": 4, "4": "un"}
+    # SDF/MDL has no representation for metal coordination; downgrade "mc" to
+    # a single bond on write rather than failing.
+    bondmap = {"1": 1, "2": 2, "3": 3, "ar": 4, "4": "un", "mc": 1}
     with open(filename, "w", encoding="ascii") as fh:
         fh.write(f"{mol.viewname}\n")
         dims = "3D" if np.any(mol.coords[:, 2] != 0) else "2D"
@@ -1105,6 +1110,7 @@ def CIFwrite(
         "ar": "AROM",
         "am": "SING",
         "un": "SING",  # Default to single for unknown bond type
+        "mc": "SING",  # chem_comp_bond fallback; the real "mc" bonds go to struct_conn as "metalc"
     }
     xyz_map = {
         "Cartn_x": 0,
@@ -1261,9 +1267,15 @@ def CIFwrite(
                 bond = bonds[i]
                 if uqresid[bond[0]] == uqresid[bond[1]]:
                     continue
+                if bondtype[i] == "mc":
+                    conn_type = "metalc"
+                    value_order = "?"
+                else:
+                    conn_type = "covale"
+                    value_order = bondtype_map[bondtype[i]]
                 bCat.append(
                     [
-                        "covale",
+                        conn_type,
                         mol.chain[bond[0]],
                         mol.resid[bond[0]],
                         mol.name[bond[0]],
@@ -1272,7 +1284,7 @@ def CIFwrite(
                         mol.resid[bond[1]],
                         mol.name[bond[1]],
                         mol.insertion[bond[1]],
-                        bondtype_map[bondtype[i]],
+                        value_order,
                     ]
                 )
             curContainer.append(bCat)
@@ -1400,7 +1412,7 @@ def MMTFwrite(mol, filename):
     from string import ascii_uppercase
     from moleculekit.residues import SINGLE_LETTER_RESIDUE_NAME_TABLE
 
-    bondmap = {"1": 1, "2": 2, "3": 3, "4": 4, "un": 1, "ar": 1}
+    bondmap = {"1": 1, "2": 2, "3": 3, "4": 4, "un": 1, "ar": 1, "mc": 1}
 
     class MolToMMTF(MMTFDecoder):
         def __init__(self, mol):

@@ -378,11 +378,17 @@ def detectNonStandardResidues(mol):
     residue chain). When every instance of an NCAA shares the same
     terminus configuration, ``new_resname`` stays ``None``.
 
-    Metal-coordination contacts (e.g. PDB ``LINK`` records between a Zn
-    ion and a Zn-chelating inhibitor) are stored as bonds in
-    ``mol.bonds`` but are *not* covalent for parameterization purposes,
-    so they're skipped — such inhibitors stay classified as free
-    :class:`LigandSpec` entries.
+    Metal-coordination contacts where the metal is a standalone ion
+    residue (e.g. PDB ``LINK`` records between a Zn²⁺ residue and a
+    Zn-chelating inhibitor, or 3PTB's Ca²⁺ coordinated by GLU/ASN/VAL
+    oxygens) are skipped — the inhibitor stays a free :class:`LigandSpec`,
+    and the protein residues are left alone. Coordinations where the
+    metal lives *inside* a cofactor (e.g. Fe inside HEM coordinated to a
+    Tyr-OH or Cys-SG) are **kept**: the cofactor becomes a
+    :class:`CovalentLigandSpec` and the donating canonical AA becomes a
+    :class:`ChainResidueSpec`, because the donor's protonation state
+    changes (Tyr-O⁻, Cys-S⁻) and needs a custom prepi. Bonds touching
+    water are always skipped.
 
     Parameters
     ----------

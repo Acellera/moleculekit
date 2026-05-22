@@ -1922,3 +1922,21 @@ BEN  N1   H7   SING
 BEN  N2   H8   SING  
 BEN  N2   H9   SING  
 ##
+loop_
+_struct_conn.conn_type_id
+_struct_conn.ptnr1_auth_asym_id
+_struct_conn.ptnr1_auth_seq_id
+_struct_conn.ptnr1_label_atom_id
+_struct_conn.pdbx_ptnr1_PDB_ins_code
+_struct_conn.ptnr2_auth_asym_id
+_struct_conn.ptnr2_auth_seq_id
+_struct_conn.ptnr2_label_atom_id
+_struct_conn.pdbx_ptnr2_PDB_ins_code
+_struct_conn.pdbx_value_order
+metalc  A   70  OE1  .  A  480  CA  .  ?  
+metalc  A   72  O    .  A  480  CA  .  ?  
+metalc  A   75  O    .  A  480  CA  .  ?  
+metalc  A   80  OE2  .  A  480  CA  .  ?  
+metalc  A  480  CA   .  A  711  O   .  ?  
+metalc  A  480  CA   .  A  714  O   .  ?  
+##

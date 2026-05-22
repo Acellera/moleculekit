@@ -103,6 +103,88 @@ def _test_systemPrepare(pdb):
     )
 
 
+def _test_systemprepare_1u5u_heme_tyr_coordination_end_to_end():
+    """End-to-end check of the heme-Tyr coordination workflow on 1U5U
+    chain A (catalase HPII monomer):
+
+    1. Read mc bonds from bcif (TYR353-OH -> Fe and HOH -> Fe).
+    2. Template HEM with the canonical dative-arrow SMILES so the four
+       pyrrole N -> Fe bonds also arrive as DATIVE / 'mc' in mol.bonds.
+    3. detectNonStandardResidues flags TYR353 (anchor=OH) for re-templating
+       as a tyrosinate and HEM as a CovalentLigandSpec.
+    4. systemPrepare(detect_specs=...) renames TYR353 -> custom and templates
+       it with the Tyr SMILES; the 'mc' cross-bond drives the deprotonation
+       logic so the hydroxyl H is dropped AND the OH gets formal charge -1.
+
+    Asserted invariants:
+      - TYR353 was renamed (no longer 'TYR')
+      - TYR353 has no HH and its OH carries formal charge -1 (tyrosinate)
+      - HEM net formal charge -1 (porphyrin -4 + Fe+3, matches MCPB.py)
+      - Fe is in the +3 state
+      - All 6 Fe coordinations (4 pyrrole N + Tyr-O + axial water O) are 'mc'
+    """
+    from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
+
+    hem_smiles = "C=CC1=C(C)c2cc3c(C)c(CCC(=O)[O-])c4cc5[n]6->[Fe@SP2+3]7(<-[n]2c1cc1c(C)c(C=C)c(cc6C(C)=C5CCC(=O)[O-])[n-]->71)<-[n-]34"
+
+    mol = Molecule("1u5u")
+    mol.filter("chain A")
+    mol.remove("element H", _logger=False)
+    mol.templateResidueFromSmiles(
+        mol.resname == "HEM", hem_smiles, addHs=True, _logger=False
+    )
+    specs = detectNonStandardResidues(mol)
+    assert sum(1 for s in specs if s.resname == "TYR") == 1
+    assert sum(1 for s in specs if s.resname == "HEM") == 1
+
+    pmol, _ = systemPrepare(mol, detect_specs=specs)
+
+    # TYR353 - tyrosinate
+    m = (pmol.resid == 353) & (pmol.chain == "A")
+    assert m.any(), "TYR353/A not found"
+    assert "TYR" not in pmol.resname[m].tolist(), (
+        f"TYR353 should be renamed, got {set(pmol.resname[m].tolist())}"
+    )
+    assert not (m & (pmol.name == "HH")).any(), (
+        "HH should be stripped on tyrosinate"
+    )
+    oh = m & (pmol.name == "OH")
+    assert oh.sum() == 1
+    assert pmol.formalcharge[oh].tolist() == [-1], (
+        f"OH should carry -1 charge, got {pmol.formalcharge[oh].tolist()}"
+    )
+
+    # HEM - net -1, Fe+3, 4 Fe-N + Fe-Tyr-O + Fe-HOH-O all "mc"
+    mh = (pmol.resid == 999) & (pmol.chain == "A") & (pmol.resname == "HEM")
+    assert int(pmol.formalcharge[mh].sum()) == -1, (
+        f"HEM net charge should be -1, got {pmol.formalcharge[mh].sum()}"
+    )
+    fe = mh & (pmol.name == "FE")
+    assert fe.sum() == 1
+    assert pmol.formalcharge[fe].tolist() == [3], (
+        f"Fe should be +3, got {pmol.formalcharge[fe].tolist()}"
+    )
+    fe_idx = int(np.where(fe)[0][0])
+    b_mask = (pmol.bonds[:, 0] == fe_idx) | (pmol.bonds[:, 1] == fe_idx)
+    partners = []
+    for bi in np.where(b_mask)[0]:
+        a, c = pmol.bonds[bi]
+        partner = int(c if a == fe_idx else a)
+        partners.append(partner)
+        assert pmol.bondtype[bi] == "mc", (
+            f"Fe-{pmol.name[partner]} should be 'mc', got {pmol.bondtype[bi]!r}"
+        )
+    assert len(partners) == 6, f"expected 6 Fe coordinations, got {len(partners)}"
+    partner_names = sorted(pmol.name[partners].tolist())
+    # 4 pyrrole N + 1 Tyr-OH + 1 water-O
+    assert partner_names.count("NA") == 1
+    assert partner_names.count("NB") == 1
+    assert partner_names.count("NC") == 1
+    assert partner_names.count("ND") == 1
+    assert "OH" in partner_names  # tyrosinate
+    assert "O" in partner_names   # axial water
+
+
 def _test_systemprepare_ligand():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-prepare-with-ligand")
     mol = Molecule(os.path.join(test_home, "5EK0_A.pdb"))

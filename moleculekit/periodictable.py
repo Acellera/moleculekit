@@ -309,6 +309,34 @@ periodictable_by_number = {
     periodictable[el].number: val for el, val in periodictable.items()
 }
 
+# Canonical set of element symbols treated as metals across moleculekit
+# (PDB LINK classification, residue templating, metal-coordination
+# detection). Covers s/p/d/f-block metals plus a few metalloids found
+# bound in PDB structures (Ge, Sb, Po). Use this everywhere instead of
+# maintaining per-module copies.
+METAL_ELEMENTS = frozenset(
+    {
+        # Alkali metals
+        "Li", "Na", "K", "Rb", "Cs", "Fr",
+        # Alkaline earth metals
+        "Be", "Mg", "Ca", "Sr", "Ba", "Ra",
+        # Transition metals
+        "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+        "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+        "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+        # Post-transition metals + metalloids commonly seen in PDB
+        "Al", "Ga", "Ge", "In", "Sn", "Sb", "Tl", "Pb", "Bi", "Po",
+        # Lanthanides
+        "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd",
+        "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu",
+        # Actinides
+        "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm",
+        "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr",
+        # Transactinides (used by some interaction calcs)
+        "Rf", "Db", "Sg",
+    }
+)
+
 # This of course fails for exotic elements like Bk-Cm Db-Lr Mc-Fl Og-Ts which have similar masses
 _all_elements = np.array([el for el in periodictable])
 _all_masses = np.array([periodictable[el].mass for el in periodictable])

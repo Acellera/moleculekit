@@ -215,23 +215,32 @@ def _test_find_clashes_empty_selection():
 
 
 def _test_find_clashes_3ptb_calcium_coordination():
-    """3ptb has a Ca2+ ion coordinated by 6 nearby oxygens.  These are the
-    only 'clashes' that survive the bonded-exclusion filter because they
-    are not covalent bonds."""
+    """3ptb has a Ca2+ ion coordinated by 6 nearby oxygens.  The bcif/CIF
+    reader records these as 'mc' (metal-coordination) bonds in mol.bonds,
+    so they are filtered out by the bonded-exclusion step in find_clashes
+    and do not appear as clashes."""
     from moleculekit.molecule import Molecule
     from moleculekit.distance import find_clashes
 
     mol = Molecule("3ptb")
-    clashes, distances, overlaps = find_clashes(mol)
-
-    # All 6 surviving clashes should involve the Ca2+ ion.
     ca_idx = int((mol.resname == "CA").nonzero()[0][0])
-    involves_ca = [(ca_idx in (int(a), int(b))) for a, b in clashes]
-    assert len(clashes) == 6
-    assert all(involves_ca)
 
-    # Distances are all within physical Ca-O coordination range.
-    assert (distances >= 2.0).all() and (distances <= 2.6).all()
+    # The 6 Ca-O coordinations are present as 'mc' bonds.
+    ca_bonds = (mol.bonds[:, 0] == ca_idx) | (mol.bonds[:, 1] == ca_idx)
+    assert ca_bonds.sum() == 6
+    assert (mol.bondtype[ca_bonds] == "mc").all()
+
+    # With the mc bonds in place there are no surviving clashes at all
+    # when the default proximity guesser also fills in missing covalent
+    # bonds (e.g. peptide backbone).
+    assert len(find_clashes(mol)[0]) == 0
+
+    # With guess_bonds=False the Ca-O pairs are still filtered out because
+    # the mc bonds live in mol.bonds; only unrelated near-contacts (from
+    # peptide bonds that aren't in mol.bonds) survive.
+    clashes_nb, _, _ = find_clashes(mol, guess_bonds=False)
+    involves_ca = [(ca_idx in (int(a), int(b))) for a, b in clashes_nb]
+    assert not any(involves_ca)
 
 
 def _test_find_clashes_guess_bonds_flag():

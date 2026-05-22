@@ -6,28 +6,19 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# Element symbols treated as metallic coordinating partners by
-# :func:`template_residue_from_smiles`. A boundary heavy atom whose
-# external (cross-residue) bond goes to one of these has its leaving-
-# group hydrogens stripped (as for any cross-residue bond) AND its
-# formal charge reduced by one per metal-bond order, matching the
+# Boundary heavy atoms in :func:`template_residue_from_smiles` whose
+# external (cross-residue) bond goes to a metal element have their
+# leaving-group hydrogens stripped (as for any cross-residue bond) AND
+# their formal charge reduced by one per metal-bond order, matching the
 # deprotonation chemistry of biological metal-thiolate / metal-alkoxide
 # / metal-carboxylate coordination (e.g. -SH + Zn -> -S-...Zn). For
 # non-metal cross-residue bonds (peptide N-C, disulfide S-S,
 # glycosidic O-C, ...) the H is stripped without a formal charge
-# change, because the bond is a normal covalent exchange rather than a
-# deprotonation. Distinct from
+# change. Distinct from
 # ``moleculekit.tools.nonstandard_residues._ION_RESNAMES``, which is a
 # residue-name set for spec detection and also covers non-metal anions
 # (Cl-, I-, oxyanions) that should not trigger deprotonation here.
-_METAL_ELEMENTS = frozenset(
-    "Li Na K Rb Cs "
-    "Be Mg Ca Sr Ba "
-    "Sc Ti V Cr Mn Fe Co Ni Cu Zn "
-    "Y Zr Nb Mo Tc Ru Rh Pd Ag Cd "
-    "Hf Ta W Re Os Ir Pt Au Hg "
-    "Al Ga In Sn Tl Pb Bi".split()
-)
+from moleculekit.periodictable import METAL_ELEMENTS as _METAL_ELEMENTS
 
 
 def rdkitmol_to_molecule(rmol):
@@ -61,6 +52,7 @@ def rdkitmol_to_molecule(rmol):
             BondType.QUINTUPLE: "5",
             BondType.HEXTUPLE: "6",
             BondType.AROMATIC: "ar",
+            BondType.DATIVE: "mc",
         }
     )
 
@@ -151,6 +143,7 @@ def molecule_to_rdkitmol(
         "5": BondType.QUINTUPLE,
         "6": BondType.HEXTUPLE,
         "ar": BondType.AROMATIC,
+        "mc": BondType.DATIVE,
     }
 
     _rdmol = Chem.rdchem.RWMol()
@@ -208,30 +201,6 @@ def molecule_to_rdkitmol(
 
     # Return non-editable version
     return Chem.Mol(_rdmol)
-
-
-def _demote_dative_to_single(rmol_smi):
-    """Convert DATIVE bonds (e.g. Fe<-N in [N][Fe][N] coordination) to SINGLE.
-
-    RDKit's ``MolFromSmiles`` interprets metal-N notation like ``[N][Fe][N]``
-    as creating dative bonds. The SMARTS string produced by ``FindMCS`` does
-    not roundtrip-match those bonds with ``GetSubstructMatch``, so MCS would
-    succeed structurally but the substructure match against the template
-    returns zero atoms. Demoting to single bonds keeps the connectivity and
-    lets the match proceed; the residue's own bonds (from ``guessBonds`` or
-    file CONECT records) are already represented as single bonds.
-    """
-    from rdkit import Chem
-
-    rw = Chem.RWMol(rmol_smi)
-    changed = False
-    for bond in list(rw.GetBonds()):
-        if bond.GetBondType() == Chem.BondType.DATIVE:
-            a1, a2 = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
-            rw.RemoveBond(a1, a2)
-            rw.AddBond(a1, a2, Chem.BondType.SINGLE)
-            changed = True
-    return rw.GetMol() if changed else rmol_smi
 
 
 def _try_strip_unmatched_terminals(
@@ -461,7 +430,14 @@ def template_residue_from_smiles(
     # molecule. mol.copy()/remove()/insert() would otherwise drop these, and
     # Chem.AddHs would over-protonate the boundary atoms because it has no
     # knowledge of the external bonds.
-    _bondtype_order = {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "ar": 1, "un": 1}
+    # "mc" (metal coordination) contributes 1 to the donor's "H slot displaced
+    # by external bond" count. Chemically a Tyr-OH or Cys-SH coordinating a
+    # metal centre is a deprotonation: the H leaves as H+, the donor keeps
+    # the bonding electrons and donates them as a lone pair to the metal.
+    # That's one H slot occupied (so the boundary-H stripping logic correctly
+    # removes the hydroxyl/thiol H), and the metal-deprotonation branch below
+    # then picks up the -1 formal-charge adjustment via boundary_metal_order.
+    _bondtype_order = {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "ar": 1, "un": 1, "mc": 1}
     sel_start = int(selidx[0])
     sel_end = int(selidx[-1])
     cross_bonds = []  # (local_residue_idx, external_global_idx, bondtype_str)
@@ -555,14 +531,19 @@ def template_residue_from_smiles(
             f"RDKit failed to remove hydrogens from the SMILES template '{smiles}'."
         )
     Chem.Kekulize(rmol_smi)
-    rmol_smi = _demote_dative_to_single(rmol_smi)
 
+    # FindMCS with CompareAny finds the MCS regardless of bond types, but
+    # ``res.smartsString`` encodes specific bond constraints (e.g. ``-,->``)
+    # that DATIVE bonds don't roundtrip through ``GetSubstructMatch``
+    # cleanly. ``res.queryMol`` is a true wildcard query (atoms ``*``,
+    # bond types ``UNSPECIFIED``) and matches both sides regardless of
+    # their bond types — no demote needed.
     res = rdFMCS.FindMCS(
         [rmol, rmol_smi],
         bondCompare=rdFMCS.BondCompare.CompareAny,
         atomCompare=rdFMCS.AtomCompare.CompareElements,
     )
-    patt = Chem.MolFromSmarts(res.smartsString)
+    patt = res.queryMol
     at1 = list(rmol.GetSubstructMatch(patt))
     at2 = list(rmol_smi.GetSubstructMatch(patt))
     atom_mapping = {j: i for i, j in zip(at1, at2)}
@@ -591,13 +572,12 @@ def template_residue_from_smiles(
                     f"(derived from '{smiles}' after stripping unmatched terminal atoms)."
                 )
             Chem.Kekulize(rmol_smi)
-            rmol_smi = _demote_dative_to_single(rmol_smi)
             res = rdFMCS.FindMCS(
                 [rmol, rmol_smi],
                 bondCompare=rdFMCS.BondCompare.CompareAny,
                 atomCompare=rdFMCS.AtomCompare.CompareElements,
             )
-            patt = Chem.MolFromSmarts(res.smartsString)
+            patt = res.queryMol
             at1 = list(rmol.GetSubstructMatch(patt))
             at2 = list(rmol_smi.GetSubstructMatch(patt))
             atom_mapping = {j: i for i, j in zip(at1, at2)}
@@ -623,16 +603,16 @@ def template_residue_from_smiles(
         fch = rmol_smi.GetAtomWithIdx(j).GetFormalCharge()
         rmol.GetAtomWithIdx(i).SetFormalCharge(fch)
 
+    # The SMILES drives every matched bond's type, including DATIVE arrows
+    # the user wrote (e.g. [N]->[Fe]). Those round-trip through
+    # fromRDKitMol as "mc" in the output Molecule.
     for bond in rmol_smi.GetBonds():
-        i, j = (
-            atom_mapping[bond.GetBeginAtomIdx()],
-            atom_mapping[bond.GetEndAtomIdx()],
-        )
-        btype = bond.GetBondType()
+        i = atom_mapping[bond.GetBeginAtomIdx()]
+        j = atom_mapping[bond.GetEndAtomIdx()]
         rbond = rmol.GetBondBetweenAtoms(i, j)
         if rbond is None:
             raise RuntimeError(f"Bond between atoms {i} and {j} not found in residue")
-        rbond.SetBondType(btype)
+        rbond.SetBondType(bond.GetBondType())
 
     # For atoms that are covalently bonded to other residues, the SMILES
     # template assumes those bonds are hydrogens. Reduce the explicit H
@@ -691,11 +671,10 @@ def template_residue_from_smiles(
         rmol = Chem.AddHs(rmol, addCoords=True, onlyOnAtoms=onlyOnAtoms)
         Chem.Kekulize(rmol)  # Sanitization ruins kekulization
 
-    # Sanitization (RemoveHs above, or implicit ones inside AddHs/Kekulize)
-    # can re-introduce DATIVE bonds on metal coordination centres like the
-    # Fe-N bonds of heme. Demote them again so they map cleanly to single
-    # bonds in the resulting Molecule rather than the catch-all "un".
-    rmol = _demote_dative_to_single(rmol)
+    # Whatever DATIVE bonds the residue now carries — explicit dative
+    # arrows from the SMILES, plus anything RDKit's valence inference
+    # introduced inside RemoveHs / AddHs / Kekulize — is what we honour
+    # in the output. They round-trip through fromRDKitMol as "mc".
 
     new_residue = Molecule.fromRDKitMol(rmol)
     new_residue.resid[:] = residue.resid[0]
