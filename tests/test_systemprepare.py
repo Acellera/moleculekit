@@ -70,10 +70,30 @@ def _compare_results(refpdb, refdf_f, pmol: Molecule, df):
         raise AssertionError(f"Failed comparison of {refpdb} vs {pmol_out}")
 
 
+# Explicit-protonation SMILES for cofactors so formal charges are
+# well-defined before PDB2PQR. HEM: ferric heme b with [Fe+3], two
+# deprotonated pyrroles ([n-]) and two propionates ([O-]); all four
+# pyrrole Ns donate via dative bonds. Net charge -1, matching MCPB.py
+# (porphyrin -4 + Fe+3) and the ferric resting state of catalase HPII.
+_LIGAND_SMILES = {
+    "HEM": "C=CC1=C(C)c2cc3c(C)c(CCC(=O)[O-])c4cc5[n]6->[Fe@SP2+3]7(<-[n]2c1cc1c(C)c(C=C)c(cc6C(C)=C5CCC(=O)[O-])[n-]->71)<-[n-]34",
+}
+
+
 @pytest.mark.parametrize("pdb", ["3PTB", "1A25", "1U5U", "1UNC", "6A5J"])
 def _test_systemPrepare(pdb):
     test_home = os.path.join(curr_dir, "test_systemprepare", pdb)
     mol = Molecule(os.path.join(test_home, f"{pdb}.pdb"))
+    ligand_resnames = set(mol.resname.tolist()) & _LIGAND_SMILES.keys()
+    if ligand_resnames:
+        mol.remove("element H", _logger=False)
+        for resn in ligand_resnames:
+            mol.templateResidueFromSmiles(
+                mol.resname == resn,
+                _LIGAND_SMILES[resn],
+                addHs=True,
+                _logger=False,
+            )
     pmol, _, df = systemPrepare(mol, return_details=True)
     _compare_results(
         os.path.join(test_home, f"{pdb}_prepared.pdb"),
