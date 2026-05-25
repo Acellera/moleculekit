@@ -1393,6 +1393,13 @@ def systemPrepare(
         ``detect_specs=[]`` to skip non-standard residue handling
         entirely. The applied specs are always returned so they can be
         forwarded to the downstream parameterizer / builder.
+    restore_missing_sidechains : bool, optional
+        If True, sidechain atoms removed by PDB2PQR are templated back in
+        after preparation. Specifically, canonical protein residues whose
+        entire heavy-atom sidechain is absent (only backbone + CB remain)
+        are reconstructed using the Dunbrack rotamer library before
+        PDB2PQR runs, so PDB2PQR's 10 %-missing-atom threshold does not
+        reject the structure on a partial input. Default False.
 
     Returns
     -------
@@ -1463,6 +1470,14 @@ def systemPrepare(
 
     >>> # from htmd.builder.nonstandard import parameterizeFromSpecs
     >>> # parameterizeFromSpecs(specs, tryp_op, outdir="./params")
+
+    See also
+    --------
+    moleculekit.tools.nonstandard_residues.detectNonStandardResidues
+    moleculekit.molecule.Molecule.templateResidueFromSmiles
+    moleculekit.molecule.Molecule.mutateResidue
+    moleculekit.tools.modelling.model_gaps
+    moleculekit.tools.autosegment.autoSegment
     """
     try:
         from pdb2pqr.config import VERSION

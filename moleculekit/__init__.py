@@ -22,5 +22,13 @@ try:
     logging.config.fileConfig(
         os.path.join(__curr_dir, "logging.ini"), disable_existing_loggers=False
     )
+    # Optional environment override for the moleculekit log line format.
+    # Set MOLECULEKIT_LOG_FORMAT to any logging.Formatter format string —
+    # e.g. "%(name)s - %(levelname)s - %(message)s" to drop the timestamp.
+    _log_format = os.environ.get("MOLECULEKIT_LOG_FORMAT")
+    if _log_format:
+        _formatter = logging.Formatter(_log_format)
+        for _h in logging.getLogger("moleculekit").handlers:
+            _h.setFormatter(_formatter)
 except Exception:
     print("MoleculeKit: Logging setup failed")

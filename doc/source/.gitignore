@@ -1,3 +1,7 @@
-moleculekit.*
+moleculekit.rst
+moleculekit.*.rst
+reference/moleculekit.*
+reference/modules.rst
+_templates/
 version
-tutorials/
+llms-full.txt

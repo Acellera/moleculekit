@@ -1,0 +1,11 @@
+/* Cap the height of executed-cell output blocks so long log spew is scrollable
+ * instead of pushing the rest of the page off-screen. */
+div.cell_output {
+    max-height: 30em;
+    overflow: auto;
+}
+
+/* Slightly tighter line-height inside log blocks so more lines fit before scroll. */
+div.cell_output pre {
+    line-height: 1.3;
+}

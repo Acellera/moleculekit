@@ -58,9 +58,11 @@ def model_gaps(
     build_sidechains=True,
     merge_distance=4,
 ):
-    """Model gaps in a protein sequence using ProMod3.
+    """Closes residue gaps in a Molecule by sequence using ProMod3.
+    Requires a ProMod3 Singularity image; see Notes.
 
-    This method will also mutate any residues in the Molecule that do not match the input sequence.
+    This method will also mutate any residues in the Molecule that do not
+    match the input sequence.
 
     Parameters
     ----------
@@ -85,13 +87,22 @@ def model_gaps(
     modeled_segment : Molecule
         The modeled segment.
 
+    Notes
+    -----
+    This function requires a ProMod3 Singularity / Apptainer image.  Follow
+    the instructions at https://openstructure.org/promod3/ to obtain the
+    image, then pass the path to the downloaded ``.sif`` file as
+    ``promod_img``.  The function executes the modelling script inside the
+    container via ``singularity exec``, so Singularity or Apptainer must be
+    available on ``$PATH``.
+
     Examples
     --------
     >>> from moleculekit.molecule import Molecule
     >>> from moleculekit.tools.modelling import model_gaps
-    >>> mol = Molecule("5VQ6")
-    >>> sequence = "HMTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSYRKQVVIDGETCLLDILDTAGQEEYSAMRDQYMRTGEGFLCVFAINNTKSFEDIHHYREQIKRVKDSEDVPMVLVGNKSDLPSRTVDTKQAQDLARSYGIPFIETSAKTRQGVDDAFYTLVREIRKHKEK"
-    >>> res = model_gaps(mol, sequence, "0", "./promod.img")
+    >>> mol = Molecule("5VQ6")  # doctest: +SKIP
+    >>> sequence = "HMTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSYRKQVVIDGETCLLDILDTAGQEEYSAMRDQYMRTGEGFLCVFAINNTKSFEDIHHYREQIKRVKDSEDVPMVLVGNKSDLPSRTVDTKQAQDLARSYGIPFIETSAKTRQGVDDAFYTLVREIRKHKEK"  # doctest: +SKIP
+    >>> res = model_gaps(mol, sequence, "0", "./promod.img")  # doctest: +SKIP
     """
     try:
         from Bio import pairwise2

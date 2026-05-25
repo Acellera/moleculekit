@@ -5,8 +5,28 @@ on:
   workflow_call:
 
 jobs:
-  makedocs:
+  validate:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install docs deps
+        run: uv sync --group docs --group test
+
+      - name: Generate rst docs
+        run: cd doc && uv run make rst
+
+      - name: Build HTML
+        run: cd doc && uv run sphinx-build -b html source build/html
+
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.event.ref, 'refs/tags/') }}
     permissions:
       contents: "read"
       id-token: "write"
@@ -23,9 +43,6 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.12"
-
-      - name: Install pandoc
-        run: sudo apt-get update && sudo apt-get install -y pandoc
 
       - name: Install deps
         run: uv sync --group docs

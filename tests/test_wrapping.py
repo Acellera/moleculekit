@@ -41,3 +41,31 @@ def _test_triclinic_wrapping():
     mol.wrap(wrapsel="protein", unitcell="rectangular")
     refcoords = Molecule(os.path.join(refdir, "output_rectangular_wrapped.xtc"))
     assert np.max(np.abs(mol.coords - refcoords.coords)) < 1e-2
+
+
+def _test_wrap_with_zero_box_is_noop():
+    import logging
+
+    mol = Molecule(os.path.join(curr_dir, "test_wrapping", "structure.prmtop"))
+    mol.read(os.path.join(curr_dir, "test_wrapping", "output.xtc"))
+    mol.box = np.zeros_like(mol.box)
+    coords_before = mol.coords.copy()
+
+    # The moleculekit logger has propagate=0, so caplog can't see it.
+    # Attach a list-collecting handler directly.
+    records: list[logging.LogRecord] = []
+
+    class _Capture(logging.Handler):
+        def emit(self, record):
+            records.append(record)
+
+    moleculekit_logger = logging.getLogger("moleculekit.molecule")
+    handler = _Capture()
+    moleculekit_logger.addHandler(handler)
+    try:
+        mol.wrap("protein")
+    finally:
+        moleculekit_logger.removeHandler(handler)
+
+    assert np.array_equal(mol.coords, coords_before)
+    assert any("Zero box size" in r.getMessage() for r in records)

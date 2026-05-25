@@ -26,7 +26,21 @@ def autoSegment(
     field=None,
     _logger=True,
 ):
-    """Detects resid gaps in a selection and assigns incrementing segid to each fragment
+    """Detects resid gaps in a selection and assigns incrementing segid to each fragment.
+
+    A new segment is started whenever a gap in ``resid`` numbering is found
+    between consecutive residues in the selection (optionally confirmed by
+    checking that the spatial distance between backbone atoms exceeds
+    ``spatialgap``).  Water molecules are handled separately: each run of
+    consecutive water residues forms its own segment with automatically
+    renumbered ``resid`` values.
+
+    Use :func:`autoSegment` when the input has resid-based gaps (e.g. a PDB
+    where residues are numbered with missing stretches).  If you want to
+    segment strictly by the covalent bond graph instead, use
+    :func:`autoSegment2`.  When you need a specific naming scheme that neither
+    function produces, set ``mol.segid`` directly with
+    ``mol.set("segid", "MY_SEG", sel="...")``.
 
     Parameters
     ----------
@@ -225,7 +239,19 @@ def autoSegment2(
     chaingaps=True,
     _logger=True,
 ):
-    """Detects bonded segments in a selection and assigns incrementing segid to each segment
+    """Detects bonded segments in a selection and assigns incrementing segid to each segment.
+
+    Segments are derived from the **covalent bond graph**: two residues belong
+    to the same segment if and only if they are in the same connected component
+    of the backbone bond graph (computed from ``mol.bonds`` supplemented by
+    distance-based guessing over backbone atoms).  This is more robust than
+    resid-gap detection (:func:`autoSegment`) for structures where resid
+    numbering is irregular or non-continuous.
+
+    Use :func:`autoSegment2` when you want to follow connectivity rather than
+    resid sequence.  Use :func:`autoSegment` when the input has predictable
+    resid-based gaps.  When you need a specific naming scheme, set
+    ``mol.segid`` directly with ``mol.set("segid", "MY_SEG", sel="...")``.
 
     Parameters
     ----------

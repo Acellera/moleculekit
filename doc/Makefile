@@ -1,53 +1,34 @@
 # Minimal makefile for Sphinx documentation
 #
 
-# You can set these variables from the command line, and also
-# from the environment for the first two.
 SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
 SPHINXAPIDOC  ?= sphinx-apidoc
 SOURCEDIR     = source
 BUILDDIR      = build
-TUTORIALSDIR  = source/tutorials
+REFERENCEDIR  = $(SOURCEDIR)/reference
 GITTAG       = $(shell python getversion.py tag)
-IPYNB_FILES  = $(shell ls ../tutorials/*.ipynb)
 
-TUT_RST_FILES := $(addprefix $(TUTORIALSDIR)/,$(notdir $(IPYNB_FILES:.ipynb=.rst)))
-
-# Put it first so that "make" without argument is like "make help".
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-.PHONY: help Makefile
-
-# # Catch-all target: route all unknown targets to Sphinx using the new
-# # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
-# %: Makefile
-# 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+.PHONY: help Makefile html rst writeversion clean publish
 
 html: Makefile rst
 	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-# Rule for building .rst from .ipynb
-$(TUTORIALSDIR)/%.rst: ../tutorials/%.ipynb
-	mkdir -p $(TUTORIALSDIR)
-	jupyter-nbconvert $< --to rst --output-dir=$(TUTORIALSDIR)/
-
 writeversion:
 	echo "$(GITTAG)" > source/version
 
-tutorials: writeversion $(TUT_RST_FILES)
-
-rst: writeversion tutorials
-	$(SPHINXAPIDOC) --force --separate -o $(SOURCEDIR) ../moleculekit/ >/dev/null
-	echo "$(GITTAG)" > source/version
-	@echo
-	@echo "Build finished. The RST files are on source/"
+rst: writeversion
+	mkdir -p $(REFERENCEDIR)
+	$(SPHINXAPIDOC) --force --separate -o $(REFERENCEDIR) ../moleculekit/ >/dev/null
+	@echo "RST files written to $(REFERENCEDIR)/"
 
 clean:
-	rm -f source/moleculekit.*
-	rm -f source/version
-	rm -rf $(TUTORIALSDIR)
+	rm -f $(REFERENCEDIR)/moleculekit.*
+	rm -f $(SOURCEDIR)/version
+	rm -f $(SOURCEDIR)/llms-full.txt
 	rm -rf build
 
 publish:

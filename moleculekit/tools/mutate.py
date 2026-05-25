@@ -628,7 +628,27 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
         probability), or ``"random"`` (sampled by probability).
     minimize : bool, optional
         If True, run soft-potential OpenMM minimization after rotamer
-        placement.  Requires OpenMM.  Default False.
+        placement.  After rotamer selection, perform a brief sidechain
+        energy minimization to relax residual strain.  Requires OpenMM.
+        Default False.
+
+    Examples
+    --------
+    Mutate residue 40 to alanine using the lowest-clash rotamer (default):
+
+    >>> mol.mutateResidue("chain A and resid 40", "ALA")  # doctest: +SKIP
+
+    Use the highest-probability rotamer instead:
+
+    >>> mol.mutateResidue("chain A and resid 40", "ALA", rotamer_mode="first")  # doctest: +SKIP
+
+    Sample a rotamer weighted by probability:
+
+    >>> mol.mutateResidue("chain A and resid 40", "ALA", rotamer_mode="random")  # doctest: +SKIP
+
+    Mutate and minimize the new sidechain to relax strain:
+
+    >>> mol.mutateResidue("chain A and resid 40", "ALA", minimize=True)  # doctest: +SKIP
     """
     from moleculekit.residues import ORIGINAL_RESIDUE_NAME_TABLE
 

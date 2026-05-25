@@ -390,6 +390,17 @@ def detectNonStandardResidues(mol):
     changes (Tyr-O⁻, Cys-S⁻) and needs a custom prepi. Bonds touching
     water are always skipped.
 
+    .. note::
+
+        Plain Cys–Cys disulfides are **not** returned as separate specs for
+        the caller to process. Both Cys residues are instead silently renamed
+        to ``CYX`` inside :func:`moleculekit.tools.preparation.systemPrepare`
+        (which calls this function internally). The ``ChainResidueSpec``
+        entries for disulfide-bonded cysteines exist only to carry the
+        ``new_resname="CYX"`` rename; the parameterization of the S–S bond
+        is handled by AMBER's built-in CYX template, so no user intervention
+        is required.
+
     Parameters
     ----------
     mol : :class:`moleculekit.molecule.Molecule`
@@ -421,16 +432,27 @@ def detectNonStandardResidues(mol):
 
     Examples
     --------
+    Detect non-standard residues, template them with SMILES, then prepare:
+
     >>> from moleculekit.molecule import Molecule
     >>> from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
+    >>> from moleculekit.tools.preparation import systemPrepare
     >>> mol = Molecule("3ptb")  # doctest: +SKIP
     >>> specs = detectNonStandardResidues(mol)  # doctest: +SKIP
 
-    The returned ``specs`` can be forwarded to
-    :func:`moleculekit.tools.preparation.systemPrepare` via
-    ``detect_specs=specs`` to apply the planned renames and re-templating
-    on the prepared molecule, or to a downstream builder for
-    parameterization.
+    For a molecule that has a non-canonical residue (e.g. "LIG") that
+    needs SMILES-based templating before preparation:
+
+    >>> # Template the non-canonical residue with its SMILES
+    >>> lig_mask = mol.resname == "LIG"  # doctest: +SKIP
+    >>> mol.remove("hydrogen")  # doctest: +SKIP
+    >>> mol.templateResidueFromSmiles(lig_mask, smiles="...", addHs=True)  # doctest: +SKIP
+    >>> # Now pass the specs so systemPrepare does not re-detect
+    >>> pmol, specs = systemPrepare(mol, detect_specs=specs)  # doctest: +SKIP
+
+    When no non-standard-residue handling is needed, pass specs directly:
+
+    >>> pmol, specs, df = systemPrepare(mol, return_details=True)  # doctest: +SKIP
     """
     bonds = _ensure_bonds(mol)
     a2r, residues, atom_idxs = _residue_groups(mol)

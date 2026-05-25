@@ -61,15 +61,18 @@ openmm = [
 ]
 
 [dependency-groups]
-test = ["pytest>=8.4.2", "pytest-xdist"]
+test = ["pytest>=8.4.2", "pytest-xdist", "jupytext", "nbclient"]
 docs = [
-  "nbconvert",
   "sphinx",
   "pydata-sphinx-theme",
+  "myst-nb",
+  "sphinx-design",
+  "sphinx-copybutton",
+  "sphinxcontrib-mermaid",
+  "sphinx-autodoc-typehints",
   "sphinx-argparse",
   "sphinx-notfound-page",
   "sphinx-sitemap",
-  "sphinx-autodoc-typehints",
 ]
 dev = [{ include-group = "test" }, "ipython>=8.18.1"]
 

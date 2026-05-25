@@ -25,6 +25,11 @@ jobs:
     uses: ./.github/workflows/pyodide_build.yml
     secrets: inherit
 
+  docs_validate:
+    if: ${{ ! startsWith(github.event.ref, 'refs/tags/v') }}
+    uses: ./.github/workflows/docs.yml
+    secrets: inherit
+
   docs:
     needs: publish
     if: startsWith(github.event.ref, 'refs/tags/')

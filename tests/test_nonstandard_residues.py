@@ -1110,7 +1110,7 @@ def _test_systemprepare_5vbl_glu_lys_isopeptide_end_to_end():
         "HRG": "C(CCNC(=N)N)C[C@@H](C=O)N",
         "NLE": "CCCC[C@@H](C=O)N",
         "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C=O",
-        "OLC": "CCCCCCCC(O)OC[C@H](O)CO",
+        "OLC": "CCCCCCCC(=O)OC[C@H](O)CO",
     }
     for resname, smi in smiles.items():
         if (mol.resname == resname).any():

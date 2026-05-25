@@ -1899,9 +1899,12 @@ class Molecule(object):
             wrapcenter = np.array(wrapcenter, dtype=np.float32)
 
         if np.all(self.box == 0):
-            raise RuntimeError(
-                "Zero box size detected in `Molecule.box`. Cannot wrap simulation."
+            logger.warning(
+                "Zero box size detected in `Molecule.box`; skipping wrap. "
+                "Read a topology / trajectory containing box information, "
+                "or set `mol.box` and `mol.boxangles` manually before calling `wrap`."
             )
+            return
 
         if self.box.shape[1] != self.coords.shape[2]:
             raise RuntimeError(
