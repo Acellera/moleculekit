@@ -187,7 +187,7 @@ def molecule_to_rdkitmol(
 
     if _logger:
         logger.info(
-            f"Converted Molecule to SmallMol with SMILES: {Chem.MolToSmiles(_rdmol, kekuleSmiles=True)}"
+            f"Converted Molecule to RDKit mol with SMILES: {Chem.MolToSmiles(_rdmol, kekuleSmiles=True)}"
         )
 
     if mol.numAtoms != _rdmol.GetNumAtoms():
