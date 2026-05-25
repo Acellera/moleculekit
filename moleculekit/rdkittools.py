@@ -130,11 +130,6 @@ def molecule_to_rdkitmol(
     from rdkit.Chem.rdchem import Conformer
     from rdkit import Chem
 
-    if len(set(mol.resid)) != 1:
-        raise RuntimeError(
-            "The molecule has multiple residues. Please filter it to a single residue first."
-        )
-
     bondtype_map = {
         "1": BondType.SINGLE,
         "2": BondType.DOUBLE,
@@ -197,7 +192,11 @@ def molecule_to_rdkitmol(
 
     if mol.numAtoms != _rdmol.GetNumAtoms():
         raise RuntimeError("Number of atoms changed while converting to rdkit molecule")
-    _rdmol.SetProp("_Name", mol.resname[0])
+    unique_resnames = np.unique(mol.resname)
+    _rdmol.SetProp(
+        "_Name",
+        unique_resnames[0] if len(unique_resnames) == 1 else "+".join(unique_resnames),
+    )
 
     # Return non-editable version
     return Chem.Mol(_rdmol)

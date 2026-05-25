@@ -2579,22 +2579,29 @@ class Molecule(object):
         return np.where((self.name == name) & (self.resid == resid))[0][0]
 
     def toOpenFFMolecule(self, sanitize=False, kekulize=False, assignStereo=True):
-        from moleculekit.smallmol.smallmol import SmallMol
         from openff.toolkit.topology import Molecule as OFFMolecule
         from openff.units import unit
 
-        sm = SmallMol(
-            self,
-            fixHs=False,
-            removeHs=False,
-            _logger=False,
+        rdmol = self.toRDKitMol(
             sanitize=sanitize,
             kekulize=kekulize,
             assignStereo=assignStereo,
+            _logger=False,
         )
-
-        offmol = OFFMolecule.from_rdkit(sm._mol, hydrogens_are_explicit=True)
+        offmol = OFFMolecule.from_rdkit(rdmol, hydrogens_are_explicit=True)
         offmol.partial_charges = self.charge * unit.e
+
+        # Propagate per-atom residue identity into OFFMolecule metadata so the
+        # Topology's residues / chains hierarchy schemes can reproduce it.
+        for i in range(self.numAtoms):
+            md = offmol.atoms[i].metadata
+            md["residue_name"] = str(self.resname[i])
+            md["residue_number"] = int(self.resid[i])
+            md["chain_id"] = str(self.chain[i])
+            if self.insertion[i]:
+                md["insertion_code"] = str(self.insertion[i])
+        offmol.add_default_hierarchy_schemes(overwrite_existing=True)
+
         assert np.array_equal(self.name, [x.name for x in offmol.atoms])
         assert np.array_equal(
             self.charge,
