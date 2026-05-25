@@ -2291,7 +2291,6 @@ class Molecule(object):
         name=None,
         viewerhandle=None,
         gui=False,
-        pmviewurl="http://localhost:8090",
     ):
         """Visualizes the molecule in a molecular viewer
 
@@ -2307,18 +2306,22 @@ class Molecule(object):
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
         guessBonds : bool
             Allow the viewer to guess bonds for the molecule
-        viewer : str ('pmview', 'pymol', 'vmd', 'webgl')
-            Choose viewer backend. Default is taken from either moleculekit.config or if it doesn't exist from moleculekit.config
+        viewer : str ('vmd', 'pymol', 'webgl', 'molstar')
+            Choose viewer backend. Resolution order: explicit ``viewer=`` argument,
+            then the ``MOLECULEKIT_VIEWER`` environment variable, then
+            ``moleculekit.config["viewer"]``, then auto-detection of ``vmd``/``pymol``
+            in ``PATH``, then ``molstar`` as the fallback.
         hold : bool
             If set to True, it will not visualize the molecule but instead collect representations until set back to False.
         name : str, optional
             A name to give to the molecule in the viewer
         viewerhandle : :class:`VMD <moleculekit.vmdviewer.VMD>` object, optional
             A specific viewer in which to visualize the molecule. If None it will use the current default viewer.
-        pmviewurl : string
-            URL of pmview REST server
         """
         from moleculekit.util import tempname, find_executable
+
+        if viewer is None:
+            viewer = os.environ.get("MOLECULEKIT_VIEWER")
 
         if viewer is None:
             from moleculekit.config import _config
@@ -2326,11 +2329,13 @@ class Molecule(object):
             viewer = _config["viewer"]
 
         if viewer is None:
-            for exe in ["pmview", "vmd", "pymol"]:
+            for exe in ["vmd", "pymol"]:
                 found = find_executable(exe)
                 if found is not None:
                     viewer = exe
                     break
+            if viewer is None:
+                viewer = "molstar"
 
         if self.numFrames == 0:
             raise RuntimeError("No frames in this molecule to visualize.")
@@ -2363,29 +2368,21 @@ class Molecule(object):
             retval = self._viewNGL(gui=gui)
         elif viewer.lower() == "pymol":
             self._viewPymol(name)
-        elif viewer.lower() == "pmview":
-            self._viewPMView(name, url=pmviewurl)
+        elif viewer.lower() == "molstar":
+            self._viewMolstar(name)
         else:
             raise ValueError("Unknown viewer.")
 
         if retval is not None:
             return retval
 
-    def _viewPMView(self, name, url):
-        from moleculekit.viewer import getCurrentPMViewer, viewingMols
-        import uuid
-
-        getCurrentPMViewer(url=url)
-
-        for val in viewingMols.values():
-            if val == self:
-                return
+    def _viewMolstar(self, name):
+        from moleculekit.viewer.molstar import server as molstar_server
 
         if name is not None:
             self.viewname = name
 
-        unique_id = uuid.uuid4().hex[:6].upper()
-        viewingMols[unique_id] = self
+        molstar_server.register(self)
 
     def _viewPymol(self, name):
         from moleculekit.viewer import getCurrentPymolViewer, viewingMols

@@ -26,6 +26,7 @@ there to report any bugs or issues you encounter using the library.
    The SmallMol class <moleculekit.smallmol.smallmol>
    Molecule tools <moleculetools>
    Projections <projections>
+   Browser viewer <molstar_viewer>
    Tutorials <tutorials>
    API <moleculekit.rst>
 

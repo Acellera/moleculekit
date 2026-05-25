@@ -34,6 +34,7 @@ include = ["moleculekit*"]
 
 [tool.setuptools.package-data]
 "moleculekit.share" = ["**/*"]
+"moleculekit.viewer.molstar" = ["static/**/*"]
 
 [tool.setuptools.exclude-package-data]
 "*" = ["*.c", "*.cpp", "*.cxx", "*.h", "*.pyx", "*.pxd", ".gitignore"]

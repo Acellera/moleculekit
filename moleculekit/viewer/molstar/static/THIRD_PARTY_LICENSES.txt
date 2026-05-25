@@ -1,0 +1,3086 @@
+Name: react
+Version: 19.2.6
+License: MIT
+Private: false
+Description: React is a JavaScript library for building user interfaces.
+Repository: https://github.com/facebook/react.git
+Homepage: https://react.dev/
+License Text:
+===
+
+MIT License
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Name: scheduler
+Version: 0.27.0
+License: MIT
+Private: false
+Description: Cooperative scheduler for the browser environment.
+Repository: https://github.com/facebook/react.git
+Homepage: https://react.dev/
+License Text:
+===
+
+MIT License
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Name: react-dom
+Version: 19.2.6
+License: MIT
+Private: false
+Description: React package for working with the DOM.
+Repository: https://github.com/facebook/react.git
+Homepage: https://react.dev/
+License Text:
+===
+
+MIT License
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Name: molstar
+Version: 5.9.0
+License: MIT
+Private: false
+Description: A comprehensive macromolecular library.
+Repository: https://github.com/molstar/molstar.git
+Homepage: https://github.com/molstar/molstar#readme
+Author: Mol* Contributors
+Contributors:
+  Alexander Rose <alexander.rose@weirdbyte.de>
+  David Sehnal <david.sehnal@gmail.com>
+  Sebastian Bittrich <sebastian.bittrich@rcsb.org>
+  Áron Samuel Kovács <aron.kovacs@mail.muni.cz>
+  Ludovic Autin <autin@scripps.edu>
+  Michal Malý <michal.maly@ibt.cas.cz>
+  Jiří Černý <jiri.cerny@ibt.cas.cz>
+  Panagiotis Tourlas <panagiot_tourlov@hotmail.com>
+  Adam Midlik <midlik@gmail.com>
+  Koya Sakuma <koya.sakuma.work@gmail.com>
+  Gianluca Tomasello <giagitom@gmail.com>
+  Ke Ma <mark.ma@rcsb.org>
+  Jason Pattle <jpattle@exscientia.co.uk>
+  David Williams <dwilliams@nobiastx.com>
+  Zhenyu Zhang <jump2cn@gmail.com>
+  Russell Parker <russell@benchling.com>
+  Dominik Tichy <tichydominik451@gmail.com>
+  Yana Rose <yana.v.rose@gmail.com>
+  Yakov Pechersky <ffxen158@gmail.com>
+  Christian Dominguez <christian.99dominguez@gmail.com>
+  Cai Huiyu <szmun.caihy@gmail.com>
+  Ryan DiRisio <rjdiris@gmail.com>
+  Dušan Veľký <dvelky@mail.muni.cz>
+  Neli Fonseca <neli@ebi.ac.uk>
+  Paul Pillot <paul.pillot@tandemai.com>
+  Herman Bergwerf <post@hbergwerf.nl>
+  Eric E <etongfu@outlook.com>
+  Xavier Martinez <xavier.martinez.xm@gmail.com>
+  Alex Chan <smalldirkalex@gmail.com>
+  Simeon Borko <simeon.borko@gmail.com>
+  Ventura Rivera <venturaxrivera@gmail.com>
+  Andy Turner <agdturner@gmail.com>
+  Lukáš Polák <admin@lukaspolak.cz>
+  Chetan Mishra <chetan.s115@gmail.com>
+  Zach Charlop-Powers <zach.charlop.powers@gmail.com>
+  Kim Juho <juho_kim@outlook.com>
+  Victoria Doshchenko <doshchenko.victoria@gmail.com>
+  Diego del Alamo <diego.delalamo@gmail.com>
+  Tianzhen Lin <tangent@usa.net> (Tangent)
+License Text:
+===
+
+The MIT License
+
+    Copyright (c) 2017 - now, Mol* contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+---
+
+Name: devlop
+Version: 1.1.0
+License: MIT
+Private: false
+Description: Do things in development and nothing otherwise
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2023 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: comma-separated-tokens
+Version: 2.0.3
+License: MIT
+Private: false
+Description: Parse and stringify comma-separated tokens
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: estree-util-is-identifier-name
+Version: 3.0.0
+License: MIT
+Private: false
+Description: Check if something can be an ecmascript (javascript) identifier name
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: hast-util-whitespace
+Version: 3.0.0
+License: MIT
+Private: false
+Description: hast utility to check if a node is inter-element whitespace
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: property-information
+Version: 7.1.0
+License: MIT
+Private: false
+Description: Info on the properties and attributes of the web platform
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Andrew Burgess <andrew@andrewburgess.io>
+  Dustin Deus <deusdustin@gmail.com> (http://starptech.de)
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <mailto:tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: space-separated-tokens
+Version: 2.0.2
+License: MIT
+Private: false
+Description: Parse and stringify space separated tokens
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: inline-style-parser
+Version: 0.2.7
+License: MIT
+Private: false
+Description: An inline style parser.
+Repository: git+https://github.com/remarkablemark/inline-style-parser.git
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2012 TJ Holowaychuk <tj@vision-media.ca>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the 'Software'), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: style-to-object
+Version: 1.0.14
+License: MIT
+Private: false
+Description: Parse CSS inline style to JavaScript object.
+Repository: git+https://github.com/remarkablemark/style-to-object.git
+Author: Mark <mark@remarkablemark.org>
+License Text:
+===
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Menglin "Mark" Xu <mark@remarkablemark.org>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: style-to-js
+Version: 1.1.21
+License: MIT
+Private: false
+Description: Parses CSS inline style to JavaScript object (camelCased).
+Repository: git+https://github.com/remarkablemark/style-to-js.git
+Author: Mark <mark@remarkablemark.org>
+License Text:
+===
+
+The MIT License (MIT)
+
+Copyright (c) 2020 Menglin "Mark" Xu <mark@remarkablemark.org>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: unist-util-position
+Version: 5.0.0
+License: MIT
+Private: false
+Description: unist utility to get the position of a node
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: unist-util-stringify-position
+Version: 4.0.0
+License: MIT
+Private: false
+Description: unist utility to serialize a node, position, or point as a human readable location
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: vfile-message
+Version: 4.0.3
+License: MIT
+Private: false
+Description: vfile utility to create a virtual message
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: hast-util-to-jsx-runtime
+Version: 2.3.6
+License: MIT
+Private: false
+Description: hast utility to transform to preact, react, solid, svelte, vue, etc
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: html-url-attributes
+Version: 3.0.1
+License: MIT
+Private: false
+Description: Map of URL attributes in HTML
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com>
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+---
+
+Name: mdast-util-to-string
+Version: 4.0.0
+License: MIT
+Private: false
+Description: mdast utility to get the plain text content of a node
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: decode-named-character-reference
+Version: 1.3.0
+License: MIT
+Private: false
+Description: Decode named character references
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-util-chunked
+Version: 2.0.1
+License: MIT
+Private: false
+Description: micromark utility to splice and push with giant arrays
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-util-combine-extensions
+Version: 2.0.1
+License: MIT
+Private: false
+Description: micromark utility to combine syntax or html extensions
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-util-decode-numeric-character-reference
+Version: 2.0.2
+License: MIT
+Private: false
+Description: micromark utility to decode numeric character references
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-util-normalize-identifier
+Version: 2.0.1
+License: MIT
+Private: false
+Description: micromark utility normalize identifiers (as found in references, definitions)
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-util-character
+Version: 2.1.1
+License: MIT
+Private: false
+Description: micromark utility to handle character codes
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-util-sanitize-uri
+Version: 2.0.1
+License: MIT
+Private: false
+Description: micromark utility to sanitize urls
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-factory-space
+Version: 2.0.1
+License: MIT
+Private: false
+Description: micromark factory to parse markdown space (found in lots of places)
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark
+Version: 4.0.2
+License: MIT
+Private: false
+Description: small commonmark compliant markdown parser with positional info and concrete tokens
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-util-classify-character
+Version: 2.0.1
+License: MIT
+Private: false
+Description: micromark utility to classify whether a character is whitespace or punctuation
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-util-resolve-all
+Version: 2.0.1
+License: MIT
+Private: false
+Description: micromark utility to resolve subtokens
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-core-commonmark
+Version: 2.0.3
+License: MIT
+Private: false
+Description: The CommonMark markdown constructs
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-util-subtokenize
+Version: 2.1.0
+License: MIT
+Private: false
+Description: micromark utility to tokenize subtokens
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-factory-destination
+Version: 2.0.1
+License: MIT
+Private: false
+Description: micromark factory to parse destinations (found in resources, definitions)
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-factory-label
+Version: 2.0.1
+License: MIT
+Private: false
+Description: micromark factory to parse labels (found in media, definitions)
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-factory-title
+Version: 2.0.1
+License: MIT
+Private: false
+Description: micromark factory to parse markdown titles (found in resources, definitions)
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-factory-whitespace
+Version: 2.0.1
+License: MIT
+Private: false
+Description: micromark factory to parse markdown whitespace (found in lots of places)
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-util-html-tag-name
+Version: 2.0.1
+License: MIT
+Private: false
+Description: micromark utility with list of html tag names
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-util-decode-string
+Version: 2.0.1
+License: MIT
+Private: false
+Description: micromark utility to decode markdown strings
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: mdast-util-from-markdown
+Version: 2.0.3
+License: MIT
+Private: false
+Description: mdast utility to parse markdown
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: remark-parse
+Version: 11.0.0
+License: MIT
+Private: false
+Description: remark plugin to add support for parsing markdown input
+Repository: undefined
+Homepage: https://remark.js.org
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+  Eugene Sharygin <eush77@gmail.com>
+  Junyoung Choi <fluke8259@gmail.com>
+  Elijah Hamovitz <elijahhamovitz@gmail.com>
+  Ika <ikatyang@gmail.com>
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2014 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+---
+
+Name: mdast-util-to-hast
+Version: 13.2.1
+License: MIT
+Private: false
+Description: mdast utility to transform to hast
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: trim-lines
+Version: 3.0.1
+License: MIT
+Private: false
+Description: Remove spaces and tabs around line-breaks
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2015 Titus Wormer <mailto:tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: @ungap/structured-clone
+Version: 1.3.1
+License: ISC
+Private: false
+Description: A structuredClone polyfill
+Repository: git+https://github.com/ungap/structured-clone.git
+Homepage: https://github.com/ungap/structured-clone#readme
+Author: Andrea Giammarchi
+License Text:
+===
+
+ISC License
+
+Copyright (c) 2021, Andrea Giammarchi, @WebReflection
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+
+---
+
+Name: unist-util-is
+Version: 6.0.1
+License: MIT
+Private: false
+Description: unist utility to check if a node passes a test
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+  Christian Murphy <christian.murphy.42@gmail.com>
+  Lucas Brandstaetter <lucas@brandstaetter.tech> (https://github.com/Roang-zero1)
+License Text:
+===
+
+(The MIT license)
+
+Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: unist-util-visit-parents
+Version: 6.0.2
+License: MIT
+Private: false
+Description: unist utility to recursively walk over nodes, with ancestral information
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: unist-util-visit
+Version: 5.1.0
+License: MIT
+Private: false
+Description: unist utility to visit nodes
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+  Eugene Sharygin <eush77@gmail.com>
+  Richard Gibson <richard.gibson@gmail.com>
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: remark-rehype
+Version: 11.1.2
+License: MIT
+Private: false
+Description: remark plugin that turns markdown into HTML to support rehype
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  John Otander <johnotander@gmail.com> (https://johno.com)
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: bail
+Version: 2.0.2
+License: MIT
+Private: false
+Description: Throw a given error
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: extend
+Version: 3.0.2
+License: MIT
+Private: false
+Description: Port of jQuery.extend for node.js and the browser
+Repository: https://github.com/justmoon/node-extend.git
+Author: Stefan Thomas <justmoon@members.fsf.org> (http://www.justmoon.net)
+Contributors:
+  Jordan Harband (https://github.com/ljharb)
+License Text:
+===
+
+The MIT License (MIT)
+
+Copyright (c) 2014 Stefan Thomas
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: is-plain-obj
+Version: 4.1.0
+License: MIT
+Private: false
+Description: Check if a value is a plain object
+Repository: undefined
+Author: Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
+License Text:
+===
+
+MIT License
+
+Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: trough
+Version: 2.2.0
+License: MIT
+Private: false
+Description: `trough` is middleware
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+---
+
+Name: vfile
+Version: 6.0.3
+License: MIT
+Private: false
+Description: Virtual file format for text processing
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+  Brendan Abbott <brendan.abbott@temando.com>
+  Denys Dovhan <email@denysdovhan.com>
+  Kyle Mathews <mathews.kyle@gmail.com>
+  Shinnosuke Watanabe <snnskwtnb@gmail.com>
+  Sindre Sorhus <sindresorhus@gmail.com>
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+---
+
+Name: unified
+Version: 11.0.5
+License: MIT
+Private: false
+Description: parse, inspect, transform, and serialize content through syntax trees
+Repository: undefined
+Homepage: https://unifiedjs.com
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+  Junyoung Choi <fluke8259@gmail.com>
+  Hernan Rajchert <hrajchert@gmail.com>
+  Christian Murphy <christian.murphy.42@gmail.com>
+  Vse Mozhet Byt <vsemozhetbyt@gmail.com>
+  Richard Littauer <richard.littauer@gmail.com>
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+---
+
+Name: react-markdown
+Version: 10.1.0
+License: MIT
+Private: false
+Description: React component to render markdown
+Repository: undefined
+Author: Espen Hovlandsdal <espen@hovlandsdal.com>
+Contributors:
+  Alexander Wallin <office@alexanderwallin.com>
+  Alexander Wong <admin@alexander-wong.com>
+  André Staltz <andre@staltz.com>
+  Angus MacIsaac <angus.macisaac@busbud.com>
+  Beau Roberts <beau.roberts@autodesk.com>
+  Charlie Chen <doveccl@live.com>
+  Christian Murphy <christian.murphy.42@gmail.com>
+  Christoph Werner <christoph@codepunkt.de>
+  Danny <dannyharding10@gmail.com>
+  Dennis S <denis.s@svsg.co>
+  Espen Hovlandsdal <espen@hovlandsdal.com>
+  Evan Hensleigh <futuraprime@gmail.com>
+  Fabian Irsara <info@fabianirsara.com>
+  Florentin Luca Rieger <florentin.rieger@gmail.com>
+  Frank <frankieali4@gmail.com>
+  Igor Kamyshev <garik.novel@gmail.com>
+  Jack Williams <jsw547@gmail.com>
+  Jakub Chrzanowski <jakub@chrzanowski.info>
+  Jeremy Moseley <jeremy@jeremymoseley.net>
+  Jesse Pinho <jesse@jessepinho.com>
+  Kelvin Chan <kchan@securitycompass.com>
+  Kohei Asai <me@axross.io>
+  Linus Unnebäck <linus@folkdatorn.se>
+  Marshall Smith <marshall@radialdevgroup.com>
+  Nathan Bierema <nbierema@gmail.com>
+  Nicolas Venegas <nvenegas@atlassian.com>
+  Peng Guanwen <pg999w@outlook.com>
+  Petr Gazarov <petrgazarov@gmail.com>
+  Phil Rajchgot <tophil@outlook.com>
+  Rasmus Eneman <rasmus@eneman.eu>
+  René Kooi <renee@kooi.me>
+  Riku Rouvila <riku.rouvila@gmail.com>
+  Robin Wieruch <wrobin@gmx.net>
+  Rostyslav Melnychuk <blackswordgc@gmail.com>
+  Ted Piotrowski <tppiotrowski@gmail.com>
+  Thibaud Courtoison <do.not.press.enter@gmail.com>
+  Thomas Lindstrøm <t@hom.as>
+  Tiago Roldão <focus5.6@gmail.com>
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+  cerkiewny <mstarzycki@gmail.com>
+  evoye <rosej@gmx.net>
+  gRoberts84 <gavin@gav-roberts.co.uk>
+  mudrz <mudrz@outlook.com>
+  vanchagreen <vanchagreen@gmail.com>
+License Text:
+===
+
+The MIT License (MIT)
+
+Copyright (c) Espen Hovlandsdal
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Name: immutable
+Version: 5.1.5
+License: MIT
+Private: false
+Description: Immutable Data Collections
+Repository: git://github.com/immutable-js/immutable-js.git
+Homepage: https://immutable-js.com
+Author: Lee Byron (https://github.com/leebyron)
+License Text:
+===
+
+MIT License
+
+Copyright (c) 2014-present, Lee Byron and other contributors.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Name: tslib
+Version: 2.8.1
+License: 0BSD
+Private: false
+Description: Runtime library for TypeScript helper functions
+Repository: https://github.com/Microsoft/tslib.git
+Homepage: https://www.typescriptlang.org/
+Author: Microsoft Corp.
+License Text:
+===
+
+Copyright (c) Microsoft Corporation.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+
+---
+
+Name: rxjs
+Version: 7.8.2
+License: Apache-2.0
+Private: false
+Description: Reactive Extensions for modern JavaScript
+Repository: https://github.com/reactivex/rxjs.git
+Homepage: https://rxjs.dev
+Author: Ben Lesh <ben@benlesh.com>
+Contributors:
+  Ben Lesh <ben@benlesh.com>
+  Paul Taylor <paul.e.taylor@me.com>
+  Jeff Cross <crossj@google.com>
+  Matthew Podwysocki <matthewp@microsoft.com>
+  OJ Kwon <kwon.ohjoong@gmail.com>
+  Andre Staltz <andre@staltz.com>
+License Text:
+===
+
+                               Apache License
+                         Version 2.0, January 2004
+                      http://www.apache.org/licenses/
+
+ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+ 1. Definitions.
+
+    "License" shall mean the terms and conditions for use, reproduction,
+    and distribution as defined by Sections 1 through 9 of this document.
+
+    "Licensor" shall mean the copyright owner or entity authorized by
+    the copyright owner that is granting the License.
+
+    "Legal Entity" shall mean the union of the acting entity and all
+    other entities that control, are controlled by, or are under common
+    control with that entity. For the purposes of this definition,
+    "control" means (i) the power, direct or indirect, to cause the
+    direction or management of such entity, whether by contract or
+    otherwise, or (ii) ownership of fifty percent (50%) or more of the
+    outstanding shares, or (iii) beneficial ownership of such entity.
+
+    "You" (or "Your") shall mean an individual or Legal Entity
+    exercising permissions granted by this License.
+
+    "Source" form shall mean the preferred form for making modifications,
+    including but not limited to software source code, documentation
+    source, and configuration files.
+
+    "Object" form shall mean any form resulting from mechanical
+    transformation or translation of a Source form, including but
+    not limited to compiled object code, generated documentation,
+    and conversions to other media types.
+
+    "Work" shall mean the work of authorship, whether in Source or
+    Object form, made available under the License, as indicated by a
+    copyright notice that is included in or attached to the work
+    (an example is provided in the Appendix below).
+
+    "Derivative Works" shall mean any work, whether in Source or Object
+    form, that is based on (or derived from) the Work and for which the
+    editorial revisions, annotations, elaborations, or other modifications
+    represent, as a whole, an original work of authorship. For the purposes
+    of this License, Derivative Works shall not include works that remain
+    separable from, or merely link (or bind by name) to the interfaces of,
+    the Work and Derivative Works thereof.
+
+    "Contribution" shall mean any work of authorship, including
+    the original version of the Work and any modifications or additions
+    to that Work or Derivative Works thereof, that is intentionally
+    submitted to Licensor for inclusion in the Work by the copyright owner
+    or by an individual or Legal Entity authorized to submit on behalf of
+    the copyright owner. For the purposes of this definition, "submitted"
+    means any form of electronic, verbal, or written communication sent
+    to the Licensor or its representatives, including but not limited to
+    communication on electronic mailing lists, source code control systems,
+    and issue tracking systems that are managed by, or on behalf of, the
+    Licensor for the purpose of discussing and improving the Work, but
+    excluding communication that is conspicuously marked or otherwise
+    designated in writing by the copyright owner as "Not a Contribution."
+
+    "Contributor" shall mean Licensor and any individual or Legal Entity
+    on behalf of whom a Contribution has been received by Licensor and
+    subsequently incorporated within the Work.
+
+ 2. Grant of Copyright License. Subject to the terms and conditions of
+    this License, each Contributor hereby grants to You a perpetual,
+    worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+    copyright license to reproduce, prepare Derivative Works of,
+    publicly display, publicly perform, sublicense, and distribute the
+    Work and such Derivative Works in Source or Object form.
+
+ 3. Grant of Patent License. Subject to the terms and conditions of
+    this License, each Contributor hereby grants to You a perpetual,
+    worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+    (except as stated in this section) patent license to make, have made,
+    use, offer to sell, sell, import, and otherwise transfer the Work,
+    where such license applies only to those patent claims licensable
+    by such Contributor that are necessarily infringed by their
+    Contribution(s) alone or by combination of their Contribution(s)
+    with the Work to which such Contribution(s) was submitted. If You
+    institute patent litigation against any entity (including a
+    cross-claim or counterclaim in a lawsuit) alleging that the Work
+    or a Contribution incorporated within the Work constitutes direct
+    or contributory patent infringement, then any patent licenses
+    granted to You under this License for that Work shall terminate
+    as of the date such litigation is filed.
+
+ 4. Redistribution. You may reproduce and distribute copies of the
+    Work or Derivative Works thereof in any medium, with or without
+    modifications, and in Source or Object form, provided that You
+    meet the following conditions:
+
+    (a) You must give any other recipients of the Work or
+        Derivative Works a copy of this License; and
+
+    (b) You must cause any modified files to carry prominent notices
+        stating that You changed the files; and
+
+    (c) You must retain, in the Source form of any Derivative Works
+        that You distribute, all copyright, patent, trademark, and
+        attribution notices from the Source form of the Work,
+        excluding those notices that do not pertain to any part of
+        the Derivative Works; and
+
+    (d) If the Work includes a "NOTICE" text file as part of its
+        distribution, then any Derivative Works that You distribute must
+        include a readable copy of the attribution notices contained
+        within such NOTICE file, excluding those notices that do not
+        pertain to any part of the Derivative Works, in at least one
+        of the following places: within a NOTICE text file distributed
+        as part of the Derivative Works; within the Source form or
+        documentation, if provided along with the Derivative Works; or,
+        within a display generated by the Derivative Works, if and
+        wherever such third-party notices normally appear. The contents
+        of the NOTICE file are for informational purposes only and
+        do not modify the License. You may add Your own attribution
+        notices within Derivative Works that You distribute, alongside
+        or as an addendum to the NOTICE text from the Work, provided
+        that such additional attribution notices cannot be construed
+        as modifying the License.
+
+    You may add Your own copyright statement to Your modifications and
+    may provide additional or different license terms and conditions
+    for use, reproduction, or distribution of Your modifications, or
+    for any such Derivative Works as a whole, provided Your use,
+    reproduction, and distribution of the Work otherwise complies with
+    the conditions stated in this License.
+
+ 5. Submission of Contributions. Unless You explicitly state otherwise,
+    any Contribution intentionally submitted for inclusion in the Work
+    by You to the Licensor shall be under the terms and conditions of
+    this License, without any additional terms or conditions.
+    Notwithstanding the above, nothing herein shall supersede or modify
+    the terms of any separate license agreement you may have executed
+    with Licensor regarding such Contributions.
+
+ 6. Trademarks. This License does not grant permission to use the trade
+    names, trademarks, service marks, or product names of the Licensor,
+    except as required for reasonable and customary use in describing the
+    origin of the Work and reproducing the content of the NOTICE file.
+
+ 7. Disclaimer of Warranty. Unless required by applicable law or
+    agreed to in writing, Licensor provides the Work (and each
+    Contributor provides its Contributions) on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+    implied, including, without limitation, any warranties or conditions
+    of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+    PARTICULAR PURPOSE. You are solely responsible for determining the
+    appropriateness of using or redistributing the Work and assume any
+    risks associated with Your exercise of permissions under this License.
+
+ 8. Limitation of Liability. In no event and under no legal theory,
+    whether in tort (including negligence), contract, or otherwise,
+    unless required by applicable law (such as deliberate and grossly
+    negligent acts) or agreed to in writing, shall any Contributor be
+    liable to You for damages, including any direct, indirect, special,
+    incidental, or consequential damages of any character arising as a
+    result of this License or out of the use or inability to use the
+    Work (including but not limited to damages for loss of goodwill,
+    work stoppage, computer failure or malfunction, or any and all
+    other commercial damages or losses), even if such Contributor
+    has been advised of the possibility of such damages.
+
+ 9. Accepting Warranty or Additional Liability. While redistributing
+    the Work or Derivative Works thereof, You may choose to offer,
+    and charge a fee for, acceptance of support, warranty, indemnity,
+    or other liability obligations and/or rights consistent with this
+    License. However, in accepting such obligations, You may act only
+    on Your own behalf and on Your sole responsibility, not on behalf
+    of any other Contributor, and only if You agree to indemnify,
+    defend, and hold each Contributor harmless for any liability
+    incurred by, or claims asserted against, such Contributor by reason
+    of your accepting any such warranty or additional liability.
+
+ END OF TERMS AND CONDITIONS
+
+ APPENDIX: How to apply the Apache License to your work.
+
+    To apply the Apache License to your work, attach the following
+    boilerplate notice, with the fields enclosed by brackets "[]"
+    replaced with your own identifying information. (Don't include
+    the brackets!)  The text should be enclosed in the appropriate
+    comment syntax for the file format. We also recommend that a
+    file or class name and description of purpose be included on the
+    same "printed page" as the copyright notice for easier
+    identification within third-party archives.
+
+ Copyright (c) 2015-2018 Google, Inc., Netflix, Inc., Microsoft Corp. and contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+
+---
+
+Name: mutative
+Version: 1.3.0
+License: MIT
+Private: false
+Description: A JavaScript library for efficient immutable updates
+Repository: git+https://github.com/unadlib/mutative.git
+Homepage: https://mutative.js.org/
+Author: unadlib
+License Text:
+===
+
+MIT License
+
+Copyright (c) 2022 Michael Lin
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Name: ccount
+Version: 2.0.1
+License: MIT
+Private: false
+Description: Count how often a character (or substring) is used in a string
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: escape-string-regexp
+Version: 5.0.0
+License: MIT
+Private: false
+Description: Escape RegExp special characters
+Repository: undefined
+Author: Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
+License Text:
+===
+
+MIT License
+
+Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: mdast-util-find-and-replace
+Version: 3.0.2
+License: MIT
+Private: false
+Description: mdast utility to find and replace text in a tree
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: mdast-util-gfm-autolink-literal
+Version: 2.0.1
+License: MIT
+Private: false
+Description: mdast extension to parse and serialize GFM autolink literals
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: mdast-util-gfm-footnote
+Version: 2.1.0
+License: MIT
+Private: false
+Description: mdast extension to parse and serialize GFM footnotes
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: mdast-util-gfm-strikethrough
+Version: 2.0.0
+License: MIT
+Private: false
+Description: mdast extension to parse and serialize GFM strikethrough
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: markdown-table
+Version: 3.0.4
+License: MIT
+Private: false
+Description: Generate a markdown (GFM) table
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: mdast-util-to-markdown
+Version: 2.1.2
+License: MIT
+Private: false
+Description: mdast utility to serialize markdown
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: longest-streak
+Version: 3.1.0
+License: MIT
+Private: false
+Description: Count the longest repeating streak of a substring
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2015 Titus Wormer <mailto:tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: mdast-util-phrasing
+Version: 4.1.0
+License: MIT
+Private: false
+Description: mdast utility to check if a node is phrasing content
+Repository: undefined
+Author: Victor Felder <victor@draft.li> (https://draft.li)
+Contributors:
+  Victor Felder <victor@draft.li> (https://draft.li)
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2017 Titus Wormer <tituswormer@gmail.com>
+Copyright (c) 2017 Victor Felder <victor@draft.li>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: mdast-util-gfm-table
+Version: 2.0.0
+License: MIT
+Private: false
+Description: mdast extension to parse and serialize GFM tables
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: mdast-util-gfm-task-list-item
+Version: 2.0.0
+License: MIT
+Private: false
+Description: mdast extension to parse and serialize GFM task list items
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: mdast-util-gfm
+Version: 3.1.0
+License: MIT
+Private: false
+Description: mdast extension to parse and serialize GFM (GitHub Flavored Markdown)
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-extension-gfm-autolink-literal
+Version: 2.1.0
+License: MIT
+Private: false
+Description: micromark extension to support GFM autolink literals
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-extension-gfm-footnote
+Version: 2.1.0
+License: MIT
+Private: false
+Description: micromark extension to support GFM footnotes
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2021 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-extension-gfm-strikethrough
+Version: 2.1.0
+License: MIT
+Private: false
+Description: micromark extension to support GFM strikethrough
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-extension-gfm-table
+Version: 2.1.1
+License: MIT
+Private: false
+Description: micromark extension to support GFM tables
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-extension-gfm-task-list-item
+Version: 2.1.0
+License: MIT
+Private: false
+Description: micromark extension to support GFM task list items
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: micromark-extension-gfm
+Version: 3.0.0
+License: MIT
+Private: false
+Description: micromark extension to support GFM (GitHub Flavored Markdown)
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2020 Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: remark-gfm
+Version: 4.0.1
+License: MIT
+Private: false
+Description: remark plugin to support GFM (autolink literals, footnotes, strikethrough, tables, tasklists)
+Repository: undefined
+Author: Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+Contributors:
+  Titus Wormer <tituswormer@gmail.com> (https://wooorm.com)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) Titus Wormer <tituswormer@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
