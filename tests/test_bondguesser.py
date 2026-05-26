@@ -82,3 +82,82 @@ def _test_solvated_bond_guessing():
     bondsref = np.loadtxt(reff, delimiter=",").astype(np.uint32)
 
     assert np.array_equal(bonds, bondsref)
+
+
+@pytest.mark.parametrize("span", [1e4, 1e5, 1e6, 1e7])
+def _test_unwrapped_coordinates(span):
+    # Two bonded atoms plus distant ones spanning a large unwrapped range must not
+    # crash bond_grid_search (regression: uint32 overflow on xyz_boxes products).
+    from moleculekit.bondguesser import bond_grid_search
+
+    coords = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.5, 0.0, 0.0],
+            [span, 0.0, 0.0],
+            [span, span, span],
+        ],
+        dtype=np.float32,
+    )
+    radii = np.array([1.7, 1.7, 1.7, 1.7], dtype=np.float32)
+    is_h = np.zeros(4, dtype=np.uint32)
+
+    bonds = bond_grid_search(coords, 2.04, is_h, radii)
+    assert bonds.dtype == np.uint32
+    assert bonds.shape == (1, 2)
+    assert sorted(bonds[0].tolist()) == [0, 1]
+
+
+def _test_high_atom_indices_preserved(monkeypatch):
+    # Atom indices above 2**24 must survive the result-assembly path
+    # (regression: float32 round-trip rounds odd indices and corrupts bonds).
+    from moleculekit import bondguesser
+
+    HIGH_A = 16777217  # 2**24 + 1: smallest int not exactly representable in float32
+    HIGH_B = HIGH_A + 2  # 16777219: also misrepresented in float32 -> 16777220
+
+    injected = {"used": False}
+
+    def fake_grid_bonds(
+        coords, radii, is_hydrogen, pairdist, boxidx, atoms_in_box, gridlist
+    ):
+        if injected["used"]:
+            return []
+        injected["used"] = True
+        return [HIGH_A, HIGH_B]
+
+    monkeypatch.setattr(bondguesser, "grid_bonds", fake_grid_bonds)
+
+    coords = np.array([[0.0, 0.0, 0.0], [1.5, 0.0, 0.0]], dtype=np.float32)
+    radii = np.array([1.7, 1.7], dtype=np.float32)
+    is_h = np.zeros(2, dtype=np.uint32)
+
+    bonds = bondguesser.bond_grid_search(coords, 2.04, is_h, radii)
+    assert bonds.dtype == np.uint32
+    assert bonds.shape == (1, 2)
+    assert int(bonds[0, 0]) == HIGH_A
+    assert int(bonds[0, 1]) == HIGH_B
+
+
+def _test_nan_coords_raises():
+    from moleculekit.bondguesser import bond_grid_search
+
+    coords = np.array(
+        [[0.0, 0.0, 0.0], [1.5, 0.0, 0.0], [np.nan, 0.0, 0.0]], dtype=np.float32
+    )
+    radii = np.array([1.7, 1.7, 1.7], dtype=np.float32)
+    is_h = np.zeros(3, dtype=np.uint32)
+
+    with pytest.raises(ValueError, match="finite"):
+        bond_grid_search(coords, 2.04, is_h, radii)
+
+
+def _test_zero_grid_cutoff_raises():
+    from moleculekit.bondguesser import bond_grid_search
+
+    coords = np.array([[0.0, 0.0, 0.0], [1.5, 0.0, 0.0]], dtype=np.float32)
+    radii = np.array([1.7, 1.7], dtype=np.float32)
+    is_h = np.zeros(2, dtype=np.uint32)
+
+    with pytest.raises(ValueError, match="grid_cutoff"):
+        bond_grid_search(coords, 0.0, is_h, radii)

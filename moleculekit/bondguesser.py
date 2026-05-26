@@ -218,21 +218,33 @@ def bond_grid_search(
 ):
     from collections import defaultdict
 
+    if not np.isfinite(coords).all():
+        raise ValueError(
+            "bond_grid_search received non-finite coordinates (NaN or inf). "
+            "Coordinates must be finite."
+        )
+    if not (grid_cutoff > 0 and np.isfinite(grid_cutoff)):
+        raise ValueError(
+            f"bond_grid_search requires a positive, finite grid_cutoff; got {grid_cutoff!r}."
+        )
+
     # Get min and max coords
     min_c = coords.min(axis=0)
     max_c = coords.max(axis=0)
     xyzrange = max_c - min_c
 
-    # Increase grid_cutoff until it won't generate more than max_boxes
-    newpairdist = grid_cutoff
-    pairdist = grid_cutoff
-    xyz_boxes = np.floor(xyzrange / pairdist).astype(np.uint32) + 1
-    num_boxes = xyz_boxes[0] * xyz_boxes[1] * xyz_boxes[2]
-    while num_boxes > max_boxes or num_boxes < 1:
-        pairdist = newpairdist
-        xyz_boxes = np.floor(xyzrange / pairdist).astype(np.uint32) + 1
-        num_boxes = xyz_boxes[0] * xyz_boxes[1] * xyz_boxes[2]
-        newpairdist = pairdist * cutoff_incr  # sqrt(2) ~= 1.26
+    # Increase grid_cutoff until it won't generate more than max_boxes.
+    # Box-count arithmetic uses int64 / Python int so unwrapped frames spanning huge
+    # distances don't silently wrap around uint32 (~4.29e9) and produce a corrupt grid.
+    def _box_counts(pairdist):
+        axes = (np.floor(xyzrange / pairdist).astype(np.int64) + 1).tolist()
+        return axes, axes[0] * axes[1] * axes[2]
+
+    pairdist = float(grid_cutoff)
+    xyz_boxes, num_boxes = _box_counts(pairdist)
+    while num_boxes > max_boxes:
+        pairdist *= cutoff_incr  # sqrt(2) ~= 1.26
+        xyz_boxes, num_boxes = _box_counts(pairdist)
 
     if num_boxes > 1e6:
         logger.warning(
@@ -243,15 +255,18 @@ def bond_grid_search(
         )
 
     # Compute box index for all atoms
-    box_idx = np.floor((coords - min_c) / pairdist).astype(int)
-    # Clip box indexes within range
+    box_idx = np.floor((coords - min_c) / pairdist).astype(np.int64)
+    # Clip box indexes within range (guards FP rounding at the max-coord edge)
     box_idx[:, 0] = np.clip(box_idx[:, 0], 0, xyz_boxes[0] - 1)
     box_idx[:, 1] = np.clip(box_idx[:, 1], 0, xyz_boxes[1] - 1)
     box_idx[:, 2] = np.clip(box_idx[:, 2], 0, xyz_boxes[2] - 1)
 
-    # Convert to single box index
+    # Flatten to 1D box index in int64 (num_boxes is capped at max_boxes < 2**32,
+    # so narrowing to uint32 after this is safe). The per-axis multiplies stay int64.
     xy_boxes = xyz_boxes[0] * xyz_boxes[1]
-    box_idx = box_idx[:, 2] * xy_boxes + box_idx[:, 1] * xyz_boxes[0] + box_idx[:, 0]
+    box_idx = (
+        box_idx[:, 2] * xy_boxes + box_idx[:, 1] * xyz_boxes[0] + box_idx[:, 0]
+    ).astype(np.uint32)
 
     atoms_in_box = defaultdict(list)
     maxlen = 0
@@ -283,8 +298,8 @@ def bond_grid_search(
             gridlist,
         )
         if len(pairs) != 0:
-            pairs = np.array(pairs, dtype=np.float32).reshape(-1, 2)
-            result_list.append(pairs)
+            # int64 preserves atom indices above 2**24 (float32 mantissa limit).
+            result_list.append(np.asarray(pairs, dtype=np.int64).reshape(-1, 2))
 
     if len(result_list) == 0:
         return np.zeros((0, 2), dtype=np.uint32)
