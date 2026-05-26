@@ -2847,10 +2847,21 @@ def sdf_generator(sdffile):
 
 # This is a hack to fix the URL fetching of MMTF in pyodide
 def get_raw_data_from_url(pdb_id, reduced=False):
-    """ " Get the msgpack unpacked data given a PDB id.
+    """Get the msgpack unpacked data given a PDB id.
 
-    :param pdb_id: the input PDB id
-    :return the unpacked data (a dict)"""
+    Parameters
+    ----------
+    pdb_id : str
+        The input PDB id.
+    reduced : bool, optional
+        If True, fetch the reduced MMTF representation (backbone-only).
+        Defaults to False (full structure).
+
+    Returns
+    -------
+    data : dict
+        The unpacked MMTF data.
+    """
     from mmtf.api.default_api import get_url, ungzip_data, _unpack, urllib2
 
     url = get_url(pdb_id, reduced)

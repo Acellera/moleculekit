@@ -22,14 +22,14 @@ logger = logging.getLogger(__name__)
 class BinaryCifWriter(object):
     """Writer for the binary CIF format.
 
-    Type hints are supplied explicitly:
+    Type hints are supplied explicitly::
 
         typeHints = {
             "atom_site": {"id": "integer", "Cartn_x": "float", ...},
             ...
         }
 
-    Attributes not present in `typeHints[category]` default to "string".
+    Attributes not present in ``typeHints[category]`` default to ``"string"``.
     """
 
     def __init__(

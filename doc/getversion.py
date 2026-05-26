@@ -6,15 +6,23 @@
 import subprocess
 import sys
 
+
+def _run(cmd):
+    try:
+        return subprocess.check_output(
+            cmd, shell=True, stderr=subprocess.DEVNULL
+        ).decode("utf8")
+    except subprocess.CalledProcessError:
+        return ""
+
+
 if sys.argv[1] == "tag":
-    output = subprocess.check_output("git describe --tags", shell=True).decode("utf8")
+    output = _run("git describe --tags")
     tag = output.split("-")[0]
     print(tag)
 
 if sys.argv[1] == "branch":
-    output = subprocess.check_output(
-        "git rev-parse --abbrev-ref HEAD", shell=True
-    ).decode("utf8")
+    output = _run("git rev-parse --abbrev-ref HEAD")
     if output.startswith("master"):
         print("latest")
     elif output.startswith("rel-"):

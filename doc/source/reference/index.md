@@ -22,7 +22,6 @@ moleculekit.config
 
 moleculekit.atomselect.atomselect
 moleculekit.atomselect.analyze
-moleculekit.atomselect.languageparser
 ```
 
 ## Geometry and analysis

@@ -80,6 +80,7 @@ class ChainResidueSpec:
       chain / resid / insertion).
     - ``new_resname``: the resname to rename to before downstream
       parameterization. Set whenever a rename is needed:
+
         * Canonical AA at a junction: ``"CYX"`` for both ends of a
           CYS-SG <-> CYS-SG disulfide; an auto-generated 3-char ``XX#``
           name otherwise, shared across residues sharing the bucket

@@ -330,7 +330,7 @@ _PARSER_SELECTIONS = [
 
 @pytest.mark.parametrize("sel", _PARSER_SELECTIONS)
 def _test_parser(sel):
-    from moleculekit.atomselect.languageparser import parser
+    from moleculekit.atomselect._languageparser import parser
 
     # Parse an expression
     try:

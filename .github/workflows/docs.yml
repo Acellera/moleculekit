@@ -5,40 +5,14 @@ on:
   workflow_call:
 
 jobs:
-  validate:
+  build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: astral-sh/setup-uv@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install docs deps
-        run: uv sync --group docs --group test
-
-      - name: Generate rst docs
-        run: cd doc && uv run make rst
-
-      - name: Build HTML
-        run: cd doc && uv run sphinx-build -b html source build/html
-
-  publish:
-    needs: validate
-    runs-on: ubuntu-latest
-    if: ${{ startsWith(github.event.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
     permissions:
       contents: "read"
       id-token: "write"
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/auth@v1
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_DOCS }}
-          service_account: ${{ secrets.GCP_DOC_SERVICE_ACCOUNT }}
 
       - uses: astral-sh/setup-uv@v6
         with:
@@ -50,7 +24,16 @@ jobs:
       - name: Build HTML
         run: cd doc && uv run make html
 
+      # Upload only on tag pushes or when the workflow is dispatched manually.
+      - name: Set up Cloud SDK
+        if: ${{ startsWith(github.event.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_DOCS }}
+          service_account: ${{ secrets.GCP_DOC_SERVICE_ACCOUNT }}
+
       - name: Sync HTML to GCP docs bucket
+        if: ${{ startsWith(github.event.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
         run: |
           gcloud storage rsync doc/build/html gs://software-acellera-final/moleculekit \
             --recursive \

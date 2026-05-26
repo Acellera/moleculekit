@@ -22,11 +22,12 @@ writeversion:
 
 rst: writeversion
 	mkdir -p $(REFERENCEDIR)
-	$(SPHINXAPIDOC) --force --separate -o $(REFERENCEDIR) ../moleculekit/ >/dev/null
+	$(SPHINXAPIDOC) --no-toc --force --separate -o $(REFERENCEDIR) ../moleculekit/ >/dev/null
 	@echo "RST files written to $(REFERENCEDIR)/"
 
 clean:
 	rm -f $(REFERENCEDIR)/moleculekit.*
+	rm -f $(REFERENCEDIR)/modules.rst
 	rm -f $(SOURCEDIR)/version
 	rm -f $(SOURCEDIR)/llms-full.txt
 	rm -rf build
