@@ -44,23 +44,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install deps
-        run: uv sync --group docs
+      - name: Install docs deps
+        run: uv sync --group docs --group test
 
-      - name: Generate rst docs
-        run: cd doc && uv run make rst
+      - name: Build HTML
+        run: cd doc && uv run make html
 
-      - name: Publish to GCP intermediate docs bucket
-        uses: "google-github-actions/upload-cloud-storage@v1"
-        with:
-          path: "doc/source"
-          destination: "software-acellera-intermediate/public_docs/moleculekit/${{ github.ref_name }}"
-
-      - name: Write update file to upload
-        run: echo "Updated" > update
-
-      - name: Upload "update" file to trigger new docs
-        uses: "google-github-actions/upload-cloud-storage@v1"
-        with:
-          path: "update"
-          destination: "software-acellera-intermediate/"
+      - name: Sync HTML to GCP docs bucket
+        run: |
+          gcloud storage rsync doc/build/html gs://software-acellera-final/moleculekit \
+            --recursive \
+            --delete-unmatched-destination-objects
