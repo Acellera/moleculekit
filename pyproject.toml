@@ -61,7 +61,7 @@ openmm = [
 ]
 
 [dependency-groups]
-test = ["pytest>=8.4.2", "pytest-xdist", "jupytext", "nbclient"]
+test = ["pytest>=8.4.2", "pytest-xdist", "jupytext", "nbclient", "ipykernel"]
 docs = [
   "sphinx",
   "pydata-sphinx-theme",
