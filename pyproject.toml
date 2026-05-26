@@ -63,8 +63,8 @@ openmm = [
 [dependency-groups]
 test = ["pytest>=8.4.2", "pytest-xdist", "jupytext", "nbclient", "ipykernel"]
 docs = [
+  "acellera-docs-theme @ git+https://github.com/Acellera/acellera-docs-theme.git",
   "sphinx",
-  "pydata-sphinx-theme",
   "myst-nb",
   "sphinx-design",
   "sphinx-copybutton",
