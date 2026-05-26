@@ -26,7 +26,7 @@ jobs:
   publish:
     needs: validate
     runs-on: ubuntu-latest
-    if: ${{ startsWith(github.event.ref, 'refs/tags/') }}
+    if: ${{ startsWith(github.event.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
     permissions:
       contents: "read"
       id-token: "write"
