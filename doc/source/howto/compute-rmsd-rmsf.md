@@ -54,7 +54,7 @@ rmsd_aligned = molRMSD(mol, ref, ca_idx, ca_idx)
 - {py:func}`~moleculekit.util.molRMSD` computes raw (non-mass-weighted) RMSD; align the structures first if you want to remove rigid-body motion.
 - RMSF is per-atom and depends on the choice of reference (mean structure); the result is sensitive to conformational heterogeneity.
 - Both `mol` and `refmol` must have the same number of selected atoms.
-- {py:class}`~moleculekit.projections.metricfluctuation.MetricFluctuation` returns **squared** per-atom displacement (`(n_frames, n_atoms)`, units Å²). For RMSF you must take `np.sqrt(sq_disp.mean(axis=0))` — `sq_disp.mean(axis=0)` alone is mean-squared-fluctuation, not RMSF.
+- {py:class}`~moleculekit.projections.metricfluctuation.MetricFluctuation` returns **squared** per-atom displacement (`(n_frames, n_atoms)`, units Å²) — as its own docstring states ("to get the RMSD you need to compute the square root of the mean of the results this projection returns"). For RMSF take `np.sqrt(sq_disp.mean(axis=0))`; `sq_disp.mean(axis=0)` alone is mean-squared-fluctuation, not RMSF.
 
 ## See also
 

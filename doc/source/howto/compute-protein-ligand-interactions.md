@@ -46,10 +46,15 @@ print(f"H-bonds in frame 0: {len(hbonds[0])}")
 ## Common variations
 
 ```python
-# Convert the per-frame list of triples into a single numpy array of donors,
-# Hs, and acceptors for frame 0.
-frame0 = np.array(hbonds[0])   # shape (n_hbonds, 3)
-print("donor heavy atoms, Hs, acceptors:\n", frame0)
+# Inspect frame 0: each row is (donor_heavy, donor_H, acceptor)
+print("donor heavy atoms, Hs, acceptors:\n", hbonds[0])
+```
+
+```python
+# Visualise H-bonds in VMD (requires VMD on PATH)
+from moleculekit.interactions.interactions import view_hbonds
+
+view_hbonds(mol, hbonds)
 ```
 
 ```python

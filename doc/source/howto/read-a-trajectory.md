@@ -32,9 +32,9 @@ mol.read("trajectory.xtc", skip=10)
 ```
 
 ```python
-# Read a single specific frame
+# Read a specific list of frames
 mol = Molecule("topology.psf")
-mol.read("trajectory.xtc", frames=[500])
+mol.read("trajectory.xtc", frames=[0, 10, 20, 30])
 ```
 
 ```python
@@ -49,8 +49,8 @@ print(mol.numFrames)
 
 - All frames are loaded into memory at once; for very long trajectories use `skip` or `frames=` to read a subset.
 - The atom count of the trajectory must exactly match the topology — a mismatch raises an error.
-- `frames=` is **per file**: when reading a single trajectory it must be a length-1 list whose single element is either an int or a list of ints (e.g. `frames=[[0, 10, 20]]`). For uniform subsampling prefer `skip=`.
-- `skip` strides the final merged coordinate array; it applies independently of `frames` and is the simplest way to subsample a long trajectory.
+- When reading **multiple** trajectories in one call (`mol.read([traj1, traj2], frames=...)`), `frames=` must have one entry per file — each entry being either an int (single frame from that file) or a list of ints.
+- `skip` strides the final merged coordinate array; it applies independently of `frames`.
 - When `append=False` (default) a second `mol.read(traj)` call replaces the existing coordinates rather than extending them.
 
 ## See also

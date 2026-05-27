@@ -54,18 +54,19 @@ without reading the whole file into memory:
 # Load every 10th frame (uniform stride)
 mol.read("run1.xtc", skip=10)
 
-# Load only frame 500 of a single trajectory
+# Load only frame 500
 mol.read("run1.xtc", frames=[500])
 
-# Load a specific list of frame indices from a single trajectory
-mol.read("run1.xtc", frames=[[0, 10, 20, 30, 40]])
+# Load a specific list of frame indices
+mol.read("run1.xtc", frames=[0, 10, 20, 30, 40])
 ```
 
-`skip=N` applies uniform subsampling. `frames=` is **per file**: it must be a
-list with one entry per trajectory in `filename`, and each entry is either an
-int (single frame) or a list of ints (multiple frames). When reading just one
-trajectory this means wrapping your indices in an outer list, as in the third
-example above. For most subsampling use cases `skip=` is simpler.
+`skip=N` applies uniform subsampling. `frames=` selects specific indices and
+is **per file**: when reading multiple trajectories in one call (e.g.
+`Molecule(["topo.psf", "run1.xtc", "run2.xtc"], frames=[...])`) it must have
+one entry per trajectory, each entry being either an int (single frame from
+that file) or a list of ints. For the common single-trajectory case shown
+here, a flat list of indices is accepted as-is.
 
 ### Multi-trajectory loads
 
