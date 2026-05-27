@@ -52,7 +52,6 @@ lookups and element checks:
 | `hydrogen` | All atoms with `element == "H"` |
 | `noh` | All non-hydrogen atoms |
 | `all` | Every atom in the molecule |
-| `none` | No atoms |
 
 ## Per-atom field comparisons
 
@@ -100,9 +99,12 @@ mol.atomselect("beta < 20")
 mol.atomselect("resid 40 to 60")
 mol.atomselect("index 0 to 99")
 
-# Negation with !=
-mol.atomselect("chain != B")
+# Negation: use `not`
+mol.atomselect("not chain B")
 ```
+
+The `!=` operator only applies inside the modulo form (e.g.
+`resid % 2 != 0`); for plain field comparisons use `not`.
 
 ## Boolean composition
 

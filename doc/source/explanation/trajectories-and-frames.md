@@ -51,32 +51,40 @@ The `read` method accepts `frames` and `skip` arguments to load a subset
 without reading the whole file into memory:
 
 ```python
-# Load every 10th frame
+# Load every 10th frame (uniform stride)
 mol.read("run1.xtc", skip=10)
 
-# Load a specific list of frame indices
-mol.read("run1.xtc", frames=range(0, 1000, 10))
-
-# Load only frame 500
+# Load only frame 500 of a single trajectory
 mol.read("run1.xtc", frames=[500])
+
+# Load a specific list of frame indices from a single trajectory
+mol.read("run1.xtc", frames=[[0, 10, 20, 30, 40]])
 ```
 
-`skip=N` applies uniform subsampling; `frames=` takes an arbitrary list of
-indices.
+`skip=N` applies uniform subsampling. `frames=` is **per file**: it must be a
+list with one entry per trajectory in `filename`, and each entry is either an
+int (single frame) or a list of ints (multiple frames). When reading just one
+trajectory this means wrapping your indices in an outer list, as in the third
+example above. For most subsampling use cases `skip=` is simpler.
 
 ### Multi-trajectory loads
 
-Pass a list of trajectory files to the `Molecule` constructor, or call
-`read(..., append=True)` repeatedly. Frames are concatenated in order:
+Pass topology and trajectories as a single list to the `Molecule` constructor,
+or call `read(..., append=True)` repeatedly. Frames are concatenated in order:
 
 ```python
-mol = Molecule("system.prmtop", ["run1.xtc", "run2.xtc", "run3.xtc"])
+mol = Molecule(["system.prmtop", "run1.xtc", "run2.xtc", "run3.xtc"])
 # Equivalent to:
 mol = Molecule("system.prmtop")
 mol.read("run1.xtc")
 mol.read("run2.xtc", append=True)
 mol.read("run3.xtc", append=True)
 ```
+
+The second positional argument of {py:class}`~moleculekit.molecule.Molecule`
+is `name=`, **not** a trajectory file — passing trajectories there assigns
+them to `mol.name` and loads nothing. Always use a single list (as above) or
+the explicit `read(..., append=True)` form.
 
 `mol.numFrames` is the total number of frames from all trajectories. Frame
 ordering mirrors the order the files were passed.
@@ -123,9 +131,9 @@ precision, what they store, and typical file size:
 
 | Format | Extension | Precision | Box | Velocities | Notes |
 |---|---|---|---|---|---|
-| XTC | `.xtc` | Reduced (lossy ~0.001 Å) | Yes | No | GROMACS native; very compact |
+| XTC | `.xtc` | Reduced (lossy XDR fixed-point, ~0.01 Å) | Yes | No | GROMACS native; very compact |
 | DCD | `.dcd` | Full `float32` | Varies | No | NAMD/CHARMM native |
-| TRR | `.trr` | Full `float64` | Yes | Yes | GROMACS native; larger files |
+| TRR | `.trr` | Full (file stores up to `float64`; moleculekit holds `coords` as `float32`) | Yes | Yes | GROMACS native; larger files |
 | NetCDF | `.nc`, `.ncdf` | Full `float32` | Yes | Optional | AMBER native |
 
 XTC is the most common format encountered in practice. Its compressed storage

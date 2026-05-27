@@ -77,8 +77,14 @@ from moleculekit.tools.autosegment import autoSegment
 
 mol_seg = autoSegment(mol)   # returns a modified copy
 import numpy as np
-print(np.unique(mol_seg.segid))   # e.g. ['P0', 'P1', 'W0']
+print(np.unique(mol_seg.segid))   # e.g. ['P0', 'P1', 'P2']
 ```
+
+Each contiguous polypeptide run (and each contiguous run of water residues)
+gets the next `P{i}` segid. Water residues additionally receive `chain = "W"`
+to keep them visually distinct from polymer chains, but their **segid** stays
+on the same `P{i}` numbering sequence as everything else; there is no `W0`
+segid.
 
 The function accepts a `basename` argument to control naming: `basename="P"`
 produces `P0`, `P1`, `P2`, etc. The `fields` argument controls which field(s)

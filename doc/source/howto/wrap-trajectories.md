@@ -22,7 +22,7 @@ mol.wrap("protein")
 |---|---|---|---|
 | `wrapsel` | `str` | `"all"` | Atom selection that defines the center of the wrapping box |
 | `fileBonds` | `bool` | `True` | Use bonds from the loaded topology file |
-| `guessBonds` | `bool` | `False` | Fall back to distance-based bond guessing if `fileBonds` yields too few bonds |
+| `guessBonds` | `bool` | `False` | Also include distance-guessed bonds in the bond graph used for wrap grouping |
 
 ## Common variations
 
@@ -32,8 +32,9 @@ mol.wrap("resname LIG")
 ```
 
 ```python
-# Topology file has complete bonds — skip guessing for speed
-mol.wrap("protein", guessBonds=False)
+# Topology file is missing some bonds (e.g. small molecules in a plain PDB) —
+# merge in distance-guessed bonds so the wrap groups stay intact
+mol.wrap("protein", guessBonds=True)
 ```
 
 ## Gotchas

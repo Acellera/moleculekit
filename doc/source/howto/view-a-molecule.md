@@ -46,7 +46,7 @@ mol.view(viewer="pymol")
 When `viewer=` is not given, moleculekit picks a backend in this order:
 
 1. `MOLECULEKIT_VIEWER` environment variable (e.g. `export MOLECULEKIT_VIEWER=molstar`).
-2. `moleculekit.config["viewer"]` runtime setting.
+2. The runtime setting from {py:func}`moleculekit.config.config` (e.g. `from moleculekit.config import config; config(viewer="molstar")`).
 3. VMD found on `$PATH`.
 4. PyMOL found on `$PATH`.
 5. Molstar fallback (always available).

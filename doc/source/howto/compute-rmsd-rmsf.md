@@ -33,11 +33,14 @@ print(rmsd)
 ## Common variations
 
 ```python
+import numpy as np
 # RMSF per Cα atom over a trajectory
 from moleculekit.projections.metricfluctuation import MetricFluctuation
 
-rmsf = MetricFluctuation("protein and name CA").project(mol)
-# rmsf shape: (n_frames, n_CA); for a single per-atom value over the trajectory use rmsf.mean(axis=0)
+# .project returns squared per-atom displacement (shape (n_frames, n_CA),
+# units Å²). RMSF = sqrt(mean over frames of the squared displacement).
+sq_disp = MetricFluctuation("protein and name CA").project(mol)
+rmsf = np.sqrt(sq_disp.mean(axis=0))   # shape (n_CA,), units Å
 ```
 
 ```python
@@ -51,7 +54,7 @@ rmsd_aligned = molRMSD(mol, ref, ca_idx, ca_idx)
 - {py:func}`~moleculekit.util.molRMSD` computes raw (non-mass-weighted) RMSD; align the structures first if you want to remove rigid-body motion.
 - RMSF is per-atom and depends on the choice of reference (mean structure); the result is sensitive to conformational heterogeneity.
 - Both `mol` and `refmol` must have the same number of selected atoms.
-- {py:class}`~moleculekit.projections.metricfluctuation.MetricFluctuation` returns an `(n_frames, n_atoms)` array — use `rmsf.mean(axis=0)` to get a per-atom fluctuation averaged over all frames.
+- {py:class}`~moleculekit.projections.metricfluctuation.MetricFluctuation` returns **squared** per-atom displacement (`(n_frames, n_atoms)`, units Å²). For RMSF you must take `np.sqrt(sq_disp.mean(axis=0))` — `sq_disp.mean(axis=0)` alone is mean-squared-fluctuation, not RMSF.
 
 ## See also
 

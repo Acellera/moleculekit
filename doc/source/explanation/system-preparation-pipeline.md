@@ -193,7 +193,7 @@ up the ligand spec automatically.
 ### mutateResidue before systemPrepare
 
 When you want to swap canonical residues (e.g. a point mutation), call
-{py:meth}`~moleculekit.molecule.Molecule.mutateResidue` with `sel` and `new_resname` first. The mutator uses Dunbrack rotamers
+{py:meth}`~moleculekit.molecule.Molecule.mutateResidue` with `sel` and `newres` first. The mutator uses Dunbrack rotamers
 to place the new sidechain, and {py:func}`~moleculekit.tools.preparation.systemPrepare` then protonates and optimizes
 the mutated residue along with the rest of the protein.
 

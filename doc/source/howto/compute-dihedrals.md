@@ -34,7 +34,7 @@ print(f"psi(17) after : {np.degrees(mol.getDihedral(psi17)):.1f}°")
 | Method / argument | What it does |
 |---|---|
 | `mol.getDihedral(atom_quad)` | Returns the dihedral angle in **radians** for the four atom indices in `atom_quad`. Operates on the current `mol.frame`. |
-| `mol.setDihedral(atom_quad, radians, bonds=None, guessBonds=False)` | Rotates the downstream half of the molecule around the central bond of the dihedral so the angle becomes `radians`. For a chain of modifications pass `bonds=mol._getBonds()` once to keep the bond table from being re-guessed on every call. |
+| `mol.setDihedral(atom_quad, radians, bonds=None, guessBonds=False)` | Rotates the downstream half of the molecule around the central bond of the dihedral so the angle becomes `radians`. For a chain of modifications pass `bonds=mol.bonds` (or a pre-built bond array) once to keep the bond table from being re-built on every call. |
 
 ## Common variations
 
@@ -59,7 +59,7 @@ angles = np.array([
 
 - Both `getDihedral` and `dihedralAngle` return angles in **radians**; convert with `np.degrees(angle)` if you want degrees.
 - `mol.getDihedral` operates on the current `mol.frame` — set `mol.frame = i` first if you want a specific frame.
-- `mol.setDihedral` rotates the downstream side of the dihedral in place; the upstream side is held fixed. If the topology is ambiguous (the rotation would split the molecule wrong), the call may fail — guard against this by passing an explicit `bonds=` array.
+- `mol.setDihedral` rotates the downstream side of the dihedral in place; the upstream side is held fixed. If the topology is ambiguous (the rotation would split the molecule wrong), the call may fail — guard against this by passing an explicit `bonds=mol.bonds` array.
 - For computing many dihedrals at once across a trajectory, prefer {py:class}`~moleculekit.projections.metricdihedral.MetricDihedral` from `moleculekit.projections.metricdihedral` — it batches the work efficiently.
 
 ## See also

@@ -41,7 +41,7 @@ The signature is {py:meth}`~moleculekit.molecule.Molecule.write` with parameters
 | `psf` | CHARMM / NAMD topology | Topology only (no coords). |
 | `gro` | GROMACS structure | Coords + topology (single frame). |
 | `xyz`, `xyz.gz` | Plain XYZ | Elements + coords only. |
-| `xtc` | GROMACS compressed traj | Coordinates only, lossy float16. |
+| `xtc` | GROMACS compressed traj | Coordinates only, lossy XDR fixed-point (~0.01 Å). |
 | `dcd` | CHARMM/NAMD binary traj | Coordinates only, full precision. |
 | `trr` | GROMACS full-precision traj | Coords + optional velocities/forces. |
 | `netcdf`, `nc`, `ncdf` | AMBER NetCDF | Coordinates only, full precision. |
