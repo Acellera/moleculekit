@@ -1398,6 +1398,16 @@ class Molecule(object):
 
         if frames is not None:
             frames = ensurelist(frames)
+            # Auto-wrap: when reading a single trajectory, accept a flat list
+            # of frame indices (e.g. frames=[0, 10, 20]) as a per-file
+            # selection. Without this the user would have to write the
+            # awkward double-list form frames=[[0, 10, 20]].
+            if (
+                len(filename) == 1
+                and len(frames) != 1
+                and not isinstance(frames[0], (list, tuple, np.ndarray, range))
+            ):
+                frames = [frames]
             if len(filename) != len(frames):
                 raise RuntimeError(
                     f"Number of trajectories ({len(filename)}) does not match number of frames ({len(frames)}) given as arguments"

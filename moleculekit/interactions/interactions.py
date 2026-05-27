@@ -372,7 +372,7 @@ def hbonds_calculate(
         raise RuntimeError("mol.box should have same number of frames as mol.coords")
 
     if len(donors) == 0 or len(acceptors) == 0:
-        return [[] for _ in range(mol.numFrames)]
+        return [np.empty((0, 3), dtype=np.int64) for _ in range(mol.numFrames)]
 
     sel1 = mol.atomselect(sel1).astype(np.uint32).copy()
     if sel2 is None:
@@ -411,7 +411,10 @@ def hbonds_calculate(
 
     hbond_list = []
     for f in range(mol.numFrames):
-        hbond_list.append([hb[f][i : i + 3] for i in range(0, len(hb[f]), 3)])
+        # The cython kernel emits a flat sequence of (donor_heavy, donor_H, acceptor)
+        # triples. Reshape to (N, 3) so downstream callers (view_hbonds,
+        # waterbridge_calculate, user analysis) can index it as a 2D array.
+        hbond_list.append(np.asarray(hb[f], dtype=np.int64).reshape(-1, 3))
     return hbond_list
 
 
