@@ -2132,7 +2132,6 @@ def CIFread(
     filename,
     frame=None,
     topoloc=None,
-    zerowarning=True,
     data=None,
     covalentonly=True,
     validateElements=True,
@@ -2497,10 +2496,6 @@ def CIFread(
 
     coords = allcoords
     if np.any(np.all(allcoords == 0, axis=1)) and len(ideal_allcoords):
-        if np.any(np.all(ideal_allcoords == 0, axis=1)) and zerowarning:
-            logger.warning(
-                "Found [0, 0, 0] coordinates in molecule! Proceed with caution."
-            )
         coords = ideal_allcoords
 
     if not macromolecule:
@@ -3007,7 +3002,6 @@ def BCIFread(
     filename,
     frame=None,
     topoloc=None,
-    zerowarning=True,
     uri="https://models.rcsb.org/{pdbid}.bcif.gz",
     covalentonly=True,
     validateElements=True,
@@ -3029,7 +3023,6 @@ def BCIFread(
         data=data,
         frame=frame,
         topoloc=topoloc,
-        zerowarning=zerowarning,
         covalentonly=covalentonly,
         validateElements=validateElements,
     )

@@ -127,7 +127,6 @@ def _generate_nonstandard_residues_ff(
 
     with tempfile.TemporaryDirectory() as tmpdir:
         for res in not_in_ff:
-            logger.info(f"Attempting to template non-canonical residue {res}...")
             spec = spec_by_resname[res]
             rid = spec.residue
             mask = (
@@ -165,7 +164,6 @@ def _generate_nonstandard_residues_ff(
 
             _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
             _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
-            logger.info(f"Succesfully templated non-canonical residue {res}.")
 
         definition, forcefield = _get_custom_ff(user_ff=tmpdir)
     return definition, forcefield

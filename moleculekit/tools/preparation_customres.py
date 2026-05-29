@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 # PDB2PQR is quite finicky about the backbone coordinates so I copy them from ALA
-backbone = Molecule(os.path.join(__share_dir, "backbone.cif"), zerowarning=False)
-alanine = Molecule(os.path.join(__share_dir, "ALA.cif"), zerowarning=False)
+backbone = Molecule(os.path.join(__share_dir, "backbone.cif"))
+alanine = Molecule(os.path.join(__share_dir, "ALA.cif"))
 
 
 def _reorder_residue_atoms(mol, resid):

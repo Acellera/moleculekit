@@ -515,8 +515,11 @@ def template_residue_from_smiles(
             "The selection contains no bonds. Please set the bonds of the residue or guess them with guessBonds=True"
         )
 
+    # _logger=False here always: the SMILES echoed by toRDKitMol is the
+    # residue's pre-template SMILES, which is noise inside templateResidueFromSmiles
+    # (the caller already knows the target SMILES they passed in).
     rmol = residue.toRDKitMol(
-        sanitize=False, kekulize=False, assignStereo=False, _logger=_logger
+        sanitize=False, kekulize=False, assignStereo=False, _logger=False
     )
     rmol_smi = Chem.MolFromSmiles(smiles, sanitize=sanitizeSmiles)
     if rmol_smi is None:
