@@ -68,9 +68,12 @@ If you load a PDB and then hand it to a parameterizer without populating
 
 ## autoSegment: populating segments automatically
 
-{py:func}`~moleculekit.tools.autosegment.autoSegment` walks the **residue-ID sequence** within a selection and assigns
-a new segment ID whenever it detects a gap in residue numbering. Each
-contiguous run of residues becomes one segment:
+{py:func}`~moleculekit.tools.autosegment.autoSegment` assigns segments by
+following the **physical backbone** of each polymer. It walks the residues of a
+selection in file order and starts a new segment only where the backbone is
+actually broken — judged from atomic coordinates, not from residue numbering —
+so it is robust to structures where residues were deleted from the sequence
+while the chain stayed continuous.
 
 ```python
 from moleculekit.tools.autosegment import autoSegment
@@ -80,17 +83,39 @@ import numpy as np
 print(np.unique(mol_seg.segid))   # e.g. ['P0', 'P1', 'P2']
 ```
 
-Each contiguous polypeptide run (and each contiguous run of water residues)
-gets the next `P{i}` segid. Water residues additionally receive `chain = "W"`
-to keep them visually distinct from polymer chains, but their **segid** stays
-on the same `P{i}` numbering sequence as everything else; there is no `W0`
-segid.
+A new segment begins between two consecutive residues when **any** of these holds:
 
-The function accepts a `basename` argument to control naming: `basename="P"`
-produces `P0`, `P1`, `P2`, etc. The `fields` argument controls which field(s)
-are written: `("segid",)` (default), `("chain",)`, or `("segid", "chain")`.
+- the backbone link distance exceeds the cutoff — for protein the `C(i)–N(i+1)`
+  peptide bond (default `protein_cutoff=2.0` Å, falling back to `CA–CA` when the
+  carbonyl/amide atoms are missing), for nucleic acids the `O3'(i)–P(i+1)`
+  phosphodiester bond (default `nucleic_cutoff=2.2` Å);
+- the `chain` or `segid` already recorded in the file changes;
+- the polymer type changes (protein vs nucleic).
 
-{py:func}`~moleculekit.tools.autosegment.autoSegment` detects gaps by checking for breaks in `resid` sequence and is the supported entry point.
+Because continuity is judged from coordinates, a gap in residue numbering with an
+intact backbone (for example residues mutated out of a sequence) stays a
+**single** segment, while a genuine spatial break — even one with continuous
+numbering — is split into two.
+
+Non-polymer atoms are grouped separately: all **water** collapses into one
+segment, all **ions** into another, and the remaining molecules ("other") are
+split into one segment per bonded molecule. Pass `single_other_segment=True` to
+place all of the "other" molecules into a single segment instead.
+
+The `basename` argument controls naming (`basename="P"` produces `P0`, `P1`,
+`P2`, ...). The `fields` argument controls which field(s) are written:
+`("segid",)` (default), `("chain",)`, or `("segid", "chain")`.
+
+Run {py:func}`~moleculekit.tools.autosegment.autoSegment` before
+{py:func}`~moleculekit.tools.preparation.systemPrepare` so the parameterizer
+receives a populated, consistent `segid`.
+
+```{note}
+The older `autoSegment2` — which segmented by the covalent bond graph — is
+deprecated. It now forwards to
+{py:func}`~moleculekit.tools.autosegment.autoSegment` and emits a
+`DeprecationWarning`; call `autoSegment` directly instead.
+```
 
 ## Bonds: the connectivity layer
 

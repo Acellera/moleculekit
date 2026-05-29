@@ -133,7 +133,7 @@ Moleculekit uses a single distance unit throughout: **Ångström (Å)**. This ap
 - `mol.coords` — atomic positions.
 - `mol.box` — periodic-box lengths.
 - All readers and writers (regardless of the source format's native units — GROMACS' `.gro` / `.xtc` use nanometres on disk; moleculekit converts to Å on load and converts back on write).
-- All distance parameters in the library (`coldist`, `spatialgap`, `find_clashes` thresholds, `within X of` selections, etc.).
+- All distance parameters in the library (`coldist`, `autoSegment`'s `protein_cutoff`, `find_clashes` thresholds, `within X of` selections, etc.).
 
 Angles — `mol.boxangles`, dihedrals returned by {py:meth}`~moleculekit.molecule.Molecule.getDihedral`, and rotation angles passed to {py:meth}`~moleculekit.molecule.Molecule.setDihedral` — are in **radians** for the function APIs, except `mol.boxangles` which is in degrees (matching the PDB convention).
 

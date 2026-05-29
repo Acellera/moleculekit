@@ -121,7 +121,7 @@ def prepareProteinForAtomtyping(
     mol : Molecule object
         The prepared Molecule
     """
-    from moleculekit.tools.autosegment import autoSegment2
+    from moleculekit.tools.autosegment import autoSegment
     from moleculekit.util import sequenceID
 
     mol = mol.copy()
@@ -157,7 +157,7 @@ def prepareProteinForAtomtyping(
         from moleculekit.tools.preparation import systemPrepare
 
         if np.all(protmol.segid == "") and np.all(protmol.chain == ""):
-            protmol = autoSegment2(
+            protmol = autoSegment(
                 protmol, fields=("segid", "chain"), basename="K", _logger=verbose
             )  # We need segments to prepare the protein
         protmol, _ = systemPrepare(
@@ -172,7 +172,7 @@ def prepareProteinForAtomtyping(
         # TODO: Should we remove bonds between metals and protein?
 
     if segment:
-        protmol = autoSegment2(
+        protmol = autoSegment(
             protmol, fields=("segid", "chain"), _logger=verbose
         )  # Reassign segments after preparation
 
@@ -241,20 +241,22 @@ def atomtypingValidityChecks(mol):
 
     if np.all(mol.segid == "") or np.all(mol.chain == ""):
         raise RuntimeError(
-            "Please assign segments to the segid and chain fields of the molecule using autoSegment2"
+            "Please assign segments to the segid and chain fields of the molecule using autoSegment"
         )
 
-    from moleculekit.tools.autosegment import autoSegment2
+    from moleculekit.tools.autosegment import autoSegment
 
     mm = mol.copy()
-    mm.segid[:] = ""  # Set segid and chain to '' to avoid name clashes in autoSegment2
+    mm.segid[:] = ""  # Set segid and chain to '' to avoid name clashes in autoSegment
     mm.chain[:] = ""
-    refmol = autoSegment2(mm, fields=("chain", "segid"), _logger=False)
+    refmol = autoSegment(
+        mm, sel="protein or resname ACE NME", fields=("chain", "segid"), _logger=False
+    )
     numsegsref = len(np.unique(refmol.segid))
     numsegs = len(np.unique(mol.segid))
     if numsegs != numsegsref:
         raise RuntimeError(
-            "The molecule contains {} segments while we predict {}. Make sure you used autoSegment2 on the protein".format(
+            "The molecule contains {} segments while we predict {}. Make sure you used autoSegment on the protein".format(
                 numsegs, numsegsref
             )
         )

@@ -5,80 +5,269 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_autoSegment():
+def _test_autoSegment2_deprecated_shim():
+    import warnings
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment, autoSegment2
+
+    mol = Molecule("3ptb")
+    # autoSegment2 must warn and produce the same result as autoSegment for the
+    # same selection (it is now a thin forwarding shim).
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        shim = autoSegment2(
+            mol, sel="protein or resname ACE NME", fields=("chain", "segid")
+        )
+    assert any(issubclass(w.category, DeprecationWarning) for w in caught)
+    ref = autoSegment(
+        mol, sel="protein or resname ACE NME", fields=("chain", "segid")
+    )
+    assert np.array_equal(shim.segid, ref.segid)
+    assert np.array_equal(shim.chain, ref.chain)
+
+
+def _test_autoSegment_classify():
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import _classify_residues
+
+    mol = Molecule("3ptb")
+    cats, _ = _classify_residues(mol, mol.atomselect("all"))
+    # 3PTB: one protein chain, one CA ion, one BEN ligand, then waters
+    assert "protein" in cats
+    assert "ion" in cats  # the calcium
+    assert "water" in cats
+    assert "other" in cats  # benzamidine
+    # No nucleic in 3PTB
+    assert "nucleic" not in cats
+
+
+def _test_autoSegment_linked():
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import _polymer_linked, _classify_residues
+
+    mol = Molecule("3ptb")
+    sel = mol.atomselect("protein")
+    cats, residue_idx = _classify_residues(mol, sel)
+    # Consecutive protein residues in 3PTB are peptide-bonded -> linked
+    linked = [
+        _polymer_linked(
+            mol,
+            residue_idx[i - 1],
+            residue_idx[i],
+            "protein",
+            protein_cutoff=2.0,
+            nucleic_cutoff=2.2,
+            ca_fallback_cutoff=5.0,
+            nucleic_fallback_cutoff=3.2,
+        )
+        for i in range(1, len(residue_idx))
+    ]
+    # The vast majority of consecutive residues are linked (allow chain breaks)
+    assert np.mean(linked) > 0.95
+
+
+def _test_autoSegment_1aud_continuous():
+    from os import path
     from moleculekit.molecule import Molecule
     from moleculekit.tools.autosegment import autoSegment
-    from os import path
 
-    p = Molecule(path.join(curr_dir, "test_autosegment", "4dkl.pdb"))
-    p.filter("(chain B and protein) or water")
-    p = autoSegment(p, "protein", "P")
-    m = Molecule(path.join(curr_dir, "test_autosegment", "membrane.pdb"))
-    print(np.unique(m.get("segid")))
-
-    mol = Molecule(path.join(curr_dir, "test_autosegment", "1ITG_clean.pdb"))
-    ref = Molecule(path.join(curr_dir, "test_autosegment", "1ITG.pdb"))
-    mol = autoSegment(mol, sel="protein")
-    assert np.all(mol.segid == ref.segid)
-
-    mol = Molecule(path.join(curr_dir, "test_autosegment", "3PTB_clean.pdb"))
-    ref = Molecule(path.join(curr_dir, "test_autosegment", "3PTB.pdb"))
-    mol = autoSegment(mol, sel="protein")
-    assert np.all(mol.segid == ref.segid)
+    mol = Molecule(path.join(curr_dir, "test_autosegment", "1aud.pdb"))
+    # Only the RNA; it has a resid jump 30->33 but a continuous backbone.
+    out = autoSegment(mol, sel="nucleic", fields=("segid",))
+    rna_segids = set(np.unique(out.segid[out.atomselect("nucleic")]))
+    assert len(rna_segids) == 1, f"expected 1 RNA segment, got {rna_segids}"
 
 
-def _test_autoSegment2():
-    from moleculekit.molecule import Molecule
-    from moleculekit.tools.autosegment import autoSegment2
-    from os import path
-
-    mol = Molecule(path.join(curr_dir, "test_autosegment", "3segments.pdb"))
-    smol1 = autoSegment2(mol, sel="nucleic or protein or resname ACE NME")
-    smol2 = autoSegment2(mol)
-    assert np.array_equal(smol1.segid, smol2.segid)
-    vals, counts = np.unique(smol1.segid, return_counts=True)
-    assert len(vals) == 3
-    assert np.array_equal(counts, np.array([331, 172, 1213]))
-
-
-def _test_autosegment_detailed():
+def _test_autoSegment_3ptb_buckets():
     from moleculekit.molecule import Molecule
     from moleculekit.tools.autosegment import autoSegment
 
     mol = Molecule("3ptb")
-    outmol = autoSegment(mol, fields=("chain", "segid"))
+    out = autoSegment(mol, fields=("chain", "segid"))
 
+    # Same index ranges as the existing _test_autosegment_detailed
     prot_idx = np.arange(1629)
     ca_idx = np.array([1629])
     ben_idx = np.arange(1630, 1639)
     water_idx = np.arange(1639, 1701)
 
-    chain_a = np.where(outmol.chain == "A")[0]
-    assert np.array_equal(chain_a, prot_idx)
-    chain_b = np.where(outmol.chain == "B")[0]
-    assert np.array_equal(chain_b, ca_idx)
-    chain_c = np.where(outmol.chain == "C")[0]
-    assert np.array_equal(chain_c, ben_idx)
-    chain_w = np.where(outmol.chain == "W")[0]
-    assert np.array_equal(chain_w, water_idx)
+    # One protein segment over the whole protein
+    assert len(set(out.segid[prot_idx])) == 1
+    # Calcium ion is its own (ion) segment
+    assert len(set(out.segid[ca_idx])) == 1
+    # Benzamidine is one "other" segment
+    assert len(set(out.segid[ben_idx])) == 1
+    # All waters collapse into a single segment
+    assert len(set(out.segid[water_idx])) == 1
+    # The four groups are four distinct segids
+    groups = [
+        out.segid[prot_idx][0],
+        out.segid[ca_idx][0],
+        out.segid[ben_idx][0],
+        out.segid[water_idx][0],
+    ]
+    assert len(set(groups)) == 4
 
-    # A is kept by CA, BEN and waters. B is assigned to protein.
-    outmol = autoSegment(mol, fields=("chain", "segid"), sel="protein")
-    chain_a = np.where(outmol.chain == "A")[0]
-    assert np.array_equal(chain_a, np.hstack([ca_idx, ben_idx, water_idx]))
-    chain_b = np.where(outmol.chain == "B")[0]
-    assert np.array_equal(chain_b, prot_idx)
 
-    # A is kept by CA and waters. B is assigned to protein. C is assigned to BEN.
-    outmol = autoSegment(mol, fields=("chain", "segid"), sel="protein or resname BEN")
-    chain_a = np.where(outmol.chain == "A")[0]
-    assert np.array_equal(chain_a, np.hstack([ca_idx, water_idx]))
-    chain_b = np.where(outmol.chain == "B")[0]
-    assert np.array_equal(chain_b, prot_idx)
-    chain_c = np.where(outmol.chain == "C")[0]
-    assert np.array_equal(chain_c, ben_idx)
+def _test_autoSegment_system_matrix():
+    from os import path
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
 
-    # There are no nucleic so it stays as original
-    outmol = autoSegment(mol, fields=("chain", "segid"), sel="nucleic")
-    chain_a = np.where(outmol.chain == "A")[0]
-    assert np.array_equal(chain_a, np.arange(mol.numAtoms))
+    expected = {
+        "5vbl": 5,   # isopeptide bond -> peptide stays one segment per chain
+        "4tot": 15,
+        "8qfz": 5,   # scaffolded / bicycle (chain A has a real 21A backbone gap)
+        "8qu4": 8,   # staple -> stays within chain
+        "1r1j": 7,   # covalent sugars -> own "other" segment(s)
+        "2kdc": 3,   # membrane protein
+        "1bl8": 6,   # ion channel
+        "2b5i": 14,
+        "1u5u": 5,   # ferroheme cofactor
+    }
+    for pid, n in expected.items():
+        mol = Molecule(path.join(curr_dir, "test_autosegment", f"{pid}.pdb"))
+        out = autoSegment(mol, fields=("chain", "segid"))
+        got = len(np.unique(out.segid))
+        assert got == n, f"{pid}: expected {n} segments, got {got}"
+
+
+def _test_autoSegment_chain_change_splits():
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol = Molecule("3ptb")
+    prot = mol.atomselect("protein")
+    # Artificially relabel the second half of the protein to a different chain.
+    prot_idx = np.where(prot)[0]
+    half = prot_idx[len(prot_idx) // 2 :]
+    mol.chain[half] = "Z"
+
+    out = autoSegment(mol, sel="protein", fields=("segid",))
+    # Despite continuous backbone, the chain change must split into >= 2 segments
+    assert len(set(out.segid[prot_idx])) >= 2
+
+
+def _test_autoSegment_single_other_segment():
+    from os import path
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment, _classify_residues
+
+    # 3gbn has several distinct 'other' molecules (EDO, GOL, a glycan tree, ...)
+    mol = Molecule("3gbn")
+    cats, residue_idx = _classify_residues(mol, mol.atomselect("all"))
+    other_atoms = np.hstack(
+        [residue_idx[i] for i, c in enumerate(cats) if c == "other"]
+    )
+
+    split = autoSegment(mol, fields=("segid",), single_other_segment=False)
+    merged = autoSegment(mol, fields=("segid",), single_other_segment=True)
+
+    # Splitting yields several 'other' segments; merging yields exactly one.
+    assert len(set(split.segid[other_atoms])) > 1
+    assert len(set(merged.segid[other_atoms])) == 1
+    # The single 'other' segment must not collide with polymer/water/ion segments
+    non_other = np.ones(mol.numAtoms, dtype=bool)
+    non_other[other_atoms] = False
+    assert merged.segid[other_atoms][0] not in set(merged.segid[non_other])
+
+
+def _test_autoSegment_gfp_chromophore():
+    # 1gfl: the GFP chromophore residue 65 (SER) is missing its backbone O, so
+    # the standard "backbone" selection drops it. autoSegment classifies it by
+    # N/CA/C presence and keeps each chain continuous through it.
+    from os import path
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol = Molecule(path.join(curr_dir, "test_autosegment", "1gfl.pdb"))
+    out = autoSegment(mol, fields=("segid",))
+    prot = mol.atomselect("protein")
+    # One segment per chain (A, B); the chromophore does NOT cause an extra split
+    assert len(set(out.segid[prot])) == 2
+    for ch in ("A", "B"):
+        before = out.segid[(mol.chain == ch) & (mol.resid == 64)]
+        after = out.segid[(mol.chain == ch) & (mol.resid == 66)]
+        assert before[0] == after[0], f"chromophore split chain {ch}"
+
+
+def _test_autoSegment_missing_carbonyl_continuity():
+    # 1hgu: residues 148/151 are missing their carbonyl O (AS2 over-splits there),
+    # while 37-39 are a genuine missing loop. autoSegment stays continuous through
+    # the missing-O residues but splits at the real gap.
+    from os import path
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol = Molecule(path.join(curr_dir, "test_autosegment", "1hgu.pdb"))
+    out = autoSegment(mol, fields=("segid",))
+    prot = mol.atomselect("protein")
+    assert len(set(out.segid[prot])) == 2
+
+    def seg(rid):
+        return out.segid[(mol.chain == "A") & (mol.resid == rid)][0]
+
+    # continuity across the missing-O residue 148
+    assert seg(147) == seg(148) == seg(149)
+    # real gap 36->40 splits
+    assert seg(36) != seg(40)
+
+
+def _test_autoSegment_heavy_water_dod():
+    # 2mb5 is a neutron structure with 89 DOD (D2O) residues. With DOD recognized
+    # as water they collapse into a single water segment instead of 89 'other' ones.
+    from os import path
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol = Molecule(path.join(curr_dir, "test_autosegment", "2mb5.pdb"))
+    dod = mol.resname == "DOD"
+    assert dod.any()
+    out = autoSegment(mol, fields=("segid",))
+    assert len(set(out.segid[dod])) == 1
+
+
+def _test_autoSegment_glycan_tree():
+    # 3gbn: an N-linked glycan tree (NAG-NAG-BMA-MAN) must stay together as one
+    # connected-component 'other' segment, separate from isolated small molecules.
+    from os import path
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment, _classify_residues
+    from collections import defaultdict
+
+    mol = Molecule(path.join(curr_dir, "test_autosegment", "3gbn.pdb"))
+    out = autoSegment(mol, fields=("segid",))
+    cats, residue_idx = _classify_residues(mol, mol.atomselect("all"))
+    seg_res = defaultdict(list)
+    for i, c in enumerate(cats):
+        if c == "other":
+            seg_res[out.segid[residue_idx[i][0]]].append(mol.resname[residue_idx[i][0]])
+    # Exactly one 'other' segment is a multi-residue sugar tree
+    multi = [rs for rs in seg_res.values() if len(rs) > 1]
+    assert len(multi) == 1
+    assert set(multi[0]) <= {"NAG", "BMA", "MAN", "FUC", "GAL"}
+    assert len(multi[0]) >= 3
+
+
+def _test_autoSegment_5mat_internal_gaps():
+    # 5MAT (renin) has two protein chains (A, C), each with a real missing-loop
+    # gap, so autoSegment yields 4 polymer segments. The gaps are detected by
+    # backbone distance (C-N 4.4 A in chain A, 10.4 A in chain C), not resids.
+    from os import path
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol = Molecule(path.join(curr_dir, "test_autosegment", "5mat.pdb"))
+    out = autoSegment(mol, fields=("chain", "segid"))
+    prot = mol.atomselect("protein")
+    assert sorted(set(mol.chain[prot])) == ["A", "C"]
+    assert len(set(out.segid[prot])) == 4
+
+    def seg(ch, rid):
+        return out.segid[(mol.chain == ch) & (mol.resid == rid)][0]
+
+    # Each chain splits once at its missing-loop gap
+    assert seg("A", 98) != seg("A", 101)
+    assert seg("C", 98) != seg("C", 104)
+    # ...but residues on the same side of a gap stay together
+    assert seg("A", 55) == seg("A", 98)

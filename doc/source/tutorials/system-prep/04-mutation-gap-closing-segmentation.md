@@ -44,7 +44,7 @@ mol = autoSegment(mol, sel="protein", fields=("chain", "segid"))
 sorted(set(zip(mol.chain, mol.segid)))
 ```
 
-{py:func}`~moleculekit.tools.autosegment.autoSegment` detects that the backbone distance between GLY 140 and MET 154 (the flanking residues of the gap) exceeds the default 4 Å spatial threshold, and so it creates two independent segments: `P0` on chain A (residues 55–140) and `P1` on chain B (residues 154–209). Both the `chain` and `segid` fields are now consistent, which avoids warnings during {py:func}`~moleculekit.tools.preparation.systemPrepare`.
+{py:func}`~moleculekit.tools.autosegment.autoSegment` detects that the backbone is broken between GLY 140 and MET 154 (the flanking residues of the gap) — their `C–N` distance far exceeds the peptide-bond cutoff (`protein_cutoff`, 2 Å by default) — and so it creates two independent segments: `P0` on chain A (residues 55–140) and `P1` on chain B (residues 154–209). Both the `chain` and `segid` fields are now consistent, which avoids warnings during {py:func}`~moleculekit.tools.preparation.systemPrepare`.
 
 ## Step 2 — Mutate a residue with the "best" rotamer
 
@@ -113,7 +113,7 @@ The full pipeline — segment, mutate, prepare — is now complete.
 
 ## Recap
 
-- {py:func}`~moleculekit.tools.autosegment.autoSegment` detects backbone discontinuities and assigns a unique segid (and optionally chain letter) per topologically connected fragment; use `fields=("chain", "segid")` to keep both fields consistent.
+- {py:func}`~moleculekit.tools.autosegment.autoSegment` detects backbone discontinuities from atomic coordinates and assigns a unique segid (and optionally chain letter) per backbone-continuous segment; use `fields=("chain", "segid")` to keep both fields consistent.
 - {py:meth}`~moleculekit.molecule.Molecule.mutateResidue` with `sel` and `newres` swaps a residue's sidechain using Dunbrack rotamer selection: `rotamer_mode="best"` minimises VdW clashes against neighbours, `rotamer_mode="random"` samples by probability for speed. Add `minimize=True` to relax residual strain with OpenMM.
 - {py:func}`~moleculekit.tools.modelling.model_gaps` fills missing residues by sequence using the ProMod3 loop-modelling engine — but it requires the ProMod3 Singularity image; there is no fallback.
 

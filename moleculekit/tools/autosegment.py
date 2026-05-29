@@ -3,11 +3,12 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
-from moleculekit.molecule import Molecule
+from moleculekit import __share_dir
 import string
+import json
+import os
 import numpy as np
 import logging
-
 
 logger = logging.getLogger(__name__)
 
@@ -15,216 +16,282 @@ logger = logging.getLogger(__name__)
 CHAIN_ALPHABET = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
 SEGID_ALPHABET = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
 
+with open(os.path.join(__share_dir, "atomselect", "atomselect.json")) as _f:
+    _sel = json.load(_f)
 
-def autoSegment(
-    mol: Molecule,
-    sel="all",
-    basename="P",
-    spatial=True,
-    spatialgap=4.0,
-    fields=("segid",),
-    field=None,
-    _logger=True,
-):
-    """Detects resid gaps in a selection and assigns incrementing segid to each fragment.
+# Protein residues are identified by the presence of these backbone atoms,
+# nucleic residues by any of these backbone link atoms (with ' / * variants).
+PROTEIN_BB = ("N", "CA", "C")
+NUCLEIC_LINK = ("P", "O3'", "O3*", "C3'", "C3*")
 
-    A new segment is started whenever a gap in ``resid`` numbering is found
-    between consecutive residues in the selection (optionally confirmed by
-    checking that the spatial distance between backbone atoms exceeds
-    ``spatialgap``).  Water molecules are handled separately: each run of
-    consecutive water residues forms its own segment with automatically
-    renumbered ``resid`` values.
 
-    Use :func:`autoSegment` when the input has resid-based gaps (e.g. a PDB
-    where residues are numbered with missing stretches).  If you want to
-    segment strictly by the covalent bond graph instead, use
-    :func:`autoSegment2`.  When you need a specific naming scheme that neither
-    function produces, set ``mol.segid`` directly with
-    ``mol.set("segid", "MY_SEG", sel="...")``.
+def _residue_atom_coord(mol, res_atom_idx, names):
+    """Coordinate of the first atom in ``res_atom_idx`` whose name is in ``names``.
 
-    Parameters
-    ----------
-    mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
-        The Molecule object
-    sel : str
-        Atom selection string on which to check for gaps.
-        See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    basename : str
-        The basename for segment ids. For example if given 'P' it will name the segments 'P1', 'P2', ...
-    spatial : bool
-        Only considers a discontinuity in resid as a gap if matching backbone atoms of the two residues have distance larger than `spatialgap` Angstrom
-    spatialgap : float
-        The size of a spatial gap which validates a discontinuity (A)
-    fields : list
-        Fields in which to set the segments. Must be a combination of "chain", "segid" or only one of them.
+    ``names`` may be a single name or a tuple of acceptable names (e.g. the
+    ``O3'``/``O3*`` naming variants). Returns ``None`` if no atom matches.
+    """
+    if isinstance(names, str):
+        names = (names,)
+    hit = res_atom_idx[np.isin(mol.name[res_atom_idx], names)]
+    if len(hit) == 0:
+        return None
+    return mol.coords[hit[0], :, 0]
+
+
+def _classify_residues(mol, sel_mask):
+    """Classify every residue in the selection as one of
+    protein / nucleic / water / ion / other.
+
+    Protein and nucleic are decided by *backbone-atom presence*, not by
+    canonical resname, so noncanonical residues bonded into a chain are still
+    treated as polymer.
 
     Returns
     -------
-    newmol : :class:`Molecule <moleculekit.molecule.Molecule>` object
-        A new Molecule object with modified segids
+    cats : list of str
+        Category for each residue, in file order.
+    residue_idx : list of np.ndarray
+        Global atom indices for each residue, in the same order as ``cats``.
+    """
+    from moleculekit.residues import WATER_RESIDUE_NAMES
+
+    ion_names = set(_sel["ion_resnames"])
+
+    sel_idx = np.where(sel_mask)[0]
+    _, residue_idx = mol.getResidues(sel=sel_mask, return_idx=True)
+    residue_idx = [sel_idx[idx] for idx in residue_idx]
+
+    cats = []
+    for idx in residue_idx:
+        rep = idx[0]
+        resname = mol.resname[rep]
+        names = set(mol.name[idx])
+        if resname in WATER_RESIDUE_NAMES:
+            cats.append("water")
+        elif resname in ion_names:
+            cats.append("ion")
+        elif all(a in names for a in PROTEIN_BB):
+            cats.append("protein")
+        elif any(a in names for a in NUCLEIC_LINK):
+            cats.append("nucleic")
+        else:
+            cats.append("other")
+    return cats, residue_idx
+
+
+def _polymer_linked(
+    mol,
+    prev_idx,
+    curr_idx,
+    category,
+    protein_cutoff,
+    nucleic_cutoff,
+    ca_fallback_cutoff,
+    nucleic_fallback_cutoff,
+):
+    """Return True if residue ``curr_idx`` is backbone-continuous with ``prev_idx``.
+
+    Protein: ``C(prev)-N(curr)`` within ``protein_cutoff``, else ``CA-CA`` within
+    ``ca_fallback_cutoff``. Nucleic: ``O3'(prev)-P(curr)`` within
+    ``nucleic_cutoff``, else ``C3'(prev)-P(curr)`` within
+    ``nucleic_fallback_cutoff``. If no usable atom pair exists, returns False
+    (treated as a break).
+    """
+    if category == "protein":
+        c = _residue_atom_coord(mol, prev_idx, "C")
+        n = _residue_atom_coord(mol, curr_idx, "N")
+        if c is not None and n is not None:
+            return float(np.linalg.norm(c - n)) <= protein_cutoff
+        ca0 = _residue_atom_coord(mol, prev_idx, "CA")
+        ca1 = _residue_atom_coord(mol, curr_idx, "CA")
+        if ca0 is not None and ca1 is not None:
+            return float(np.linalg.norm(ca0 - ca1)) <= ca_fallback_cutoff
+        return False
+
+    if category == "nucleic":
+        o3 = _residue_atom_coord(mol, prev_idx, ("O3'", "O3*"))
+        p = _residue_atom_coord(mol, curr_idx, "P")
+        if o3 is not None and p is not None:
+            return float(np.linalg.norm(o3 - p)) <= nucleic_cutoff
+        c3 = _residue_atom_coord(mol, prev_idx, ("C3'", "C3*"))
+        if c3 is not None and p is not None:
+            return float(np.linalg.norm(c3 - p)) <= nucleic_fallback_cutoff
+        return False
+
+    return False
+
+
+def autoSegment(
+    mol,
+    sel="all",
+    basename="P",
+    fields=("segid",),
+    protein_cutoff=2.0,
+    nucleic_cutoff=2.2,
+    ca_fallback_cutoff=5.0,
+    nucleic_fallback_cutoff=3.2,
+    single_other_segment=False,
+    _logger=True,
+):
+    """Segment a Molecule by physical backbone continuity.
+
+    Walks the selected residues in file order and starts a new segment when the
+    polymer type, ``chain`` or ``segid`` changes, or when the backbone link
+    distance between consecutive residues exceeds the cutoff. Because continuity
+    is decided from backbone geometry rather than ``resid`` numbering, residues
+    deleted from a sequence with an intact backbone stay in one segment, and the
+    whole-system bond graph is never built.
+
+    Water residues collapse to a single segment, ions to a single segment, and
+    remaining ("other") molecules are split by bonded connected components.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The Molecule object.
+    sel : str
+        Atom selection to segment. Atoms outside the selection keep their
+        existing chain/segid.
+    basename : str
+        Base name for segment ids (e.g. 'P' -> 'P0', 'P1', ...).
+    fields : tuple
+        Fields to set: any combination of "segid" and "chain".
+    protein_cutoff : float
+        Max C(i)-N(i+1) distance (A) for two protein residues to be continuous.
+    nucleic_cutoff : float
+        Max O3'(i)-P(i+1) distance (A) for two nucleic residues to be continuous.
+    ca_fallback_cutoff : float
+        Max CA(i)-CA(i+1) distance (A) used when protein C/N atoms are missing.
+    nucleic_fallback_cutoff : float
+        Max C3'(i)-P(i+1) distance (A) used when nucleic O3' is missing.
+    single_other_segment : bool
+        If True, all non-polymer, non-water, non-ion ("other") residues are
+        placed into a single segment. If False (default), they are split into
+        separate segments by bonded connected components (one per molecule).
+
+    Returns
+    -------
+    newmol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        A copy with the requested fields set.
 
     Example
     -------
-    >>> newmol = autoSegment(mol, "chain B", "P", fields=("chain", "segid"))
+    >>> newmol = autoSegment(mol, fields=("chain", "segid"))  # doctest: +SKIP
     """
-    from moleculekit.residues import WATER_RESIDUE_NAMES
-    from moleculekit.distance import cdist
+    import networkx as nx
 
-    # Backwards‑compatible handling of the deprecated ``field`` argument
-    # (mirrors the behaviour of :func:`autoSegment`).
-    if field is not None and isinstance(field, str):
-        if field == "both":
-            fields = ("chain", "segid")
-        else:
-            fields = (field,)
+    if isinstance(fields, str):
+        fields = (fields,)
 
-    # Work on a copy so that the original molecule remains untouched
     mol = mol.copy()
-
-    # Letters to be used for chains/segments, if free: 0123456789abcd...ABCD...,
-    # minus chain/segid symbols already present outside the selection.
     sel_mask = mol.atomselect(sel)
     sel_idx = np.where(sel_mask)[0]
-
     if len(sel_idx) == 0:
         return mol
 
-    # ``residue_idx`` is a list of index arrays, one per residue, in order.
-    # ``uq_segments`` will hold the segment index assigned to each atom
-    # (initially -1 for all atoms).
-    _, residue_idx = mol.getResidues(sel=sel, return_idx=True)
-    residue_idx = [sel_idx[idx] for idx in residue_idx]
-    uq_segments = np.full(mol.numAtoms, -1)
-    seg_idx = 0  # current segment counter
-    water_resid = 0  # running resid number for water molecules
-    for i, idx in enumerate(residue_idx):
-        ii = idx[0]  # representative atom index for the current residue
-        is_water = mol.resname[ii] in WATER_RESIDUE_NAMES
-        curr_res = (
-            f"{mol.resname[ii]}:{mol.resid[ii]}{mol.insertion[ii]}:{mol.chain[ii]}"
-        )
-        if is_water:
-            # Water residues get sequential ``resid`` values (0‑9999). Once we
-            # exceed that range we start a new segment and reset the counter.
-            if water_resid > 9999:
-                # Ran out of water resids, create new segment
-                seg_idx += 1
-                water_resid = 0
-                mol.resid[idx] = water_resid
-                uq_segments[idx] = seg_idx
-                continue
+    cats, residue_idx = _classify_residues(mol, sel_mask)
 
-            mol.resid[idx] = water_resid
-            water_resid += 2
+    # seg_of_res[i] = integer segment index for residue i (filled below)
+    seg_of_res = np.full(len(residue_idx), -1, dtype=int)
+    seg_idx = -1
 
-        # Determine the previous residue (if any) to decide whether we need to
-        # open a new segment based on changes in water/non‑water type or gaps.
-        prev_idx = None
-        prev_is_water = None
-        if i > 0:
-            prev_idx = residue_idx[i - 1]
-            prev_is_water = mol.resname[prev_idx[0]] in WATER_RESIDUE_NAMES
-            prev_res = f"{mol.resname[prev_idx[0]]}:{mol.resid[prev_idx[0]]}{mol.insertion[prev_idx[0]]}:{mol.chain[prev_idx[0]]}"
-
-        if prev_idx is not None:
-            if is_water and not prev_is_water:
+    # --- 1. Polymer residues: backbone-distance traversal in file order ---
+    prev_i = None
+    for i, cat in enumerate(cats):
+        if cat not in ("protein", "nucleic"):
+            continue
+        rep = residue_idx[i][0]
+        new_segment = True
+        if prev_i is not None:
+            prep = residue_idx[prev_i][0]
+            same_meta = (
+                cats[prev_i] == cat
+                and mol.chain[prep] == mol.chain[rep]
+                and mol.segid[prep] == mol.segid[rep]
+            )
+            if same_meta and _polymer_linked(
+                mol,
+                residue_idx[prev_i],
+                residue_idx[i],
+                cat,
+                protein_cutoff,
+                nucleic_cutoff,
+                ca_fallback_cutoff,
+                nucleic_fallback_cutoff,
+            ):
+                new_segment = False
+        if new_segment:
+            seg_idx += 1
+            if _logger and prev_i is not None:
+                pr, cr = residue_idx[prev_i][0], rep
                 logger.info(
-                    f"Water appears after non-water residue {prev_res}. Creating new chain."
+                    f"autoSegment: break before "
+                    f"{mol.resname[cr]}:{mol.resid[cr]}{mol.insertion[cr]}:{mol.chain[cr]} "
+                    f"(after {mol.resname[pr]}:{mol.resid[pr]}{mol.insertion[pr]}:{mol.chain[pr]})"
                 )
-                seg_idx += 1
-            elif not is_water and prev_is_water:
-                logger.info(
-                    f"Non-water residue {curr_res} appears after water. Creating new chain."
-                )
-                seg_idx += 1
-            elif not is_water and mol.resid[idx[0]] != mol.resid[prev_idx[0]] + 1:
-                # Residue gap in sequence for non‑water; optionally validate it
-                # by checking spatial distance between the two residues.
-                if spatial:
-                    curr_at = None
-                    prev_at = None
-                    for at in ["N", "CA", "C", "O"]:
-                        if at not in mol.name[idx] or at not in mol.name[prev_idx]:
-                            continue
-                        curr_at = idx[mol.name[idx] == at][0]
-                        prev_at = prev_idx[mol.name[prev_idx] == at][0]
-                        break
+        seg_of_res[i] = seg_idx
+        prev_i = i
 
-                    if curr_at is not None and prev_at is not None:
-                        # Check smallest distance between backbone atoms in the two residues
-                        dist = np.linalg.norm(
-                            mol.coords[curr_at, :, 0] - mol.coords[prev_at, :, 0]
-                        )
-                        if dist > spatialgap:
-                            logger.info(
-                                f"Residue gap between {prev_res} and {curr_res} with backbone distance {dist:.1f}A > {spatialgap}A. Creating new chain."
-                            )
-                            seg_idx += 1
-                    else:
-                        logger.info(
-                            f"Residue gap between {prev_res} and {curr_res}. Creating new chain."
-                        )
-                        seg_idx += 1
-                else:
-                    logger.info(
-                        f"Residue gap between {prev_res} and {curr_res}. Creating new chain."
-                    )
-                    seg_idx += 1
-        # Assign the current segment index to all atoms of the residue
-        uq_segments[idx] = seg_idx
+    # --- 2. Water: one segment; ions: one segment ---
+    for bucket in ("water", "ion"):
+        members = [i for i, c in enumerate(cats) if c == bucket]
+        if members:
+            seg_idx += 1
+            for i in members:
+                seg_of_res[i] = seg_idx
 
-    # Distinct water segments
-    water_mask = np.isin(mol.resname, list(WATER_RESIDUE_NAMES))
-    water_segments = set(uq_segments[water_mask]) - {-1}
+    # --- 3. Other: one segment, or split by bonded connected components ---
+    other = [i for i, c in enumerate(cats) if c == "other"]
+    if other and single_other_segment:
+        seg_idx += 1
+        for i in other:
+            seg_of_res[i] = seg_idx
+    elif other:
+        other_atoms = np.hstack([residue_idx[i] for i in other])
+        submol = mol.copy()
+        submol.filter(other_atoms, _logger=False)
+        submol.bonds = submol._getBonds()
+        submol.bondtype = np.array([], dtype=object)
+        # Map each global atom index to its residue position in `cats`
+        atom_to_res = {}
+        for i in other:
+            for a in residue_idx[i]:
+                atom_to_res[a] = i
+        for comp in nx.connected_components(submol.toGraph(fields=[])):
+            seg_idx += 1
+            comp_global = other_atoms[list(comp)]
+            for a in comp_global:
+                seg_of_res[atom_to_res[a]] = seg_idx
 
-    # Reset chain/segment identifiers for the selected atoms so that we can
-    # reassign them consistently from scratch.
+    # --- 4. Assign chain/segid using the module's naming machinery ---
     if "chain" in fields:
         mol.chain[sel_mask] = ""
     if "segid" in fields:
         mol.segid[sel_mask] = ""
 
-    # Generator that produces unique segment IDs.
-    # It first uses the provided basename, then iterates over the allowed
-    # `SEGID_ALPHABET`, and for each base it appends an integer index.
     def _segid_gen(basename):
         for base in [basename] + SEGID_ALPHABET:
-            for i in range(1000):
-                yield f"{base}{i}"
+            for k in range(1000):
+                yield f"{base}{k}"
 
-    # Single shared generator instance from which we draw new segids.
     segid_gen = _segid_gen(basename)
+    preexisting_chains = set(mol.chain[~sel_mask]) - {""}
+    available_chains = [x for x in CHAIN_ALPHABET if x not in preexisting_chains]
 
-    # Find which chains existed before this function was called
-    preexisting_chains = set(mol.chain) - {""}
-
-    # Decide the next `(chain, segid)` pair to use.
-    # - `water=True` enforces water chains to preferably use chain "W".
-    # - It avoids reusing chain IDs already present in `mol.chain`.
-    # - It also guarantees that the segid is unique in `mol.segid`.
-    def _get_next_segment_name(mol, water, segid_gen, seg):
-        # All chains that are still available for assignment
-        available_chains = [x for x in CHAIN_ALPHABET if x not in preexisting_chains]
-        chain = available_chains[seg % len(available_chains)]
-
-        # Find the next unused segment identifier
-        segid = next(segid_gen)
-        while segid in mol.segid:
-            segid = next(segid_gen)
-
-        if water and "W" in available_chains:
-            return "W", segid
-        else:
-            return chain, segid
-
-    # Loop over each unique segment index and assign consistent chain/segid
-    # values to all atoms that belong to that segment.
-    for seg in range(max(uq_segments) + 1):
-        ch, sg = _get_next_segment_name(mol, seg in water_segments, segid_gen, seg)
+    nseg = seg_of_res.max() + 1 if len(seg_of_res) else 0
+    for seg in range(nseg):
+        res_members = np.where(seg_of_res == seg)[0]
+        if len(res_members) == 0:
+            continue
+        atoms = np.hstack([residue_idx[i] for i in res_members])
         if "chain" in fields:
-            mol.chain[uq_segments == seg] = ch
+            mol.chain[atoms] = available_chains[seg % len(available_chains)]
         if "segid" in fields:
-            mol.segid[uq_segments == seg] = sg
+            segid = next(segid_gen)
+            while segid in mol.segid:
+                segid = next(segid_gen)
+            mol.segid[atoms] = segid
 
     return mol
 
@@ -239,137 +306,26 @@ def autoSegment2(
     chaingaps=True,
     _logger=True,
 ):
-    """Detects bonded segments in a selection and assigns incrementing segid to each segment.
+    """Deprecated alias of :func:`autoSegment`.
 
-    Segments are derived from the **covalent bond graph**: two residues belong
-    to the same segment if and only if they are in the same connected component
-    of the backbone bond graph (computed from ``mol.bonds`` supplemented by
-    distance-based guessing over backbone atoms).  This is more robust than
-    resid-gap detection (:func:`autoSegment`) for structures where resid
-    numbering is irregular or non-continuous.
-
-    Use :func:`autoSegment2` when you want to follow connectivity rather than
-    resid sequence.  Use :func:`autoSegment` when the input has predictable
-    resid-based gaps.  When you need a specific naming scheme, set
-    ``mol.segid`` directly with ``mol.set("segid", "MY_SEG", sel="...")``.
-
-    Parameters
-    ----------
-    mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
-        The Molecule object
-    sel : str
-        Atom selection string on which to check for gaps.
-        See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    basename : str
-        The basename for segment ids. For example if given 'P' it will name the segments 'P1', 'P2', ...
-    fields : tuple of strings
-        Field to fix. Can be "segid" (default) or any other Molecule field or combinations thereof.
-    residgaps : bool
-        Set to True to consider gaps in resids as structural gaps. Set to False to ignore resids
-    residgaptol : int
-        Above what resid difference is considered a gap. I.e. with residgaptol 1, 235-233 = 2 > 1 hence is a gap. We set
-        default to 2 because in many PDBs single residues are missing in the proteins without any gaps.
-    chaingaps : bool
-        Set to True to consider changes in chains as structural gaps. Set to False to ignore chains
-
-    Returns
-    -------
-    newmol : :class:`Molecule <moleculekit.molecule.Molecule>` object
-        A new Molecule object with modified segids
-
-    Example
-    -------
-    >>> newmol = autoSegment2(mol)
+    Kept as a thin backward-compatible wrapper that forwards to
+    :func:`autoSegment`. The ``residgaps``, ``residgaptol`` and ``chaingaps``
+    arguments are accepted but ignored: :func:`autoSegment` decides continuity
+    from backbone geometry rather than ``resid`` numbering.
     """
-    import networkx as nx
+    import warnings
 
-    if isinstance(fields, str):
-        fields = (fields,)
-
-    orig_sel = sel
-    sel = f"({sel}) and backbone or (resname NME ACE and name N C O CH3)"  # Looking for bonds only over the backbone of the protein
-    # Keep the original atom indexes to map from submol to mol
-    idx = mol.atomselect(sel, indexes=True)
-    # We filter out everything not on the backbone to calculate only those bonds
-    submol = mol.copy()
-    submol.filter(sel, _logger=False)
-    bonds = submol._getBonds()  # Calculate both file and guessed bonds
-
-    if residgaps:
-        # Remove bonds between residues without continuous resids
-        bondresiddiff = np.abs(submol.resid[bonds[:, 0]] - submol.resid[bonds[:, 1]])
-        bonds = bonds[bondresiddiff <= residgaptol, :]
-    else:
-        # Warning about bonds bonding non-continuous resids
-        bondresiddiff = np.abs(submol.resid[bonds[:, 0]] - submol.resid[bonds[:, 1]])
-        if _logger and np.any(bondresiddiff > 1):
-            for i in np.where(bondresiddiff > residgaptol)[0]:
-                logger.warning(
-                    "Bonds found between resid gaps: resid {} and {}".format(
-                        submol.resid[bonds[i, 0]], submol.resid[bonds[i, 1]]
-                    )
-                )
-    if chaingaps:
-        # Remove bonds between residues without same chain
-        bondsamechain = submol.chain[bonds[:, 0]] == submol.chain[bonds[:, 1]]
-        bonds = bonds[bondsamechain, :]
-    else:
-        # Warning about bonds bonding different chains
-        bondsamechain = submol.chain[bonds[:, 0]] == submol.chain[bonds[:, 1]]
-        if _logger and np.any(bondsamechain == False):
-            for i in np.where(bondsamechain == False)[0]:
-                logger.warning(
-                    "Bonds found between chain gaps: resid {}/{} and {}/{}".format(
-                        submol.resid[bonds[i, 0]],
-                        submol.chain[bonds[i, 0]],
-                        submol.resid[bonds[i, 1]],
-                        submol.chain[bonds[i, 1]],
-                    )
-                )
-
-    # Calculate connected components using the bonds
-    submol.bonds = bonds  # Restore the modified bonds to the submol
-    submol.bondtype = np.array([], dtype=object)
-    components = list(nx.connected_components(submol.toGraph(fields=[])))
-    numcomp = len(components)
-
-    # Letters to be used for chains, if free: 0123456789abcd...ABCD..., minus chain symbols already used
-    sel_mask = mol.atomselect(orig_sel)
-    used_chains = set(mol.chain[~sel_mask])
-    available_chains = [x for x in CHAIN_ALPHABET if x not in used_chains]
-    used_segids = set([x[0] for x in mol.segid[~sel_mask] if x != ""])
-    available_segids = [x for x in [basename] + SEGID_ALPHABET if x not in used_segids]
-    basename = available_segids[0]
-
-    mol = mol.copy()
-    prevsegres = None
-    for i in range(numcomp):  # For each connected component / segment
-        segid = basename + str(i)
-        backboneSegIdx = idx[list(components[i])]  # The backbone atoms of the segment
-        segres = mol.atomselect(
-            f"same residue as index {' '.join(map(str, backboneSegIdx))}"
-        )  # Get whole residues
-
-        # Warning about separating segments with continuous resids
-        if (
-            _logger
-            and i > 0
-            and (np.min(mol.resid[segres]) - np.max(mol.resid[prevsegres])) == 1
-        ):
-            logger.warning(
-                f"Separated segments {basename + str(i - 1)} and {segid}, despite continuous resids, due to lack of bonding."
-            )
-
-        # Add the new segment ID to all fields the user specified
-        for f in fields:
-            if f != "chain":
-                mol.__dict__[f][segres] = segid  # Assign the segid to the correct atoms
-            else:
-                mol.__dict__[f][segres] = available_chains[i % len(available_chains)]
-        if _logger:
-            logger.info(
-                f"Created segment {segid} between resid {mol.resid[segres].min()} and {mol.resid[segres].max()}."
-            )
-        prevsegres = segres  # Store old segment atom indexes for the warning about continuous resids
-
-    return mol
+    warnings.warn(
+        "autoSegment2 is deprecated and will be removed in a future release; "
+        "use autoSegment instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    if _logger:
+        logger.warning(
+            "autoSegment2 is deprecated; forwarding to autoSegment. "
+            "Update your code to call autoSegment directly."
+        )
+    return autoSegment(
+        mol, sel=sel, basename=basename, fields=fields, _logger=_logger
+    )

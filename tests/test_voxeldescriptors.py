@@ -21,7 +21,7 @@ def _mol():
 
     mol = Molecule(os.path.join(curr_dir, "test_voxeldescriptors", "3PTB.pdb"))
     mol.filter("protein")
-    mol = autoSegment(mol, field="both")
+    mol = autoSegment(mol, fields=("chain", "segid"))
     mol, _ = systemPrepare(mol, pH=7.0)
     mol.bonds = mol._guessBonds()
     return mol

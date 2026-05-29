@@ -31,7 +31,6 @@ def _test_dihedral_5mat():
     from os import path
 
     mol = Molecule("5MAT")
-    mol.filter("not insertion A and not altloc A B", _logger=False)
     mol = autoSegment(mol, _logger=False)
 
     data = MetricDihedral().project(mol)

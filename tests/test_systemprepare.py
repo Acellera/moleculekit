@@ -283,7 +283,7 @@ def _test_nonstandard_residues(tmp_path, system):
     survive the bond-capture/restore round-trip across PDB2PQR.
     """
     from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
-    from moleculekit.tools.autosegment import autoSegment2
+    from moleculekit.tools.autosegment import autoSegment
     from moleculekit.molecule import mol_equal
     import glob
 
@@ -305,7 +305,7 @@ def _test_nonstandard_residues(tmp_path, system):
     mol = Molecule(os.path.join(test_home, f"{system}.pdb"))
     if system == "2QRV":
         mol.filter("chain D E K M")
-        mol = autoSegment2(mol, fields=("chain", "segid"))
+        mol = autoSegment(mol, fields=("chain", "segid"))
     mol.remove("element H", _logger=False)
     mol.set("chain", "W", sel="water")
 
