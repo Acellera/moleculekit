@@ -163,12 +163,11 @@ def sequenceStructureAlignment(
         refsel = f"segid {refseg}"
 
     try:
-        from Bio import pairwise2
+        from Bio.Align import PairwiseAligner, substitution_matrices
     except ImportError:
         raise ImportError(
             "You need to install the biopython package to use this function. Try using `conda install biopython`."
         )
-    from Bio.Align import substitution_matrices
 
     blosum62 = substitution_matrices.load("BLOSUM62")
 
@@ -189,11 +188,20 @@ def sequenceStructureAlignment(
         )
     segment_type = segment_type_mol
 
+    aligner = PairwiseAligner()
+    aligner.mode = "global"
     if segment_type == "protein":
         # -11 is gap creation penalty. -1 is gap extension penalty. Taken from https://www.arabidopsis.org/Blast/BLASToptions.jsp BLASTP options
-        alignments = pairwise2.align.globalds(seqref, seqmol, blosum62, -11.0, -1.0)
+        aligner.substitution_matrix = blosum62
+        aligner.open_gap_score = -11.0
+        aligner.extend_gap_score = -1.0
     elif segment_type == "nucleic":
-        alignments = pairwise2.align.globalxx(seqref, seqmol)
+        # Equivalent to the old pairwise2.align.globalxx: score matches only
+        aligner.match_score = 1.0
+        aligner.mismatch_score = 0.0
+        aligner.open_gap_score = 0.0
+        aligner.extend_gap_score = 0.0
+    alignments = aligner.align(seqref, seqmol)
 
     alignedstructs, masks = _align_by_sequence_alignment(
         mol,

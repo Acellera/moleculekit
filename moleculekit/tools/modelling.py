@@ -105,8 +105,7 @@ def model_gaps(
     >>> res = model_gaps(mol, sequence, "0", "./promod.img")  # doctest: +SKIP
     """
     try:
-        from Bio import pairwise2
-        from Bio.Align import substitution_matrices
+        from Bio.Align import PairwiseAligner, substitution_matrices
     except ImportError:
         raise ImportError(
             "You need to install the biopython package to use this function. Install it with `conda install biopython`."
@@ -131,10 +130,13 @@ def model_gaps(
 
         molseq = mol.getSequence(dict_key="segid")[segid]
 
+        aligner = PairwiseAligner()
+        aligner.mode = "global"
         # -11 is gap creation penalty. -1 is gap extension penalty. Taken from https://www.arabidopsis.org/Blast/BLASToptions.jsp BLASTP options
-        alignments = pairwise2.align.globalds(sequence, molseq, blosum62, -11.0, -1.0)
-        # elif segment_type == "nucleic":
-        #     alignments = pairwise2.align.globalxx(sequence, molseq)
+        aligner.substitution_matrix = blosum62
+        aligner.open_gap_score = -11.0
+        aligner.extend_gap_score = -1.0
+        alignments = aligner.align(sequence, molseq)
 
         print(alignments[0])
 
@@ -142,7 +144,7 @@ def model_gaps(
         with open(fastafile, "w") as f:
             # Need to add gaps to sequence
             f.write(f">REFERENCE\n{sequence}\n")
-            f.write(f">{segid}\n{alignments[0].seqB}")
+            f.write(f">{segid}\n{alignments[0][1]}")
 
         runpy = os.path.join(tmpdir, "run.py")
         with open(runpy, "w") as f:
