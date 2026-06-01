@@ -75,13 +75,18 @@ def _check_chain_and_segid(mol, verbose):
             chainatoms = np.where(mol.chain == c)[0]
             firstatom = chainatoms[0]
             lastatom = chainatoms[-1]
+            firstres = _fmt_res(
+                mol.resname[firstatom], mol.resid[firstatom], mol.insertion[firstatom]
+            )
+            lastres = _fmt_res(
+                mol.resname[lastatom], mol.resid[lastatom], mol.insertion[lastatom]
+            )
             print(f"Chain {c}:")
-            print(
-                f"    First residue: {_fmt_res(mol.resname[firstatom], mol.resid[firstatom], mol.insertion[firstatom])}"
-            )
-            print(
-                f"    Final residue: {_fmt_res(mol.resname[lastatom], mol.resid[lastatom], mol.insertion[lastatom])}"
-            )
+            if firstres == lastres:
+                print(f"    {'residue:':>14}  {firstres}")
+            else:
+                print(f"    {'First residue:':<16}{firstres}")
+                print(f"    {'Final residue:':<16}{lastres}")
         print("---- End of chain report ----\n")
 
     return mol
