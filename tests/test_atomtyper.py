@@ -13,7 +13,7 @@ else:
     HAS_OPENBABEL = True
 
 
-def _test_preparation():
+def test_preparation():
     from moleculekit.molecule import Molecule, mol_equal
     from moleculekit.tools.atomtyper import prepareProteinForAtomtyping
     from os import path
@@ -30,7 +30,7 @@ def _test_preparation():
 @pytest.mark.skipif(
     sys.platform.startswith("win"), reason="Windows OBabel fails at atom typing"
 )
-def _test_obabel_atomtyping():
+def test_obabel_atomtyping():
     from moleculekit.molecule import Molecule
     from moleculekit.tools.atomtyper import getPDBQTAtomTypesAndCharges
     from os import path

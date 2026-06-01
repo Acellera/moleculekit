@@ -81,7 +81,7 @@ _LIGAND_SMILES = {
 
 
 @pytest.mark.parametrize("pdb", ["3PTB", "1A25", "1U5U", "1UNC", "6A5J"])
-def _test_systemPrepare(pdb):
+def test_systemPrepare(pdb):
     test_home = os.path.join(curr_dir, "test_systemprepare", pdb)
     mol = Molecule(os.path.join(test_home, f"{pdb}.pdb"))
     ligand_resnames = set(mol.resname.tolist()) & _LIGAND_SMILES.keys()
@@ -103,7 +103,7 @@ def _test_systemPrepare(pdb):
     )
 
 
-def _test_systemprepare_1u5u_heme_tyr_coordination_end_to_end():
+def test_systemprepare_1u5u_heme_tyr_coordination_end_to_end():
     """End-to-end check of the heme-Tyr coordination workflow on 1U5U
     chain A (catalase HPII monomer):
 
@@ -185,7 +185,7 @@ def _test_systemprepare_1u5u_heme_tyr_coordination_end_to_end():
     assert "O" in partner_names   # axial water
 
 
-def _test_systemprepare_ligand():
+def test_systemprepare_ligand():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-prepare-with-ligand")
     mol = Molecule(os.path.join(test_home, "5EK0_A.pdb"))
     pmol, _, df = systemPrepare(mol, return_details=True)
@@ -206,7 +206,7 @@ def _test_systemprepare_ligand():
     )
 
 
-def _test_reprotonate():
+def test_reprotonate():
     pmol, _, df = systemPrepare(Molecule("3PTB"), return_details=True)
     assert df.protonation[df.resid == 40].iloc[0] == "HIE"
     assert df.protonation[df.resid == 57].iloc[0] == "HIP"
@@ -231,7 +231,7 @@ def _test_reprotonate():
     assert df.protonation[df.resid == 91].iloc[0] == "HIE"
 
 
-def _test_auto_freezing():
+def test_auto_freezing():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-auto-freezing")
     mol = Molecule(os.path.join(test_home, "2B5I.pdb"))
 
@@ -244,7 +244,7 @@ def _test_auto_freezing():
     )
 
 
-def _test_auto_freezing_and_force():
+def test_auto_freezing_and_force():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-auto-freezing")
     mol = Molecule(os.path.join(test_home, "5DPX_A.pdb"))
 
@@ -269,7 +269,7 @@ def _test_auto_freezing_and_force():
 
 
 @pytest.mark.parametrize("system", ("1A4W", "5VBL", "2QRV"))
-def _test_nonstandard_residues(tmp_path, system):
+def test_nonstandard_residues(tmp_path, system):
     """The expected flow: caller runs ``detectNonStandardResidues`` to find
     chain-resident NCAAs, templates each one via
     ``mol.templateResidueFromSmiles``, then passes the spec list back to
@@ -352,7 +352,7 @@ def _test_nonstandard_residues(tmp_path, system):
         ), f"Failed comparison of {ff} vs {ffref}"
 
 
-def _test_nonstandard_residue_hard_ignore_ns():
+def test_nonstandard_residue_hard_ignore_ns():
     test_home = os.path.join(
         curr_dir, "test_systemprepare", "test-nonstandard-residues"
     )
@@ -372,7 +372,7 @@ def _test_nonstandard_residue_hard_ignore_ns():
     )
 
 
-def _test_rna_protein_complex():
+def test_rna_protein_complex():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-rna-protein-complex")
     mol = Molecule(os.path.join(test_home, "3WBM.pdb"))
 
@@ -386,7 +386,7 @@ def _test_rna_protein_complex():
     )
 
 
-def _test_dna():
+def test_dna():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-dna")
     mol = Molecule(os.path.join(test_home, "1BNA.pdb"))
 
@@ -400,7 +400,7 @@ def _test_dna():
     )
 
 
-def _test_cyclic_peptides():
+def test_cyclic_peptides():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-cyclic-peptides")
     mol = Molecule(os.path.join(test_home, "5VAV.pdb"))
 
@@ -414,7 +414,7 @@ def _test_cyclic_peptides():
     )
 
 
-def _test_cyclic_peptides_noncanonical():
+def test_cyclic_peptides_noncanonical():
     """4TOT_E is a cyclic peptide of seven NCAAs. Strip any input
     hydrogens up-front so the test follows the canonical
     ``templateResidueFromSmiles(addHs=True)`` pattern shared with the
@@ -455,7 +455,7 @@ def _test_cyclic_peptides_noncanonical():
     )
 
 
-def _test_nucleiclike_ligand():
+def test_nucleiclike_ligand():
     # The nucleic preparation of systemPrepare was accidentally removing the P atom from the ligand
     # since it looked like a terminal nucleic acid phosphate. This test checks that the P atom is still there
     test_home = os.path.join(curr_dir, "test_systemprepare", "3U5S")
@@ -471,7 +471,7 @@ def _test_nucleiclike_ligand():
     )
 
 
-def _test_disabling_titration():
+def test_disabling_titration():
     test_home = os.path.join(curr_dir, "test_systemprepare", "1AID")
     mol = Molecule(os.path.join(test_home, "1AID.pdb"))
     mol.remove("water")
@@ -499,7 +499,7 @@ def _test_disabling_titration():
     assert mol_equal(pmol_ref, pmol, exceptFields=["fileloc"])
 
 
-def _test_backbone_fixing():
+def test_backbone_fixing():
     from moleculekit.tools.backbone import check_backbone
     from moleculekit.molecule import Molecule
 
@@ -547,7 +547,7 @@ def _test_backbone_fixing():
     assert np.sum((mol.name == "C") & (mol.resid == 245)) == 1
 
 
-def _test_capture_and_restore_bonds():
+def test_capture_and_restore_bonds():
     """_capture_bonds must capture every bond touching a non-canonical
     or spec-listed residue, drop bonds entirely inside canonical / non-
     spec residues, and _restore_bonds must silently drop bonds whose
@@ -659,7 +659,7 @@ def _test_capture_and_restore_bonds():
     assert len(captured_can) == 2, "spec-listed canonical residue must be captured"
 
 
-def _test_restore_termini_bonds_terminal_atoms():
+def test_restore_termini_bonds_terminal_atoms():
     """``_restore_termini_bonds`` must reattach the standard terminal
     atoms PDB2PQR adds after ``_capture_bonds`` has run:
 
@@ -709,7 +709,7 @@ def _test_restore_termini_bonds_terminal_atoms():
     assert len(mol.bonds) == len(mol.bondtype), "bonds/bondtype length mismatch"
 
 
-def _test_restore_termini_bonds_idempotent():
+def test_restore_termini_bonds_idempotent():
     """Running ``_restore_termini_bonds`` twice must be a no-op the
     second time - the terminal atoms are already bonded."""
     from moleculekit.tools.preparation import _restore_termini_bonds
@@ -763,7 +763,7 @@ def _heavy_bond_signatures(mol, sel):
     return sigs
 
 
-def _test_5vbl_templated_bonds_preserved():
+def test_5vbl_templated_bonds_preserved():
     """systemPrepare must preserve every heavy-atom bond of templated
     non-canonical residues across the PDB2PQR roundtrip. 5VBL contains
     five NCAAs (HRG, ALC, OIC, NLE, 200) plus a Zn ion and an OLC
@@ -803,7 +803,7 @@ def _test_5vbl_templated_bonds_preserved():
     )
 
 
-def _test_systemprepare_errors_on_untemplated_ncaa():
+def test_systemprepare_errors_on_untemplated_ncaa():
     """Regression: when ``detect_specs`` contains a chain-resident NCAA
     that the caller forgot to template via
     ``Molecule.templateResidueFromSmiles``, ``systemPrepare`` must fail
@@ -846,7 +846,7 @@ def _test_systemprepare_errors_on_untemplated_ncaa():
     )
 
 
-def _test_5vbl_restore_missing_sidechains():
+def test_5vbl_restore_missing_sidechains():
     """``systemPrepare(restore_missing_sidechains=True)`` rebuilds the
     full heavy-atom sidechain of every canonical residue whose input
     sidechain is stripped down to backbone + CB.
@@ -927,7 +927,7 @@ def _test_5vbl_restore_missing_sidechains():
         )
 
 
-def _test_no_oxt_on_midchain_residue():
+def test_no_oxt_on_midchain_residue():
     """Regression: PDB2PQR must not place OXT on a residue that's
     followed by another protein residue in the same chain. This guards
     against the bug where renaming a C-terminal residue to a custom
@@ -973,7 +973,7 @@ def _test_no_oxt_on_midchain_residue():
     )
 
 
-def _test_hydrogen_bonds_match_geometry():
+def test_hydrogen_bonds_match_geometry():
     """Regression: every restored H bond must connect the H to its
     geometrically nearest heavy atom (within typical covalent X-H
     distance ~1.3 A).
@@ -1033,7 +1033,7 @@ def _build_spec_mol():
     return mol
 
 
-def _test_capture_formal_charges_empty_specs():
+def test_capture_formal_charges_empty_specs():
     """``_capture_formal_charges`` must return an empty list when
     ``detect_specs`` is empty - the function is scoped deliberately to
     spec residues so callers without specs (free ligands only) skip the
@@ -1044,7 +1044,7 @@ def _test_capture_formal_charges_empty_specs():
     assert _capture_formal_charges(mol, detect_specs=[]) == []
 
 
-def _test_capture_formal_charges_scoped_to_specs():
+def test_capture_formal_charges_scoped_to_specs():
     """Only non-zero charges on atoms inside spec residues must be
     captured. Zero charges are skipped, and charges on canonical
     residues outside ``detect_specs`` must be ignored - PDB2PQR is
@@ -1070,7 +1070,7 @@ def _test_capture_formal_charges_scoped_to_specs():
     )
 
 
-def _test_restore_formal_charges_survives_rename():
+def test_restore_formal_charges_survives_rename():
     """``_restore_formal_charges`` must use the relaxed atom lookup so
     captured charges still land on the right atom after the residue has
     been renamed (CYS->CYX, LIG->LGX). The roundtrip target is a mol
@@ -1104,7 +1104,7 @@ def _test_restore_formal_charges_survives_rename():
     )
 
 
-def _test_restore_formal_charges_drops_missing_atom():
+def test_restore_formal_charges_drops_missing_atom():
     """If an atom captured in the input mol has been removed by PDB2PQR
     (rare, but possible for stray Hs), the restore must silently skip
     it rather than raising. Mirrors the behaviour of ``_restore_bonds``
@@ -1176,7 +1176,7 @@ def _build_terminus_mol(n_term_h_count, c_term_oxt_h_count):
     return mol
 
 
-def _test_apply_terminal_formal_charges_charged_nterm_charged_cterm():
+def test_apply_terminal_formal_charges_charged_nterm_charged_cterm():
     """3 H on backbone N -> NH3+ (formalcharge +1). 0 H on OXT -> COO-
     (formalcharge -1). These are PDB2PQR's default CTERM / NTERM
     patches at pH 7."""
@@ -1200,7 +1200,7 @@ def _test_apply_terminal_formal_charges_charged_nterm_charged_cterm():
     assert by_name["OXT"] == -1, "0 H on OXT must give COO- (-1)"
 
 
-def _test_apply_terminal_formal_charges_neutral_termini():
+def test_apply_terminal_formal_charges_neutral_termini():
     """The NEUTRAL-NTERM / NEUTRAL-CTERM patches leave fewer Hs on N (2)
     and add an H to OXT, both of which the helper must read as neutral
     and leave formalcharge at 0."""
@@ -1224,7 +1224,7 @@ def _test_apply_terminal_formal_charges_neutral_termini():
     assert by_name["OXT"] == 0, "1 H on OXT is neutral COOH - no charge"
 
 
-def _test_apply_terminal_formal_charges_skips_non_chain_spec():
+def test_apply_terminal_formal_charges_skips_non_chain_spec():
     """Only :class:`ChainResidueSpec` entries are touched. A
     :class:`LigandSpec` (a free ligand) must be ignored even if it
     happens to have backbone-named atoms."""
@@ -1246,7 +1246,7 @@ def _test_apply_terminal_formal_charges_skips_non_chain_spec():
     assert by_name["OXT"] == 0, "LigandSpec must be skipped, OXT untouched"
 
 
-def _test_apply_terminal_formal_charges_skips_midchain_spec():
+def test_apply_terminal_formal_charges_skips_midchain_spec():
     """A ChainResidueSpec without either terminus flag (mid-chain NCAA)
     must be left alone - terminal patches don't apply to it."""
     from moleculekit.tools.preparation import _apply_terminal_formal_charges
@@ -1269,7 +1269,7 @@ def _test_apply_terminal_formal_charges_skips_midchain_spec():
     assert by_name["OXT"] == 0, "mid-chain spec must not get CTERM treatment"
 
 
-def _test_apply_terminal_formal_charges_uses_new_resname():
+def test_apply_terminal_formal_charges_uses_new_resname():
     """When a spec has been renamed (``new_resname`` set, e.g. CYS->CYX
     or LIG->XX1 for a custom anchor), the helper must match on the
     *renamed* resname - because that's what's in ``mol.resname`` after

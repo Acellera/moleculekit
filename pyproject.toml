@@ -82,7 +82,6 @@ dev = [{ include-group = "test" }, "ipython>=8.18.1"]
 override-dependencies = ["docutils>=0.20"]
 
 [tool.pytest.ini_options]
-python_functions = "_test*"
 testpaths = ["tests"]
 
 

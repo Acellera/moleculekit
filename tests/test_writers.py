@@ -8,7 +8,7 @@ curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 @pytest.mark.parametrize("filetype", ["xtc", "dcd", "trr"])
-def _test_trajectory_writers_roundtrip(tmp_path, filetype):
+def test_trajectory_writers_roundtrip(tmp_path, filetype):
     natoms = 7
     nframes = 13
 
@@ -52,7 +52,7 @@ _MOL = _setupmol()
 
 
 @pytest.mark.parametrize("ext", list(_WRITERS.keys()))
-def _test_writers(ext):
+def test_writers(ext):
     from moleculekit.util import tempname
 
     if ext == "mmtf":
@@ -114,7 +114,7 @@ def _test_writers(ext):
         assert filelines == reflines, f"Failed comparison of {reffile} {tmpfile}"
 
 
-def _test_sdf_writer():
+def test_sdf_writer():
     from moleculekit.molecule import Molecule
     from moleculekit.util import tempname
 
@@ -131,7 +131,7 @@ def _test_sdf_writer():
     assert filelines == reflines, f"Failed comparison of {reffile} {tmpfile}"
 
 
-def _test_psf_writer():
+def test_psf_writer():
     from moleculekit.molecule import Molecule
     import tempfile
 
@@ -152,7 +152,7 @@ def _test_psf_writer():
         assert filelines == reflines, f"Failed comparison of {reffile} {tmpfile}"
 
 
-def _test_cif_mol2_atom_renaming(tmp_path):
+def test_cif_mol2_atom_renaming(tmp_path):
     from moleculekit.molecule import Molecule
 
     # This ensures the right masses are written into the psf file from the elements
@@ -186,7 +186,7 @@ def _test_cif_mol2_atom_renaming(tmp_path):
     "ext", ("xtc", "netcdf", "trr", "binpos", "dcd", "xyz", "xyz.gz")
 )
 @pytest.mark.parametrize("maxtime", [1e9, 1e15])
-def _test_traj_writers(ext, maxtime):
+def test_traj_writers(ext, maxtime):
     from moleculekit.molecule import Molecule
     import tempfile
 
@@ -238,7 +238,7 @@ def _test_traj_writers(ext, maxtime):
         )
 
 
-def _test_cif_roundtrip():
+def test_cif_roundtrip():
     from moleculekit.molecule import Molecule, mol_equal
     import tempfile
 
@@ -257,7 +257,7 @@ def _test_cif_roundtrip():
 
 
 @pytest.mark.parametrize("ext", ["xsc", "trr", "dcd", "netcdf", "inpcrd"])
-def _test_boxangle_writing(ext):
+def test_boxangle_writing(ext):
     from moleculekit.molecule import Molecule
     import tempfile
 
@@ -294,7 +294,7 @@ def _test_boxangle_writing(ext):
             assert np.allclose(molc.boxangles, mol2.boxangles, atol=1e-5)
 
 
-def _test_non_square_box():
+def test_non_square_box():
     from moleculekit.molecule import Molecule
     import tempfile
 

@@ -5,7 +5,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_metricsphericalcoordinate():
+def test_metricsphericalcoordinate():
     from moleculekit.molecule import Molecule
     from os import path
 

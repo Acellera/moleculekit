@@ -75,7 +75,7 @@ FOUNDBOND_SMI = "C=CN"
     "smiles",
     ((0, "Oc1c(cccc3)c3nc2ccncc12", 3), (1, "CN=c1nc[nH]cc1", 3), (2, "CC=CO", 2)),
 )
-def _test_tautomers(tmp_path, smiles):
+def test_tautomers(tmp_path, smiles):
     from moleculekit.util import file_diff
     from moleculekit.smallmol.smallmol import SmallMol
 
@@ -91,7 +91,7 @@ def _test_tautomers(tmp_path, smiles):
 
 
 @pytest.mark.skipif(not cdp_installed, reason="CDPKit not installed. Skipping test.")
-def _test_smallmolcdp():
+def test_smallmolcdp():
     from moleculekit.smallmol.smallmolcdp import SmallMolCDP
 
     sm = SmallMolCDP(os.path.join(curr_dir, "test_smallmol", "Imatinib.sdf"))
@@ -105,7 +105,7 @@ def _test_smallmolcdp():
     assert np.sum(mol.bondtype == "2") == 13
 
 
-def _test_loadMol2file():
+def test_loadMol2file():
     sm = SmallMol(os.path.join(curr_dir, "test_smallmol", "benzamidine.sdf"))
     n_atoms = sm.numAtoms
     assert (
@@ -113,7 +113,7 @@ def _test_loadMol2file():
     ), f"Atoms not correctly loaded. Expected: {BENZAMIDINE_N_ATOMS}; Now: {n_atoms}"
 
 
-def _test_loadPdbfile():
+def test_loadPdbfile():
     pdbfile = os.path.join(curr_dir, "test_smallmol", "ligand.pdb")
     sm = SmallMol(pdbfile)
     n_atoms = sm.numAtoms
@@ -122,7 +122,7 @@ def _test_loadPdbfile():
     ), f"Atoms not correctly loaded. Expected: {LIGAND_N_ATOMS}; Now: {n_atoms}"
 
 
-def _test_loadSmile():
+def test_loadSmile():
     smi = SMILE_SMI
     sm = SmallMol(smi)
     n_atoms = sm.numAtoms
@@ -131,7 +131,7 @@ def _test_loadSmile():
     ), f"Atoms not correctly loaded. Expected: {SMILE_N_ATOMS}; Now: {n_atoms}"
 
 
-def _test_getAtoms():
+def test_getAtoms():
     smi = SMILE_SMI
     sm = SmallMol(smi)
     element_idx_1 = sm.get("element", "idx 1")[0]
@@ -152,7 +152,7 @@ def _test_getAtoms():
     )
 
 
-def _test_isChiral():
+def test_isChiral():
     smi = CHIRAL_SMI
     sm = SmallMol(smi, sanitize=True)
     ischiral, details = sm.isChiral(returnDetails=True)
@@ -161,7 +161,7 @@ def _test_isChiral():
     ), f"chiral atom does not match.Expected: {CHIRAL_DETAILS}; Now: {details}"
 
 
-def _test_foundBond():
+def test_foundBond():
     smi = FOUNDBOND_SMI
     sm = SmallMol(smi)
     isbond_0_N = sm.foundBondBetween("idx 0", "element N")
@@ -173,7 +173,7 @@ def _test_foundBond():
     assert isbond_0_1_double, "Bond between atom 0 1 should  be double"
 
 
-def _test_generateConformers():
+def test_generateConformers():
     sm = SmallMol(os.path.join(curr_dir, "test_smallmol", "benzamidine.sdf"))
     current_conformer = sm.numFrames
     sm.generateConformers(num_confs=10, append=False)
@@ -184,7 +184,7 @@ def _test_generateConformers():
     ), "The conformer generation should provide at least the same amount of conformers"
 
 
-def _test_writeGenerateAndWriteConformers(tmp_path):
+def test_writeGenerateAndWriteConformers(tmp_path):
     sm = SmallMol(os.path.join(curr_dir, "test_smallmol", "benzamidine.sdf"))
     sm.generateConformers(num_confs=10, append=False)
     tmpfname = os.path.join(tmp_path, "benzamidine.sdf")
@@ -196,7 +196,7 @@ def _test_writeGenerateAndWriteConformers(tmp_path):
     assert n_files >= 1, "No conformations were written. At least one should be present"
 
 
-def _test_removeGenerateConformer():
+def test_removeGenerateConformer():
     molsmile = SMILE_SMI
     sm = SmallMol(molsmile)
     sm.generateConformers(num_confs=10, append=False)
@@ -215,7 +215,7 @@ def _test_removeGenerateConformer():
     ), "The number of conformations after the deletion was not reduced to 0"
 
 
-def _test_convertToMolecule():
+def test_convertToMolecule():
     from moleculekit.molecule import mol_equal
 
     sm = SmallMol(os.path.join(curr_dir, "test_smallmol", "benzamidine.sdf"))
@@ -224,7 +224,7 @@ def _test_convertToMolecule():
 
 
 @pytest.mark.parametrize("molfile", ["BEN_model.sdf", "BEN_pH7_4.sdf", "indole.mol2"])
-def _test_convertFromMolecule(molfile):
+def test_convertFromMolecule(molfile):
     from moleculekit.molecule import mol_equal
 
     mol = Molecule(os.path.join(curr_dir, "test_smallmol", molfile))
@@ -233,7 +233,7 @@ def _test_convertFromMolecule(molfile):
     assert mol_equal(sm, mol, exceptFields=["serial", "name"], _logger=False)
 
 
-def _test_getBonds():
+def test_getBonds():
     sm = SmallMol(os.path.join(curr_dir, "test_smallmol", "benzamidine.sdf"))
 
     assert (
@@ -245,26 +245,26 @@ def _test_getBonds():
     ), "The bonds type are not the same of the reference"
 
 
-def _test_repr():
+def test_repr():
     sm = SmallMol(os.path.join(curr_dir, "test_smallmol", "benzamidine.sdf"))
     _ = str(sm)
 
 
-def _test_toSMILES():
+def test_toSMILES():
     sm = SmallMol(os.path.join(curr_dir, "test_smallmol", "benzamidine.sdf"))
     assert (
         sm.toSMILES() == "NC(=[NH2+])C1=CC=CC=C1"
     ), f"Failed with SMILES: {sm.toSMILES()}"
 
 
-def _test_toSMARTS():
+def test_toSMARTS():
     sm = SmallMol(os.path.join(curr_dir, "test_smallmol", "benzamidine.sdf"))
     assert (
         sm.toSMARTS() == "[#6]1(:[#6]:[#6]:[#6]:[#6]:[#6]:1)-[#6](=[#7+])-[#7]"
     ), f"Failed with SMARTS: {sm.toSMARTS()}"
 
 
-def _test_align():
+def test_align():
     from moleculekit.util import rotationMatrix
     import numpy as np
 
@@ -278,7 +278,7 @@ def _test_align():
     ).max()  # I need to do the abs of the coords since it's a symmetrical molecule
 
 
-def _test_copy():
+def test_copy():
     sm = SmallMol(os.path.join(curr_dir, "test_smallmol", "benzamidine.sdf"))
     sm_copy = sm.copy()
     coords = sm.get("coords")
@@ -297,6 +297,6 @@ def _test_copy():
     assert np.array_equal(coords, coords_copy)
 
 
-# def _test_getRCSBLigandByLigname():
+# def test_getRCSBLigandByLigname():
 #     from moleculekit.smallmol.util import getRCSBLigandByLigname
 #     sm = getRCSBLigandByLigname('BEN')

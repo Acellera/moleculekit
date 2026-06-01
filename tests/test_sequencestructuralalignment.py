@@ -6,7 +6,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_align_protein():
+def test_align_protein():
     import os
 
     mol1 = Molecule(
@@ -23,7 +23,7 @@ def _test_align_protein():
     assert np.allclose(refmol.coords, mol3[0].coords, atol=1e-3)
 
 
-def _test_align_rna():
+def test_align_rna():
     import os
 
     mol1 = Molecule(

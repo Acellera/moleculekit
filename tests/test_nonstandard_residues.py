@@ -64,8 +64,8 @@ def _make_vbl_with_z_alc_nterminal():
     return mol
 
 
-def _test_anchor_variants_lookup():
-    # Retained as a smoke-test; _test_lookup_anchor gives the canonical
+def test_anchor_variants_lookup():
+    # Retained as a smoke-test; test_lookup_anchor gives the canonical
     # post-Task-2 assertions.  Updated to use the new lookup_anchor API.
     e = lookup_anchor("CYS", "SG")
     assert e is not None
@@ -83,7 +83,7 @@ def _test_anchor_variants_lookup():
     assert lookup_anchor("UNK", "X1") is None
 
 
-def _test_1u5u_heme_iron_tyr_coordination():
+def test_1u5u_heme_iron_tyr_coordination():
     """1U5U: Fe in HEM is axially coordinated by TYR353-OH (chains A and B).
     The bcif reader stores this as an 'mc' bond. detectNonStandardResidues
     treats it as a non-peptide partner: HEM becomes a CovalentLigandSpec
@@ -118,7 +118,7 @@ def _test_1u5u_heme_iron_tyr_coordination():
     )
 
 
-def _test_3ptb_calcium_coordination_skips_ion_residue():
+def test_3ptb_calcium_coordination_skips_ion_residue():
     """3PTB: Ca2+ ion coordinated by 4 protein O + 2 waters. The ion lives
     in its own residue (resname 'CA'), which is in _ION_RESNAMES, so every
     Ca-O 'mc' bond is filtered out by detectNonStandardResidues. Only the
@@ -130,7 +130,7 @@ def _test_3ptb_calcium_coordination_skips_ion_residue():
     assert specs[0].resname == "BEN"
 
 
-def _test_8qfz_scaffolded_peptide():
+def test_8qfz_scaffolded_peptide():
     """8QFZ chain B: LFI scaffold thio-ether bonded to three CYS sidechains
     at resids 11, 17, 22. CYS 11 is N-terminal, CYS 22 is C-terminal,
     CYS 17 is mid-chain. Each chain-position bucket gets its own custom
@@ -164,7 +164,7 @@ def _test_8qfz_scaffolded_peptide():
     assert all(isinstance(s, (ScaffoldSpec, ChainResidueSpec)) for s in specs)
 
 
-def _test_single_anchor_demotes_scaffold_to_covalent_ligand():
+def test_single_anchor_demotes_scaffold_to_covalent_ligand():
     """Strip two of the three CYS-LFI bonds: LFI now has only one anchor
     so it's a CovalentLigandSpec rather than a ScaffoldSpec, and only the
     one remaining CYS gets renamed."""
@@ -183,7 +183,7 @@ def _test_single_anchor_demotes_scaffold_to_covalent_ligand():
     assert len(renames) == 1 and renames[0].resname == "CYS"
 
 
-def _test_5vbl_ncaas_and_free_ligand():
+def test_5vbl_ncaas_and_free_ligand():
     """5VBL chain A peptide inhibitor: five chain-resident NCAAs with no
     crosslinks, plus a free OLC ligand. Detector emits ChainResidueSpec entries
     for NCAAs, ChainResidueSpec renames for GLU/LYS isopeptide, and one LigandSpec."""
@@ -227,7 +227,7 @@ def _test_5vbl_ncaas_and_free_ligand():
     assert ligands[0].resname == "OLC" and ligands[0].residue.chain == "B"
 
 
-def _test_1r1j_covalent_glycosylation():
+def test_1r1j_covalent_glycosylation():
     """1R1J: three NAG-Asn N-glycosylation sites. Each NAG has one bond to
     an Asn ND2; all three (ASN, ND2, NAG) buckets share the same chain
     position (mid-chain) so the detector emits one CovalentLigandSpec
@@ -268,7 +268,7 @@ def _test_1r1j_covalent_glycosylation():
     )
 
 
-def _test_8qu4_ncaa_crosslink():
+def test_8qu4_ncaa_crosslink():
     """8QU4 chain A stapled peptide: NLE272 + MK8276 are two NCAAs joined
     by a sidechain CE-CE staple. Detector emits a CrosslinkedNCAASpec for
     each; no CanonicalRenamedSpec because neither residue is canonical."""
@@ -293,7 +293,7 @@ def _test_8qu4_ncaa_crosslink():
         assert not s.is_n_term and not s.is_c_term
 
 
-def _test_scaffold_anchored_on_ncaa_sidechains():
+def test_scaffold_anchored_on_ncaa_sidechains():
     """A scaffold whose anchors land on NCAA sidechains (rather than
     canonical Cys/Lys/etc.) still emits ScaffoldSpec for the scaffold and
     CrosslinkedNCAASpec for each chain-resident NCAA. No
@@ -349,7 +349,7 @@ def _test_scaffold_anchored_on_ncaa_sidechains():
     assert renames == []
 
 
-def _test_canonical_to_ncaa_crosslink():
+def test_canonical_to_ncaa_crosslink():
     """A non-peptide bond between a canonical AA (CYS-SG) and an NCAA emits a
     ChainResidueSpec for the NCAA plus a ChainResidueSpec rename (CYX) for the
     canonical residue (a single-anchor scenario, so no ScaffoldSpec)."""
@@ -383,7 +383,7 @@ def _test_canonical_to_ncaa_crosslink():
     assert renames[0].new_resname is not None and renames[0].new_resname.startswith("X")
 
 
-def _test_distinct_partner_resnames_get_distinct_renames():
+def test_distinct_partner_resnames_get_distinct_renames():
     """Two CYS residues, each bonded to a *different* non-canonical
     residue (different ``partner_resname``), produce two distinct
     bucket keys and two distinct rename targets. CYS residues bonded to
@@ -414,7 +414,7 @@ def _test_distinct_partner_resnames_get_distinct_renames():
         assert len(n) == 3 and n.startswith("X")
 
 
-def _test_ncaa_spec_default_new_resname():
+def test_ncaa_spec_default_new_resname():
     """new_resname defaults to None on ChainResidueSpec and accepts a string when given."""
     rid = UniqueResidueID(
         resname="ALC", chain="A", resid=1, insertion="", segid="A"
@@ -446,7 +446,7 @@ def _test_ncaa_spec_default_new_resname():
     assert s4.new_resname == "CALC"
 
 
-def _test_disambiguate_single_config_no_rename():
+def test_disambiguate_single_config_no_rename():
     """One NCAA resname, all instances mid-chain -> no rename."""
     rid_a = UniqueResidueID(
         resname="ALC", chain="A", resid=1, insertion="", segid="A"
@@ -462,7 +462,7 @@ def _test_disambiguate_single_config_no_rename():
     assert all(s.new_resname is None for s in specs)
 
 
-def _test_disambiguate_two_configs_renames_nonmid():
+def test_disambiguate_two_configs_renames_nonmid():
     """Same NCAA resname appearing mid-chain AND N-term: mid keeps the
     original (new_resname=None), N-term gets NALC."""
     rid_mid = UniqueResidueID(
@@ -482,7 +482,7 @@ def _test_disambiguate_two_configs_renames_nonmid():
     assert s_n.new_resname == "NALC"
 
 
-def _test_disambiguate_three_configs():
+def test_disambiguate_three_configs():
     """Mid + N + C-term all present -> mid stays, N -> NALC, C -> CALC."""
     def _spec(i, n, c):
         return ChainResidueSpec(
@@ -503,7 +503,7 @@ def _test_disambiguate_three_configs():
     assert s_c.new_resname == "CALC"
 
 
-def _test_disambiguate_both_terminus_uses_b_prefix():
+def test_disambiguate_both_terminus_uses_b_prefix():
     """A single-residue chain (both is_n_term and is_c_term True) coexisting
     with a mid-chain instance of the same resname uses the B prefix."""
     rid_mid = UniqueResidueID(
@@ -523,7 +523,7 @@ def _test_disambiguate_both_terminus_uses_b_prefix():
     assert s_both.new_resname == "BALC"
 
 
-def _test_disambiguate_applies_to_crosslinked_ncaa():
+def test_disambiguate_applies_to_crosslinked_ncaa():
     """The disambiguator treats crosslinked-NCAA ChainResidueSpec the same as plain NCAA."""
     rid_mid = UniqueResidueID(
         resname="MK8", chain="A", resid=2, insertion="", segid="A"
@@ -544,7 +544,7 @@ def _test_disambiguate_applies_to_crosslinked_ncaa():
     assert s_n.new_resname == "NMK8"
 
 
-def _test_disambiguate_independent_groups():
+def test_disambiguate_independent_groups():
     """Two different NCAA resnames, each with a single config, both
     stay un-renamed. Disambiguation is per-resname, not global."""
     s_alc = ChainResidueSpec(
@@ -568,7 +568,7 @@ def _test_disambiguate_independent_groups():
     assert s_hrg.new_resname is None
 
 
-def _test_disambiguate_4char_input_raises():
+def test_disambiguate_4char_input_raises():
     """If disambiguation is required AND the input resname is 4+ chars,
     the prefixed name would exceed the 4-char AMBER prepi unit-name limit."""
     import pytest as _pytest
@@ -593,7 +593,7 @@ def _test_disambiguate_4char_input_raises():
         _disambiguate_terminus_resnames([s_mid, s_n])
 
 
-def _test_disambiguate_ignores_other_spec_types():
+def test_disambiguate_ignores_other_spec_types():
     """The disambiguator only touches ChainResidueSpec entries with non-protein resname.
     Other specs (LigandSpec, ScaffoldSpec, etc.) are left untouched."""
     rid = UniqueResidueID(
@@ -613,7 +613,7 @@ def _test_disambiguate_ignores_other_spec_types():
     assert s_mid.new_resname is None
 
 
-def _test_detect_no_rename_when_all_one_config():
+def test_detect_no_rename_when_all_one_config():
     """5VBL has 200/ALC/HRG/NLE/OIC each appearing exactly once and the
     one C-terminal residue is 200 (no other resname appears at the C
     terminus). After Task 3 the detector still emits new_resname=None
@@ -631,7 +631,7 @@ def _test_detect_no_rename_when_all_one_config():
         )
 
 
-def _test_detect_renames_when_resname_shared_across_configs():
+def test_detect_renames_when_resname_shared_across_configs():
     """Take 5VBL, duplicate its peptide chain into chain Z with a resid
     offset, then drop the chain-Z residues that sit N-side of the
     duplicated ALC so chain Z's ALC becomes N-terminal. Now ALC appears
@@ -658,7 +658,7 @@ def _test_detect_renames_when_resname_shared_across_configs():
     assert by_chain["Z"].new_resname == "NALC"
 
 
-def _test_detect_unaffected_groups_left_alone():
+def test_detect_unaffected_groups_left_alone():
     """When ALC needs disambiguation but HRG does not, only ALC specs
     get new_resname set."""
     mol = _make_vbl_with_z_alc_nterminal()
@@ -676,7 +676,7 @@ def _test_detect_unaffected_groups_left_alone():
         )
 
 
-def _test_apply_detect_spec_renames_for_ncaa():
+def test_apply_detect_spec_renames_for_ncaa():
     """The rename helper sets mol.resname to spec.new_resname when set
     on an NCAASpec; other residues with the same input resname are
     untouched."""
@@ -718,7 +718,7 @@ def _test_apply_detect_spec_renames_for_ncaa():
         assert (mol.resname[other_alc] == "ALC").all()
 
 
-def _test_apply_detect_spec_renames_skips_none():
+def test_apply_detect_spec_renames_skips_none():
     """new_resname=None leaves mol.resname untouched."""
     from moleculekit.tools.preparation import _apply_detect_spec_renames
 
@@ -739,7 +739,7 @@ def _test_apply_detect_spec_renames_skips_none():
     assert (mol.resname == before).all()
 
 
-def _test_apply_detect_spec_renames_just_renames():
+def test_apply_detect_spec_renames_just_renames():
     """With H-drop moved upstream to _template_renamed_canonical_residues,
     _apply_detect_spec_renames is now a rename-only safety net."""
     from moleculekit.tools.preparation import _apply_detect_spec_renames
@@ -767,7 +767,7 @@ def _test_apply_detect_spec_renames_just_renames():
     assert mol.numAtoms == 4
 
 
-def _test_anchor_table_covers_all_anchors():
+def test_anchor_table_covers_all_anchors():
     """ANCHOR_TABLE is the single source of truth for per-anchor facts.
     Covers every existing ANCHOR_VARIANTS anchor (CYS-SG, ASN-ND2,
     LYS-NZ, TYR-OH, HIS-ND1/NE2, SER-OG, THR-OG1) plus the new
@@ -785,7 +785,7 @@ def _test_anchor_table_covers_all_anchors():
     assert set(ANCHOR_TABLE) == expected
 
 
-def _test_lookup_anchor():
+def test_lookup_anchor():
     """lookup_anchor returns the table entry for known anchors and None
     for unknown ones. Variant resnames (CYX, LYN) route back to the
     base via ORIGINAL_RESIDUE_NAME_TABLE."""
@@ -810,7 +810,7 @@ def _test_lookup_anchor():
     assert lookup_anchor("ALA", "CB") is None
 
 
-def _test_canonical_anchor_smiles():
+def test_canonical_anchor_smiles():
     """canonical_anchor_smiles returns RESIDUE_SMILES[smiles_variant].
     Picks LYN for LYS NZ; HID/HIE for HIS; canonical resname otherwise."""
     from moleculekit.residues import RESIDUE_SMILES
@@ -829,7 +829,7 @@ def _test_canonical_anchor_smiles():
         canonical_anchor_smiles("MET", "SD")
 
 
-def _test_5vbl_glu_lys_isopeptide_emits_chain_residue_specs():
+def test_5vbl_glu_lys_isopeptide_emits_chain_residue_specs():
     """5VBL has an isopeptide bond between GLU A 10 CD and LYS A 13 NZ.
     The detector emits a ChainResidueSpec for each end with auto-
     generated X## new_resnames."""
@@ -858,7 +858,7 @@ def _test_5vbl_glu_lys_isopeptide_emits_chain_residue_specs():
     assert lys.anchor_atom == "NZ"
 
 
-def _test_cyx_disulfide_emits_chain_residue_specs():
+def test_cyx_disulfide_emits_chain_residue_specs():
     """Two CYS-SG <-> CYS-SG residues both get new_resname='CYX' (shared,
     no auto-generated XX# suffix)."""
     cys2 = Molecule().empty(12)
@@ -883,7 +883,7 @@ def _test_cyx_disulfide_emits_chain_residue_specs():
     assert all(s.anchor_atom == "SG" for s in cys_specs)
 
 
-def _test_8qfz_three_cys_distinct_buckets():
+def test_8qfz_three_cys_distinct_buckets():
     """8QFZ has 3 CYS bonded to LFI at distinct chain positions (N-term,
     mid, C-term). Each gets its own auto-generated X## name because the
     bucket key (resname, anchor, partner, n_term, c_term) differs."""
@@ -903,7 +903,7 @@ def _test_8qfz_three_cys_distinct_buckets():
         assert n.startswith("X") and len(n) == 3
 
 
-def _test_1r1j_three_asn_share_bucket():
+def test_1r1j_three_asn_share_bucket():
     """1R1J: three ASN-ND2-NAG glycosylation sites at distinct mid-chain
     positions share one X## new_resname because they share bucket key
     (ASN, ND2, NAG, False, False)."""
@@ -924,7 +924,7 @@ def _test_1r1j_three_asn_share_bucket():
     )
 
 
-def _test_unknown_canonical_anchor_raises():
+def test_unknown_canonical_anchor_raises():
     """A canonical AA with a non-peptide bond at an anchor not in
     ANCHOR_TABLE raises clearly."""
     from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
@@ -947,7 +947,7 @@ def _test_unknown_canonical_anchor_raises():
         detectNonStandardResidues(mol)
 
 
-def _test_bonds_to_waters_are_ignored():
+def test_bonds_to_waters_are_ignored():
     """Bonds between a canonical residue and a water (e.g. a PDB LINK
     record to a coordinating water) must be skipped: waters are not
     covalent partners, so they must neither trigger an
@@ -971,7 +971,7 @@ def _test_bonds_to_waters_are_ignored():
     assert specs == []
 
 
-def _test_template_renamed_canonical_residues_5vbl():
+def test_template_renamed_canonical_residues_5vbl():
     """Calling _template_renamed_canonical_residues on 5VBL specs
     renames GLU 10 to XX#, LYS 13 to XX#, drops OE2 on GLU, places
     exactly 1 H on LYS NZ (secondary amide), and preserves the CD-NZ
@@ -1030,7 +1030,7 @@ def _test_template_renamed_canonical_residues_5vbl():
     ), "CD-NZ bond lost during pre-templating"
 
 
-def _test_template_renamed_canonical_residues_known_variant_skips_templating():
+def test_template_renamed_canonical_residues_known_variant_skips_templating():
     """A spec renaming CYS to CYX (disulfide) gets the rename but NOT a
     SMILES re-template, since PDB2PQR understands CYX natively."""
     from moleculekit.tools.preparation import (
@@ -1061,7 +1061,7 @@ def _test_template_renamed_canonical_residues_known_variant_skips_templating():
 RKP_PDB = os.path.join(curr_dir, "pdb", "3rkp.pdb")
 
 
-def _test_3rkp_asn_lys_pilin_isopeptide():
+def test_3rkp_asn_lys_pilin_isopeptide():
     """3RKP has multiple LYS NZ - ASN CG pilin isopeptides. The detector
     emits ChainResidueSpec for each end with auto-generated XX## names."""
     mol = Molecule(RKP_PDB)
@@ -1086,7 +1086,7 @@ def _test_3rkp_asn_lys_pilin_isopeptide():
         assert s.anchor_atom == "NZ"
 
 
-def _test_systemprepare_5vbl_glu_lys_isopeptide_end_to_end():
+def test_systemprepare_5vbl_glu_lys_isopeptide_end_to_end():
     """systemPrepare on 5VBL with the canonical-canonical GLU-LYS
     isopeptide: renames GLU 10 / LYS 13, runs PDB2PQR with the
     pre-templated mol, returns a prepared mol where CD-NZ is still
@@ -1153,7 +1153,7 @@ def _test_systemprepare_5vbl_glu_lys_isopeptide_end_to_end():
     assert len(nz_h) == 1
 
 
-def _test_systemprepare_8qfz_canonical_to_ncaa_end_to_end():
+def test_systemprepare_8qfz_canonical_to_ncaa_end_to_end():
     """8QFZ: three CYS-SG-LFI thioethers. After systemPrepare, each
     renamed CYS still has SG with no HG."""
     try:

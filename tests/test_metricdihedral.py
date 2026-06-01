@@ -4,7 +4,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_dihedral_traj():
+def test_dihedral_traj():
     from moleculekit.molecule import Molecule
     from moleculekit.projections.metricdihedral import MetricDihedral
     from os import path
@@ -24,7 +24,7 @@ def _test_dihedral_traj():
     ), "Diherdals calculation gave different results from reference"
 
 
-def _test_dihedral_5mat():
+def test_dihedral_5mat():
     from moleculekit.molecule import Molecule
     from moleculekit.tools.autosegment import autoSegment
     from moleculekit.projections.metricdihedral import MetricDihedral
@@ -55,7 +55,7 @@ def _test_dihedral_5mat():
     assert np.array_equal(mapping_idx, ref_idx), "Mapping of atom indexes has changed"
 
 
-def _test_dialanine_ace_nme():
+def test_dialanine_ace_nme():
     from moleculekit.molecule import Molecule
     from moleculekit.projections.metricdihedral import MetricDihedral
     from os import path

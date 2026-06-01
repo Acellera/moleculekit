@@ -29,7 +29,7 @@ def _mol():
     return mol
 
 
-def _test_metricfluctuation_atom_ref(_mol, _ref):
+def test_metricfluctuation_atom_ref(_mol, _ref):
     metr = MetricFluctuation("protein and name CA", _ref)
     _ = metr.getMapping(_mol)  # Just test if it executes fine
     data = metr.project(_mol)
@@ -46,7 +46,7 @@ def _test_metricfluctuation_atom_ref(_mol, _ref):
     ), "Atom to ref fluctuation calculation is broken"
 
 
-def _test_metricfluctuation_atom_mean(_mol):
+def test_metricfluctuation_atom_mean(_mol):
     metr = MetricFluctuation("protein and name CA")
     _ = metr.getMapping(_mol)  # Just test if it executes fine
     data = metr.project(_mol)
@@ -63,7 +63,7 @@ def _test_metricfluctuation_atom_mean(_mol):
     ), "Atom mean fluctuation calculation is broken"
 
 
-def _test_metricfluctuation_residue_ref(_mol, _ref):
+def test_metricfluctuation_residue_ref(_mol, _ref):
     metr = MetricFluctuation("protein and noh", _ref, mode="residue")
     _ = metr.getMapping(_mol)  # Just test if it executes fine
     data = metr.project(_mol)
@@ -80,7 +80,7 @@ def _test_metricfluctuation_residue_ref(_mol, _ref):
     ), "Residue to ref fluctuation calculation is broken"
 
 
-def _test_metricfluctuation_residue_mean(_mol):
+def test_metricfluctuation_residue_mean(_mol):
     metr = MetricFluctuation("protein and noh", mode="residue")
     _ = metr.getMapping(_mol)  # Just test if it executes fine
     data = metr.project(_mol)

@@ -6,7 +6,7 @@ curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 @pytest.mark.skipif(not _VINA_EXISTS, reason="No vina executable found")
-def _test_docking():
+def test_docking():
     from moleculekit.molecule import Molecule
     from os import path
 

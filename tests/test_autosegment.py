@@ -5,7 +5,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_autoSegment2_deprecated_shim():
+def test_autoSegment2_deprecated_shim():
     import warnings
     from moleculekit.molecule import Molecule
     from moleculekit.tools.autosegment import autoSegment, autoSegment2
@@ -26,7 +26,7 @@ def _test_autoSegment2_deprecated_shim():
     assert np.array_equal(shim.chain, ref.chain)
 
 
-def _test_autoSegment_classify():
+def test_autoSegment_classify():
     from moleculekit.molecule import Molecule
     from moleculekit.tools.autosegment import _classify_residues
 
@@ -41,7 +41,7 @@ def _test_autoSegment_classify():
     assert "nucleic" not in cats
 
 
-def _test_autoSegment_linked():
+def test_autoSegment_linked():
     from moleculekit.molecule import Molecule
     from moleculekit.tools.autosegment import _polymer_linked, _classify_residues
 
@@ -66,7 +66,7 @@ def _test_autoSegment_linked():
     assert np.mean(linked) > 0.95
 
 
-def _test_autoSegment_1aud_continuous():
+def test_autoSegment_1aud_continuous():
     from os import path
     from moleculekit.molecule import Molecule
     from moleculekit.tools.autosegment import autoSegment
@@ -78,14 +78,14 @@ def _test_autoSegment_1aud_continuous():
     assert len(rna_segids) == 1, f"expected 1 RNA segment, got {rna_segids}"
 
 
-def _test_autoSegment_3ptb_buckets():
+def test_autoSegment_3ptb_buckets():
     from moleculekit.molecule import Molecule
     from moleculekit.tools.autosegment import autoSegment
 
     mol = Molecule("3ptb")
     out = autoSegment(mol, fields=("chain", "segid"))
 
-    # Same index ranges as the existing _test_autosegment_detailed
+    # Same index ranges as the existing test_autosegment_detailed
     prot_idx = np.arange(1629)
     ca_idx = np.array([1629])
     ben_idx = np.arange(1630, 1639)
@@ -109,7 +109,7 @@ def _test_autoSegment_3ptb_buckets():
     assert len(set(groups)) == 4
 
 
-def _test_autoSegment_system_matrix():
+def test_autoSegment_system_matrix():
     from os import path
     from moleculekit.molecule import Molecule
     from moleculekit.tools.autosegment import autoSegment
@@ -132,7 +132,7 @@ def _test_autoSegment_system_matrix():
         assert got == n, f"{pid}: expected {n} segments, got {got}"
 
 
-def _test_autoSegment_chain_change_splits():
+def test_autoSegment_chain_change_splits():
     from moleculekit.molecule import Molecule
     from moleculekit.tools.autosegment import autoSegment
 
@@ -148,7 +148,7 @@ def _test_autoSegment_chain_change_splits():
     assert len(set(out.segid[prot_idx])) >= 2
 
 
-def _test_autoSegment_single_other_segment():
+def test_autoSegment_single_other_segment():
     from os import path
     from moleculekit.molecule import Molecule
     from moleculekit.tools.autosegment import autoSegment, _classify_residues
@@ -172,7 +172,7 @@ def _test_autoSegment_single_other_segment():
     assert merged.segid[other_atoms][0] not in set(merged.segid[non_other])
 
 
-def _test_autoSegment_gfp_chromophore():
+def test_autoSegment_gfp_chromophore():
     # 1gfl: the GFP chromophore residue 65 (SER) is missing its backbone O, so
     # the standard "backbone" selection drops it. autoSegment classifies it by
     # N/CA/C presence and keeps each chain continuous through it.
@@ -191,7 +191,7 @@ def _test_autoSegment_gfp_chromophore():
         assert before[0] == after[0], f"chromophore split chain {ch}"
 
 
-def _test_autoSegment_missing_carbonyl_continuity():
+def test_autoSegment_missing_carbonyl_continuity():
     # 1hgu: residues 148/151 are missing their carbonyl O (AS2 over-splits there),
     # while 37-39 are a genuine missing loop. autoSegment stays continuous through
     # the missing-O residues but splits at the real gap.
@@ -213,7 +213,7 @@ def _test_autoSegment_missing_carbonyl_continuity():
     assert seg(36) != seg(40)
 
 
-def _test_autoSegment_heavy_water_dod():
+def test_autoSegment_heavy_water_dod():
     # 2mb5 is a neutron structure with 89 DOD (D2O) residues. With DOD recognized
     # as water they collapse into a single water segment instead of 89 'other' ones.
     from os import path
@@ -227,7 +227,7 @@ def _test_autoSegment_heavy_water_dod():
     assert len(set(out.segid[dod])) == 1
 
 
-def _test_autoSegment_glycan_tree():
+def test_autoSegment_glycan_tree():
     # 3gbn: an N-linked glycan tree (NAG-NAG-BMA-MAN) must stay together as one
     # connected-component 'other' segment, separate from isolated small molecules.
     from os import path
@@ -249,7 +249,7 @@ def _test_autoSegment_glycan_tree():
     assert len(multi[0]) >= 3
 
 
-def _test_autoSegment_5mat_internal_gaps():
+def test_autoSegment_5mat_internal_gaps():
     # 5MAT (renin) has two protein chains (A, C), each with a real missing-loop
     # gap, so autoSegment yields 4 polymer segments. The gaps are detected by
     # backbone distance (C-N 4.4 A in chain A, 10.4 A in chain C), not resids.

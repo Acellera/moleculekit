@@ -10,7 +10,7 @@ curr_dir = os.path.dirname(os.path.abspath(__file__))
     not blastp,
     reason="Cannot run test without blastp and makeblastdb executables in PATH",
 )
-def _test_align_opm():
+def test_align_opm():
     mol = Molecule("7y89")
     res = align_to_opm(mol)
     assert len(res) == 3
@@ -22,7 +22,7 @@ def _test_align_opm():
     not blastp,
     reason="Cannot run test without blastp and makeblastdb executables in PATH",
 )
-def _test_align_opm_with_id():
+def test_align_opm_with_id():
     from moleculekit.opm import align_to_opm
     from moleculekit.molecule import Molecule
 

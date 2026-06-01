@@ -5,7 +5,7 @@ from moleculekit.molecule import Molecule, mol_equal
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_templateResidueFromSmiles():
+def test_templateResidueFromSmiles():
     def _cmp(mol, ref_mol):
         assert mol_equal(
             mol,
@@ -61,7 +61,7 @@ def _test_templateResidueFromSmiles():
     _cmp(mol, ref_mol)
 
 
-def _test_templateResidueFromSmiles_multiresidue():
+def test_templateResidueFromSmiles_multiresidue():
     """A selection that spans multiple residues with the same resname
     (e.g. ``resname BEN`` when there are several BEN copies in the
     structure) templates every matched residue with the same SMILES.
@@ -135,7 +135,7 @@ def _test_templateResidueFromSmiles_multiresidue():
         )
 
 
-def _test_templateResidueFromSmiles_incorrect_smiles():
+def test_templateResidueFromSmiles_incorrect_smiles():
     import numpy as np
 
     testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
@@ -164,7 +164,7 @@ def _test_templateResidueFromSmiles_incorrect_smiles():
         "C1N(CN(CN1C(=O)CCBr)C(=O)CCBr)C(=O)CCBr",
     ),
 )
-def _test_templateResidueFromSmiles_inter_residue_bonds(smiles):
+def test_templateResidueFromSmiles_inter_residue_bonds(smiles):
     """A residue with covalent bonds to other residues (e.g. covalent
     inhibitor LFI in 8QFZ alkylating three cysteines) must not be
     over-protonated at the boundary atoms, and the cross-residue bonds
@@ -210,7 +210,7 @@ def _test_templateResidueFromSmiles_inter_residue_bonds(smiles):
 
 
 @pytest.mark.parametrize("file", ("1STP_BTN.cif", "BEN_pH7.4.cif"))
-def _test_toRDKitMol(file):
+def test_toRDKitMol(file):
     testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
     mol = Molecule(os.path.join(testdir, file))
     rmol = mol.toRDKitMol()
@@ -239,7 +239,7 @@ def _test_toRDKitMol(file):
     )
 
 
-def _test_rdkit_dative_round_trips_as_mc():
+def test_rdkit_dative_round_trips_as_mc():
     """RDKit DATIVE bonds <-> moleculekit 'mc' bondtype."""
     from rdkit import Chem
     from moleculekit.molecule import Molecule
@@ -257,7 +257,7 @@ def _test_rdkit_dative_round_trips_as_mc():
     assert len(dative) == 2
 
 
-def _test_templateResidueFromSmiles_preserves_dative():
+def test_templateResidueFromSmiles_preserves_dative():
     """SMILES with explicit -> dative arrows must surface as 'mc' bonds in
     the templated Molecule, not get demoted to single."""
     import numpy as np
@@ -285,7 +285,7 @@ def _test_templateResidueFromSmiles_preserves_dative():
     assert (mol.bondtype == "mc").sum() == 2
 
 
-def _test_templateResidueFromSmiles_HEM_input_has_mc_bonds():
+def test_templateResidueFromSmiles_HEM_input_has_mc_bonds():
     """If the residue's own bonds already carry 'mc' bondtypes (e.g. a HEM
     reloaded from a CIF moleculekit previously wrote), templating must
     still succeed: rmol carries BondType.DATIVE for those, which would
@@ -310,7 +310,7 @@ def _test_templateResidueFromSmiles_HEM_input_has_mc_bonds():
     assert (mol.bondtype == "mc").sum() == 4
 
 
-def _test_templateResidueFromSmiles_HEM_dative_Fe_N():
+def test_templateResidueFromSmiles_HEM_dative_Fe_N():
     """Real-world check: templating HEM extracted from 1U5U with the
     canonical heme SMILES that uses ``->[Fe@SP2+3]`` dative arrows must
     produce 4 'mc' Fe-N bonds in the output (one per pyrrole nitrogen).
@@ -341,7 +341,7 @@ def _test_templateResidueFromSmiles_HEM_dative_Fe_N():
     assert sorted(mol.name[partners].tolist()) == ["NA", "NB", "NC", "ND"]
 
 
-def _test_templatingNonStandardResidues(tmp_path):
+def test_templatingNonStandardResidues(tmp_path):
     test_home = os.path.join(
         curr_dir, "test_systemprepare", "test-nonstandard-residues"
     )
@@ -380,7 +380,7 @@ def _test_templatingNonStandardResidues(tmp_path):
     ), f"Failed comparison of {curr_file} vs {reffile}"
 
 
-def _test_template_non_terminal_carboxyl_removal():
+def test_template_non_terminal_carboxyl_removal():
     import numpy as np
 
     mol = Molecule("5VBL")
@@ -424,7 +424,7 @@ def _test_template_non_terminal_carboxyl_removal():
     )
 
 
-def _test_extend_residue_from_smiles():
+def test_extend_residue_from_smiles():
     from moleculekit.molecule import Molecule
     import numpy as np
 
@@ -484,7 +484,7 @@ def _test_extend_residue_from_smiles():
     assert mol_equal(mol, mol2, checkFields=Molecule._all_fields)
 
 
-def _test_extend_residue_from_smiles_double_bond():
+def test_extend_residue_from_smiles_double_bond():
     from moleculekit.molecule import Molecule
     import numpy as np
 
@@ -522,7 +522,7 @@ def _test_extend_residue_from_smiles_double_bond():
     assert np.all(ben.bondtype == ref_bondtype)
 
 
-def _test_extend_residue_from_smiles_missing_bonds():
+def test_extend_residue_from_smiles_missing_bonds():
     import numpy as np
 
     mol_direct = Molecule("3ptb")
@@ -567,7 +567,7 @@ def _test_extend_residue_from_smiles_missing_bonds():
         )
 
 
-def _test_extend_residue_from_new_smiles():
+def test_extend_residue_from_new_smiles():
     import numpy as np
 
     mol = Molecule("3ptb")
@@ -589,7 +589,7 @@ def _test_extend_residue_from_new_smiles():
     assert not np.any(np.isinf(coords)), "Inf coordinates found"
 
 
-def _test_extend_residue_new_smiles_matches_extension_mode():
+def test_extend_residue_new_smiles_matches_extension_mode():
     import numpy as np
 
     mol_ext = Molecule("3ptb")
@@ -618,7 +618,7 @@ def _test_extend_residue_new_smiles_matches_extension_mode():
     assert ext_elements == new_elements
 
 
-def _test_extend_residue_new_smiles_validation():
+def test_extend_residue_new_smiles_validation():
     mol = Molecule("3ptb")
     mol.templateResidueFromSmiles("resname BEN", "[NH2+]=C(N)c1ccccc1", addHs=True)
 
@@ -640,7 +640,7 @@ def _test_extend_residue_new_smiles_validation():
         )
 
 
-def _test_extend_residue_from_smiles_preserve_atom_names():
+def test_extend_residue_from_smiles_preserve_atom_names():
     import numpy as np
 
     mol = Molecule(os.path.join(curr_dir, "test_rdkittools", "p38_lig_1.sdf"))

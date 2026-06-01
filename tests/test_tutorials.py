@@ -22,7 +22,7 @@ def _tutorial_paths():
 
 
 @pytest.mark.parametrize("tutorial_path", _tutorial_paths(), ids=lambda p: str(p.relative_to(TUTORIALS_DIR)))
-def _test_tutorial_executes(tutorial_path: Path, tmp_path):
+def test_tutorial_executes(tutorial_path: Path, tmp_path):
     """Execute a MyST-NB tutorial end-to-end; fail if any non-skipped cell raises."""
     jupytext = pytest.importorskip("jupytext")
     from nbclient import NotebookClient

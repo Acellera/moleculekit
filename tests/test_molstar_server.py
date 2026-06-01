@@ -54,7 +54,7 @@ def _read_one_sse_event(resp, timeout=3.0):
     raise AssertionError("No SSE event received within timeout")
 
 
-def _test_server_serves_index_html(fresh_server):
+def test_server_serves_index_html(fresh_server):
     url = f"http://localhost:{fresh_server.port}/"
     with urllib.request.urlopen(url, timeout=2) as resp:
         body = resp.read()
@@ -62,14 +62,14 @@ def _test_server_serves_index_html(fresh_server):
         assert b"<html" in body.lower() or b"<!doctype html" in body.lower()
 
 
-def _test_session_mismatch_returns_410(fresh_server):
+def test_session_mismatch_returns_410(fresh_server):
     url = f"http://localhost:{fresh_server.port}/events?session=WRONG"
     with pytest.raises(HTTPError) as exc:
         urllib.request.urlopen(url, timeout=2)
     assert exc.value.code == 410
 
 
-def _test_register_emits_topology_event(fresh_server):
+def test_register_emits_topology_event(fresh_server):
     url = f"http://localhost:{fresh_server.port}/events?session={fresh_server.session}"
     req = urllib.request.Request(url, headers={"Accept": "text/event-stream"})
     resp = urllib.request.urlopen(req, timeout=2)
@@ -84,7 +84,7 @@ def _test_register_emits_topology_event(fresh_server):
         resp.close()
 
 
-def _test_coords_endpoint_returns_float32_blob(fresh_server):
+def test_coords_endpoint_returns_float32_blob(fresh_server):
     mol = _make_mol()
     mol.coords[0, 0, 0] = 7.0
     uid = molstar_server.register(mol)
@@ -98,7 +98,7 @@ def _test_coords_endpoint_returns_float32_blob(fresh_server):
         assert arr[0] == pytest.approx(7.0)
 
 
-def _test_coords_endpoint_stale_topohash_returns_404(fresh_server):
+def test_coords_endpoint_stale_topohash_returns_404(fresh_server):
     mol = _make_mol()
     uid = molstar_server.register(mol)
     url = f"http://localhost:{fresh_server.port}/coords/{uid}/deadbeef"
@@ -107,7 +107,7 @@ def _test_coords_endpoint_stale_topohash_returns_404(fresh_server):
     assert exc.value.code == 404
 
 
-def _test_unregister_endpoint_removes_slot(fresh_server):
+def test_unregister_endpoint_removes_slot(fresh_server):
     mol = _make_mol()
     uid = molstar_server.register(mol)
     assert uid in molstar_server.get_registry().slots
@@ -118,7 +118,7 @@ def _test_unregister_endpoint_removes_slot(fresh_server):
     assert uid not in molstar_server.get_registry().slots
 
 
-def _test_port_walkup():
+def test_port_walkup():
     molstar_server.shutdown_for_tests()
     occupier = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     occupier.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

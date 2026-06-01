@@ -11,7 +11,7 @@ def _compare(arr1, arr2):
     ), f"Different results:\n{arr1}\n{arr2}"
 
 
-def _test_atom_detection():
+def test_atom_detection():
     import os
     from moleculekit.molecule import Molecule
     from moleculekit.tools.detect import detectEquivalentAtoms
@@ -29,7 +29,7 @@ def _test_atom_detection():
     _compare(eqgroupbyatom, eqgroupbyatom_ref)
 
 
-def _test_charged_detection():
+def test_charged_detection():
     import os
     from moleculekit.molecule import Molecule
     from moleculekit.tools.detect import detectEquivalentAtoms
@@ -59,7 +59,7 @@ def _test_charged_detection():
     _compare(eqgroupbyatom, eqgroupbyatom_ref)
 
 
-def _test_detect_dihedrals():
+def test_detect_dihedrals():
     import os
     from moleculekit.molecule import Molecule
     from moleculekit.tools.detect import detectParameterizableDihedrals

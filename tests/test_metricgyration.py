@@ -4,7 +4,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_project():
+def test_project():
     from moleculekit.molecule import Molecule
     from moleculekit.projections.metricgyration import MetricGyration
     from os import path

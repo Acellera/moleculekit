@@ -5,7 +5,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_maximalSubstructureAlignment():
+def test_maximalSubstructureAlignment():
     from moleculekit.molecule import Molecule
     from moleculekit.tools.graphalignment import maximalSubstructureAlignment
 
@@ -21,7 +21,7 @@ def _test_maximalSubstructureAlignment():
     ), "maximalSubstructureAlignment produced different coords"
 
 
-def _test_mcs_atom_matching():
+def test_mcs_atom_matching():
     from moleculekit.molecule import Molecule
     from moleculekit.tools.graphalignment import mcsAtomMatching
     import numpy as np

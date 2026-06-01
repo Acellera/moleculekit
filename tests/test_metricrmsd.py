@@ -3,7 +3,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_metricrmsd():
+def test_metricrmsd():
     from moleculekit.molecule import Molecule
     import numpy as np
     from os import path

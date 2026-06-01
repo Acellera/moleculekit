@@ -18,7 +18,7 @@ def _mol():
     return mol
 
 
-def _test_sasa_atom(_mol):
+def test_sasa_atom(_mol):
     metr = MetricSasa(mode="atom")
     sasaA = metr.project(_mol.copy())
     sasaA_ref = np.load(
@@ -29,7 +29,7 @@ def _test_sasa_atom(_mol):
     ), f"Failed with max diff {np.abs(sasaA-sasaA_ref).max()}"
 
 
-def _test_sasa_residue(_mol):
+def test_sasa_residue(_mol):
     metr = MetricSasa(mode="residue")
     sasaR = metr.project(_mol.copy())
     sasaR_ref = np.load(
@@ -40,7 +40,7 @@ def _test_sasa_residue(_mol):
     ), f"Failed with max diff {np.abs(sasaR-sasaR_ref).max()}"
 
 
-def _test_set_diff_error(_mol):
+def test_set_diff_error(_mol):
     try:
         metr = MetricSasa(mode="atom", sel="index 3000", filtersel="not index 3000")
         metr._calculateMolProp(_mol.copy())
@@ -56,7 +56,7 @@ def _test_set_diff_error(_mol):
     sys.platform.startswith("win"),
     reason="On Windows the SASA calculation occasionally fails to produce consistent results. Seems like a bug in mdtraj",
 )
-def _test_selection_and_filtering(_mol):
+def test_selection_and_filtering(_mol):
     metr = MetricSasa(mode="atom")
     sasaA_ref = metr.project(_mol.copy())
 
@@ -75,7 +75,7 @@ def _test_selection_and_filtering(_mol):
     ), "SASA filtering gave same results as without filtering. Bad."
 
 
-def _test_mappings(_mol):
+def test_mappings(_mol):
     metr = MetricSasa(mode="atom")
     mapping = metr.getMapping(_mol)
     assert np.array_equal(mapping.atomIndexes, np.arange(4480))

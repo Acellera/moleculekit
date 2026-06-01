@@ -4,7 +4,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_hbonds():
+def test_hbonds():
     from moleculekit.molecule import Molecule
     from moleculekit.smallmol.smallmol import SmallMol
     from moleculekit.interactions.interactions import (
@@ -55,7 +55,7 @@ def _test_hbonds():
     assert np.array(hb[0]).shape == (178, 3), np.array(hb[0]).shape
 
 
-def _test_pipi():
+def test_pipi():
     from moleculekit.molecule import Molecule
     from moleculekit.smallmol.smallmol import SmallMol
     from moleculekit.interactions.interactions import (
@@ -114,7 +114,7 @@ def _test_pipi():
     assert np.allclose(distang[0], ref_distang)
 
 
-def _test_salt_bridge():
+def test_salt_bridge():
     from moleculekit.molecule import Molecule
     from moleculekit.smallmol.smallmol import SmallMol
     from moleculekit.interactions.interactions import (
@@ -161,7 +161,7 @@ def _test_salt_bridge():
     ), f"Failed test_salt_bridge test due to bridges: {expected} {bridges[0]}"
 
 
-def _test_cationpi_protein():
+def test_cationpi_protein():
     from moleculekit.molecule import Molecule
     from moleculekit.interactions.interactions import (
         get_protein_rings,
@@ -193,7 +193,7 @@ def _test_cationpi_protein():
     assert np.allclose(ref_distang, distang), distang
 
 
-def _test_cationpi_protein_ligand():
+def test_cationpi_protein_ligand():
     from moleculekit.molecule import Molecule
     from moleculekit.smallmol.smallmol import SmallMol
     from moleculekit.interactions.interactions import (
@@ -227,7 +227,7 @@ def _test_cationpi_protein_ligand():
     assert np.allclose(ref_distang, distang), distang
 
 
-def _test_sigma_holes():
+def test_sigma_holes():
     from moleculekit.molecule import Molecule
     from moleculekit.smallmol.smallmol import SmallMol
     from moleculekit.interactions.interactions import (
@@ -255,7 +255,7 @@ def _test_sigma_holes():
     assert np.allclose(ref_distang, distang)
 
 
-def _test_water_bridge():
+def test_water_bridge():
     from moleculekit.molecule import Molecule
     from moleculekit.smallmol.smallmol import SmallMol
     from moleculekit.interactions.interactions import (
@@ -326,7 +326,7 @@ def _test_water_bridge():
     ), wb
 
 
-def _test_metal_coordination():
+def test_metal_coordination():
     from moleculekit.molecule import Molecule
     from moleculekit.interactions.interactions import (
         metal_coordination_calculate,

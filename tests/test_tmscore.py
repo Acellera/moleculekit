@@ -5,7 +5,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_tmscore():
+def test_tmscore():
     from moleculekit.molecule import Molecule
     from moleculekit.align import molTMscore
     import os
@@ -49,7 +49,7 @@ def _test_tmscore():
     assert np.allclose(rmsd, expectedRMSD)
 
 
-def _test_multichain_tmalign_homodimer():
+def test_multichain_tmalign_homodimer():
     """Test that molTMalign correctly handles a homodimer with swapped chain order."""
     from moleculekit.molecule import Molecule
     from moleculekit.align import molTMalign
@@ -73,7 +73,7 @@ def _test_multichain_tmalign_homodimer():
     )
 
 
-def _test_multichain_tmalign_heterotrimer():
+def test_multichain_tmalign_heterotrimer():
     """Test that molTMalign correctly handles a heterotrimer with shuffled chain order."""
     from moleculekit.molecule import Molecule
     from moleculekit.align import molTMalign

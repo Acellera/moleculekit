@@ -28,7 +28,7 @@ def two_atom_mol():
     return mol
 
 
-def _test_dict_has_expected_keys(two_atom_mol):
+def test_dict_has_expected_keys(two_atom_mol):
     d = molecule_to_dict(two_atom_mol)
     expected_keys = {
         "altloc", "atomtype", "beta", "bonds", "bondtype", "chain",
@@ -39,32 +39,32 @@ def _test_dict_has_expected_keys(two_atom_mol):
     assert set(d.keys()) == expected_keys
 
 
-def _test_atom_fields_are_python_lists(two_atom_mol):
+def test_atom_fields_are_python_lists(two_atom_mol):
     d = molecule_to_dict(two_atom_mol)
     assert isinstance(d["element"], list)
     assert d["element"] == ["C", "O"]
     assert d["formalcharge"] == [0, -1]
 
 
-def _test_bonds_are_pair_lists(two_atom_mol):
+def test_bonds_are_pair_lists(two_atom_mol):
     d = molecule_to_dict(two_atom_mol)
     assert d["bonds"] == [[0, 1]]
     assert d["bondtype"] == ["2"]
 
 
-def _test_default_frame_is_zero(two_atom_mol):
+def test_default_frame_is_zero(two_atom_mol):
     d = molecule_to_dict(two_atom_mol)
     assert d["coords"] == pytest.approx([0.0, 1.2, 0.0, 0.0, 0.0, 0.0])
     assert d["numFrames"] == 2
     assert d["numAtoms"] == 2
 
 
-def _test_explicit_frame_index(two_atom_mol):
+def test_explicit_frame_index(two_atom_mol):
     d = molecule_to_dict(two_atom_mol, frame=1)
     assert d["coords"] == pytest.approx([0.0, 1.5, 0.0, 0.0, 0.0, 0.0])
 
 
-def _test_empty_arrays_serialize_clean():
+def test_empty_arrays_serialize_clean():
     mol = Molecule().empty(1)
     mol.element[:] = ["C"]
     mol.coords = np.zeros((1, 3, 1), dtype=np.float32)

@@ -12,7 +12,7 @@ SDF_FIELDS = ["ligname", "_mol"]
 SDF_LOC_0_99 = "ZINC02141008"
 
 
-def _test_loaSdffile():
+def test_loaSdffile():
     sdffile = os.path.join(curr_dir, "test_smallmol", "fda_drugs_light.sdf")
     lib = SmallMolLib(sdffile)
     n_mols = lib.numMols
@@ -28,7 +28,7 @@ def _test_loaSdffile():
     ), f"Molecules not correctly loaded. Expected: {SDF_N_MOLS}; Now: {n_mols}"
 
 
-def _test_writeSdf(tmp_path):
+def test_writeSdf(tmp_path):
     sdffile = os.path.join(curr_dir, "test_smallmol", "fda_drugs_light.sdf")
     lib = SmallMolLib(sdffile)
 
@@ -47,7 +47,7 @@ def _test_writeSdf(tmp_path):
     )
 
 
-def _test_appendSmallMolLib():
+def test_appendSmallMolLib():
     sdffile = os.path.join(curr_dir, "test_smallmol", "fda_drugs_light.sdf")
     lib = SmallMolLib(sdffile)
     lib2 = SmallMolLib(sdffile)
@@ -62,7 +62,7 @@ def _test_appendSmallMolLib():
     )
 
 
-def _test_appendSmallMol():
+def test_appendSmallMol():
     mol2file = os.path.join(curr_dir, "test_smallmol", "benzamidine.mol2")
     sdffile = os.path.join(curr_dir, "test_smallmol", "fda_drugs_light.sdf")
 
@@ -78,7 +78,7 @@ def _test_appendSmallMol():
     )
 
 
-def _test_removeMols():
+def test_removeMols():
     sdffile = os.path.join(curr_dir, "test_smallmol", "fda_drugs_light.sdf")
 
     lib = SmallMolLib(sdffile)
@@ -98,7 +98,7 @@ def _test_removeMols():
     assert mols_name_now != mols_name, "The molecules seem to not be deleted correctly"
 
 
-def _test_convertToDataFrame():
+def test_convertToDataFrame():
     import pandas as pd
 
     sdffile = os.path.join(curr_dir, "test_smallmol", "fda_drugs_light.sdf")
@@ -124,7 +124,7 @@ def _test_convertToDataFrame():
     assert ligname_99 == ref_ligname, "The ligand name found is not the expected one"
 
 
-def _test_writeSmiles(tmp_path):
+def test_writeSmiles(tmp_path):
     sdffile = os.path.join(curr_dir, "test_smallmol", "fda_drugs_light.sdf")
 
     lib = SmallMolLib(sdffile)
@@ -142,7 +142,7 @@ def _test_writeSmiles(tmp_path):
     ), f"Failed comparison of {tmpfile} vs {os.path.join(curr_dir, 'test_smallmol', 'fda_drugs_light.smi')}"
 
 
-def _test_readSmiles():
+def test_readSmiles():
     smifile = os.path.join(curr_dir, "test_smallmol", "fda_drugs_light.smi")
     lib = SmallMolLib(smifile)
     assert len(lib) == 100

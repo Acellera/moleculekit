@@ -21,7 +21,7 @@ _ = TRAJMOLLIG.filter("resname MOL")
 MOL3PTB = Molecule("3PTB")
 
 
-def _test_trajReadingAppending():
+def test_trajReadingAppending():
     # Testing trajectory reading and appending
     ref = Molecule(os.path.join(curr_dir, "test_molecule", "3ptb_filtered.pdb"))
     xtcfile = os.path.join(curr_dir, "test_molecule", "3ptb_traj.xtc")
@@ -33,7 +33,7 @@ def _test_trajReadingAppending():
     assert ref.coords.shape == (4507, 3, 600)
 
 
-def _test_guessBonds():
+def test_guessBonds():
     # Checking bonds
     ref = TRAJMOL.copy()
     ref.coords = np.atleast_3d(ref.coords[:, :, 0])
@@ -44,7 +44,7 @@ def _test_guessBonds():
     assert len3 == 4562
 
 
-def _test_setDihedral():
+def test_setDihedral():
     # Testing dihedral setting
     mol = Molecule("2HBB")
     quad = [124, 125, 132, 133]
@@ -53,7 +53,7 @@ def _test_setDihedral():
     assert np.abs(np.deg2rad(-90) - angle) < 1e-3
 
 
-def _test_updateBondsAnglesDihedrals():
+def test_updateBondsAnglesDihedrals():
     # Testing updating of bonds, dihedrals and angles after filtering
     mol = Molecule(os.path.join(curr_dir, "test_molecule", "a1e.prmtop"))
     mol.read(os.path.join(curr_dir, "test_molecule", "a1e.pdb"))
@@ -85,7 +85,7 @@ def _test_updateBondsAnglesDihedrals():
     assert np.array_equal(an, mol.angles)
 
 
-def _test_appendingBondsBondtypes():
+def test_appendingBondsBondtypes():
     # Testing appending of bonds and bondtypes
     mol = MOL3PTB.copy()
     # TODO do not use parameterize data
@@ -100,7 +100,7 @@ def _test_appendingBondsBondtypes():
     assert newmol.bonds.shape[0] == len(newmol.bondtype)
 
 
-def _test_uniqueAtomID():
+def test_uniqueAtomID():
     mol = MOL3PTB.copy()
     uqid = UniqueAtomID.fromMolecule(mol, "resid 20 and name CA")
     assert uqid.selectAtom(mol) == 24
@@ -111,7 +111,7 @@ def _test_uniqueAtomID():
     assert a1 == a2
 
 
-def _test_uniqueResidueID():
+def test_uniqueResidueID():
     mol = MOL3PTB.copy()
     uqid = UniqueResidueID.fromMolecule(mol, "resid 20")
     assert np.array_equal(
@@ -130,7 +130,7 @@ def _test_uniqueResidueID():
     assert r2 != r3
 
 
-def _test_selfalign():
+def test_selfalign():
     # Checking bonds
     mol = TRAJMOLLIG.copy()
     mol.align("noh")
@@ -143,7 +143,7 @@ def _test_selfalign():
     assert np.allclose(mol.coords, refcoords, atol=1e-3)
 
 
-def _test_alignToReference():
+def test_alignToReference():
     # Checking bonds
     mol = TRAJMOLLIG.copy()
 
@@ -166,7 +166,7 @@ def _test_alignToReference():
     )
 
 
-def _test_alignToReferenceMatchingFrames():
+def test_alignToReferenceMatchingFrames():
     # Checking bonds
     mol = TRAJMOLLIG.copy()
 
@@ -183,7 +183,7 @@ def _test_alignToReferenceMatchingFrames():
     assert np.allclose(mol.coords, refcoords, atol=1e-3)
 
 
-def _test_alignToReferenceSpecificFrames():
+def test_alignToReferenceSpecificFrames():
     # Checking bonds
     mol = TRAJMOLLIG.copy()
 
@@ -206,7 +206,7 @@ def _test_alignToReferenceSpecificFrames():
     assert np.allclose(mol.coords, refcoords, atol=1e-3)
 
 
-def _test_reorderAtoms():
+def test_reorderAtoms():
     mol = Molecule()
     _ = mol.empty(8)
     mol.name[:] = ["C1", "C3", "H", "O", "S", "N", "H3", "H1"]
@@ -232,7 +232,7 @@ def _test_reorderAtoms():
     assert np.array_equal(mol.coords, randcoords[neworder])
 
 
-def _test_sequence():
+def test_sequence():
     seq, seqatms = MOL3PTB.getSequence(return_idx=True)
     refseq = "IVGGYTCGANTVPYQVSLNSGYHFCGGSLINSQWVVSAAHCYKSGIQVRLGEDNINVVEGNEQFISASKSIVHPSYNSNTLNNDIMLIKLKSAASLNSRVASISLPTSCASAGTQCLISGWGNTKSSGTSYPDVLKCLKAPILSDSSCKSAYPGQITSNMFCAGYLEGGKDSCQGDSGGPVVCSGKLQGIVSWGSGCAQKNKPGVYTKVCNYVSWIKQTIASN"
     assert seq["A"] == refseq
@@ -280,14 +280,14 @@ def _test_sequence():
     assert mol.getSequence(one_letter=False)["B"] == ["PTR", "GLU", "GLU", "ILE"]
 
 
-def _test_appendFrames():
+def test_appendFrames():
     trajmol = TRAJMOL.copy()
     nframes = trajmol.numFrames
     trajmol.appendFrames(trajmol)
     assert trajmol.numFrames == (2 * nframes)
 
 
-def _test_renumberResidues():
+def test_renumberResidues():
     mol = MOL3PTB.copy()
     _ = mol.renumberResidues(returnMapping=True)
     refres = np.load(
@@ -297,24 +297,24 @@ def _test_renumberResidues():
     assert np.array_equal(mol.resid, refres)
 
 
-def _test_str_repr():
+def test_str_repr():
     assert len(MOL3PTB.__str__()) != 0
     assert len(MOL3PTB.__repr__()) != 0
 
 
-def _test_mol_equal():
+def test_mol_equal():
     assert mol_equal(MOL3PTB, MOL3PTB)
     assert not mol_equal(MOL3PTB, TRAJMOL)
 
 
-def _test_mol_equal_precision():
+def test_mol_equal_precision():
     mol2 = MOL3PTB.copy()
     mol2.coords += 0.001
     assert mol_equal(MOL3PTB, mol2, fieldPrecision={"coords": 1e-2})
     assert not mol_equal(MOL3PTB, mol2, fieldPrecision={"coords": 1e-4})
 
 
-def _test_append_collision_to_empty_mol():
+def test_append_collision_to_empty_mol():
     mol = Molecule()
     mol1 = Molecule("3ptb")
     mol.append(mol1, collisions=True)
@@ -323,7 +323,7 @@ def _test_append_collision_to_empty_mol():
     mol.append(mol1)
 
 
-def _test_append_collisions():
+def test_append_collisions():
     mol = Molecule("3ptb")
     ben = mol.copy()
     ben.filter("resname BEN")
@@ -339,7 +339,7 @@ def _test_append_collisions():
     assert ben2.numAtoms == 1638
 
 
-def _test_split_append_insert_trajectory():
+def test_split_append_insert_trajectory():
     lig = TRAJMOL.copy()
     lig.filter("resname MOL")
     rest = TRAJMOL.copy()
@@ -353,7 +353,7 @@ def _test_split_append_insert_trajectory():
     assert mol_equal(TRAJMOL, newmol)
 
 
-def _test_append_inverse_collisions():
+def test_append_inverse_collisions():
     from moleculekit.molecule import Molecule
 
     import numpy as np
@@ -404,7 +404,7 @@ def _test_append_inverse_collisions():
     assert (n_lipids - new_n_lipids) == 1 * popc_n_atoms  # 1 lipid removed
 
 
-def _test_advanced_copy():
+def test_advanced_copy():
     trajmol = Molecule(os.path.join(curr_dir, "test_wrapping", "structure.prmtop"))
     trajmol.read(os.path.join(curr_dir, "test_wrapping", "output.xtc"))
 
@@ -439,7 +439,7 @@ def _test_advanced_copy():
     assert mol_equal(traj2, traj3, checkFields=Molecule._all_fields, dtypes=True)
 
 
-def _test_connected_components():
+def test_connected_components():
     import networkx as nx
 
     class _FakeMol:
@@ -484,7 +484,7 @@ def _test_connected_components():
     assert np.all(np.abs(dims - mol.box) < 17.5)  # 17.5 A because lipids stick out
 
 
-def _test_atomselect():
+def test_atomselect():
     mol = Molecule("3ptb")
     sel = mol.atomselect("protein")
     assert sel.dtype == bool
@@ -527,14 +527,14 @@ def _test_atomselect():
     assert np.array_equal(sel, np.arange(mol.numAtoms))
 
 
-def _test_large_time_fstep():
+def test_large_time_fstep():
     mol = Molecule().empty(10)
     mol.time = np.arange(1e15, 1.000000001e15, 4, dtype=Molecule._dtypes["time"])
     mol.fileloc = ["x"] * mol.time.shape[0]
     assert mol.fstep == 4e-6
 
 
-def _test_mutateResidue_legacy():
+def test_mutateResidue_legacy():
     mol = MOL3PTB.copy()
 
     sel = "protein and resid 158"
@@ -553,7 +553,7 @@ def _test_mutateResidue_legacy():
     assert all(mol.resname[new_idx] == "ARG")
 
 
-def _test_mutateResidue():
+def test_mutateResidue():
     from moleculekit.tools.mutate import RESIDUE_ORDER, BACKBONE_ATOMS
 
     mol = MOL3PTB.copy()
@@ -598,7 +598,7 @@ def _test_mutateResidue():
     assert np.all(np.diff(new_idx) == 1), "Residue atoms are not contiguous"
 
 
-def _test_mutateResidue_to_gly():
+def test_mutateResidue_to_gly():
     mol = MOL3PTB.copy()
     sel = "protein and resid 158"
 
@@ -609,7 +609,7 @@ def _test_mutateResidue_to_gly():
     assert all(mol.resname[new_idx] == "GLY")
 
 
-def _test_mutateResidue_to_ala():
+def test_mutateResidue_to_ala():
     mol = MOL3PTB.copy()
     sel = "protein and resid 158"
 
@@ -623,7 +623,7 @@ def _test_mutateResidue_to_ala():
     assert not np.allclose(mol.coords[cb_idx, :, mol.frame], 0.0)
 
 
-def _test_mutateResidue_to_pro():
+def test_mutateResidue_to_pro():
     mol = MOL3PTB.copy()
     sel = "protein and resid 158"
 
@@ -636,7 +636,7 @@ def _test_mutateResidue_to_pro():
     assert all(mol.resname[new_idx] == "PRO")
 
 
-def _test_mutateResidue_rotamer_modes():
+def test_mutateResidue_rotamer_modes():
     from moleculekit.tools.mutate import RESIDUE_ORDER
 
     # Test "first" mode
@@ -652,7 +652,7 @@ def _test_mutateResidue_rotamer_modes():
     assert set(mol2.name[new_idx2]) == set(RESIDUE_ORDER["TRP"])
 
 
-def _test_mutateResidue_preserves_neighbors():
+def test_mutateResidue_preserves_neighbors():
     mol = MOL3PTB.copy()
     sel = "protein and resid 158"
 
@@ -675,7 +675,7 @@ def _test_mutateResidue_preserves_neighbors():
     )
 
 
-def _test_mutateResidue_all_residues():
+def test_mutateResidue_all_residues():
     from moleculekit.tools.mutate import RESIDUE_ORDER
 
     for target in sorted(RESIDUE_ORDER.keys()):

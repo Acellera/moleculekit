@@ -1,7 +1,7 @@
 from moleculekit.projections.metricsecondarystructure import MetricSecondaryStructure
 
 
-def _test_2hbb():
+def test_2hbb():
     from moleculekit.molecule import Molecule
     import numpy as np
 
@@ -23,7 +23,7 @@ def _test_2hbb():
     # fmt: on
 
 
-def _test_3ptb():
+def test_3ptb():
     from moleculekit.molecule import Molecule
     import numpy as np
 

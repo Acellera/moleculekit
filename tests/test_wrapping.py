@@ -5,7 +5,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_orthogonal_wrapping():
+def test_orthogonal_wrapping():
     mol = Molecule(os.path.join(curr_dir, "test_wrapping", "structure.prmtop"))
     mol.read(os.path.join(curr_dir, "test_wrapping", "output.xtc"))
     mol.wrap("protein or resname ACE NME")
@@ -23,7 +23,7 @@ def _test_orthogonal_wrapping():
     assert np.linalg.norm(mol.coords[:, :, 0].mean(axis=0) - newcenter) < 1
 
 
-def _test_triclinic_wrapping():
+def test_triclinic_wrapping():
     refdir = os.path.join(curr_dir, "test_readers", "dodecahedral_box")
     mol = Molecule(os.path.join(refdir, "3ptb_dodecahedron.psf"))
 
@@ -43,7 +43,7 @@ def _test_triclinic_wrapping():
     assert np.max(np.abs(mol.coords - refcoords.coords)) < 1e-2
 
 
-def _test_wrap_with_zero_box_is_noop():
+def test_wrap_with_zero_box_is_noop():
     import logging
 
     mol = Molecule(os.path.join(curr_dir, "test_wrapping", "structure.prmtop"))

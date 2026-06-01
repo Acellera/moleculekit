@@ -8,48 +8,48 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_pdb():
+def test_pdb():
     for f in glob(os.path.join(curr_dir, "test_readers", "*.pdb")):
         _ = Molecule(f)
     for f in glob(os.path.join(curr_dir, "pdb", "*.pdb")):
         _ = Molecule(f)
 
 
-def _test_pdbqt():
+def test_pdbqt():
     _ = Molecule(os.path.join(curr_dir, "test_readers", "3ptb.pdbqt"))
 
 
-def _test_psf():
+def test_psf():
     _ = Molecule(os.path.join(curr_dir, "test_readers", "4RWS", "structure.psf"))
 
 
-def _test_xtc():
+def test_xtc():
     _ = Molecule(os.path.join(curr_dir, "test_readers", "4RWS", "traj.xtc"))
 
 
-def _test_combine_topo_traj():
+def test_combine_topo_traj():
     testfolder = os.path.join(curr_dir, "test_readers", "4RWS")
     mol = Molecule(os.path.join(testfolder, "structure.psf"))
     mol.read(os.path.join(testfolder, "traj.xtc"))
 
 
-def _test_prmtop():
+def test_prmtop():
     testfolder = os.path.join(curr_dir, "test_readers", "3AM6")
     _ = Molecule(os.path.join(testfolder, "structure.prmtop"))
 
 
-def _test_crd():
+def test_crd():
     testfolder = os.path.join(curr_dir, "test_readers", "3AM6")
     _ = Molecule(os.path.join(testfolder, "structure.crd"))
 
 
-def _test_mol2():
+def test_mol2():
     testfolder = os.path.join(curr_dir, "test_readers", "3L5E")
     _ = Molecule(os.path.join(testfolder, "protein.mol2"))
     _ = Molecule(os.path.join(testfolder, "ligand.mol2"))
 
 
-def _test_sdf():
+def test_sdf():
     import pickle
 
     sdf_file = os.path.join(curr_dir, "test_readers", "benzamidine-3PTB-pH7.sdf")
@@ -81,37 +81,37 @@ def _test_sdf():
     assert np.array_equal(mol.bondtype, ref_data["bondtype"])
 
 
-def _test_gjf():
+def test_gjf():
     testfolder = os.path.join(curr_dir, "test_readers", "3L5E")
     _ = Molecule(os.path.join(testfolder, "ligand.gjf"))
 
 
-def _test_xyz():
+def test_xyz():
     testfolder = os.path.join(curr_dir, "test_readers", "3L5E")
     _ = Molecule(os.path.join(testfolder, "ligand.xyz"))
 
 
-def _test_MDTRAJTOPOread():
+def test_MDTRAJTOPOread():
     testfolder = os.path.join(curr_dir, "test_readers", "3L5E")
     _ = Molecule(os.path.join(testfolder, "ligand.mol2"))
 
 
-def _test_mae():
+def test_mae():
     for f in glob(os.path.join(curr_dir, "test_readers", "*.mae")):
         _ = Molecule(f)
 
 
-def _test_append_trajectories():
+def test_append_trajectories():
     testfolder = os.path.join(curr_dir, "test_readers", "CMYBKIX")
     mol = Molecule(os.path.join(testfolder, "filtered.pdb"))
     mol.read(glob(os.path.join(testfolder, "*.xtc")))
 
 
-def _test_missing_crystal_info():
+def test_missing_crystal_info():
     _ = Molecule(os.path.join(curr_dir, "test_readers", "weird-cryst.pdb"))
 
 
-def _test_missing_occu_beta():
+def test_missing_occu_beta():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "opm_missing_occu_beta.pdb"))
     assert np.all(mol.occupancy[:2141] != 0)
     assert np.all(mol.occupancy[2141:] == 0)
@@ -119,13 +119,13 @@ def _test_missing_occu_beta():
     assert np.all(mol.beta[2141:] == 0)
 
 
-def _test_dcd():
+def test_dcd():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "dcd", "1kdx_0.pdb"))
     mol.read(os.path.join(curr_dir, "test_readers", "dcd", "1kdx.dcd"))
     assert mol.coords.shape == (1809, 3, 17)
 
 
-def _test_dcd_into_prmtop():
+def test_dcd_into_prmtop():
     mol = Molecule(
         os.path.join(curr_dir, "test_readers", "dialanine", "structure.prmtop")
     )
@@ -133,7 +133,7 @@ def _test_dcd_into_prmtop():
     assert mol.numFrames == 2
 
 
-def _test_dcd_frames():
+def test_dcd_frames():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "dcd", "1kdx_0.pdb"))
     mol.read(os.path.join(curr_dir, "test_readers", "dcd", "1kdx.dcd"))
     tmpcoo = mol.coords.copy()
@@ -143,7 +143,7 @@ def _test_dcd_frames():
     ), "Specific frame reading not working"
 
 
-def _test_xtc_frames():
+def test_xtc_frames():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "4RWS", "structure.pdb"))
     mol.read(os.path.join(curr_dir, "test_readers", "4RWS", "traj.xtc"))
     tmpcoo = mol.coords.copy()
@@ -153,7 +153,7 @@ def _test_xtc_frames():
     ), "Specific frame reading not working"
 
 
-def _test_acemd3_xtc_fstep():
+def test_acemd3_xtc_fstep():
     from moleculekit.util import tempname
 
     mol = Molecule(
@@ -221,7 +221,7 @@ def _test_acemd3_xtc_fstep():
     assert np.array_equal(mol.time, mol2.time)
 
 
-def _test_gromacs_top():
+def test_gromacs_top():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "gromacs.top"))
     assert np.array_equal(mol.name, ["C1", "O2", "N3", "H4", "H5", "N6", "H7", "H8"])
     assert np.array_equal(mol.atomtype, ["C", "O", "NT", "H", "H", "NT", "H", "H"])
@@ -269,19 +269,19 @@ def _test_gromacs_top():
     assert len(mol.impropers) == 0
 
 
-def _test_mmcif_single_frame():
+def test_mmcif_single_frame():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "1ffk.cif"))
     assert mol.numAtoms == 64281
     assert mol.numFrames == 1
 
 
-def _test_mmcif_multi_frame():
+def test_mmcif_multi_frame():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "1j8k.cif"))
     assert mol.numAtoms == 1402
     assert mol.numFrames == 20
 
 
-def _test_mmcif_ligand():
+def test_mmcif_ligand():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "URF.cif"))
     assert mol.numAtoms == 12, mol.numAtoms
     assert mol.numFrames == 1
@@ -295,7 +295,7 @@ def _test_mmcif_ligand():
     assert mol.numFrames == 1
 
 
-def _test_multiple_file_fileloc():
+def test_multiple_file_fileloc():
     mol = Molecule(
         os.path.join(curr_dir, "test_readers", "multi-traj", "structure.pdb")
     )
@@ -308,7 +308,7 @@ def _test_multiple_file_fileloc():
     print("Correct fileloc shape with multiple file reading.")
 
 
-def _test_topo_overwriting():
+def test_topo_overwriting():
     # Testing overwriting of topology fields
     mol = Molecule(os.path.join(curr_dir, "test_readers", "multi-topo", "mol.psf"))
     atomtypes = mol.atomtype.copy()
@@ -330,17 +330,17 @@ def _test_topo_overwriting():
     print("Merging of topology fields works")
 
 
-def _test_integer_resnames():
+def test_integer_resnames():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "errors.pdb"))
     assert np.unique(mol.resname) == "007"
 
 
-def _test_star_indexes():
+def test_star_indexes():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "errors.pdb"))
     assert np.all(mol.serial == np.arange(1, mol.numAtoms + 1))
 
 
-def _test_xsc():
+def test_xsc():
     mol1 = Molecule(os.path.join(curr_dir, "test_readers", "test1.xsc"))
     ref1box = np.array([[81.67313], [75.81903], [75.02757]], dtype=np.float32)
     ref1step = np.array([2])
@@ -360,7 +360,7 @@ def _test_xsc():
     assert np.array_equal(mol1.step, ref1step)
 
 
-def _test_pdb_element_guessing():
+def test_pdb_element_guessing():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "errors.pdb"))
     refelem = np.array(
         [
@@ -443,7 +443,7 @@ def _test_pdb_element_guessing():
     ), f"Failed guessing {refelem}, got {mol.element}"
 
 
-def _test_pdb_charges():
+def test_pdb_charges():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "errors.pdb"))
     refcharge = np.array(
         [-1, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype=np.int32
@@ -451,7 +451,7 @@ def _test_pdb_charges():
     assert np.array_equal(mol.formalcharge, refcharge)
 
 
-def _test_prepi():
+def test_prepi():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "benzamidine.prepi"))
     assert np.array_equal(
         mol.name,
@@ -541,7 +541,7 @@ def _test_prepi():
     )
 
 
-def _test_rtf():
+def test_rtf():
     mol = Molecule(os.path.join(curr_dir, "test_readers", "mol.rtf"))
     assert np.array_equal(
         mol.element,
@@ -692,7 +692,7 @@ def _test_rtf():
     assert np.array_equal(mol.impropers, np.array([[6, 0, 12, 13]]))
 
 
-def _test_sdf2():
+def test_sdf2():
     from moleculekit.readers import sdf_generator
 
     sdf_file = os.path.join(curr_dir, "test_readers", "fda_drugs_light.sdf")
@@ -714,7 +714,7 @@ def _test_sdf2():
         k += 1
 
 
-def _test_broken_pdbs():
+def test_broken_pdbs():
     from glob import glob
 
     for ff in glob(os.path.join(curr_dir, "test_readers", "broken-pdbs") + "/*.pdb"):
@@ -722,7 +722,7 @@ def _test_broken_pdbs():
         assert mol.numAtoms > 0
 
 
-def _test_netcdf():
+def test_netcdf():
     from glob import glob
 
     for ff in glob(os.path.join(curr_dir, "test_readers", "netcdf") + "/*.nc"):
@@ -730,7 +730,7 @@ def _test_netcdf():
         assert mol.numAtoms > 0 and mol.numFrames > 0
 
 
-def _test_trr():
+def test_trr():
     from glob import glob
 
     for ff in glob(os.path.join(curr_dir, "test_readers", "trr") + "/*.trr"):
@@ -738,7 +738,7 @@ def _test_trr():
         assert mol.coords.shape == (22, 3, 501)
 
 
-def _test_binpos():
+def test_binpos():
     from glob import glob
 
     for ff in glob(os.path.join(curr_dir, "test_readers", "trr") + "/*.binpos"):
@@ -747,7 +747,7 @@ def _test_binpos():
 
 
 @pytest.mark.parametrize("pdbid", ["3ptb", "3hyd", "6a5j", "5vbl", "7q5b"])
-def _test_bcif_cif(pdbid):
+def test_bcif_cif(pdbid):
     ciffile = os.path.join(curr_dir, "pdb", f"{pdbid.lower()}.cif")
     bciffile = os.path.join(curr_dir, "pdb", f"{pdbid.lower()}.bcif.gz")
     mol1 = Molecule(ciffile)
@@ -761,7 +761,7 @@ def _test_bcif_cif(pdbid):
 
 
 @pytest.mark.parametrize("pdbid", ["3ptb", "3hyd", "6a5j", "5vbl", "7q5b"])
-def _test_bcif_pdb(pdbid):
+def test_bcif_pdb(pdbid):
     from moleculekit.molecule import calculateUniqueBonds
 
     ciffile = os.path.join(curr_dir, "pdb", f"{pdbid.lower()}.bcif.gz")
@@ -811,7 +811,7 @@ def _test_bcif_pdb(pdbid):
         ("1u5u", 4),  # 2x HEM iron coordinated by TYR-OH and HOH (chains A, B)
     ],
 )
-def _test_bcif_metal_coordination_mc(pdbid, expected):
+def test_bcif_metal_coordination_mc(pdbid, expected):
     """bcif reader should emit 'mc' bondtype for struct_conn metalc rows
     rather than dropping them."""
     bciffile = os.path.join(curr_dir, "pdb", f"{pdbid.lower()}.bcif.gz")
@@ -836,7 +836,7 @@ def _test_bcif_metal_coordination_mc(pdbid, expected):
         ("1u5u", 4),
     ],
 )
-def _test_pdb_link_metal_coordination_mc(pdbid, expected):
+def test_pdb_link_metal_coordination_mc(pdbid, expected):
     """PDB reader should emit 'mc' bondtype for LINK records touching metal
     elements; non-metal LINKs stay 'un'."""
     pdbfile = os.path.join(curr_dir, "pdb", f"{pdbid.lower()}.pdb")
@@ -845,7 +845,7 @@ def _test_pdb_link_metal_coordination_mc(pdbid, expected):
     assert n_mc == expected, f"{pdbid}: expected {expected} mc bonds, got {n_mc}"
 
 
-def _test_bcif_mc_round_trip():
+def test_bcif_mc_round_trip():
     """Writing a Molecule with 'mc' bonds to bcif/CIF and re-reading must
     preserve the 'mc' bondtype (via struct_conn conn_type_id=metalc)."""
     import tempfile
@@ -866,7 +866,7 @@ def _test_bcif_mc_round_trip():
 
 @pytest.mark.parametrize("pdbid", ["3ptb", "3hyd", "6a5j", "5vbl", "7q5b"])
 @pytest.mark.parametrize("ext", ["bcif", "bcif.gz"])
-def _test_bcif_write(pdbid, ext):
+def test_bcif_write(pdbid, ext):
     import tempfile
 
     ciffile = os.path.join(curr_dir, "pdb", f"{pdbid.lower()}.cif")
@@ -897,7 +897,7 @@ def _test_bcif_write(pdbid, ext):
     )
 
 
-def _test_inpcrd():
+def test_inpcrd():
     import tempfile
 
     mol = Molecule(

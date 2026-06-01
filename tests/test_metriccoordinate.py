@@ -11,7 +11,7 @@ _MOL = Molecule(
 _MOL.read(os.path.join(curr_dir, "test_projections", "trajectory", "traj.xtc"))
 
 
-def _test_project():
+def test_project():
     ref = _MOL.copy()
     ref.coords = np.atleast_3d(ref.coords[:, :, 0])
     metr = MetricCoordinate("protein and name CA")
@@ -47,7 +47,7 @@ def _test_project():
     ), "Coordinates calculation is broken"
 
 
-def _test_project_align():
+def test_project_align():
     ref = _MOL.copy()
     ref.coords = np.atleast_3d(ref.coords[:, :, 0])
     metr = MetricCoordinate("protein and name CA", ref)
@@ -83,7 +83,7 @@ def _test_project_align():
     ), "Coordinates calculation is broken"
 
 
-def _test_com_coordinates():
+def test_com_coordinates():
     from moleculekit.molecule import Molecule
     from moleculekit.periodictable import periodictable
 

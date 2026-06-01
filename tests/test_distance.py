@@ -1,4 +1,4 @@
-def _test_cdist():
+def test_cdist():
     import numpy as np
     from moleculekit.distance import cdist
 
@@ -17,7 +17,7 @@ def _test_cdist():
     assert np.allclose(dists, refdists)
 
 
-def _test_pdist():
+def test_pdist():
     import numpy as np
     from moleculekit.distance import pdist
 
@@ -53,7 +53,7 @@ def _make_synthetic_molecule(coords, names, elements, bonds=None):
     return mol
 
 
-def _test_find_clashes_synthetic_two_atoms():
+def test_find_clashes_synthetic_two_atoms():
     """Two carbons closer than 2*r_vdw - overlap should clash; further apart
     they should not."""
     import numpy as np
@@ -77,7 +77,7 @@ def _test_find_clashes_synthetic_two_atoms():
     assert len(find_clashes(mol, guess_bonds=False)[0]) == 0
 
 
-def _test_find_clashes_threshold_overlap():
+def test_find_clashes_threshold_overlap():
     """The ``overlap`` parameter controls the VdW tolerance."""
     from moleculekit.distance import find_clashes
 
@@ -93,7 +93,7 @@ def _test_find_clashes_threshold_overlap():
     assert len(find_clashes(mol, overlap=0.0, **kw)[0]) == 1  # any overlap
 
 
-def _test_find_clashes_excludes_bonded():
+def test_find_clashes_excludes_bonded():
     """Two carbons at 1.54 Å (C-C bond length) must not be flagged when
     they are bonded, but must be flagged when they are not."""
     import numpy as np
@@ -111,7 +111,7 @@ def _test_find_clashes_excludes_bonded():
     assert len(find_clashes(mol_bonded, exclude_bonded=False, exclude_14=False)[0]) == 1
 
 
-def _test_find_clashes_excludes_13():
+def test_find_clashes_excludes_13():
     """Three carbons in a C-C-C angle geometry: the 1-3 pair is at
     ~2.5 Å and must not be flagged by default."""
     import math
@@ -137,7 +137,7 @@ def _test_find_clashes_excludes_13():
     assert len(clashes) == 3
 
 
-def _test_find_clashes_ordered_by_overlap():
+def test_find_clashes_ordered_by_overlap():
     """Results should be returned sorted by overlap severity, worst first."""
     from moleculekit.distance import find_clashes
 
@@ -159,7 +159,7 @@ def _test_find_clashes_ordered_by_overlap():
     assert all(a < b for a, b in clashes)
 
 
-def _test_find_clashes_self_vs_cross_selection():
+def test_find_clashes_self_vs_cross_selection():
     """Cross-selection mode should restrict clashes to the cartesian product
     of sel1 x sel2, while self-mode returns unordered pairs within sel1."""
     import numpy as np
@@ -182,7 +182,7 @@ def _test_find_clashes_self_vs_cross_selection():
     assert sorted(map(tuple, cross_clashes)) == [(0, 1)]
 
 
-def _test_find_clashes_selection_input_types():
+def test_find_clashes_selection_input_types():
     """Mask/str/indices/None must produce identical results."""
     import numpy as np
     from moleculekit.molecule import Molecule
@@ -199,7 +199,7 @@ def _test_find_clashes_selection_input_types():
     assert sorted(map(tuple, a)) == sorted(map(tuple, b)) == sorted(map(tuple, c))
 
 
-def _test_find_clashes_empty_selection():
+def test_find_clashes_empty_selection():
     """Empty selections should return empty outputs without errors."""
     from moleculekit.distance import find_clashes
 
@@ -214,7 +214,7 @@ def _test_find_clashes_empty_selection():
     assert overlaps.shape == (0,)
 
 
-def _test_find_clashes_3ptb_calcium_coordination():
+def test_find_clashes_3ptb_calcium_coordination():
     """3ptb has a Ca2+ ion coordinated by 6 nearby oxygens.  The bcif/CIF
     reader records these as 'mc' (metal-coordination) bonds in mol.bonds,
     so they are filtered out by the bonded-exclusion step in find_clashes
@@ -243,7 +243,7 @@ def _test_find_clashes_3ptb_calcium_coordination():
     assert not any(involves_ca)
 
 
-def _test_find_clashes_guess_bonds_flag():
+def test_find_clashes_guess_bonds_flag():
     """With ``guess_bonds=False`` only bonds present in ``mol.bonds`` are
     used, so covalent contacts missing from the bond table (e.g. two
     overlapping atoms not connected in ``mol.bonds``) are flagged as
@@ -262,7 +262,7 @@ def _test_find_clashes_guess_bonds_flag():
     assert len(find_clashes(mol, guess_bonds=False)[0]) == 1
 
 
-def _test_find_clashes_disulfide_not_flagged():
+def test_find_clashes_disulfide_not_flagged():
     """3ptb has six disulfide bridges.  Even though SG-SG is closer than the
     VdW sum (2.05 Å vs 3.6 Å), they must not be reported as clashes
     because the bond guesser picks them up."""
@@ -274,7 +274,7 @@ def _test_find_clashes_disulfide_not_flagged():
     assert len(clashes) == 0
 
 
-def _test_find_clashes_exclude_14_flag():
+def test_find_clashes_exclude_14_flag():
     """Disabling exclude_14 reveals 1-4 partners that are closer than the
     VdW-overlap cutoff, so the count should only ever go up (never down)."""
     from moleculekit.molecule import Molecule
@@ -291,7 +291,7 @@ def _test_find_clashes_exclude_14_flag():
     assert default_set.issubset(no_14_set)
 
 
-def _test_find_clashes_return_dtypes():
+def test_find_clashes_return_dtypes():
     """Return types and shapes should match the documented contract."""
     import numpy as np
     from moleculekit.distance import find_clashes

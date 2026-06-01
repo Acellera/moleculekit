@@ -44,7 +44,7 @@ def _make_slot_mol(name="A", element="C"):
     return mol
 
 
-def _test_hash_is_stable_for_same_mol(small_mol):
+def test_hash_is_stable_for_same_mol(small_mol):
     h1 = topo_hash(small_mol)
     h2 = topo_hash(small_mol)
     assert h1 == h2
@@ -52,41 +52,41 @@ def _test_hash_is_stable_for_same_mol(small_mol):
     assert len(h1) == 40
 
 
-def _test_hash_is_stable_across_copy(small_mol):
+def test_hash_is_stable_across_copy(small_mol):
     assert topo_hash(small_mol) == topo_hash(small_mol.copy())
 
 
-def _test_hash_changes_on_topology_change(small_mol):
+def test_hash_changes_on_topology_change(small_mol):
     h0 = topo_hash(small_mol)
     small_mol.resname[0] = "ACE"
     assert topo_hash(small_mol) != h0
 
 
-def _test_hash_changes_on_formalcharge_change(small_mol):
+def test_hash_changes_on_formalcharge_change(small_mol):
     h0 = topo_hash(small_mol)
     small_mol.formalcharge[0] = 1
     assert topo_hash(small_mol) != h0
 
 
-def _test_hash_changes_on_bondtype_change(small_mol):
+def test_hash_changes_on_bondtype_change(small_mol):
     h0 = topo_hash(small_mol)
     small_mol.bondtype[0] = "2"
     assert topo_hash(small_mol) != h0
 
 
-def _test_hash_unchanged_when_only_coords_change(small_mol):
+def test_hash_unchanged_when_only_coords_change(small_mol):
     h0 = topo_hash(small_mol)
     small_mol.coords[:] = np.random.rand(3, 3, 1).astype(np.float32)
     assert topo_hash(small_mol) == h0
 
 
-def _test_hash_unchanged_when_only_partial_charge_changes(small_mol):
+def test_hash_unchanged_when_only_partial_charge_changes(small_mol):
     h0 = topo_hash(small_mol)
     small_mol.charge[:] = [0.1, -0.1, -0.5]
     assert topo_hash(small_mol) == h0
 
 
-def _test_coords_to_bytes_layout(small_mol):
+def test_coords_to_bytes_layout(small_mol):
     small_mol.coords = np.arange(3 * 3 * 2, dtype=np.float32).reshape(3, 3, 2)
     blob = coords_to_bytes(small_mol)
     arr = np.frombuffer(blob, dtype="<f4")
@@ -95,7 +95,7 @@ def _test_coords_to_bytes_layout(small_mol):
     assert np.allclose(arr[: expected_frame0.size], expected_frame0)
 
 
-def _test_register_returns_uuid():
+def test_register_returns_uuid():
     reg = Registry()
     mol = _make_slot_mol()
     uid = reg.register(mol)
@@ -104,7 +104,7 @@ def _test_register_returns_uuid():
     assert uid in reg.slots
 
 
-def _test_register_dedupes_by_identity():
+def test_register_dedupes_by_identity():
     reg = Registry()
     mol = _make_slot_mol()
     uid1 = reg.register(mol)
@@ -113,7 +113,7 @@ def _test_register_dedupes_by_identity():
     assert len(reg.slots) == 1
 
 
-def _test_register_different_object_same_content_creates_new_slot():
+def test_register_different_object_same_content_creates_new_slot():
     reg = Registry()
     mol1 = _make_slot_mol()
     mol2 = _make_slot_mol()
@@ -123,7 +123,7 @@ def _test_register_different_object_same_content_creates_new_slot():
     assert len(reg.slots) == 2
 
 
-def _test_register_stores_initial_snapshot_and_topo_hash():
+def test_register_stores_initial_snapshot_and_topo_hash():
     reg = Registry()
     mol = _make_slot_mol()
     uid = reg.register(mol)
@@ -133,7 +133,7 @@ def _test_register_stores_initial_snapshot_and_topo_hash():
     assert slot.topo_hash == topo_hash(mol)
 
 
-def _test_remove_drops_slot():
+def test_remove_drops_slot():
     reg = Registry()
     mol = _make_slot_mol()
     uid = reg.register(mol)
@@ -141,12 +141,12 @@ def _test_remove_drops_slot():
     assert uid not in reg.slots
 
 
-def _test_remove_unknown_slot_is_noop():
+def test_remove_unknown_slot_is_noop():
     reg = Registry()
     reg.remove("NOTHERE")
 
 
-def _test_diff_detects_coords_only_change():
+def test_diff_detects_coords_only_change():
     reg = Registry()
     mol = _make_slot_mol()
     uid = reg.register(mol)
@@ -158,7 +158,7 @@ def _test_diff_detects_coords_only_change():
     assert slot_uid == uid
 
 
-def _test_diff_detects_topology_change():
+def test_diff_detects_topology_change():
     reg = Registry()
     mol = _make_slot_mol()
     reg.register(mol)
@@ -168,7 +168,7 @@ def _test_diff_detects_topology_change():
     assert changes[0][0] == "topology"
 
 
-def _test_diff_returns_empty_when_unchanged():
+def test_diff_returns_empty_when_unchanged():
     reg = Registry()
     mol = _make_slot_mol()
     reg.register(mol)
@@ -176,14 +176,14 @@ def _test_diff_returns_empty_when_unchanged():
     assert reg.diff_and_snapshot() == []
 
 
-def _test_diff_after_register_returns_empty():
+def test_diff_after_register_returns_empty():
     reg = Registry()
     mol = _make_slot_mol()
     reg.register(mol)
     assert reg.diff_and_snapshot() == []
 
 
-def _test_concurrent_register_remove_is_safe():
+def test_concurrent_register_remove_is_safe():
     reg = Registry()
     errors = []
 
@@ -204,7 +204,7 @@ def _test_concurrent_register_remove_is_safe():
     assert errors == []
 
 
-def _test_slot_dataclass_has_label_and_visible():
+def test_slot_dataclass_has_label_and_visible():
     reg = Registry()
     mol = _make_slot_mol()
     uid = reg.register(mol)

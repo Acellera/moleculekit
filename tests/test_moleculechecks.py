@@ -1,7 +1,7 @@
 from moleculekit.molecule import Molecule
 
 
-def _test_optimized_ligands():
+def test_optimized_ligands():
     from moleculekit.tools.moleculechecks import isLigandOptimized
 
     mol = Molecule("3ptb")
@@ -12,7 +12,7 @@ def _test_optimized_ligands():
     assert not isLigandOptimized(mol)
 
 
-def _test_docked_ligands():
+def test_docked_ligands():
     from moleculekit.tools.moleculechecks import isLigandDocked
 
     prot = Molecule("3ptb")
@@ -25,7 +25,7 @@ def _test_docked_ligands():
     assert not isLigandDocked(prot, lig)
 
 
-def _test_protonated_protein():
+def test_protonated_protein():
     from moleculekit.tools.moleculechecks import isProteinProtonated
     from moleculekit.tools.preparation import systemPrepare
 

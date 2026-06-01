@@ -27,7 +27,7 @@ def _mol():
     return mol
 
 
-def _test_radii(_mol):
+def test_radii(_mol):
     from moleculekit.tools.voxeldescriptors import _getChannelRadii
 
     sigmas = _getChannelRadii(_mol.element)
@@ -38,7 +38,7 @@ def _test_radii(_mol):
     assert np.allclose(sigmas, refsigmas)
 
 
-def _test_celecoxib():
+def test_celecoxib():
     from moleculekit.smallmol.smallmol import SmallMol
     from moleculekit.tools.voxeldescriptors import getVoxelDescriptors
 
@@ -53,7 +53,7 @@ def _test_celecoxib():
     assert np.array_equal(nvoxels, refnvoxels)
 
 
-def _test_ledipasvir():
+def test_ledipasvir():
     from moleculekit.smallmol.smallmol import SmallMol
     from moleculekit.tools.voxeldescriptors import getVoxelDescriptors
 
@@ -68,7 +68,7 @@ def _test_ledipasvir():
     assert np.array_equal(nvoxels, refnvoxels)
 
 
-def _test_old_voxelization():
+def test_old_voxelization():
     from moleculekit.molecule import Molecule
     from moleculekit.tools.voxeldescriptors import getVoxelDescriptors
 
@@ -90,7 +90,7 @@ def _test_old_voxelization():
 @pytest.mark.skipif(
     sys.platform.startswith("win"), reason="Windows OBabel fails at atom typing"
 )
-def _test_featC(_mol):
+def test_featC(_mol):
     from moleculekit.tools.voxeldescriptors import getVoxelDescriptors
 
     features, centers, nvoxels = getVoxelDescriptors(_mol, method="C", version=2)
@@ -107,7 +107,7 @@ def _test_featC(_mol):
 @pytest.mark.skipif(
     sys.platform.startswith("win"), reason="Windows OBabel fails at atom typing"
 )
-def _test_channels_with_metals():
+def test_channels_with_metals():
     from moleculekit.molecule import Molecule, mol_equal
     from moleculekit.tools.voxeldescriptors import getChannels
 

@@ -3,7 +3,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _testSimpleInitialization(tmp_path):
+def testSimpleInitialization(tmp_path):
     """Test case -  Simple initialization of a data category and data block"""
     #
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader
@@ -63,7 +63,7 @@ def _testSimpleInitialization(tmp_path):
             print("Row list                 %r\n" % repr(rList))
 
 
-def _testWriteDataFile(tmp_path):
+def testWriteDataFile(tmp_path):
     """Test case -  write data file"""
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
     from moleculekit.pdbx.reader.PdbxContainers import DataContainer, DataCategory
@@ -94,7 +94,7 @@ def _testWriteDataFile(tmp_path):
     ofh.close()
 
 
-def _testUpdateDataFile(tmp_path):
+def testUpdateDataFile(tmp_path):
     """Test case -  update data file"""
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
@@ -149,7 +149,7 @@ def _testUpdateDataFile(tmp_path):
     ofh.close()
 
 
-def _testReadDataFile():
+def testReadDataFile():
     """Test case -  read data file"""
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader
 
@@ -160,7 +160,7 @@ def _testReadDataFile():
     ifh.close()
 
 
-def _testReadWriteDataFile(tmp_path):
+def testReadWriteDataFile(tmp_path):
     """Test case -  data file read write test"""
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter

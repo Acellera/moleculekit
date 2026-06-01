@@ -113,7 +113,7 @@ def _pdbmols():
 
 @pytest.mark.parametrize("pdbid", _PDBIDS)
 @pytest.mark.parametrize("sel", _SELECTIONS)
-def _test_atomselect(pdbid, sel, _pdbmols):
+def test_atomselect(pdbid, sel, _pdbmols):
     from moleculekit.atomselect.analyze import analyze
     from moleculekit.atomselect.atomselect import atomselect
     import pickle
@@ -183,7 +183,7 @@ def _test_atomselect(pdbid, sel, _pdbmols):
             pickle.dump(results, f)
 
 
-def _test_empty_molecule():
+def test_empty_molecule():
     mol = Molecule()
     selections = [
         "all",
@@ -214,7 +214,7 @@ def _test_empty_molecule():
         assert res.dtype == bool, f"Expected bool dtype for '{sel}', got {res.dtype}"
 
 
-def _test_single_atom_molecule():
+def test_single_atom_molecule():
     mol = Molecule()
     mol.empty(1)
     mol.record[:] = "ATOM"
@@ -266,7 +266,7 @@ def _test_single_atom_molecule():
         assert not res[0], f"Expected False for '{sel}'"
 
 
-def _test_numprop_list_equality():
+def test_numprop_list_equality():
     pdb = os.path.join(curr_dir, "test_atomselect", "test.pdb")
     mol = Molecule(pdb)
     selections = ["beta 1 2", "beta 2 3"]
@@ -329,7 +329,7 @@ _PARSER_SELECTIONS = [
 
 
 @pytest.mark.parametrize("sel", _PARSER_SELECTIONS)
-def _test_parser(sel):
+def test_parser(sel):
     from moleculekit.atomselect._languageparser import parser
 
     # Parse an expression

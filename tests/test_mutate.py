@@ -19,7 +19,7 @@ _PHE_BOND_LIMITS = [
 ]
 
 
-def _test_mutate_gly216_to_phe_bond_lengths():
+def test_mutate_gly216_to_phe_bond_lengths():
     """3PTB chain A GLY 216 → PHE: covalent geometry after mutation (with minimize)."""
     mol = Molecule("3ptb")
     sel = (mol.chain == "A") & (mol.resid == 216) & (mol.resname == "GLY")
@@ -33,7 +33,7 @@ def _test_mutate_gly216_to_phe_bond_lengths():
         assert lo <= d <= hi, f"bond {a1}-{a2} exploded to {d:.3f} Å"
 
 
-def _test_minimize_resolves_synthetic_clash():
+def test_minimize_resolves_synthetic_clash():
     """Synthetic two-PHE clash: minimize_soft_potential must resolve the
     overlap by rotating sidechain dihedrals, while keeping bond lengths
     within chemically sensible bounds and leaving all non-mobile atoms
@@ -129,7 +129,7 @@ def _test_minimize_resolves_synthetic_clash():
     )
 
 
-def _test_minimize_soft_potential_restrain_bonded():
+def test_minimize_soft_potential_restrain_bonded():
     """``minimize_soft_potential`` on a real mutation must:
 
     1. Leave every non-mobile atom exactly untouched (mass = 0).
@@ -178,7 +178,7 @@ def _test_minimize_soft_potential_restrain_bonded():
         )
 
 
-def _test_mutate_chi_angles_end_to_end():
+def test_mutate_chi_angles_end_to_end():
     """End-to-end check on ``mol``: chi dihedrals measured on the final
     structure should match the library rotamer.
 
@@ -228,7 +228,7 @@ def _test_mutate_chi_angles_end_to_end():
         )
 
 
-def _test_apply_chi_angles_matches_library():
+def test_apply_chi_angles_matches_library():
     """``_apply_chi_angles`` must set every CHI dihedral to the target value.
 
     Chi rotations are measured on the aligned template *before* insertion,

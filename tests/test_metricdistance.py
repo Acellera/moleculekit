@@ -34,7 +34,7 @@ def _mol_skipped():
     return mol
 
 
-def _test_contacts(_mol):
+def test_contacts(_mol):
     metr = MetricDistance(
         "protein and name CA",
         "resname MOL and noh",
@@ -51,7 +51,7 @@ def _test_contacts(_mol):
     assert np.allclose(data, refdata, atol=1e-3), "Contact calculation is broken"
 
 
-def _test_atomselects(_mol_skipped):
+def test_atomselects(_mol_skipped):
     # String atomselection
     metr = MetricSelfDistance("protein and name CA", metric="contacts", threshold=8)
     data = metr.project(_mol_skipped)
@@ -96,7 +96,7 @@ def _test_atomselects(_mol_skipped):
     )
 
 
-def _test_distances_trivial():
+def test_distances_trivial():
     from moleculekit.molecule import Molecule
     import numpy as np
 
@@ -179,7 +179,7 @@ def _test_distances_trivial():
     ), "Trivial distance calculation has broken ordering"
 
 
-def _test_distances(_mol):
+def test_distances(_mol):
     metr = MetricDistance(
         "protein and name CA",
         "resname MOL and noh",
@@ -193,7 +193,7 @@ def _test_distances(_mol):
     assert np.allclose(data, refdata, atol=1e-3), "Distance calculation is broken"
 
 
-def _test_mindistances(_mol):
+def test_mindistances(_mol):
     metr = MetricDistance(
         "protein and noh",
         "resname MOL and noh",
@@ -210,7 +210,7 @@ def _test_mindistances(_mol):
     ), "Minimum distance calculation is broken"
 
 
-def _test_mindistances_truncate(_mol):
+def test_mindistances_truncate(_mol):
     metr = MetricDistance(
         "protein and noh",
         "resname MOL and noh",
@@ -228,7 +228,7 @@ def _test_mindistances_truncate(_mol):
     ), "Minimum distance calculation is broken"
 
 
-def _test_selfmindistance_manual(_mol):
+def test_selfmindistance_manual(_mol):
     metr = MetricDistance(
         "protein and resid 1 to 50 and noh",
         "protein and resid 1 to 50 and noh",
@@ -248,7 +248,7 @@ def _test_selfmindistance_manual(_mol):
     assert np.allclose(data, refdata, atol=1e-3), "Manual self-distance is broken"
 
 
-def _test_selfmindistance_auto(_mol):
+def test_selfmindistance_auto(_mol):
     metr = MetricSelfDistance("protein and resid 1 to 50 and noh", groupsel="residue")
     data = metr.project(_mol)
     refdata = np.load(
@@ -262,7 +262,7 @@ def _test_selfmindistance_auto(_mol):
     assert np.allclose(data, refdata, atol=1e-3), "Automatic self-distance is broken"
 
 
-def _test_mindistances_skip(_mol_skipped):
+def test_mindistances_skip(_mol_skipped):
     metr = MetricSelfDistance("protein and resid 1 to 50 and noh", groupsel="residue")
     data = metr.project(_mol_skipped)
     refdata = np.load(
@@ -279,7 +279,7 @@ def _test_mindistances_skip(_mol_skipped):
 
 
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason="Matplotlib is not installed")
-def _test_reconstruct_contact_map():
+def test_reconstruct_contact_map():
     from moleculekit.util import tempname
     from moleculekit.molecule import Molecule
     from moleculekit.projections.metricdistance import (
@@ -313,7 +313,7 @@ def _test_reconstruct_contact_map():
     assert np.array_equal(refdata["uqAtomGroups"], uqAtomGroups)
 
 
-def _test_description(_mol):
+def test_description(_mol):
     metr = MetricDistance(
         "protein and noh", "resname MOL and noh", truncate=3, periodic="selections"
     )
@@ -326,7 +326,7 @@ def _test_description(_mol):
     assert np.array_equal(refdata, atomIndexes)
 
 
-def _test_periodicity(_mol):
+def test_periodicity(_mol):
     metr = MetricDistance(
         "protein and resid 1 to 20 and noh",
         "resname MOL and noh",
@@ -352,7 +352,7 @@ def _test_periodicity(_mol):
     assert not np.allclose(data1, data3)
 
 
-def _test_com_distances():
+def test_com_distances():
     from moleculekit.molecule import Molecule
     from moleculekit.periodictable import periodictable
 
@@ -464,7 +464,7 @@ def _test_com_distances():
     assert np.abs(dist[0][0] - 2.8153415) < 1e-5
 
 
-def _test_pair_distances():
+def test_pair_distances():
     from moleculekit.molecule import Molecule
     from moleculekit.projections.metricdistance import MetricDistance
 

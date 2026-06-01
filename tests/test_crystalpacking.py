@@ -4,7 +4,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_crystalpacking_asymmetric_unit():
+def test_crystalpacking_asymmetric_unit():
     from os.path import join
     from moleculekit.molecule import Molecule, mol_equal
     from moleculekit.tools.crystalpacking import generateCrystalPacking
@@ -14,7 +14,7 @@ def _test_crystalpacking_asymmetric_unit():
     assert mol_equal(mol, refmol, fieldPrecision={"coords": 1e-3})
 
 
-def _test_crystalpacking_biological_unit():
+def test_crystalpacking_biological_unit():
     from os.path import join
     from moleculekit.molecule import Molecule, mol_equal
     from moleculekit.tools.crystalpacking import generateCrystalPacking

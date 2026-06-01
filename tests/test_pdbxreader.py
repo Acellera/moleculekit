@@ -3,7 +3,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _testReadSmallDataFile():
+def testReadSmallDataFile():
     """Test case -  read data file"""
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader
 
@@ -14,7 +14,7 @@ def _testReadSmallDataFile():
     ifh.close()
 
 
-def _testReadBigDataFile():
+def testReadBigDataFile():
     """Test case -  read data file"""
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader
 
@@ -25,7 +25,7 @@ def _testReadBigDataFile():
     ifh.close()
 
 
-def _testReadSFDataFile():
+def testReadSFDataFile():
     """Test case -  read PDB structure factor data  file and compute statistics on f/sig(f)."""
     #
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader

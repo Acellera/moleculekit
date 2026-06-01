@@ -1,4 +1,4 @@
-def _test_elements_from_masses():
+def test_elements_from_masses():
     from moleculekit.periodictable import (
         _all_masses,
         _all_elements,

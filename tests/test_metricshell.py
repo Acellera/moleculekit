@@ -5,7 +5,7 @@ import os
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def _test_metricshell():
+def test_metricshell():
     from moleculekit.molecule import Molecule
     from os import path
 
@@ -26,7 +26,7 @@ def _test_metricshell():
     assert np.allclose(data, refdata), "Shell density calculation is broken"
 
 
-def _test_metricshell_simple():
+def test_metricshell_simple():
     from moleculekit.molecule import Molecule
     import numpy as np
 

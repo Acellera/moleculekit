@@ -8,7 +8,7 @@ curr_dir = os.path.dirname(os.path.abspath(__file__))
 _MOLDIALA = Molecule(os.path.join(curr_dir, "pdb", "alanine.pdb"))
 
 
-def _test_guessAnglesDihedrals():
+def test_guessAnglesDihedrals():
     from moleculekit.util import calculateAnglesAndDihedrals
 
     mol = Molecule(os.path.join(curr_dir, "pdb", "NH4.pdb"))
@@ -20,7 +20,7 @@ def _test_guessAnglesDihedrals():
     assert np.all(dihedrals.shape == (0, 4)), "Returned wrong number of dihedrals"
 
 
-def _test_mol_rmsd():
+def test_mol_rmsd():
     from moleculekit.util import molRMSD, rotationMatrix
 
     mol = _MOLDIALA
@@ -31,7 +31,7 @@ def _test_mol_rmsd():
     assert np.allclose(rmsd, 5.4344)
 
 
-def _test_orientOnAxes():
+def test_orientOnAxes():
     from moleculekit.util import orientOnAxes
 
     omol = orientOnAxes(_MOLDIALA)
@@ -45,7 +45,7 @@ def _test_orientOnAxes():
     )  # off diagonals close to 0
 
 
-def _test_missingChain():
+def test_missingChain():
     from moleculekit.util import _missingChain
 
     mol = _MOLDIALA.copy()
@@ -64,7 +64,7 @@ def _test_missingChain():
         _missingChain(mol)
 
 
-def _test_missingSegid():
+def test_missingSegid():
     from moleculekit.util import _missingSegID
 
     mol = _MOLDIALA.copy()
@@ -84,7 +84,7 @@ def _test_missingSegid():
         _missingSegID(mol)
 
 
-def _test_maxDistance():
+def test_maxDistance():
     from moleculekit.util import maxDistance
 
     dist = maxDistance(_MOLDIALA)
