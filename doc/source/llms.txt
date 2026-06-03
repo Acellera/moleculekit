@@ -6,32 +6,32 @@
 
 - [First molecule](tutorials/01-first-molecule.md): Load by RCSB ID, inspect, filter, write.
 - [Atom selection](tutorials/02-atom-selection.md): VMD syntax and mask-based fast path.
-- [System prep: basic protonation](tutorials/system-prep/01-basic-protonation.md): `systemPrepare` at chosen pH; the 3-tuple `(mol, specs, df)` return.
+- [System prep: basic protonation](tutorials/system-prep/01-basic-protonation.md): `systemPrepare` at chosen pH; the default 2-tuple `(mol_out, detect_specs)` return (3-tuple `(mol_out, detect_specs, details)` with `return_details=True`).
 - [System prep: non-standard residues](tutorials/system-prep/02-non-standard-residues.md): `detectNonStandardResidues` + `systemPrepare(detect_specs=...)`.
 - [System prep: custom residues from SMILES](tutorials/system-prep/03-custom-residues-from-smiles.md): `templateResidueFromSmiles` with `addHs=True`.
 - [System prep: mutation, gap closing, segmentation](tutorials/system-prep/04-mutation-gap-closing-segmentation.md): `mutateResidue`, `model_gaps`, `autoSegment`.
 
 ## How-to guides
 
-- [Read a structure](howto/read-a-structure.md)
-- [Write a structure](howto/write-a-structure.md)
-- [Read a trajectory](howto/read-a-trajectory.md)
-- [Select atoms](howto/select-atoms.md)
-- [Filter and remove](howto/filter-and-remove.md)
-- [Append and merge molecules](howto/append-and-merge-molecules.md)
-- [Set and get properties](howto/set-and-get-properties.md)
-- [Guess bonds](howto/guess-bonds.md)
-- [Assign segments and chains](howto/assign-segments-and-chains.md)
-- [Wrap trajectories](howto/wrap-trajectories.md)
-- [Align structures](howto/align-structures.md)
-- [Compute distances and contacts](howto/compute-distances-and-contacts.md)
-- [Compute dihedrals](howto/compute-dihedrals.md)
-- [Compute RMSD and RMSF](howto/compute-rmsd-rmsf.md)
-- [Compute projections](howto/compute-projections.md)
-- [Compute protein-ligand interactions](howto/compute-protein-ligand-interactions.md)
-- [Convert a Molecule to RDKit or OpenFF](howto/convert-to-rdkit-and-openff.md)
-- [View a molecule](howto/view-a-molecule.md)
-- [Fetch from RCSB and OPM](howto/fetch-from-rcsb-and-opm.md)
+- [Read a structure](how-to/read-a-structure.md)
+- [Write a structure](how-to/write-a-structure.md)
+- [Read a trajectory](how-to/read-a-trajectory.md)
+- [Select atoms](how-to/select-atoms.md)
+- [Filter and remove](how-to/filter-and-remove.md)
+- [Append and merge molecules](how-to/append-and-merge-molecules.md)
+- [Set and get properties](how-to/set-and-get-properties.md)
+- [Guess bonds](how-to/guess-bonds.md)
+- [Assign segments and chains](how-to/assign-segments-and-chains.md)
+- [Wrap trajectories](how-to/wrap-trajectories.md)
+- [Align structures](how-to/align-structures.md)
+- [Compute distances and contacts](how-to/compute-distances-and-contacts.md)
+- [Compute dihedrals](how-to/compute-dihedrals.md)
+- [Compute RMSD and RMSF](how-to/compute-rmsd-rmsf.md)
+- [Compute projections](how-to/compute-projections.md)
+- [Compute protein-ligand interactions](how-to/compute-protein-ligand-interactions.md)
+- [Convert a Molecule to RDKit or OpenFF](how-to/convert-to-rdkit-and-openff.md)
+- [View a molecule](how-to/view-a-molecule.md)
+- [Fetch from RCSB and OPM](how-to/fetch-from-rcsb-and-opm.md)
 
 ## Explanation
 

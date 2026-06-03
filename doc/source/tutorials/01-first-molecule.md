@@ -33,7 +33,7 @@ mol = Molecule("3PTB")
 
 The {py:class}`~moleculekit.molecule.Molecule` constructor accepts either a
 local file path (PDB, mmCIF, MOL2, PRMTOP, PSF, ... — see [How to read a
-structure](../howto/read-a-structure.md) for the full list of supported
+structure](../how-to/read-a-structure.md) for the full list of supported
 formats) or a four-character RCSB PDB ID, which it downloads and parses
 on the fly. Here we use the PDB ID `3PTB`: bovine trypsin, 1701 atoms
 covering one protein chain, a shell of crystallographic water molecules,
@@ -87,7 +87,7 @@ sorted(set(mol.chain)), sorted(set(mol.segid))
 `chain` (one character, PDB convention) and `segid` (up to four characters,
 MD topology convention) are both per-atom arrays. The BCIF fetch of 3PTB
 populates `segid` with `['1', '2', '3', '4']` for the deposited entities;
-a plain PDB load typically leaves it empty. See [Assign segments and chains](../howto/assign-segments-and-chains.md)
+a plain PDB load typically leaves it empty. See [Assign segments and chains](../how-to/assign-segments-and-chains.md)
 if you need to populate `segid` for an MD parameterization tool.
 
 ```{code-cell} python
@@ -133,5 +133,5 @@ unless you pass a full path.
 
 ## Next
 
-- [Read a structure from a local file](../howto/read-a-structure.md)
+- [Read a structure from a local file](../how-to/read-a-structure.md)
 - [Molecule data model](../explanation/molecule-data-model.md)

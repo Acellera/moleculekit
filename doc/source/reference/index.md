@@ -22,6 +22,8 @@ moleculekit.config
 
 moleculekit.atomselect.atomselect
 moleculekit.atomselect.analyze
+moleculekit.atomselect
+moleculekit.atomselect_utils
 ```
 
 ## Geometry and analysis
@@ -56,6 +58,8 @@ moleculekit.projections.metricshell
 moleculekit.projections.metricsphericalcoordinate
 moleculekit.projections.metrictmscore
 moleculekit.projections.projection
+moleculekit.projections
+moleculekit.projections.util
 ```
 
 ## Interactions
@@ -68,6 +72,7 @@ moleculekit.interactions.hbonds
 moleculekit.interactions.pipi
 moleculekit.interactions.cationpi
 moleculekit.interactions.sigmahole
+moleculekit.interactions
 ```
 
 ## Toolkit conversion
@@ -87,7 +92,18 @@ moleculekit.pdbx.reader.PdbxReader
 moleculekit.pdbx.writer.PdbxWriter
 moleculekit.pdbx.reader.BinaryCifReader
 moleculekit.pdbx.writer.BinaryCifWriter
+moleculekit.pdbx.reader.PdbxContainers
+moleculekit.pdbx.reader.PdbxParser
+moleculekit.pdbx
+moleculekit.pdbx.reader
+moleculekit.pdbx.writer
 moleculekit.fileformats.netcdf
+moleculekit.fileformats
+moleculekit.fileformats.utils
+moleculekit.binpos
+moleculekit.dcd
+moleculekit.trr
+moleculekit.xtc
 ```
 
 ## Tools
@@ -112,6 +128,8 @@ moleculekit.tools.sequencestructuralalignment
 moleculekit.tools.voxeldescriptors
 moleculekit.tools.crystalpacking
 moleculekit.tools.obabel_tools
+moleculekit.tools.obabel_tools.obabel_cli
+moleculekit.tools
 ```
 
 ## Visualization
@@ -121,6 +139,9 @@ moleculekit.tools.obabel_tools
 
 moleculekit.viewer
 moleculekit.viewer.molstar
+moleculekit.viewer.molstar.registry
+moleculekit.viewer.molstar.serialize
+moleculekit.viewer.molstar.server
 moleculekit.vmdviewer
 moleculekit.vmdgraphics
 moleculekit.pymolgraphics
@@ -134,5 +155,34 @@ moleculekit.representations
 
 moleculekit.rcsb
 moleculekit.opm
-moleculekit.rdkittools
+```
+
+## Small molecules
+
+```{toctree}
+:maxdepth: 1
+
+moleculekit.smallmol
+moleculekit.smallmol.smallmol
+moleculekit.smallmol.smallmolcdp
+moleculekit.smallmol.smallmollib
+moleculekit.smallmol.util
+```
+
+## Internals and low-level modules
+
+```{toctree}
+:maxdepth: 1
+
+moleculekit
+moleculekit.cython_utils
+moleculekit.bondguesser_utils
+moleculekit.distance_utils
+moleculekit.occupancy_utils
+moleculekit.kdtree
+moleculekit.openmmtools
+moleculekit.tmalign
+moleculekit.ply
+moleculekit.ply.lex
+moleculekit.ply.yacc
 ```

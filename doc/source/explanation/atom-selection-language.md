@@ -76,14 +76,34 @@ Fields available for selection strings:
 | `name` | Atom name |
 | `resname` | Residue name |
 | `resid` | Residue sequence number |
+| `residue` | Zero-based internal residue index (contiguous, ignores `resid`/insertion gaps) |
 | `index` | Zero-based atom index |
+| `serial` | One-based atom serial number (as stored in the file) |
 | `chain` | Chain identifier |
 | `segid` (or `segname`) | Segment identifier |
 | `element` | Element symbol |
+| `altloc` | Alternate location identifier |
 | `occupancy` | Occupancy value |
 | `beta` | B-factor |
 | `charge` | Partial charge |
+| `mass` | Atomic mass |
 | `insertion` | Insertion code |
+| `x`, `y`, `z` | Cartesian coordinates (Å) at the current frame |
+
+Numeric fields can also be wrapped in the functions `abs`, `sqr`, and
+`sqrt` (e.g. `abs(charge) > 0.5`, `sqrt(sqr(x) + sqr(y)) < 10`).
+
+A dedicated `backbonetype` selector classifies atoms by backbone type:
+`backbonetype proteinback`, `backbonetype nucleicback`, and
+`backbonetype normal` (everything that is neither protein nor nucleic
+backbone).
+
+```{note}
+Mass- and charge-based selections only work if those fields are
+populated. A molecule freshly read from a PDB file has all masses (and
+usually charges) set to zero, so `mass > 0` would match nothing until
+masses are assigned.
+```
 
 ## Comparison operators and ranges
 
@@ -117,8 +137,24 @@ mol.atomselect("not water")
 mol.atomselect("(protein and backbone) or (resname BEN and not hydrogen)")
 ```
 
-Operator precedence from highest to lowest: `not` > `and` > `or`. Use
-parentheses whenever the precedence could be ambiguous.
+`not` binds tighter than `and`/`or`. Crucially, `and` and `or` have
+**equal precedence** (they share one non-associative level), so a chain
+of mixed `and`/`or` is grouped left-to-right rather than `and` binding
+before `or`. For example:
+
+```python
+# Parses as: protein and (name CA or name CB)
+mol.atomselect("protein and name CA or name CB")
+```
+
+This is **not** the C-like behaviour where `and` binds before `or`.
+Because the grouping of mixed `and`/`or` is easy to misread, always use
+explicit parentheses when combining the two operators:
+
+```python
+mol.atomselect("protein and (name CA or name CB)")  # clear intent
+mol.atomselect("(protein and name CA) or name CB")  # the other grouping
+```
 
 ## Distance operators
 
@@ -149,7 +185,7 @@ mol.atomselect("same fragment as resname BEN")
 
 `fragment` groups atoms by connected components of the bond graph. For this to
 work correctly, `mol.bonds` must be populated (see
-[Guess bonds](../howto/guess-bonds.md)).
+[Guess bonds](../how-to/guess-bonds.md)).
 
 ## Cheat-sheet
 
@@ -199,4 +235,4 @@ recompute after such operations.
 ## Further reading
 
 - Tutorial: [Atom selection](../tutorials/02-atom-selection.md)
-- How-to: [Select atoms](../howto/select-atoms.md)
+- How-to: [Select atoms](../how-to/select-atoms.md)

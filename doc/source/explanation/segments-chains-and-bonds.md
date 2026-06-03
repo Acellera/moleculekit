@@ -192,5 +192,5 @@ both. This distinction matters:
 
 ## Further reading
 
-- How-to: [Guess bonds](../howto/guess-bonds.md)
-- How-to: [Assign segments and chains](../howto/assign-segments-and-chains.md)
+- How-to: [Guess bonds](../how-to/guess-bonds.md)
+- How-to: [Assign segments and chains](../how-to/assign-segments-and-chains.md)

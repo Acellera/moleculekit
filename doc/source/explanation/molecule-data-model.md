@@ -215,6 +215,6 @@ differs from the topology — moleculekit will raise an error.
 
 ## Further reading
 
-- How-to: [Read a structure](../howto/read-a-structure.md)
-- How-to: [Set and get properties](../howto/set-and-get-properties.md)
-- How-to: [Filter and remove atoms](../howto/filter-and-remove.md)
+- How-to: [Read a structure](../how-to/read-a-structure.md)
+- How-to: [Set and get properties](../how-to/set-and-get-properties.md)
+- How-to: [Filter and remove atoms](../how-to/filter-and-remove.md)

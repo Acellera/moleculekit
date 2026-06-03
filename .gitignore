@@ -42,3 +42,6 @@ moleculekit/wrapping/wrapping.html
 moleculekit/cython_utils/cython_utils.c
 moleculekit/cython_utils/cython_utils.cpp
 moleculekit/cython_utils/cython_utils.html
+
+# Build-generated documentation artifact
+doc/source/llms-full.txt

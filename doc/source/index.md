@@ -13,7 +13,7 @@ Step-by-step lessons. Start here if you're new.
 :::
 
 :::{grid-item-card} 🛠 How-to guides
-:link: howto/index
+:link: how-to/index
 :link-type: doc
 
 Task-focused recipes. "How do I X?"
@@ -81,7 +81,7 @@ J. Chem. Theory Comput. **2016**, 12 (4), 1845–1852.
 
 installation
 tutorials/index
-howto/index
+how-to/index
 explanation/index
 reference/index
 ```

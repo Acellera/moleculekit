@@ -188,5 +188,5 @@ mol.read("long_run.xtc", skip=100)
 
 ## Further reading
 
-- How-to: [Read a trajectory](../howto/read-a-trajectory.md)
-- How-to: [Wrap trajectories](../howto/wrap-trajectories.md)
+- How-to: [Read a trajectory](../how-to/read-a-trajectory.md)
+- How-to: [Wrap trajectories](../how-to/wrap-trajectories.md)

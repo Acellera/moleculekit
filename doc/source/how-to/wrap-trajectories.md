@@ -23,6 +23,8 @@ mol.wrap("protein")
 | `wrapsel` | `str` | `"all"` | Atom selection that defines the center of the wrapping box |
 | `fileBonds` | `bool` | `True` | Use bonds from the loaded topology file |
 | `guessBonds` | `bool` | `False` | Also include distance-guessed bonds in the bond graph used for wrap grouping |
+| `wrapcenter` | `array_like` | `None` | Explicit center to wrap around. Usually leave as `None` and use `wrapsel` instead, so the center tracks the selection across frames |
+| `unitcell` | `str` | `"rectangular"` | Unit-cell representation for triclinic boxes: `"rectangular"`, `"triclinic"`, or `"compact"`. No effect on rectangular boxes |
 
 ## Common variations
 
@@ -40,7 +42,7 @@ mol.wrap("protein", guessBonds=True)
 ## Gotchas
 
 - Wrapping requires a valid `mol.box` array (one column per frame). If `mol.box` is all zeros, `wrap` logs a warning and returns without modifying coordinates — the original `mol` is unchanged.
-- Non-orthorhombic (triclinic) boxes use `mol.boxangles` in addition to `mol.box`; make sure both are read from the trajectory.
+- Non-orthorhombic (triclinic) boxes use `mol.boxangles` in addition to `mol.box`; make sure both are read from the trajectory. For triclinic boxes you can also choose how the cell is wrapped with the `unitcell` parameter — `"rectangular"` (default, a parallelepiped), `"triclinic"`, or `"compact"` (minimum-volume shape, handy for visualizing truncated octahedra or rhombic dodecahedra).
 - `wrap` operates on all frames in place.
 - Molecules that are already centered in the box will be re-wrapped (the operation is applied regardless).
 

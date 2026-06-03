@@ -103,18 +103,29 @@ Residues in `no_opt` are held fixed and not flipped. Use this for residues in
 a metal site or a known crystal-water network where the flip would break the
 geometry.
 
-## Step 6 — Restore non-peptidic bonds
+## Step 6 — Hold residues at non-peptidic bonds
 
-The PDB2PQR roundtrip discards bonds that are not part of the canonical
-peptide topology — disulfides, glycosidic bonds, metal coordinations, stapled
-sidechain bonds, intra-ligand bonds, etc. When `hold_nonpeptidic_bonds=True`
-(the default), `systemPrepare` captures those bonds before the PDB2PQR call
-and restores them in the output molecule.
+Standard protein residues that sit at a covalent junction to a non-protein
+partner — disulfides, glycosidic bonds, metal coordinations, stapled
+sidechain bonds, covalently bound ligands, etc. — need special handling so
+PDB2PQR/PROPKA do not disturb the linkage or over-protonate the junction.
 
-Setting `hold_nonpeptidic_bonds=False` disables the capture-and-restore
-mechanism. The canonical atoms still get protonated and optimized, but any
-bond that PDB2PQR drops is permanently lost from the output. This option is
-rarely needed and should be used with care.
+When `hold_nonpeptidic_bonds=True` (the default), `systemPrepare` detects
+these junctions and, for each affected residue, adds it to the internal
+hold lists rather than restoring anything afterward:
+
+- both partners are added to `no_opt` and `no_titr`, so their geometry is
+  not flipped/debumped and they are not titrated (which could disturb the
+  covalent bond);
+- the non-protein partner is also added to `no_prot`, so PDB2PQR does not
+  add hydrogens to it (it is templated separately);
+- the protein junction residue is deliberately left out of `no_prot`, so
+  PDB2PQR still hydrogenates it; the hydrogen displaced by the covalent
+  bond is removed afterwards.
+
+Setting `hold_nonpeptidic_bonds=False` skips this special handling and lets
+PDB2PQR/PROPKA process the junction residues as if the non-peptide bond were
+not there. This option is rarely needed and should be used with care.
 
 ## Step 7 — Restore formal charges and termini
 

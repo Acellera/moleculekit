@@ -183,5 +183,5 @@ The trio (string / bool mask / index array) is accepted by:
 
 ## Next
 
-- [Select atoms (how-to)](../howto/select-atoms.md)
+- [Select atoms (how-to)](../how-to/select-atoms.md)
 - [Atom selection language explained](../explanation/atom-selection-language.md)
