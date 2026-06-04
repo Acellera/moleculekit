@@ -31,7 +31,6 @@ set-and-get-properties
 guess-bonds
 assign-segments-and-chains
 wrap-trajectories
-WrappingTutorial
 ```
 
 ## Geometry and analysis

@@ -41,6 +41,7 @@ mol.wrap("protein", guessBonds=True)
 
 ## Gotchas
 
+- **Always wrap, then align.** Never align — or otherwise rotate — a structure *before* wrapping; wrapping relies on the original box frame, so a prior rotation breaks the wrapping procedure.
 - Wrapping requires a valid `mol.box` array (one column per frame). If `mol.box` is all zeros, `wrap` logs a warning and returns without modifying coordinates — the original `mol` is unchanged.
 - Non-orthorhombic (triclinic) boxes use `mol.boxangles` in addition to `mol.box`; make sure both are read from the trajectory. For triclinic boxes you can also choose how the cell is wrapped with the `unitcell` parameter — `"rectangular"` (default, a parallelepiped), `"triclinic"`, or `"compact"` (minimum-volume shape, handy for visualizing truncated octahedra or rhombic dodecahedra).
 - `wrap` operates on all frames in place.
@@ -48,5 +49,6 @@ mol.wrap("protein", guessBonds=True)
 
 ## See also
 
+- [Trajectories and frames: Wrapping](../explanation/wrapping.md) — why atoms appear to "leave the box" under periodic boundary conditions, and how to choose a good wrapping centre.
 - [How to read a trajectory](read-a-trajectory.md)
 - [How to align structures](align-structures.md)

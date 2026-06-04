@@ -220,9 +220,25 @@ mol.filter(prot_mask)
 mol.set("beta", 0, sel=prot_mask)
 ```
 
-Note that precomputed masks and index arrays go stale if the number or order
-of atoms changes (e.g. after `filter`, `remove`, or adding hydrogens). Always
-recompute after such operations.
+Precomputed masks and index arrays are tied to a specific Molecule snapshot,
+and there is no runtime check that flags a stale one. They go stale in two ways:
+
+1. **The structure changes between computing the mask and using it.** Any
+   operation that changes the number or order of atoms — {py:meth}`~moleculekit.molecule.Molecule.filter`,
+   {py:meth}`~moleculekit.molecule.Molecule.remove`, {py:meth}`~moleculekit.molecule.Molecule.append`,
+   {py:meth}`~moleculekit.molecule.Molecule.insert`, {py:meth}`~moleculekit.molecule.Molecule.mutateResidue`,
+   or adding hydrogens — silently invalidates any mask computed beforehand (it
+   refers to the wrong atoms or runs off the end). Recompute the selection after
+   such operations.
+2. **The mask was computed on a different Molecule.** Functions that take two
+   molecules — most importantly {py:meth}`~moleculekit.molecule.Molecule.align`,
+   which accepts `sel` for `mol` and `refsel` for `refmol` — require each
+   selection to come from its own Molecule. A mask sized for `mol` is wrong as a
+   `refsel` for `refmol`. Use a string for cross-Molecule calls, or compute each
+   mask on the right Molecule.
+
+The string form is always safe: it is re-parsed against whichever Molecule the
+call operates on.
 
 ## What is not supported
 

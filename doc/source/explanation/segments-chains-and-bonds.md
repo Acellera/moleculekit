@@ -144,14 +144,16 @@ Bonds are populated whenever the source file contains explicit connectivity:
 | Plain PDB (no `CONECT`) | No | — |
 
 For plain PDB files, call {py:meth}`~moleculekit.molecule.Molecule.guessBonds`
-to infer bonds from inter-atomic distances and radii — it updates `mol.bonds`
-and `mol.bondtype` together:
+to infer bonds from inter-atomic distances and radii. It updates `mol.bonds` and
+`mol.bondtype` together so the two parallel arrays stay consistent — do not
+assign `mol.bonds = guess_bonds(mol)` directly. See
+[The Molecule data model: Bonds](molecule-data-model.md#bonds-bonds-and-bondtype)
+for the full recipe.
 
 ```python
 mol = Molecule("structure.pdb")
 mol.guessBonds()
 print(mol.bonds.shape[0])      # now populated
-print(mol.bondtype.shape[0])   # same length, kept in lockstep
 ```
 
 ### Metal coordination bonds

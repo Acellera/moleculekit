@@ -41,7 +41,7 @@ mol.remove("resid 200 to 300")
 
 - {py:meth}`~moleculekit.molecule.Molecule.filter` **keeps** the selection; {py:meth}`~moleculekit.molecule.Molecule.remove` **drops** it — the semantics are opposite, which is a common source of confusion.
 - Both methods mutate the molecule in place and update `mol.bonds` to reflect the new atom indices.
-- After either call, any precomputed boolean masks or index arrays are stale and must be recomputed.
+- After either call, any precomputed boolean masks or index arrays are stale and must be recomputed (see [Mask and index substitution](../explanation/atom-selection-language.md#mask-and-index-substitution)).
 - Both methods accept the full string / boolean-mask / integer-index trio (each input is normalized through {py:meth}`~moleculekit.molecule.Molecule.atomselect`).
 
 ## See also

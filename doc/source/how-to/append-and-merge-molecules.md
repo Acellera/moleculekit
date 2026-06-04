@@ -46,7 +46,7 @@ receptor.append(ligand, collisions=True, coldist=1.5)
 - Appending molecules with a different number of frames raises an error — make sure frame counts match or reduce to a single frame first.
 - Segment IDs and chain IDs from both molecules are preserved as-is; collisions in these labels are not auto-resolved.
 - {py:meth}`~moleculekit.molecule.Molecule.append` is equivalent to {py:meth}`~moleculekit.molecule.Molecule.insert` with `mol` and `index=self.numAtoms`.
-- After appending, existing boolean masks are stale because the atom count has changed.
+- After appending, existing boolean masks are stale because the atom count has changed (see [Mask and index substitution](../explanation/atom-selection-language.md#mask-and-index-substitution)).
 
 ## See also
 

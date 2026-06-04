@@ -34,6 +34,11 @@ from moleculekit.tools.nonstandard_residues import (
 )
 ```
 
+```{code-cell} python
+:tags: [remove-input]
+from acellera_docs_theme.molstar import show3d
+```
+
 ## Step 1 — Detect non-standard residues on a representative structure
 
 We use **1R1J**, a thermolysin-like protease that carries three N-glycosylation
@@ -47,6 +52,11 @@ specs = detectNonStandardResidues(mol)
 print(specs)
 ```
 
+```{code-cell} python
+:tags: [remove-input]
+show3d(mol)
+```
+
 {py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues` does **not** mutate `mol` — it just walks the bond
 graph and returns a list of spec objects ({py:class}`~moleculekit.tools.nonstandard_residues.ChainResidueSpec`, {py:class}`~moleculekit.tools.nonstandard_residues.CovalentLigandSpec`, {py:class}`~moleculekit.tools.nonstandard_residues.LigandSpec`, or {py:class}`~moleculekit.tools.nonstandard_residues.ScaffoldSpec`) describing every residue
 that needs special handling.
@@ -56,6 +66,11 @@ that needs special handling.
 > {py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues` targets non-canonical residues, sidechain
 > crosslinks such as N-glycosylation or isopeptide bonds, and covalent or free
 > ligands.
+
+```{code-cell} python
+:tags: [remove-input]
+show3d(mol, sel="not water", representations=[{"sel": "resname NAG OIR", "type": "ball_and_stick"}], focus="resname NAG OIR")
+```
 
 ## Step 2 — Walk through each spec subclass
 

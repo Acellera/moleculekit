@@ -26,6 +26,11 @@ from moleculekit.tools.autosegment import autoSegment
 from moleculekit.tools.modelling import model_gaps
 ```
 
+```{code-cell} python
+:tags: [remove-input]
+from acellera_docs_theme.molstar import show3d
+```
+
 ## Step 1 — Auto-segment a structure with a chain break
 
 We use **1ITG**, an integrin headpiece that has 13 residues missing from the deposited structure (residues 141–153 are absent from the PDB file). After loading and filtering to protein only, the molecule carries a single chain letter but lacks meaningful segids:
@@ -33,11 +38,14 @@ We use **1ITG**, an integrin headpiece that has 13 residues missing from the dep
 ```{code-cell} python
 mol = Molecule("1itg")
 mol.filter("protein")
-mol.segid[:] = ""
-mol.chain[:] = ""
 ```
 
-Loading drops 67 non-protein atoms; clearing segids and chain IDs gives us a clean slate that mirrors what you receive from many homology-model or trajectory outputs.
+```{code-cell} python
+:tags: [remove-input]
+show3d(mol)
+```
+
+Loading drops 67 non-protein atoms, leaving a single chain `A` and the deposited segid `1`. There's no need to reset those — {py:func}`~moleculekit.tools.autosegment.autoSegment` with `fields=("chain", "segid")` overwrites both fields from scratch based on backbone continuity, so any pre-existing chain/segid values are irrelevant.
 
 ```{code-cell} python
 mol = autoSegment(mol, sel="protein", fields=("chain", "segid"))
@@ -48,19 +56,24 @@ sorted(set(zip(mol.chain, mol.segid)))
 
 ## Step 2 — Mutate a residue with the "best" rotamer
 
-We mutate **GLN 95** (a surface-exposed glutamine in segment P0) to alanine. The `"best"` rotamer mode queries the Dunbrack backbone-dependent rotamer library for the phi/psi bin of that residue and picks the rotamer with the lowest van der Waals clash energy against the surrounding atoms:
+We mutate **GLN 95** (a surface-exposed glutamine in segment P0) to **tryptophan** — a bulky aromatic sidechain whose placement genuinely depends on the rotamer chosen (alanine, by contrast, has no rotameric freedom, so its `"best"` and `"random"` modes would be indistinguishable). The `"best"` rotamer mode queries the Dunbrack backbone-dependent rotamer library for the phi/psi bin of that residue and picks the rotamer with the lowest van der Waals clash energy against the surrounding atoms:
 
 ```{code-cell} python
 mut = mol.copy()
 
 print("before:", set(mut.resname[(mut.chain == "A") & (mut.resid == 95)]))
 
-mut.mutateResidue("chain A and resid 95", "ALA", rotamer_mode="best")
+mut.mutateResidue("chain A and resid 95", "TRP", rotamer_mode="best")
 
 print("after :", set(mut.resname[(mut.chain == "A") & (mut.resid == 95)]))
 ```
 
-`before: {'GLN'}` then `after: {'ALA'}` — the mutation flipped the residue identity. {py:meth}`~moleculekit.molecule.Molecule.mutateResidue` modifies the molecule in place: the old sidechain is stripped, an ideal ALA template is Kabsch-aligned onto the backbone (N, CA, C), and the new sidechain is placed. Notice that the two masks are recomputed against `mut` *after* the mutation, not reused from before — the mutation shrinks the atom array (GLN has more sidechain atoms than ALA), and a precomputed mask would now be the wrong length (see the warning in the [Atom selection tutorial](../02-atom-selection.md#for-developers-bypass-the-parser-with-masks)).
+```{code-cell} python
+:tags: [remove-input]
+show3d(mut, representations=[{"sel": "chain A and resid 95", "type": "ball_and_stick", "size_factor": 0.6}], focus="chain A and resid 95")
+```
+
+`before: {'GLN'}` then `after: {'TRP'}` — the mutation flipped the residue identity. {py:meth}`~moleculekit.molecule.Molecule.mutateResidue` modifies the molecule in place: the old sidechain is stripped, an ideal TRP template is Kabsch-aligned onto the backbone (N, CA, C), and the new sidechain is placed. Notice that the two masks are recomputed against `mut` *after* the mutation, not reused from before — the mutation changes the size of the atom array (TRP's indole sidechain has more atoms than GLN's), and a precomputed mask would now be the wrong length (see the warning in the [Atom selection tutorial](../02-atom-selection.md#for-developers-bypass-the-parser-with-masks)).
 
 ## Step 3 — Compare "random" vs "best", and add minimization
 
@@ -68,7 +81,12 @@ print("after :", set(mut.resname[(mut.chain == "A") & (mut.resid == 95)]))
 
 ```{code-cell} python
 mut_random = mol.copy()
-mut_random.mutateResidue("chain A and resid 95", "ALA", rotamer_mode="random")
+mut_random.mutateResidue("chain A and resid 95", "TRP", rotamer_mode="random")
+```
+
+```{code-cell} python
+:tags: [remove-input]
+show3d(mut_random, representations=[{"sel": "chain A and resid 95", "type": "ball_and_stick", "size_factor": 0.6}], focus="chain A and resid 95")
 ```
 
 Use `"random"` when throughput matters more than placement quality.
@@ -77,7 +95,12 @@ Adding `minimize=True` invokes an OpenMM soft-potential minimization after rotam
 
 ```{code-cell} python
 mut_min = mol.copy()
-mut_min.mutateResidue("chain A and resid 95", "ALA", rotamer_mode="best", minimize=True)
+mut_min.mutateResidue("chain A and resid 95", "TRP", rotamer_mode="best", minimize=True)
+```
+
+```{code-cell} python
+:tags: [remove-input]
+show3d(mut_min, representations=[{"sel": "chain A and resid 95", "type": "ball_and_stick", "size_factor": 0.6}], focus="chain A and resid 95")
 ```
 
 `minimize=True` is the safest choice for downstream MD setup; without it the rotamer placement is still physically reasonable but may retain small clashes.

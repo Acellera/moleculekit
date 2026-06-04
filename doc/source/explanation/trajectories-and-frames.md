@@ -147,28 +147,7 @@ carries the box, or set `mol.box` manually.
 
 ## Wrapping
 
-During an MD simulation, molecules are free to drift across periodic boundaries.
-The raw trajectory coordinates may then show a molecule "split" across two
-sides of the box, which breaks visual inspection and distance calculations.
-
-**Wrapping** re-images all atoms so that each bonded group (molecule or
-residue) appears inside the central periodic image:
-
-```python
-mol.wrap("protein")   # center wrapping around the protein
-```
-
-The argument is an atom selection that defines the **center of the wrapping
-box**. Passing `"protein"` puts the protein in the middle, so solvent molecules
-wrap around it rather than the protein wrapping around them.
-
-Practical guidance:
-- Wrap **after** loading a full trajectory, not before.
-- Wrapping requires correct bonds (`mol.bonds`). Use a topology file that
-  provides bonds, or call {py:func}`~moleculekit.bondguesser.guess_bonds` first.
-- For trajectory analysis with {py:class}`~moleculekit.projections.metricdistance.MetricDistance` or `MetricCoordinate`,
-  wrapping is usually needed before computing distances that span the periodic
-  boundary.
+Under periodic boundary conditions molecules can appear to "leave the box". **Wrapping** re-images them into a single periodic image for clean visual inspection and distance calculations. See [Wrapping](wrapping.md) for the concepts (why this happens and how to choose a good centre) and [How to wrap trajectories](../how-to/wrap-trajectories.md) for the recipe.
 
 ## Memory considerations
 
@@ -188,5 +167,6 @@ mol.read("long_run.xtc", skip=100)
 
 ## Further reading
 
+- Explanation: [Wrapping](wrapping.md)
 - How-to: [Read a trajectory](../how-to/read-a-trajectory.md)
 - How-to: [Wrap trajectories](../how-to/wrap-trajectories.md)

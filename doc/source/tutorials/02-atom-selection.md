@@ -25,6 +25,11 @@ from moleculekit.molecule import Molecule
 mol = Molecule("3PTB")
 ```
 
+```{code-cell} python
+:tags: [remove-input]
+from acellera_docs_theme.molstar import show3d
+```
+
 `3PTB` is bovine trypsin: 1701 atoms covering the protein, crystallographic waters, a calcium ion, and the benzamidine ligand (`BEN`) in the active site.
 
 ## Step 1 — VMD-style selections
@@ -46,12 +51,22 @@ Select only alpha carbons:
 mol.atomselect("name CA").sum()
 ```
 
+```{code-cell} python
+:tags: [remove-input]
+show3d(mol, representations=[{"sel": "name CA", "type": "ball_and_stick"}])
+```
+
 224 alpha carbons — one per residue in the protein.
 
 Select a residue-id range:
 
 ```{code-cell} python
 mol.atomselect("resid 40 to 60").sum()
+```
+
+```{code-cell} python
+:tags: [remove-input]
+show3d(mol, representations=[{"sel": "resid 40 to 60", "type": "ball_and_stick"}])
 ```
 
 161 atoms spanning residues 40 through 60 (inclusive).
@@ -62,12 +77,22 @@ Select atoms within 5 Å of the benzamidine ligand:
 mol.atomselect("within 5 of resname BEN").sum()
 ```
 
+```{code-cell} python
+:tags: [remove-input]
+show3d(mol, representations=[{"sel": "within 5 of resname BEN", "type": "ball_and_stick"}], focus="within 5 of resname BEN")
+```
+
 65 atoms are within 5 Å of any benzamidine atom.
 
 Expand the proximity selection to whole residues:
 
 ```{code-cell} python
 mol.atomselect("same residue as within 5 of resname BEN").sum()
+```
+
+```{code-cell} python
+:tags: [remove-input]
+show3d(mol, representations=[{"sel": "same residue as within 5 of resname BEN", "type": "ball_and_stick"}], focus="same residue as within 5 of resname BEN")
 ```
 
 131 atoms — once partial residues touching the 5 Å shell are completed, more atoms are included.
@@ -96,6 +121,11 @@ Pass `indexes=True` to get an integer array of atom indices instead of a boolean
 mol.atomselect("resname BEN", indexes=True)
 ```
 
+```{code-cell} python
+:tags: [remove-input]
+show3d(mol, representations=[{"sel": "resname BEN", "type": "ball_and_stick"}], focus="resname BEN")
+```
+
 The 9 benzamidine atom indices. This is the right shape when you want to index directly into `mol.coords` or similar per-atom arrays without a boolean intermediate.
 
 ## Recap
@@ -111,17 +141,14 @@ The 9 benzamidine atom indices. This is the right shape when you want to index d
 Everything below is an optimisation for tight loops and library code; casual scripting almost never needs it. If you are not sure whether you need this, **stay on the string form** — it is shorter, harder to break, and always re-parsed against whichever Molecule a call operates on.
 
 :::{warning}
-**Masks and index arrays are tied to a specific Molecule snapshot.**
+**Masks and index arrays are tied to a specific Molecule snapshot.** They go
+stale the moment the underlying atom array changes (after `filter`, `remove`,
+`append`, `insert`, `mutateResidue`, ...) and also cannot be reused across two
+different molecules (e.g. as `refsel` for `align`). There is no runtime check
+that flags either mistake. The string form is always safe — it is re-parsed
+against whichever Molecule the call operates on.
 
-Both boolean masks and integer index arrays refer to specific atom indices in the Molecule they were computed against. They go stale the moment the underlying atom array changes — and there is no runtime check that flags this.
-
-Two concrete failure modes:
-
-1. **The structure changes between computing the mask and using it.** Operations like {py:meth}`~moleculekit.molecule.Molecule.filter`, {py:meth}`~moleculekit.molecule.Molecule.remove`, {py:meth}`~moleculekit.molecule.Molecule.append`, {py:meth}`~moleculekit.molecule.Molecule.insert`, and {py:meth}`~moleculekit.molecule.Molecule.mutateResidue` reshape the atom array. Any mask or index array you computed beforehand silently refers to the wrong atoms (or runs off the end). Recompute the selection after any such call.
-
-2. **The mask was computed on a different Molecule.** Functions that take two molecules — most importantly {py:meth}`~moleculekit.molecule.Molecule.align`, which accepts `sel` for `mol` and `refsel` for `refmol` — require each selection to come from its own Molecule. Passing `mol.atomselect("name CA")` as `refsel` is wrong; the mask is sized for `mol`, not `refmol`. Use a string (`"name CA"`) for cross-Molecule calls, or compute each mask on the right Molecule (`refmol.atomselect("name CA")`).
-
-The string form is always safe: it is re-parsed against whichever Molecule the call is operating on.
+For the two failure modes in detail, see [The atom-selection language: Mask and index substitution](../explanation/atom-selection-language.md#mask-and-index-substitution).
 :::
 
 ### Build a mask without the parser

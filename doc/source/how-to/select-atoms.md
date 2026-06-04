@@ -47,7 +47,7 @@ ca_names  = mol.name[ca_mask]
 - An empty selection returns an empty mask (no error) unless `strict=True`.
 - Bond-dependent selectors (`protein`, `nucleic`, `same residue as`, `same fragment as`) require bonds; if `mol.bonds` is empty the engine falls back to guessing. `within` and `exwithin` are distance-only and do **not** depend on bonds.
 - Passing a boolean mask or integer array bypasses the string parser entirely, which is significantly faster when reusing the same selection in a loop.
-- Precomputed masks become stale after any operation that changes the atom count or order (e.g. {py:meth}`~moleculekit.molecule.Molecule.filter`, {py:meth}`~moleculekit.molecule.Molecule.remove`, {py:meth}`~moleculekit.molecule.Molecule.append`).
+- Precomputed masks become stale after any operation that changes the atom count or order (e.g. {py:meth}`~moleculekit.molecule.Molecule.filter`, {py:meth}`~moleculekit.molecule.Molecule.remove`, {py:meth}`~moleculekit.molecule.Molecule.append`); recompute them afterward. See [Mask and index substitution](../explanation/atom-selection-language.md#mask-and-index-substitution) for the details.
 
 ## See also
 

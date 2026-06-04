@@ -28,12 +28,27 @@ from moleculekit.tools.preparation import systemPrepare
 mol = Molecule("3PTB")
 ```
 
+```{code-cell} python
+:tags: [remove-input]
+from acellera_docs_theme.molstar import show3d
+```
+
 3PTB is bovine trypsin with a benzamidine ligand in the active site.
+
+```{code-cell} python
+:tags: [remove-input]
+show3d(mol)
+```
 
 ## Step 1 — Run systemPrepare at pH 7.4
 
 ```{code-cell} python
 pmol, specs, details = systemPrepare(mol, pH=7.4, return_details=True)
+```
+
+```{code-cell} python
+:tags: [remove-input]
+show3d(pmol, representations=[{"sel": "protein", "type": "ball_and_stick", "size_factor": 0.6}])
 ```
 
 The call returns a 3-tuple: `pmol`, `specs`, `details`. `pmol` is a **new** {py:class}`~moleculekit.molecule.Molecule` — the input `mol` is not mutated. `specs` is the list of detected non-standard-residue specs that the call applied (same type as returned by {py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues`); pass it back to a later `systemPrepare` call if you need to repeat the run, or inspect it to audit which residues were renamed. `details` is a `pandas.DataFrame` with one row per titratable residue; columns include `resname`, `resid`, `chain`, `segid`, `pKa`, `protonation`, and `buried`. The function adds hydrogens, runs PROPKA to predict pKa values, and titrates each titratable residue accordingly.
@@ -54,6 +69,11 @@ import numpy as np
 pkas = pd.to_numeric(details["pKa"], errors="coerce")
 near_pka = details[np.abs(pkas - 7.4) < 2.0]
 near_pka[["resname", "resid", "chain", "protonation", "pKa"]]
+```
+
+```{code-cell} python
+:tags: [remove-input]
+show3d(pmol, sel="not water", representations=[{"sel": "chain A and resid 39 57 70", "type": "ball_and_stick", "size_factor": 0.6}], focus="chain A and resid 39 57 70")
 ```
 
 These residues would flip protonation state if pH moved a unit or two from 7.4.

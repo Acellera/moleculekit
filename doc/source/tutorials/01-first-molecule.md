@@ -25,10 +25,20 @@ Import {py:class}`~moleculekit.molecule.Molecule` — the central class for all 
 from moleculekit.molecule import Molecule
 ```
 
+```{code-cell} python
+:tags: [remove-input]
+from acellera_docs_theme.molstar import show3d
+```
+
 ## Step 1 — Load a structure
 
 ```{code-cell} python
 mol = Molecule("3PTB")
+```
+
+```{code-cell} python
+:tags: [remove-input]
+show3d(mol)
 ```
 
 The {py:class}`~moleculekit.molecule.Molecule` constructor accepts either a
@@ -107,6 +117,11 @@ full per-atom field list and their dtypes.
 ```{code-cell} python
 mol.filter("not water")
 mol.numAtoms
+```
+
+```{code-cell} python
+:tags: [remove-input]
+show3d(mol)
 ```
 
 {py:meth}`~moleculekit.molecule.Molecule.filter` mutates `mol` in place,
