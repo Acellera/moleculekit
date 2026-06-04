@@ -2382,7 +2382,7 @@ class Molecule(object):
         elif viewer.lower() == "pymol":
             self._viewPymol(name)
         elif viewer.lower() == "molstar":
-            self._viewMolstar(name)
+            retval = self._viewMolstar(name)
         else:
             raise ValueError("Unknown viewer.")
 
@@ -2390,10 +2390,22 @@ class Molecule(object):
             return retval
 
     def _viewMolstar(self, name):
-        from moleculekit.viewer.molstar import server as molstar_server
-
         if name is not None:
             self.viewname = name
+
+        from moleculekit.viewer.molstar.inline import running_in_notebook
+
+        if running_in_notebook():
+            from moleculekit.viewer.molstar.inline import (
+                build_inline_view,
+                _scene_from_reps,
+            )
+
+            reps = self._tempreps.replist + self.reps.replist
+            scene = _scene_from_reps(self, reps)
+            return build_inline_view(self, scene)
+
+        from moleculekit.viewer.molstar import server as molstar_server
 
         molstar_server.register(self)
 

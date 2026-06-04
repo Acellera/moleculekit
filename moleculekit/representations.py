@@ -111,6 +111,47 @@ class Representations:
             color = rep.color
         return _Representation(sel=selidx, style=style, color=color)
 
+    def _translateMolstar(self, rep):
+        """Translate a VMD-flavored representation to a plain dict for the
+        inline molstar scene IR: resolved atom indices, an MVS rep type, and a
+        color (a {"theme": name} dict or a uniform hex/SVG string). Returns
+        None if the selection matches no atoms."""
+        styletrans = {
+            "newcartoon": "cartoon",
+            "cartoon": "cartoon",
+            "licorice": "ball_and_stick",
+            "cpk": "ball_and_stick",
+            "vdw": "spacefill",
+            "lines": "line",
+        }
+        themetrans = {
+            "name": "element-symbol",
+            "element": "element-symbol",
+            "chain": "chain-id",
+            "secondary structure": "secondary-structure",
+            "resname": "residue-name",
+            "index": "residue-id",
+        }
+        hexcolors = {
+            0: "#0000ff", 1: "#ff0000", 2: "#333333", 3: "#ff6600",
+            4: "#ffff00", 5: "#4c4d00", 6: "#b2b2cc", 7: "#33cc33",
+            8: "#ffffff", 9: "#ff3399", 10: "#33ccff",
+        }
+        indices = [int(i) for i in self._mol.atomselect(rep.sel, indexes=True)]
+        if not indices:
+            return None
+        style = styletrans.get(rep.style.lower(), "ball_and_stick")
+        if isinstance(rep.color, int):
+            color = hexcolors.get(rep.color, "#808080")
+        elif rep.color.lower() in themetrans:
+            color = {"theme": themetrans[rep.color.lower()]}
+        else:
+            color = rep.color
+        out = {"atom_indices": indices, "type": style, "color": color}
+        if rep.opacity is not None and rep.opacity != 1:
+            out["opacity"] = float(rep.opacity)
+        return out
+
     def _repsVMD(self, viewer):
         colortrans = {"secondary structure": "Structure"}
         if len(self.replist) > 0:

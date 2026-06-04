@@ -59,6 +59,7 @@ openmm = [
   "nvidia-nvjitlink-cu12<12.7",
   "openmm[cuda12]>=8.5.0",
 ]
+notebook = ["molviewspec"]
 
 [dependency-groups]
 test = [
