@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 _STATIC_DIR = Path(__file__).parent / "static"
 _PORT_RANGE = range(8765, 8776)
 _POLL_INTERVAL = 0.5
+_SHUTDOWN_WAIT = 5.0  # max seconds to wait for threads/port during shutdown
+_WAKE = object()  # sentinel pushed to SSE queues to unblock them on shutdown
 
 
 @dataclass
@@ -36,6 +38,7 @@ class ServerState:
     subscribers: list[queue.Queue]
     subscribers_lock: threading.Lock
     stop_event: threading.Event
+    handler_threads: set[threading.Thread]
 
 
 _state: ServerState | None = None
@@ -72,6 +75,7 @@ def _start(open_browser: bool) -> ServerState:
     subscribers: list[queue.Queue] = []
     subscribers_lock = threading.Lock()
     stop_event = threading.Event()
+    handler_threads: set[threading.Thread] = set()
 
     handler_factory = _make_handler_class(
         session=session,
@@ -79,6 +83,7 @@ def _start(open_browser: bool) -> ServerState:
         subscribers=subscribers,
         subscribers_lock=subscribers_lock,
         stop_event=stop_event,
+        handler_threads=handler_threads,
     )
     httpd = ThreadingHTTPServer(("127.0.0.1", port), handler_factory)
 
@@ -100,6 +105,7 @@ def _start(open_browser: bool) -> ServerState:
         server_thread=server_thread, monitor_thread=monitor_thread,
         registry=registry, subscribers=subscribers,
         subscribers_lock=subscribers_lock, stop_event=stop_event,
+        handler_threads=handler_threads,
     )
 
     if open_browser:
@@ -110,6 +116,10 @@ def _start(open_browser: bool) -> ServerState:
 def _bind_first_free_port() -> int:
     for port in _PORT_RANGE:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Match ThreadingHTTPServer's allow_reuse_address so the probe accepts
+        # the same ports the server can bind, instead of walking past (and
+        # exhausting) ports merely lingering in TIME_WAIT.
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             s.bind(("127.0.0.1", port))
         except OSError:
@@ -181,7 +191,7 @@ def _broadcast_to(subscribers, subscribers_lock, event: dict) -> None:
 
 
 def _make_handler_class(
-    *, session, registry, subscribers, subscribers_lock, stop_event,
+    *, session, registry, subscribers, subscribers_lock, stop_event, handler_threads,
 ):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format, *args):
@@ -246,6 +256,7 @@ def _make_handler_class(
             q: queue.Queue = queue.Queue(maxsize=128)
             with subscribers_lock:
                 subscribers.append(q)
+                handler_threads.add(threading.current_thread())
             for slot in list(registry.slots.values()):
                 try:
                     q.put_nowait(json.dumps(_topology_event(slot)))
@@ -262,6 +273,9 @@ def _make_handler_class(
                         except (BrokenPipeError, ConnectionResetError):
                             return
                         continue
+                    if payload is _WAKE:
+                        # Shutdown nudge: the while-condition ends the stream.
+                        continue
                     try:
                         self.wfile.write(b"data: " + payload.encode("utf-8") + b"\n\n")
                         self.wfile.flush()
@@ -271,6 +285,7 @@ def _make_handler_class(
                 with subscribers_lock:
                     if q in subscribers:
                         subscribers.remove(q)
+                    handler_threads.discard(threading.current_thread())
 
         def _serve_coords(self, path: str):
             parts = path.split("/")
@@ -329,8 +344,25 @@ def shutdown_for_tests() -> None:
 
 def _stop(state: ServerState) -> None:
     state.stop_event.set()
+    # Unblock SSE handler loops parked in q.get() so they observe stop_event and
+    # return now. Otherwise they linger until the queue timeout, keeping their
+    # connection (and the port) open, which makes the next bind fail on macOS.
+    with state.subscribers_lock:
+        subscribers = list(state.subscribers)
+        handler_threads = list(state.handler_threads)
+    for q in subscribers:
+        try:
+            q.put_nowait(_WAKE)
+        except queue.Full:
+            pass
     try:
         state.httpd.shutdown()
         state.httpd.server_close()
     except Exception:
         pass
+    state.server_thread.join(timeout=_SHUTDOWN_WAIT)
+    state.monitor_thread.join(timeout=_SHUTDOWN_WAIT)
+    # Wait for the woken SSE handlers to return: socketserver only closes their
+    # sockets (and frees the port) once their thread exits.
+    for t in handler_threads:
+        t.join(timeout=_SHUTDOWN_WAIT)

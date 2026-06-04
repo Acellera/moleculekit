@@ -130,3 +130,30 @@ def test_port_walkup():
     finally:
         occupier.close()
         molstar_server.shutdown_for_tests()
+
+
+def test_shutdown_stops_open_sse_handler():
+    """Shutdown must terminate an open SSE handler instead of leaving it parked.
+
+    The handler used to block in ``q.get(timeout=...)`` and only re-check the
+    stop flag afterwards, so its connection (and the bound port) lingered for
+    the full timeout. On macOS the next ``bind`` then failed with EADDRINUSE
+    because SO_REUSEADDR cannot reuse a still-open socket.
+    """
+    molstar_server.shutdown_for_tests()
+    state = molstar_server.start_for_tests(open_browser=False)
+
+    url = f"http://localhost:{state.port}/events?session={state.session}"
+    req = urllib.request.Request(url, headers={"Accept": "text/event-stream"})
+    resp = urllib.request.urlopen(req, timeout=2)
+    try:
+        time.sleep(0.3)  # let the handler thread park in q.get()
+        handlers = list(state.handler_threads)
+        assert handlers and all(t.is_alive() for t in handlers)
+    finally:
+        resp.close()
+
+    molstar_server.shutdown_for_tests()
+
+    # Shutdown must have joined the SSE handler, not left it parked for ~10s.
+    assert all(not t.is_alive() for t in handlers)
