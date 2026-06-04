@@ -61,7 +61,14 @@ openmm = [
 ]
 
 [dependency-groups]
-test = ["pytest>=8.4.2", "pytest-xdist", "jupytext", "nbclient", "ipykernel"]
+test = [
+  "pytest>=8.4.2",
+  "pytest-xdist",
+  "jupytext",
+  "nbclient",
+  "ipykernel",
+  "acellera-docs-theme @ git+https://github.com/Acellera/acellera-docs-theme.git",
+]
 docs = [
   "acellera-docs-theme @ git+https://github.com/Acellera/acellera-docs-theme.git",
   "sphinx",
@@ -73,9 +80,6 @@ docs = [
   "sphinx-argparse",
   "sphinx-notfound-page",
   "sphinx-sitemap",
-  # CPU OpenMM so the mutateResidue(minimize=True) step in the system-prep
-  # tutorial actually runs at build time (Reference/CPU platform; no CUDA
-  # needed for the docs — the heavier openmm[cuda12] extra is for real runs).
   "openmm>=8.5.0",
 ]
 dev = [{ include-group = "test" }, "ipython>=8.18.1"]
