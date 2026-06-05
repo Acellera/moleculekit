@@ -13,10 +13,14 @@ import webbrowser
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlparse
 
 from moleculekit.viewer.molstar.registry import Registry, coords_to_bytes
 from moleculekit.viewer.molstar.serialize import molecule_to_dict
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +33,32 @@ _WAKE = object()  # sentinel pushed to SSE queues to unblock them on shutdown
 
 @dataclass
 class ServerState:
+    """Runtime state of the singleton molstar viewer server.
+
+    Attributes
+    ----------
+    port : int
+        The TCP port the HTTP server is bound to on localhost.
+    session : str
+        Per-server session token; SSE clients must present it to subscribe.
+    httpd : ThreadingHTTPServer
+        The running HTTP server instance.
+    server_thread : threading.Thread
+        Daemon thread running ``httpd.serve_forever``.
+    monitor_thread : threading.Thread
+        Daemon thread polling the registry for changes and broadcasting events.
+    registry : Registry
+        The slot registry of molecules being served.
+    subscribers : list of queue.Queue
+        One queue per connected SSE client, fed serialized event payloads.
+    subscribers_lock : threading.Lock
+        Guards ``subscribers`` and ``handler_threads``.
+    stop_event : threading.Event
+        Set on shutdown to stop the monitor loop and SSE handlers.
+    handler_threads : set of threading.Thread
+        Threads currently serving SSE streams, joined during shutdown.
+    """
+
     port: int
     session: str
     httpd: ThreadingHTTPServer
@@ -46,7 +76,19 @@ _state_lock = threading.Lock()
 
 
 def get_or_start_server(open_browser: bool = True) -> ServerState:
-    """Start the singleton server on first call; subsequent calls are no-ops."""
+    """Start the singleton server on first call; subsequent calls are no-ops.
+
+    Parameters
+    ----------
+    open_browser : bool, optional
+        Whether to open a browser tab to the viewer when the server first
+        starts. Defaults to True.
+
+    Returns
+    -------
+    state : ServerState
+        The running server state (the same instance on every call).
+    """
     global _state
     with _state_lock:
         if _state is None:
@@ -56,11 +98,32 @@ def get_or_start_server(open_browser: bool = True) -> ServerState:
 
 
 def get_registry() -> Registry:
+    """Return the running server's slot registry, starting the server if needed.
+
+    Returns
+    -------
+    registry : Registry
+        The singleton server's slot registry.
+    """
     return get_or_start_server().registry
 
 
-def register(mol) -> str:
-    """Register a Molecule with the running server; returns its slot uuid."""
+def register(mol: "Molecule") -> str:
+    """Register a Molecule with the running server and broadcast it.
+
+    Starts the server if it is not already running, registers ``mol`` in the
+    registry and broadcasts a topology event to connected viewers.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to register and display.
+
+    Returns
+    -------
+    uid : str
+        The slot uuid assigned to ``mol``.
+    """
     state = get_or_start_server()
     uid = state.registry.register(mol)
     slot = state.registry.slots[uid]
@@ -116,10 +179,6 @@ def _start(open_browser: bool) -> ServerState:
 def _bind_first_free_port() -> int:
     for port in _PORT_RANGE:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # Match ThreadingHTTPServer's allow_reuse_address so the probe accepts
-        # the same ports the server can bind, instead of walking past (and
-        # exhausting) ports merely lingering in TIME_WAIT.
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             s.bind(("127.0.0.1", port))
         except OSError:

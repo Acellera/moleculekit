@@ -55,7 +55,7 @@ def _read_one_sse_event(resp, timeout=3.0):
 
 
 def test_server_serves_index_html(fresh_server):
-    url = f"http://localhost:{fresh_server.port}/"
+    url = f"http://127.0.0.1:{fresh_server.port}/"
     with urllib.request.urlopen(url, timeout=2) as resp:
         body = resp.read()
         assert resp.status == 200
@@ -63,14 +63,14 @@ def test_server_serves_index_html(fresh_server):
 
 
 def test_session_mismatch_returns_410(fresh_server):
-    url = f"http://localhost:{fresh_server.port}/events?session=WRONG"
+    url = f"http://127.0.0.1:{fresh_server.port}/events?session=WRONG"
     with pytest.raises(HTTPError) as exc:
         urllib.request.urlopen(url, timeout=2)
     assert exc.value.code == 410
 
 
 def test_register_emits_topology_event(fresh_server):
-    url = f"http://localhost:{fresh_server.port}/events?session={fresh_server.session}"
+    url = f"http://127.0.0.1:{fresh_server.port}/events?session={fresh_server.session}"
     req = urllib.request.Request(url, headers={"Accept": "text/event-stream"})
     resp = urllib.request.urlopen(req, timeout=2)
     try:
@@ -89,7 +89,7 @@ def test_coords_endpoint_returns_float32_blob(fresh_server):
     mol.coords[0, 0, 0] = 7.0
     uid = molstar_server.register(mol)
     slot = molstar_server.get_registry().slots[uid]
-    url = f"http://localhost:{fresh_server.port}/coords/{uid}/{slot.topo_hash}"
+    url = f"http://127.0.0.1:{fresh_server.port}/coords/{uid}/{slot.topo_hash}"
     with urllib.request.urlopen(url, timeout=2) as resp:
         blob = resp.read()
         assert resp.headers["Content-Type"] == "application/octet-stream"
@@ -101,7 +101,7 @@ def test_coords_endpoint_returns_float32_blob(fresh_server):
 def test_coords_endpoint_stale_topohash_returns_404(fresh_server):
     mol = _make_mol()
     uid = molstar_server.register(mol)
-    url = f"http://localhost:{fresh_server.port}/coords/{uid}/deadbeef"
+    url = f"http://127.0.0.1:{fresh_server.port}/coords/{uid}/deadbeef"
     with pytest.raises(HTTPError) as exc:
         urllib.request.urlopen(url, timeout=2)
     assert exc.value.code == 404
@@ -111,22 +111,27 @@ def test_unregister_endpoint_removes_slot(fresh_server):
     mol = _make_mol()
     uid = molstar_server.register(mol)
     assert uid in molstar_server.get_registry().slots
-    url = f"http://localhost:{fresh_server.port}/unregister/{uid}"
+    url = f"http://127.0.0.1:{fresh_server.port}/unregister/{uid}"
     req = urllib.request.Request(url, method="POST")
     with urllib.request.urlopen(req, timeout=2) as resp:
         assert resp.status == 204
     assert uid not in molstar_server.get_registry().slots
 
 
-def test_port_walkup():
+def test_port_walkup(monkeypatch):
     molstar_server.shutdown_for_tests()
+    # Occupy a pristine, OS-assigned port and point the server's range at it.
+    # Binding port 0 always lands on a fresh port with no leftover socket state,
+    # so this never trips over TIME_WAIT/CLOSE_WAIT lingering from earlier tests
+    # (which made rebinding a hardcoded port fail on macOS).
     occupier = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    occupier.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    occupier.bind(("127.0.0.1", 8765))
+    occupier.bind(("127.0.0.1", 0))
+    taken = occupier.getsockname()[1]
     occupier.listen(1)
+    monkeypatch.setattr(molstar_server, "_PORT_RANGE", range(taken, taken + 11))
     try:
         state = molstar_server.start_for_tests(open_browser=False)
-        assert state.port != 8765
+        assert state.port != taken
     finally:
         occupier.close()
         molstar_server.shutdown_for_tests()
@@ -143,7 +148,7 @@ def test_shutdown_stops_open_sse_handler():
     molstar_server.shutdown_for_tests()
     state = molstar_server.start_for_tests(open_browser=False)
 
-    url = f"http://localhost:{state.port}/events?session={state.session}"
+    url = f"http://127.0.0.1:{state.port}/events?session={state.session}"
     req = urllib.request.Request(url, headers={"Accept": "text/event-stream"})
     resp = urllib.request.urlopen(req, timeout=2)
     try:
