@@ -951,7 +951,7 @@ class SmallMol(object):
         """
         self.toMolecule().view(*args, **kwargs)
 
-    def getDescriptors(self, prefix: str = "", ignore: list = ("Ipc",)):
+    def getDescriptors(self, prefix: str = "", ignore: list | tuple = ("Ipc",)):
         """Calculate descriptors for the molecule
 
         Returns rdkit descriptors for the molecule, like DESC_NumRotatableBonds or DESC_MolLogP.

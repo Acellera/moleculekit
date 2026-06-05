@@ -1316,7 +1316,7 @@ class Molecule(object):
         """
         self.translateBy(vector, sel)
 
-    def rotateBy(self, M: np.ndarray, center: list = (0, 0, 0), sel: str | np.ndarray = "all"):
+    def rotateBy(self, M: np.ndarray, center: list | tuple | np.ndarray = (0, 0, 0), sel: str | np.ndarray = "all"):
         """Rotate a selection of atoms by a given rotation matrix around a center
 
         Parameters
@@ -1416,7 +1416,7 @@ class Molecule(object):
         M = rotationMatrix(rotax, radians - rads)
         self.rotateBy(M, center=self.coords[atom_quad[1], :, self.frame], sel=right)
 
-    def center(self, loc: list = (0, 0, 0), sel: str | np.ndarray = "all") -> np.ndarray:
+    def center(self, loc: list | tuple | np.ndarray = (0, 0, 0), sel: str | np.ndarray = "all") -> np.ndarray:
         """Moves the geometric center of the Molecule to a given location
 
         Parameters
