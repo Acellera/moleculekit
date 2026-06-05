@@ -4,8 +4,12 @@
 # No redistribution in whole or part
 #
 from moleculekit.projections.projection import Projection
+from typing import TYPE_CHECKING
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +27,11 @@ class MetricShell(Projection):
 
     Parameters
     ----------
-    sel1 : str
-        Atom selection string for the first set of atoms around which the shells will be calculated.
+    sel1 : str or np.ndarray
+        Atom selection for the first set of atoms around which the shells will be calculated (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    sel2 : str
-        Atom selection string for the second set of atoms whose density will be calculated in shells around `sel1`.
+    sel2 : str or np.ndarray
+        Atom selection for the second set of atoms whose density will be calculated in shells around `sel1` (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
     periodic : str
         See the documentation of MetricDistance class for options.
@@ -35,6 +39,8 @@ class MetricShell(Projection):
         Number of shells to use around atoms of `sel1`
     shellwidth : int, optional
         The width of each concentric shell in Angstroms
+    pbc : bool, optional
+        Deprecated. Use the `periodic` option as described in MetricDistance.
     gap : int, optional
         Not functional yet
     truncate : float, optional
@@ -43,14 +49,14 @@ class MetricShell(Projection):
 
     def __init__(
         self,
-        sel1,
-        sel2,
-        periodic,
-        numshells=4,
-        shellwidth=3,
-        pbc=None,
-        gap=None,
-        truncate=None,
+        sel1: str | np.ndarray,
+        sel2: str | np.ndarray,
+        periodic: str,
+        numshells: int = 4,
+        shellwidth: int = 3,
+        pbc: bool | None = None,
+        gap: int | None = None,
+        truncate: float | None = None,
     ):
         super().__init__()
 
@@ -107,15 +113,13 @@ class MetricShell(Projection):
 
         return res
 
-    def project(self, mol):
+    def project(self, mol: "Molecule") -> np.ndarray:
         """Project molecule.
 
         Parameters
         ----------
         mol : :class:`Molecule <moleculekit.molecule.Molecule>`
             A :class:`Molecule <moleculekit.molecule.Molecule>` object to project.
-        kwargs :
-            Do not use this argument. Only used for backward compatibility. Will be removed in later versions.
 
         Returns
         -------
@@ -138,7 +142,7 @@ class MetricShell(Projection):
             self.symmetrical,
         )
 
-    def getMapping(self, mol):
+    def getMapping(self, mol: "Molecule"):
         """Returns the description of each projected dimension.
 
         Parameters

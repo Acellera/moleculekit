@@ -7,8 +7,12 @@ from moleculekit.projections.metriccoordinate import (
     MetricCoordinate as _MetricCoordinate,
 )
 from moleculekit.util import sequenceID
+from typing import TYPE_CHECKING
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 
 logger = logging.getLogger(__name__)
@@ -26,20 +30,20 @@ class MetricFluctuation(_MetricCoordinate):
 
     Parameters
     ----------
-    atomsel : str
-        Atom selection string for the atoms whose fluctuations we want to calculate.
+    atomsel : str or np.ndarray
+        Atom selection for the atoms whose fluctuations we want to calculate (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
     refmol : :class:`Molecule <moleculekit.molecule.Molecule>` object
         If `refmol` is None, MetricFluctuation will calculate the fluctuation of the atoms/residues around the trajectory mean.
         If a `refmol` is given, it will calculate the fluctuation around the reference atom positions after aligning.
-    trajalnsel : str, optional
-        Atom selection string for the trajectories from which to align to the reference structure.
+    trajalnsel : str or np.ndarray, optional
+        Atom selection for the trajectories from which to align to the reference structure (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    refalnsel : str, optional
-        Atom selection string for `refmol` from which to align to the reference structure. If None, it defaults to the
+    refalnsel : str or np.ndarray, optional
+        Atom selection for `refmol` from which to align to the reference structure (a selection string, boolean mask, or integer index array). If None, it defaults to the
         same as `trajalnsel`. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    centersel : str, optional
-        Atom selection string around which to wrap the simulation.
+    centersel : str or np.ndarray, optional
+        Atom selection around which to wrap the simulation (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
     pbc : bool
         Enable or disable coordinate wrapping based on periodic boundary conditions.
@@ -65,13 +69,13 @@ class MetricFluctuation(_MetricCoordinate):
 
     def __init__(
         self,
-        atomsel,
-        refmol=None,
-        trajalnsel="protein and name CA",
-        refalnsel=None,
-        centersel="protein",
-        pbc=True,
-        mode="atom",
+        atomsel: str | np.ndarray | None,
+        refmol: "Molecule | None" = None,
+        trajalnsel: str | np.ndarray = "protein and name CA",
+        refalnsel: str | np.ndarray | None = None,
+        centersel: str | np.ndarray = "protein",
+        pbc: bool = True,
+        mode: str = "atom",
     ):
         super().__init__(
             atomsel=atomsel,
@@ -83,7 +87,7 @@ class MetricFluctuation(_MetricCoordinate):
         )
         self._mode = mode
 
-    def project(self, mol):
+    def project(self, mol: "Molecule") -> np.ndarray:
         """Project molecule.
 
         Parameters
@@ -144,7 +148,7 @@ class MetricFluctuation(_MetricCoordinate):
                 f"Invalid mode {self._mode} given. Choose between `atom` and `residue`"
             )
 
-    def getMapping(self, mol):
+    def getMapping(self, mol: "Molecule"):
         """Returns the description of each projected dimension.
 
         Parameters

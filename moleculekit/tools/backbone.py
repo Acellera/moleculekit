@@ -6,6 +6,8 @@ logger = logging.getLogger(__name__)
 
 
 class MissingBackboneError(Exception):
+    """Raised when a residue is missing backbone atoms that cannot be reconstructed."""
+
     pass
 
 
@@ -253,7 +255,7 @@ def check_backbone(
     mol: Molecule,
     remove_broken_terminals: bool = True,
     terminal_min_heavy_atoms: int = 4,
-):
+) -> Molecule:
     """Checks the backbone of all canonical aminoacids in a Molecule object and adds missing atoms if needed.
 
     If single atoms are missing in the backbone of a residue, they will be reconstructed.

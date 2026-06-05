@@ -7,11 +7,15 @@ import networkx as nx
 import numpy as np
 from moleculekit.tools.moleculechecks import isProteinProtonated, proteinHasBonds
 import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
 
-def get_ligand_props(mol, offset_idx=0):
+def get_ligand_props(mol, offset_idx: int = 0):
     props = {
         "donors": [],
         "acceptors": [],
@@ -28,7 +32,7 @@ def get_ligand_props(mol, offset_idx=0):
     return offset_ligand_props(props, offset_idx)
 
 
-def offset_ligand_props(props, offset_idx=0, idx_mapping_fn=None):
+def offset_ligand_props(props, offset_idx: int = 0, idx_mapping_fn=None):
     from moleculekit.util import ensurelist
 
     new_props = {
@@ -91,7 +95,7 @@ def filter_props(props, exclude_idx=None, include_idx=None):
             props[k] += [_filter_func(pp) for pp in props[k]]
 
 
-def get_receptor_props(mol):
+def get_receptor_props(mol: "Molecule"):
     props = {
         "donors": [],
         "acceptors": [],
@@ -112,7 +116,7 @@ def get_receptor_props(mol):
     return props
 
 
-def get_donors_acceptors(mol, exclude_water=True, exclude_backbone=False):
+def get_donors_acceptors(mol: "Molecule", exclude_water: bool = True, exclude_backbone: bool = False):
     if not isProteinProtonated(mol):
         raise RuntimeError(
             "The protein seems to not be protonated. You must provide a protonated system for H-bonds to be detected."
@@ -175,7 +179,7 @@ def get_donors_acceptors(mol, exclude_water=True, exclude_backbone=False):
     return donor_pairs.astype(np.uint32), acceptors.astype(np.uint32)
 
 
-def get_ligand_donors_acceptors(smol, start_idx=0):
+def get_ligand_donors_acceptors(smol, start_idx: int = 0):
     from rdkit.Chem import ChemicalFeatures
     from rdkit import RDConfig
     import os
@@ -203,7 +207,7 @@ def get_ligand_donors_acceptors(smol, start_idx=0):
     return np.array(donor_pairs, dtype=np.uint32), np.array(acceptors, dtype=np.uint32)
 
 
-def view_hbonds(mol, hbonds):
+def view_hbonds(mol: "Molecule", hbonds):
     from moleculekit.vmdgraphics import VMDCylinder
 
     viewname = "mol"
@@ -227,15 +231,15 @@ def view_hbonds(mol, hbonds):
     mol.viewname = viewname
 
 
-def get_protein_rings(mol):
+def get_protein_rings(mol: "Molecule"):
     return get_receptor_rings(mol, "protein")
 
 
-def get_nucleic_rings(mol):
+def get_nucleic_rings(mol: "Molecule"):
     return get_receptor_rings(mol, "nucleic")
 
 
-def get_receptor_rings(mol, rec_type):
+def get_receptor_rings(mol: "Molecule", rec_type: str):
     _prot_aromatics = ["PHE", "HIS", "HID", "HIE", "HIP", "TYR", "TRP"]
     _prot_excluded_atoms = ["N", "CA", "C", "O"]  # , "CB", "OH"]
     _prot_sel = np.isin(mol.resname, _prot_aromatics) & ~np.isin(
@@ -260,7 +264,7 @@ def get_receptor_rings(mol, rec_type):
     return cycles
 
 
-def get_protein_aryl_halides(mol):
+def get_protein_aryl_halides(mol: "Molecule"):
     # TODO: Need to support non-standard residues
     pass
 
@@ -283,11 +287,11 @@ metals = [
 ]
 
 
-def get_metal_charged(mol):
+def get_metal_charged(mol: "Molecule"):
     return np.where(np.isin(mol.element, metals))[0].astype(np.uint32), []
 
 
-def get_protein_charged(mol):
+def get_protein_charged(mol: "Molecule"):
     lys_n = (mol.resname == "LYS") & (mol.name == "NZ")
     arg_c = (mol.resname == "ARG") & (mol.name == "CZ")
     hip_c = (mol.resname == "HIP") & (mol.name == "CE1")
@@ -300,12 +304,12 @@ def get_protein_charged(mol):
     return np.where(pos)[0].astype(np.uint32), np.where(neg)[0].astype(np.uint32)
 
 
-def get_nucleic_charged(mol):
+def get_nucleic_charged(mol: "Molecule"):
     nuc = mol.atomselect("nucleic and backbone and name OP2")
     return np.array([], dtype=np.uint32), np.where(nuc)[0].astype(np.uint32)
 
 
-def get_ligand_rings(sm, start_idx=0):
+def get_ligand_rings(sm, start_idx: int = 0):
     ligandRings = sm._mol.GetRingInfo().AtomRings()
     ligandAtomAromaticRings = []
     for ring in ligandRings:
@@ -319,7 +323,7 @@ def get_ligand_rings(sm, start_idx=0):
     return ligandAtomAromaticRings
 
 
-def get_ligand_charged(sm, start_idx=0):
+def get_ligand_charged(sm, start_idx: int = 0):
     pos = []
     neg = []
     for i in range(sm.numAtoms):
@@ -331,7 +335,7 @@ def get_ligand_charged(sm, start_idx=0):
     return np.array(pos, dtype=np.uint32), np.array(neg, dtype=np.uint32)
 
 
-def get_ligand_aryl_halides(sm, start_idx=0):
+def get_ligand_aryl_halides(sm, start_idx: int = 0):
     import networkx as nx
 
     halogens = ["Cl", "Br", "I"]
@@ -357,15 +361,58 @@ def get_ligand_aryl_halides(sm, start_idx=0):
 
 
 def hbonds_calculate(
-    mol,
-    donors,
-    acceptors,
-    sel1="all",
-    sel2=None,
-    dist_threshold=2.5,
-    angle_threshold=120,
-    ignore_hs=False,
+    mol: "Molecule",
+    donors: np.ndarray,
+    acceptors: np.ndarray,
+    sel1: str | np.ndarray = "all",
+    sel2: str | np.ndarray | None = None,
+    dist_threshold: float = 2.5,
+    angle_threshold: float = 120,
+    ignore_hs: bool = False,
 ):
+    """Detect hydrogen bonds in each frame of a Molecule.
+
+    A hydrogen bond is reported when a donor hydrogen lies within `dist_threshold`
+    of an acceptor atom and the donor-heavy / hydrogen / acceptor angle is greater
+    than `angle_threshold`.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The Molecule (one or more frames) in which to detect hydrogen bonds. Its
+        ``box`` must have the same number of frames as its ``coords``.
+    donors : numpy.ndarray
+        An array of shape (n_donors, 2) of donor pairs, where each row holds the
+        index of the donor heavy atom and the index of its bonded hydrogen, as
+        returned by :func:`get_donors_acceptors` or
+        :func:`get_ligand_donors_acceptors`.
+    acceptors : numpy.ndarray
+        A 1D array of acceptor atom indices.
+    sel1 : str or np.ndarray
+        An atom selection string, a boolean mask, or an integer index array for the
+        first group of atoms taking part in the
+        hydrogen bonds. See more `here <https://software.acellera.com/moleculekit/atomselect.html>`__.
+    sel2 : str or np.ndarray
+        An atom selection string, a boolean mask, or an integer index array for the
+        second group of atoms taking part in the
+        hydrogen bonds. If None, `sel1` is used for both groups and only
+        intra-selection hydrogen bonds are computed.
+    dist_threshold : float
+        The maximum hydrogen-to-acceptor distance in angstroms for a hydrogen bond.
+    angle_threshold : float
+        The minimum donor-hydrogen-acceptor angle in degrees for a hydrogen bond.
+    ignore_hs : bool
+        If True, hydrogens are ignored and only the donor heavy atoms are used,
+        with distances measured between donor heavy atoms and acceptors. The
+        reported hydrogen index will be -1 in this case.
+
+    Returns
+    -------
+    hbonds : list of numpy.ndarray
+        A list with one entry per frame of `mol`. Each entry is an array of shape
+        (n_hbonds, 3) where each row holds the indices of the donor heavy atom, the
+        donor hydrogen (or -1 if `ignore_hs` is True) and the acceptor atom.
+    """
     from moleculekit.interactions import hbonds
 
     if mol.box.shape[1] != mol.coords.shape[2]:
@@ -419,16 +466,64 @@ def hbonds_calculate(
 
 
 def waterbridge_calculate(
-    mol,
-    donors,
-    acceptors,
-    sel1,
-    sel2,
-    order=1,
-    dist_threshold=2.5,
-    angle_threshold=120,
-    ignore_hs=False,
+    mol: "Molecule",
+    donors: np.ndarray,
+    acceptors: np.ndarray,
+    sel1: str | np.ndarray,
+    sel2: str | np.ndarray,
+    order: int = 1,
+    dist_threshold: float = 2.5,
+    angle_threshold: float = 120,
+    ignore_hs: bool = False,
 ):
+    """Detect water-mediated hydrogen-bond bridges between two selections.
+
+    A water bridge is a chain of hydrogen bonds that connects an atom in `sel1` to
+    an atom in `sel2` through one or more intervening water molecules. The chain of
+    hydrogen bonds is built by iteratively detecting hydrogen bonds (see
+    :func:`hbonds_calculate`) starting from `sel1`, hopping through waters, and a
+    network is then searched for paths whose intermediate atoms are all water.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The Molecule (one or more frames) in which to detect water bridges. It must
+        contain the waters that can mediate the bridges.
+    donors : numpy.ndarray
+        An array of shape (n_donors, 2) of donor pairs (donor heavy atom index,
+        bonded hydrogen index), as returned by :func:`get_donors_acceptors`. The
+        waters must not be excluded (i.e. call it with ``exclude_water=False``).
+    acceptors : numpy.ndarray
+        A 1D array of acceptor atom indices, including water acceptors.
+    sel1 : str or np.ndarray
+        An atom selection string, a boolean mask, or an integer index array for the
+        source group of atoms (one end of the bridge).
+        See more `here <https://software.acellera.com/moleculekit/atomselect.html>`__.
+    sel2 : str or np.ndarray
+        An atom selection string, a boolean mask, or an integer index array for the
+        target group of atoms (other end of the bridge).
+    order : int
+        The maximum number of bridging water molecules allowed between `sel1` and
+        `sel2`. ``order=1`` finds bridges through a single water, ``order=2`` finds
+        bridges through up to two waters, and so on.
+    dist_threshold : float
+        The maximum hydrogen-to-acceptor distance in angstroms for each hydrogen
+        bond in the bridge.
+    angle_threshold : float
+        The minimum donor-hydrogen-acceptor angle in degrees for each hydrogen bond
+        in the bridge.
+    ignore_hs : bool
+        If True, hydrogens are ignored and the bridge paths are expressed in terms
+        of donor/acceptor heavy atoms only.
+
+    Returns
+    -------
+    water_bridges : list of list of list
+        A list with one entry per frame of `mol`. Each frame entry is a list of
+        bridges, where each bridge is a list of atom indices describing the path
+        from a `sel1` atom to a `sel2` atom; every intermediate atom in the path
+        belongs to a water molecule.
+    """
     import networkx as nx
 
     if len(donors) == 0 or len(acceptors) == 0:
@@ -522,15 +617,66 @@ def waterbridge_calculate(
 
 
 def pipi_calculate(
-    mol,
+    mol: "Molecule",
     rings1,
     rings2,
-    dist_threshold1=4.4,
-    angle_threshold1_max=30,
-    dist_threshold2=5.5,
-    angle_threshold2_min=60,
-    return_rings=False,
+    dist_threshold1: float = 4.4,
+    angle_threshold1_max: float = 30,
+    dist_threshold2: float = 5.5,
+    angle_threshold2_min: float = 60,
+    return_rings: bool = False,
 ):
+    """Detect pi-pi (aromatic ring stacking) interactions in each frame of a Molecule.
+
+    A pi-pi interaction is reported when the distance between two ring centroids and
+    the angle between the two ring planes satisfy one of two criteria, which together
+    capture both parallel (sandwich/offset-stacked) and perpendicular (T-shaped)
+    arrangements:
+
+    - centroid distance below `dist_threshold1` and inter-plane angle below
+      `angle_threshold1_max` (near-parallel stacking), or
+    - centroid distance below `dist_threshold2` and inter-plane angle above
+      `angle_threshold2_min` (near-perpendicular / T-shaped).
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The Molecule (one or more frames) in which to detect pi-pi interactions.
+    rings1 : list of numpy.ndarray
+        The first group of aromatic rings, where each ring is an array of its atom
+        indices, as returned by e.g. :func:`get_protein_rings` or
+        :func:`get_ligand_rings`.
+    rings2 : list of numpy.ndarray
+        The second group of aromatic rings, in the same format as `rings1`.
+    dist_threshold1 : float
+        The maximum centroid-to-centroid distance in angstroms for the
+        near-parallel criterion.
+    angle_threshold1_max : float
+        The maximum inter-plane angle in degrees ([0, 90]) for the near-parallel
+        criterion.
+    dist_threshold2 : float
+        The maximum centroid-to-centroid distance in angstroms for the
+        near-perpendicular criterion.
+    angle_threshold2_min : float
+        The minimum inter-plane angle in degrees ([0, 90]) for the near-perpendicular
+        criterion.
+    return_rings : bool
+        If True, the first returned value contains the ring atom-index arrays for
+        each interacting pair instead of the ring indices into `rings1`/`rings2`.
+
+    Returns
+    -------
+    pp_list : list
+        A list with one entry per frame. By default each entry is a list of
+        ``[i, j]`` pairs, where ``i`` indexes into `rings1` and ``j`` indexes into
+        `rings2`. If `return_rings` is True, each entry is instead a list of
+        ``[ring1_atoms, ring2_atoms]`` pairs holding the atom-index arrays of the
+        two interacting rings.
+    dist_ang_list : list
+        A list with one entry per frame, each a list of ``[distance, angle]`` pairs
+        (centroid distance in angstroms and inter-plane angle in degrees) aligned
+        with `pp_list`.
+    """
     from moleculekit.interactions import pipi
 
     if (
@@ -573,7 +719,46 @@ def pipi_calculate(
     return pp_list, dist_ang_list
 
 
-def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
+def saltbridge_calculate(
+    mol: "Molecule",
+    pos: np.ndarray,
+    neg: np.ndarray,
+    sel1: str | np.ndarray = "all",
+    sel2: str | np.ndarray | None = None,
+    threshold: float = 4,
+):
+    """Detect salt bridges (charged contacts) in each frame of a Molecule.
+
+    A salt bridge is reported when a positively charged atom and a negatively
+    charged atom lie within `threshold` of each other. Each reported pair contains
+    exactly one positive and one negative atom.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The Molecule (one or more frames) in which to detect salt bridges.
+    pos : numpy.ndarray
+        A 1D array of positively charged atom indices, as returned by e.g.
+        :func:`get_protein_charged` or :func:`get_ligand_charged`.
+    neg : numpy.ndarray
+        A 1D array of negatively charged atom indices.
+    sel1 : str or np.ndarray
+        An atom selection string, a boolean mask, or an integer index array for the
+        first group of atoms taking part in the salt
+        bridges. See more `here <https://software.acellera.com/moleculekit/atomselect.html>`__.
+    sel2 : str or np.ndarray
+        An atom selection string, a boolean mask, or an integer index array for the
+        second group of atoms. If None, `sel1` is used
+        for both groups.
+    threshold : float
+        The maximum distance in angstroms between the two charged atoms.
+
+    Returns
+    -------
+    salt_bridges : list of numpy.ndarray
+        A list with one entry per frame of `mol`. Each entry is an array of shape
+        (n_bridges, 2) of atom-index pairs forming a salt bridge.
+    """
     from moleculekit.distance import calculate_contacts
 
     if len(pos) == 0 or len(neg) == 0:
@@ -602,13 +787,52 @@ def saltbridge_calculate(mol, pos, neg, sel1="all", sel2=None, threshold=4):
 
 
 def cationpi_calculate(
-    mol,
+    mol: "Molecule",
     rings,
     cations,
-    dist_threshold=5,
-    angle_threshold_min=60,
-    return_rings=False,
+    dist_threshold: float = 5,
+    angle_threshold_min: float = 60,
+    return_rings: bool = False,
 ):
+    """Detect cation-pi interactions in each frame of a Molecule.
+
+    A cation-pi interaction is reported when a cation lies within `dist_threshold`
+    of an aromatic ring centroid and the angle between the ring plane and the
+    centroid-to-cation vector is above `angle_threshold_min` (i.e. the cation sits
+    roughly above the ring face).
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The Molecule (one or more frames) in which to detect cation-pi interactions.
+    rings : list of numpy.ndarray
+        The aromatic rings, where each ring is an array of its atom indices, as
+        returned by e.g. :func:`get_protein_rings` or :func:`get_ligand_rings`.
+    cations : list or numpy.ndarray
+        A 1D collection of cation atom indices, as returned by e.g.
+        :func:`get_protein_charged` (positive indices), :func:`get_ligand_charged`
+        or :func:`get_metal_charged`.
+    dist_threshold : float
+        The maximum centroid-to-cation distance in angstroms.
+    angle_threshold_min : float
+        The minimum angle in degrees ([0, 90]) between the ring plane and the
+        centroid-to-cation vector.
+    return_rings : bool
+        If True, the first returned value contains the ring atom-index array for
+        each interacting pair instead of the ring index into `rings`.
+
+    Returns
+    -------
+    index_list : list
+        A list with one entry per frame. By default each entry is a list of
+        ``[i, cation_idx]`` pairs, where ``i`` indexes into `rings` and
+        ``cation_idx`` is the cation atom index. If `return_rings` is True, each
+        entry is instead a list of ``[ring_atoms, cation_idx]`` pairs.
+    dist_ang_list : list
+        A list with one entry per frame, each a list of ``[distance, angle]`` pairs
+        (centroid-to-cation distance in angstroms and angle in degrees) aligned with
+        `index_list`.
+    """
     from moleculekit.interactions import cationpi
 
     if angle_threshold_min < 0 or angle_threshold_min > 90:
@@ -643,13 +867,50 @@ def cationpi_calculate(
 
 
 def sigmahole_calculate(
-    mol,
+    mol: "Molecule",
     rings,
     halides,
-    dist_threshold=4.5,
-    angle_threshold_min=60,
-    return_rings=False,
+    dist_threshold: float = 4.5,
+    angle_threshold_min: float = 60,
+    return_rings: bool = False,
 ):
+    """Detect sigma-hole (halogen-pi) interactions in each frame of a Molecule.
+
+    A sigma-hole interaction is reported when an aryl-halide halogen lies within
+    `dist_threshold` of an aromatic ring centroid and the angle between the ring
+    plane and the centroid-to-halogen vector is above `angle_threshold_min`.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The Molecule (one or more frames) in which to detect sigma-hole interactions.
+    rings : list of numpy.ndarray
+        The aromatic rings, where each ring is an array of its atom indices, as
+        returned by e.g. :func:`get_protein_rings` or :func:`get_ligand_rings`.
+    halides : numpy.ndarray
+        An array of shape (n_halides, 2) of aryl-halide bonds (halogen atom index,
+        bonded ring carbon index), as returned by :func:`get_ligand_aryl_halides`.
+    dist_threshold : float
+        The maximum centroid-to-halogen distance in angstroms.
+    angle_threshold_min : float
+        The minimum angle in degrees ([0, 90]) between the ring plane and the
+        centroid-to-halogen vector.
+    return_rings : bool
+        If True, the first returned value contains the ring atom-index array for
+        each interacting pair instead of the ring index into `rings`.
+
+    Returns
+    -------
+    index_list : list
+        A list with one entry per frame. By default each entry is a list of
+        ``[i, halogen_idx]`` pairs, where ``i`` indexes into `rings` and
+        ``halogen_idx`` is the halogen atom index. If `return_rings` is True, each
+        entry is instead a list of ``[ring_atoms, halogen_idx]`` pairs.
+    dist_ang_list : list
+        A list with one entry per frame, each a list of ``[distance, angle]`` pairs
+        (centroid-to-halogen distance in angstroms and angle in degrees) aligned
+        with `index_list`.
+    """
     from moleculekit.interactions import sigmahole
 
     if angle_threshold_min < 0 or angle_threshold_min > 90:
@@ -683,7 +944,38 @@ def sigmahole_calculate(
     return index_list, dist_ang_list
 
 
-def hydrophobic_calculate(mol, sel1, sel2, dist_threshold=4.0):
+def hydrophobic_calculate(
+    mol: "Molecule",
+    sel1: str | np.ndarray,
+    sel2: str | np.ndarray,
+    dist_threshold: float = 4.0,
+):
+    """Detect hydrophobic contacts in each frame of a Molecule.
+
+    A hydrophobic contact is reported when a carbon atom in `sel1` lies within
+    `dist_threshold` of a carbon atom in `sel2`. Both selections are intersected
+    with the carbon atoms of the molecule before computing contacts.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The Molecule (one or more frames) in which to detect hydrophobic contacts.
+    sel1 : str or np.ndarray
+        An atom selection string, a boolean mask, or an integer index array for the
+        first group of atoms. See more
+        `here <https://software.acellera.com/moleculekit/atomselect.html>`__.
+    sel2 : str or np.ndarray
+        An atom selection string, a boolean mask, or an integer index array for the
+        second group of atoms.
+    dist_threshold : float
+        The maximum carbon-to-carbon distance in angstroms.
+
+    Returns
+    -------
+    contacts : list of numpy.ndarray
+        A list with one entry per frame of `mol`. Each entry is an array of shape
+        (n_contacts, 2) of carbon atom-index pairs in contact.
+    """
     from moleculekit.distance import calculate_contacts
 
     # TODO: Maybe check for ligand hydrophobic atoms since we can with rdkit?
@@ -698,7 +990,39 @@ def hydrophobic_calculate(mol, sel1, sel2, dist_threshold=4.0):
     return calculate_contacts(mol, sel1, sel2, periodic, dist_threshold)
 
 
-def metal_coordination_calculate(mol, sel1, sel2, dist_threshold=3.5):
+def metal_coordination_calculate(
+    mol: "Molecule",
+    sel1: str | np.ndarray,
+    sel2: str | np.ndarray,
+    dist_threshold: float = 3.5,
+):
+    """Detect metal coordination contacts in each frame of a Molecule.
+
+    A metal coordination contact is reported when a metal atom lies within
+    `dist_threshold` of a coordinating atom (one of N, O, S or a halogen). Contacts
+    are detected in both directions: metals in `sel1` against coordinating atoms in
+    `sel2`, and coordinating atoms in `sel1` against metals in `sel2`.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The Molecule (one or more frames) in which to detect metal coordination.
+    sel1 : str or np.ndarray
+        An atom selection string, a boolean mask, or an integer index array for the
+        first group of atoms. See more
+        `here <https://software.acellera.com/moleculekit/atomselect.html>`__.
+    sel2 : str or np.ndarray
+        An atom selection string, a boolean mask, or an integer index array for the
+        second group of atoms.
+    dist_threshold : float
+        The maximum metal-to-coordinating-atom distance in angstroms.
+
+    Returns
+    -------
+    contacts : list of numpy.ndarray
+        A list with one entry per frame of `mol`. Each entry is an array of shape
+        (n_contacts, 2) of atom-index pairs in coordination contact.
+    """
     from moleculekit.distance import calculate_contacts
     from moleculekit.periodictable import METAL_ELEMENTS
 

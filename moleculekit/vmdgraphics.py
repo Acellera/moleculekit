@@ -6,15 +6,35 @@
 import moleculekit.vmdviewer
 import io
 from moleculekit.vmdviewer import getCurrentViewer
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 
 class VMDGraphicObject(object):
-    """A superclass from which VMD graphic objects (e.g. the convex hull) inherit."""
+    """A superclass from which VMD graphic objects (e.g. the convex hull) inherit.
+
+    Subclasses build a tcl script that draws a graphic primitive (a box,
+    sphere, cylinder, convex hull, isosurface, ...) and send it to the current
+    VMD viewer. Each object is assigned a unique id so that it can later be
+    removed with the :meth:`delete` method.
+    """
 
     counter = 1
 
     def __init__(self, data):
-        """Generic creation method. Not useful for the user."""
+        """Create a graphic object. Not meant to be called directly by the user.
+
+        Parameters
+        ----------
+        data : object
+            The underlying data used to build the graphic (e.g. coordinates,
+            a box definition or a convex hull). Stored on the instance for
+            reference.
+        """
         self.n = self.counter
         self.data = data
         self.script = io.StringIO()
@@ -45,13 +65,24 @@ class VMDGraphicObject(object):
         self.script.write(f"lappend htmd_graphics({n:d}) [{s:s}]\n")
 
     @staticmethod
-    def tq(v):
-        """Quote a numpy 3-vector to a TCL list."""
+    def tq(v: np.ndarray) -> str:
+        """Quote a numpy 3-vector as a tcl list.
+
+        Parameters
+        ----------
+        v : np.ndarray
+            The vector to format.
+
+        Returns
+        -------
+        quoted : str
+            The vector formatted as a brace-quoted tcl list, e.g. ``"{ 1 2 3 }"``.
+        """
         return "{ " + str(v).strip("[]") + " }"
 
 
 class VMDConvexHull(VMDGraphicObject):
-    def __init__(self, mol, style="", preamble="", solid=False):
+    def __init__(self, mol: "Molecule", style: str = "", preamble: str = "", solid: bool = False):
         """Display the convex hull of the given molecule.
 
         For preamble and color, see http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node129.html
@@ -60,7 +91,7 @@ class VMDConvexHull(VMDGraphicObject):
 
         Parameters
         ----------
-        m: Molecule
+        mol: :class:`Molecule <moleculekit.molecule.Molecule>` object
             The object of which to show the hull (only 1 frame)
         style: str
             Style for wireframe lines
@@ -113,7 +144,7 @@ class VMDConvexHull(VMDGraphicObject):
 
 
 class VMDBox(VMDGraphicObject):
-    def __init__(self, box, color="red"):
+    def __init__(self, box, color: str = "red"):
         """Displays a box in VMD as lines of its edges.
 
         The function returns an instance of VMDGraphicsObject. To delete it, use the delete() method.
@@ -181,7 +212,7 @@ class VMDBox(VMDGraphicObject):
 
 
 class VMDSphere(VMDGraphicObject):
-    def __init__(self, xyz, color="red", radius=1):
+    def __init__(self, xyz, color: str = "red", radius: float = 1):
         """Displays a sphere in VMD.
 
         The function returns an instance of VMDGraphicsObject. To delete it, use the delete() method.
@@ -208,7 +239,7 @@ class VMDSphere(VMDGraphicObject):
 
 
 class VMDCylinder(VMDGraphicObject):
-    def __init__(self, start, end, color="red", radius=1):
+    def __init__(self, start, end, color: str = "red", radius: float = 1):
         """Displays a cylinder in VMD.
 
         The function returns an instance of VMDGraphicsObject. To delete it, use the delete() method.
@@ -240,7 +271,7 @@ class VMDCylinder(VMDGraphicObject):
 
 
 class VMDText(VMDGraphicObject):
-    def __init__(self, text, xyz, color="red"):
+    def __init__(self, text: str, xyz, color: str = "red"):
         """Displays a text in VMD.
 
         The function returns an instance of VMDGraphicsObject. To delete it, use the delete() method.
@@ -268,7 +299,7 @@ class VMDText(VMDGraphicObject):
 
 class VMDIsosurface(VMDGraphicObject):
     def __init__(
-        self, arr, vecMin, vecRes, color=8, isovalue=0.5, name=None, draw="solid"
+        self, arr: np.ndarray, vecMin: np.ndarray, vecRes: np.ndarray, color: int = 8, isovalue: float = 0.5, name: str | None = None, draw: str = "solid"
     ):
         """Displays an isosurface in VMD
 
@@ -282,8 +313,10 @@ class VMDIsosurface(VMDGraphicObject):
             3D vector denoting the minimal corner of the grid
         vecRes: np.ndarray
             3D vector denoting the resolution of the grid in each dimension
-        color: str
-            The color to be used for the isosurface
+        color: int
+            The VMD ColorID to be used for the isosurface
+        isovalue: float
+            The isovalue at which to draw the isosurface
         name: str
             A name for the representation
         draw: str ('solid', 'wireframe')
@@ -317,6 +350,7 @@ class VMDIsosurface(VMDGraphicObject):
             os.unlink(filename)
 
     def delete(self):
+        """Undisplay and delete the isosurface from the viewer."""
         vmd = getCurrentViewer()
         vmd.send(f"mol delete htmd_graphics_mol({self.n})")
 
@@ -324,8 +358,30 @@ class VMDIsosurface(VMDGraphicObject):
 class VMDLabels(VMDGraphicObject):
     count = 0
 
-    def __init__(self, mol, selection, molid="top", textsize=0.5, textcolor="green"):
+    def __init__(
+        self,
+        mol: "Molecule",
+        selection: str | np.ndarray,
+        molid: str = "top",
+        textsize: float = 0.5,
+        textcolor: str = "green",
+    ):
         """Displays labels on atoms in VMD.
+
+        The function returns an instance of VMDGraphicsObject. To delete it, use the delete() method.
+
+        Parameters
+        ----------
+        mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
+            The molecule whose atoms are labelled
+        selection : str or np.ndarray
+            Atom selection (string, boolean mask, or integer index array) defining which atoms to label
+        molid : str
+            The VMD molecule id on which to draw the labels
+        textsize : float
+            The size of the label text
+        textcolor : str
+            The color of the label text
 
         Examples
         --------
@@ -364,6 +420,7 @@ foreach n [list {idx}] {{
         # print(cmd)
 
     def delete(self):
+        """Undisplay and delete the atom labels from the viewer."""
         vmd = getCurrentViewer()
         for i in self.labelidx[::-1]:
             vmd.send(f"label delete Atoms {i}")

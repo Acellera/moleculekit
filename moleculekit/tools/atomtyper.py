@@ -3,8 +3,12 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
+from typing import TYPE_CHECKING
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 
 logger = logging.getLogger(__name__)
@@ -36,7 +40,35 @@ metal_atypes = (
 )
 
 
-def getPDBQTAtomType(atype, aidx, mol, aromaticNitrogen=False):
+def getPDBQTAtomType(
+    atype: str, aidx: int, mol: "Molecule", aromaticNitrogen: bool = False
+) -> str:
+    """Maps a single atom's atom type to its corresponding PDBQT atom type.
+
+    Parameters
+    ----------
+    atype : str
+        The atom type of the atom (e.g. an Open Babel/Sybyl atom type such as
+        "Car", "Nam" or "OA").
+    aidx : int
+        The index of the atom in the molecule. Used to inspect the atom's bonds.
+    mol : Molecule object
+        The molecule the atom belongs to. Used to look up bonding partners and
+        elements.
+    aromaticNitrogen : bool
+        If True, aromatic nitrogens are given dedicated PDBQT atom types
+        ("Na"/"Nn") instead of being collapsed into the generic types.
+
+    Returns
+    -------
+    pdbqttype : str
+        The PDBQT atom type of the atom.
+
+    Raises
+    ------
+    RuntimeError
+        If a hydrogen atom has no bonding partners and therefore cannot be typed.
+    """
     if atype in metal_atypes:  # Save metals from treated as protein atoms
         return atype
 
@@ -97,8 +129,13 @@ def getPDBQTAtomType(atype, aidx, mol, aromaticNitrogen=False):
 
 
 def prepareProteinForAtomtyping(
-    mol, guessBonds=True, protonate=True, pH=7.4, segment=True, verbose=True
-):
+    mol: "Molecule",
+    guessBonds: bool = True,
+    protonate: bool = True,
+    pH: float = 7.4,
+    segment: bool = True,
+    verbose: bool = True,
+) -> "Molecule":
     """Prepares a Molecule object for atom typing.
 
     Parameters
@@ -204,7 +241,30 @@ def prepareProteinForAtomtyping(
     return mol
 
 
-def atomtypingValidityChecks(mol):
+def atomtypingValidityChecks(mol: "Molecule") -> None:
+    """Checks that a Molecule is suitable for atom typing and voxelization.
+
+    Verifies that the molecule only contains protein atoms and metals, that it
+    has a reasonable number of unique bonds, that segments and chains are
+    assigned and that hydrogens are present. Most of these requirements can be
+    satisfied by first running
+    :func:`prepareProteinForAtomtyping <moleculekit.tools.atomtyper.prepareProteinForAtomtyping>`.
+
+    Parameters
+    ----------
+    mol : Molecule object
+        The molecule to validate.
+
+    Raises
+    ------
+    RuntimeError
+        If no protein atoms are found, if non-protein/non-metal atoms are
+        present, if duplicate bonds exist, if segments or chains are not
+        assigned, if the number of segments does not match the predicted number,
+        or if no hydrogens are present.
+    ValueError
+        If the molecule has fewer bonds than (number of atoms - 1).
+    """
     logger.info(
         "Checking validity of Molecule before atomtyping. "
         "If it gives incorrect results or to improve performance disable it with validitychecks=False. "
@@ -267,7 +327,33 @@ def atomtypingValidityChecks(mol):
         )
 
 
-def getPDBQTAtomTypesAndCharges(mol, aromaticNitrogen=False, validitychecks=True):
+def getPDBQTAtomTypesAndCharges(
+    mol: "Molecule", aromaticNitrogen: bool = False, validitychecks: bool = True
+):
+    """Computes the PDBQT atom types and partial charges of a molecule.
+
+    Uses Open Babel to assign atom types and Gasteiger partial charges and then
+    maps each atom to its PDBQT atom type.
+
+    Parameters
+    ----------
+    mol : Molecule object
+        The molecule for which to compute atom types and charges.
+    aromaticNitrogen : bool
+        If True, aromatic nitrogens are given dedicated PDBQT atom types instead
+        of being collapsed into the generic types.
+    validitychecks : bool
+        If True, runs
+        :func:`atomtypingValidityChecks <moleculekit.tools.atomtyper.atomtypingValidityChecks>`
+        on the molecule before atom typing.
+
+    Returns
+    -------
+    atomtypes : np.ndarray
+        An object array of length natoms with the PDBQT atom type of each atom.
+    charges : np.ndarray
+        A float32 array of length natoms with the partial charge of each atom.
+    """
     from moleculekit.tools.obabel_tools import getOpenBabelProperties
 
     if validitychecks:
@@ -434,7 +520,25 @@ def _getMetals(atypes):
     return np.isin(atypes, metal_atypes)
 
 
-def getFeatures(mol):
+def getFeatures(mol: "Molecule") -> np.ndarray:
+    """Computes the per-atom feature channels of a molecule from its atom types.
+
+    Requires the molecule to already have PDBQT atom types assigned (see
+    :func:`getPDBQTAtomTypesAndCharges <moleculekit.tools.atomtyper.getPDBQTAtomTypesAndCharges>`).
+
+    Parameters
+    ----------
+    mol : Molecule object
+        The molecule for which to compute features. Must have its `atomtype`
+        field populated with PDBQT atom types.
+
+    Returns
+    -------
+    features : np.ndarray
+        A (natoms, 8) boolean array with one column per channel, in the order:
+        hydrophobic, aromatic, hydrogen-bond acceptor, hydrogen-bond donor,
+        positive ionizable, negative ionizable, metal and occupancy.
+    """
     atypes = mol.atomtype
     elements = [el[0] for el in atypes]
 
@@ -450,7 +554,7 @@ def getFeatures(mol):
     return np.vstack((hydr, arom, acc, don, pos, neg, metals, occ)).T.copy()
 
 
-def parallel(func, listobj, n_cpus=-1, *args):
+def parallel(func, listobj, n_cpus: int = -1, *args):
     from tqdm import tqdm
 
     try:

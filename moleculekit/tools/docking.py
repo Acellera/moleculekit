@@ -30,13 +30,13 @@ else:
 
 
 def dock(
-    protein,
-    ligand,
-    center=None,
-    extent=None,
-    numposes=20,
-    babelexe="obabel",
-    vinaexe=None,
+    protein: Molecule,
+    ligand: Molecule,
+    center: list | None = None,
+    extent: list | None = None,
+    numposes: int = 20,
+    babelexe: str = "obabel",
+    vinaexe: str | None = None,
 ):
     """Molecular docking, using Vina
 

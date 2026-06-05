@@ -1,6 +1,10 @@
 import logging
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +92,7 @@ def _add_bonded_forces(system, mol, mobile_atom_indices, positions_nm):
         logger.debug(f"Added {angle_force.getNumAngles()} harmonic angle restraints")
 
 
-def minimize_soft_potential(mol, mobile_atom_indices, max_iterations=200):
+def minimize_soft_potential(mol: "Molecule", mobile_atom_indices: set | list, max_iterations: int = 200) -> bool:
     """Run a soft-potential energy minimization on selected atoms.
 
     All other atoms are frozen (mass = 0).  Uses a soft repulsive
@@ -196,7 +200,26 @@ def minimize_soft_potential(mol, mobile_atom_indices, max_iterations=200):
     return True
 
 
-def openmm_to_molecule(topology, positions):
+def openmm_to_molecule(topology, positions) -> "Molecule":
+    """Convert an OpenMM topology and positions into a Molecule.
+
+    Atom names, elements, residue names, residue ids, chains, insertion codes,
+    formal charges, coordinates and bonds are copied from the OpenMM topology
+    into a new :class:`Molecule <moleculekit.molecule.Molecule>` object.
+
+    Parameters
+    ----------
+    topology : openmm.app.Topology
+        The OpenMM topology describing the atoms, residues, chains and bonds.
+    positions : openmm.unit.Quantity
+        The atom positions as an OpenMM Quantity (e.g. with nanometer units).
+        They are converted to Angstrom in the resulting Molecule.
+
+    Returns
+    -------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
+        The molecule built from the OpenMM topology and positions.
+    """
     from moleculekit.molecule import Molecule
     from openmm import unit
     import numpy as np

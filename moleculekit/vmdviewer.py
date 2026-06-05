@@ -11,9 +11,13 @@ import queue
 import time
 import os
 from moleculekit.util import string_to_tempfile
+from typing import TYPE_CHECKING
 import numpy as np
 import tempfile
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -32,16 +36,27 @@ def _enqueue_output(obj, vmd, queue):
 
 
 class VMD:
-    """Please do not directly call this class constructor. Use the `viewer` or `getCurrentViewer` function instead.
+    """A handle to a VMD molecular viewer subprocess.
+
+    Each instance launches a VMD process and communicates with it by sending
+    tcl commands through the :meth:`send` method. The constructor is not meant
+    to be called directly; obtain a handle through the :func:`viewer` or
+    :func:`getCurrentViewer` functions instead.
 
     Parameters
     ----------
     vmd : str
+        Path to the VMD executable. If None the bundled VMD wrapper for the
+        current platform is located automatically.
     host : str
+        Hostname passed to VMD with the ``--host`` argument. If None no host
+        is specified.
     dispdev : str
+        The graphical display device to use, passed to VMD with the
+        ``--dispdev`` argument (e.g. ``'win'`` or ``'text'``).
     """
 
-    def __init__(self, vmd=None, host=None, dispdev="win"):
+    def __init__(self, vmd: str | None = None, host: str | None = None, dispdev: str = "win"):
         self.done = False
         vmd = getVMDpath(vmd=vmd)
 
@@ -75,7 +90,7 @@ class VMD:
         # self.send('color Display Background white')
         self.send("display projection Orthographic")
 
-    def send(self, command):
+    def send(self, command: str):
         """Send a tcl command to VMD
 
         Parameters
@@ -96,7 +111,7 @@ class VMD:
         while os.path.isfile(fn) and not self.done:
             time.sleep(0.01)
 
-    def loadMol(self, mol, name=None):
+    def loadMol(self, mol: "Molecule", name: str | None = None):
         """Load a :class:`Molecule <moleculekit.molecule.Molecule>` object into VMD
 
         Parameters
@@ -119,7 +134,7 @@ class VMD:
         """
         mol.view(name=name, viewerhandle=self)
 
-    def rep(self, mode, sel="resname MOL", color=0):
+    def rep(self, mode: str, sel: str = "resname MOL", color: int = 0):
         """Modify representations for the top molecule in VMD
 
         Parameters
@@ -157,7 +172,7 @@ class VMD:
                 "Invalid mode. Choose between " "ligand" " and " "protein" ""
             )
 
-    def completed(self):
+    def completed(self) -> bool:
         """Check if the viewer has been closed
 
         Returns
@@ -168,18 +183,25 @@ class VMD:
         return self.done
 
     def copy(self):
+        """Return a copy of the viewer handle.
+
+        Returns
+        -------
+        copy : None
+            Viewer handles are not copyable, so None is returned.
+        """
         return None
 
     def render(
         self,
-        outfile,
-        renderer="TachyonInternal",
-        resolution=None,
-        aasamples=None,
-        skylight=None,
-        tachyon=None,
-        convert=None,
-        trim=False,
+        outfile: str,
+        renderer: str = "TachyonInternal",
+        resolution: tuple | None = None,
+        aasamples: int | None = None,
+        skylight: float | None = None,
+        tachyon: str | None = None,
+        convert: bool | None = None,
+        trim: bool = False,
     ):
         """Renders the current VMD scene into a file.
 
@@ -261,7 +283,13 @@ class VMD:
             os.remove(outname + tmpext)
 
     def movie_reps(self):
-        """Adds some default settings and representations for creating movies with Tachyon in VMD"""
+        """Add default settings and representations for creating movies with Tachyon in VMD.
+
+        Clears the existing representations of the top molecule and sets up
+        depth cueing, shadows, ambient occlusion, depth of field and a white
+        background, together with VDW representations for the protein and the
+        non-protein heavy atoms.
+        """
         render_conf = r"""display depthcue   on
 display shadows on
 display ambientocclusion on
@@ -293,13 +321,14 @@ mol addrep top
         self.send(render_conf)
 
     def close(self):
+        """Close the viewer by sending the VMD ``exit`` command."""
         self.send("exit")
 
     def __del__(self):
         self.close()
 
 
-def getVMDpath(vmd=None):
+def getVMDpath(vmd: str | None = None) -> str:
     sys = platform.system()
     if not vmd:
         if sys == "Linux" or sys == "Darwin":
@@ -313,7 +342,7 @@ def getVMDpath(vmd=None):
     return vmd
 
 
-def getCurrentViewer(dispdev="win"):
+def getCurrentViewer(dispdev: str = "win"):
     """Get the handle to the current molecular viewer
 
     Parameters
@@ -343,8 +372,17 @@ def getCurrentViewer(dispdev="win"):
     return _viewers[-1]
 
 
-def viewer(dispdev="win"):
+def viewer(dispdev: str = "win"):
     """Start a new molecular viewer
+
+    Parameters
+    ----------
+    dispdev : str, ('win', 'text', 'cave', 'caveforms', 'none')
+        Specify the type of graphical display to use. The possible display devices include:
+        win: a standard graphics display window.
+        text: do not provide any graphics display window.
+        cave: use the CAVE virtual environment for display, forms are disabled.
+        caveforms: use the CAVE virtual environment for display and with forms enabled. This is useful with -display machine:0 for remote display of the forms when the CAVE uses the local screen.
 
     Returns
     -------

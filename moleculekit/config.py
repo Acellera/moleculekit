@@ -13,7 +13,9 @@ _config = {
 
 
 def config(
-    viewer=_config["viewer"], configfile=_config["configfile"], ncpus=_config["ncpus"]
+    viewer: str | None = _config["viewer"],
+    configfile: str | None = _config["configfile"],
+    ncpus: int = _config["ncpus"],
 ):
     """
     Function to change HTMD configuration variables.
@@ -22,14 +24,10 @@ def config(
     ----------
     viewer : str
         Defines the backend viewer for molecular visualization
-    ncpus : int
-        Defines the number of cpus available for several HTMD operations
     configfile : str
         Defines the HTMD configuration file that is called at the beginning of importing
-    lsf : str
-        Defines a YAML file that can contain default profile configurations for an LsfQueue
-    slurm : str
-        Defines a YAML file that can contain default profile configurations for an SlurmQueue
+    ncpus : int
+        Defines the number of cpus available for several HTMD operations
     """
     _config["viewer"] = viewer
     _config["configfile"] = configfile

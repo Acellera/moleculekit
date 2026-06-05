@@ -4,8 +4,12 @@
 # No redistribution in whole or part
 #
 from moleculekit.projections.projection import Projection
+from typing import TYPE_CHECKING
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -17,21 +21,21 @@ class MetricRmsd(Projection):
     ----------
     refmol : :class:`Molecule <moleculekit.molecule.Molecule>` object
         The reference Molecule to which we want to calculate the RMSD.
-    trajrmsdstr : str
-        Atom selection string for the trajectories from which to calculate the RMSD.
+    trajrmsdstr : str or np.ndarray
+        Atom selection for the trajectories from which to calculate the RMSD (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    trajalnstr : str, optional
-        Atom selection string for the trajectories from which to align to the reference structure.
+    trajalnstr : str or np.ndarray, optional
+        Atom selection for the trajectories from which to align to the reference structure (a selection string, boolean mask, or integer index array).
         If None, it defaults to the same as `trajrmsdstr`.
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    refrmsdstr : str, optional
-        Atom selection string for the reference structure from which to calculate the RMSD. If None, it defaults to
+    refrmsdstr : str or np.ndarray, optional
+        Atom selection for the reference structure from which to calculate the RMSD (a selection string, boolean mask, or integer index array). If None, it defaults to
         `trajrmsdstr`. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    refalnstr : str, optional
-        Atom selection string for the reference structure from which to align to the trajectories. If None, it defaults
+    refalnstr : str or np.ndarray, optional
+        Atom selection for the reference structure from which to align to the trajectories (a selection string, boolean mask, or integer index array). If None, it defaults
         to `trajalnstr`. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    centerstr : str, optional
-        Atom selection string around which to center the wrapping of the trajectories.
+    centerstr : str or np.ndarray, optional
+        Atom selection around which to center the wrapping of the trajectories (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
     pbc : bool, optional
         Enable or disable simulation wrapping.
@@ -39,13 +43,13 @@ class MetricRmsd(Projection):
 
     def __init__(
         self,
-        refmol,
-        trajrmsdstr,
-        trajalnstr=None,
-        refrmsdstr=None,
-        refalnstr=None,
-        centerstr="protein",
-        pbc=True,
+        refmol: "Molecule",
+        trajrmsdstr: str | np.ndarray,
+        trajalnstr: str | np.ndarray | None = None,
+        refrmsdstr: str | np.ndarray | None = None,
+        refalnstr: str | np.ndarray | None = None,
+        centerstr: str | np.ndarray = "protein",
+        pbc: bool = True,
     ):
         super().__init__()
 
@@ -89,7 +93,7 @@ class MetricRmsd(Projection):
 
         return res
 
-    def project(self, mol):
+    def project(self, mol: "Molecule") -> np.ndarray:
         """Project molecule.
 
         Parameters
@@ -116,7 +120,7 @@ class MetricRmsd(Projection):
 
         return molRMSD(mol, self._refmol, getMolProp("trajrmsdsel"), self._refrmsdsel)
 
-    def getMapping(self, mol):
+    def getMapping(self, mol: "Molecule"):
         """Returns the description of each projected dimension.
 
         Parameters

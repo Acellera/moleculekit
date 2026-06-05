@@ -1,6 +1,11 @@
+from typing import TYPE_CHECKING
+
 import numpy as np
 from moleculekit.bondguesser_utils import make_grid_neighborlist_nonperiodic, grid_bonds
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +128,30 @@ vdw_radii = {
 }
 
 
-def guess_bonds(mol):
+def guess_bonds(mol: "Molecule") -> np.ndarray:
+    """Guess the bonds of a molecule from interatomic distances and VdW radii.
+
+    Two atoms are considered bonded when their distance is below a fraction of the
+    sum of their Van der Waals radii. A uniform grid (see :func:`bond_grid_search`)
+    is used for efficient neighbor lookup. Only the coordinates of the current
+    ``mol.frame`` are used.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
+        The Molecule whose bonds should be guessed.
+
+    Returns
+    -------
+    bonds : numpy.ndarray
+        A 2D array of shape (N, 2) and dtype uint32 with the atom-index pairs of
+        the guessed bonds. Empty if the molecule has one atom or fewer.
+
+    Raises
+    ------
+    RuntimeError
+        If ``mol.frame`` is out of range of the available coordinate frames.
+    """
     if mol.numAtoms <= 1:
         return np.zeros((0, 2), dtype=np.uint32)
 
@@ -159,7 +187,27 @@ def guess_bonds(mol):
     return bonds
 
 
-def guess_bonds_rdkit(mol):
+def guess_bonds_rdkit(mol: "Molecule") -> tuple[list, list]:
+    """Guess the bonds and bond orders of a molecule using RDKit.
+
+    The molecule is written to a temporary PDB file and parsed by RDKit, whose
+    perceived bonds and bond orders are then mapped back onto the molecule's atom
+    indices.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
+        The Molecule whose bonds should be guessed.
+
+    Returns
+    -------
+    bonds : list
+        A list of ``[i, j]`` atom-index pairs (each pair sorted ascending) for the
+        guessed bonds. Empty if the molecule has one atom or fewer.
+    bondtypes : list
+        A list of bond-order strings parallel to `bonds`, where ``"1"``, ``"2"``,
+        ``"3"`` and ``"ar"`` denote single, double, triple and aromatic bonds.
+    """
     from rdkit import Chem
     import tempfile
     import os
@@ -209,13 +257,51 @@ def guess_bonds_rdkit(mol):
 
 
 def bond_grid_search(
-    coords,
-    grid_cutoff,
-    is_hydrogen,
-    radii,
-    max_boxes=4e6,
-    cutoff_incr=1.26,
-):
+    coords: np.ndarray,
+    grid_cutoff: float,
+    is_hydrogen: np.ndarray,
+    radii: np.ndarray,
+    max_boxes: float = 4e6,
+    cutoff_incr: float = 1.26,
+) -> np.ndarray:
+    """Find bonded atom pairs using a uniform spatial grid.
+
+    Atoms are binned into cubic grid boxes of side `grid_cutoff` and only atoms in
+    neighboring boxes are tested for bonding, giving an efficient neighbor search.
+    If the grid would contain more than `max_boxes` boxes (e.g. for an unwrapped
+    trajectory spanning a large volume) the box size is enlarged by repeatedly
+    multiplying it by `cutoff_incr` until the box count is acceptable.
+
+    Parameters
+    ----------
+    coords : numpy.ndarray
+        A 2D array of shape (N, 3) with the atom coordinates. Must be finite.
+    grid_cutoff : float
+        The initial grid box side length in Angstrom (typically a small multiple of
+        the largest Van der Waals radius). Must be positive and finite.
+    is_hydrogen : numpy.ndarray
+        A 1D array of length N flagging which atoms are hydrogens (non-zero where
+        the atom is a hydrogen).
+    radii : numpy.ndarray
+        A 1D array of length N with the per-atom Van der Waals radii in Angstrom.
+    max_boxes : float
+        The maximum number of grid boxes allowed before the box size is increased.
+    cutoff_incr : float
+        The factor by which the box size is multiplied each time the box count
+        exceeds `max_boxes`.
+
+    Returns
+    -------
+    bonds : numpy.ndarray
+        A 2D array of shape (N, 2) and dtype uint32 with the bonded atom-index
+        pairs. Empty if no bonds are found.
+
+    Raises
+    ------
+    ValueError
+        If `coords` contains non-finite values, or if `grid_cutoff` is not positive
+        and finite.
+    """
     from collections import defaultdict
 
     if not np.isfinite(coords).all():

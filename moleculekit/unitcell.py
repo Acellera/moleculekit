@@ -31,7 +31,13 @@ import numpy as np
 
 
 def lengths_and_angles_to_box_vectors(
-    a_length, b_length, c_length, alpha, beta, gamma, reduced=False
+    a_length: float | np.ndarray,
+    b_length: float | np.ndarray,
+    c_length: float | np.ndarray,
+    alpha: float | np.ndarray,
+    beta: float | np.ndarray,
+    gamma: float | np.ndarray,
+    reduced: bool = False,
 ):
     """Convert from the lengths/angles of the unit cell to the box
     vectors (Bravais vectors). The angles should be in degrees.
@@ -50,6 +56,8 @@ def lengths_and_angles_to_box_vectors(
         angle between vectors **c** and **a**, in degrees.
     gamma : scalar or np.ndarray
         angle between vectors **a** and **b**, in degrees.
+    reduced : bool
+        if True, return the box vectors in the reduced form required by OpenMM.
 
     Returns
     -------
@@ -117,7 +125,7 @@ def lengths_and_angles_to_box_vectors(
     return a.T, b.T, c.T
 
 
-def box_vectors_to_lengths_and_angles(a, b, c):
+def box_vectors_to_lengths_and_angles(a: np.ndarray, b: np.ndarray, c: np.ndarray):
     """Convert box vectors into the lengths and angles defining the box.
 
     Parameters
@@ -212,14 +220,19 @@ def box_vectors_to_lengths_and_angles(a, b, c):
 
 
 def lengths_and_angles_to_tilt_factors(
-    a_length,
-    b_length,
-    c_length,
-    alpha,
-    beta,
-    gamma,
-):
-    """
+    a_length: float | np.ndarray,
+    b_length: float | np.ndarray,
+    c_length: float | np.ndarray,
+    alpha: float | np.ndarray,
+    beta: float | np.ndarray,
+    gamma: float | np.ndarray,
+) -> np.ndarray:
+    """Convert Bravais unit cell lengths and angles to tilt factors.
+
+    Computes the box extents (lx, ly, lz) and the tilt factors (xy, xz, yz)
+    used by triclinic simulation boxes from the unit cell edge lengths and
+    angles.
+
     Parameters
     ----------
     a_length : scalar or np.ndarray
@@ -249,6 +262,11 @@ def lengths_and_angles_to_tilt_factors(
         Unit vector of **c** tilt with respect to **a**
     yz : scalar
         Unit vector of **c** tilt with respect to **b**
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> result = lengths_and_angles_to_tilt_factors(1, 1, 1, 90.0, 90.0, 90.0)
     """
     lx = a_length
     xy = b_length * np.cos(np.deg2rad(gamma))

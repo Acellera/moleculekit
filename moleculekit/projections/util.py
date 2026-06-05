@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def pp_calcDistances(
-    mol, sel1, sel2, periodic, metric="distances", threshold=8, gap=1, truncate=None
+    mol, sel1, sel2, periodic, metric: str = "distances", threshold: float = 8, gap=1, truncate=None
 ):
     from moleculekit.distance_utils import dist_trajectory
 
@@ -83,12 +83,12 @@ def get_reduced_distances(
     sel1,
     sel2,
     periodic,
-    metric="distances",
-    threshold=8,
+    metric: str = "distances",
+    threshold: float = 8,
     truncate=None,
-    reduction1="closest",
-    reduction2="closest",
-    pairs=False,
+    reduction1: str = "closest",
+    reduction2: str = "closest",
+    pairs: bool = False,
 ):
     from moleculekit.distance_utils import (
         dist_trajectory_reduction,
@@ -217,7 +217,7 @@ def get_reduced_distances(
 
 
 def pp_calcMinDistances(
-    mol, sel1, sel2, periodic, metric="distances", threshold=8, truncate=None
+    mol, sel1, sel2, periodic, metric: str = "distances", threshold: float = 8, truncate=None
 ):
     return get_reduced_distances(
         mol=mol,

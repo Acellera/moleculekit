@@ -342,7 +342,29 @@ _all_elements = np.array([el for el in periodictable])
 _all_masses = np.array([periodictable[el].mass for el in periodictable])
 
 
-def elements_from_masses(masses):
+def elements_from_masses(masses: float | list):
+    """Guess atomic elements from their masses.
+
+    Each mass is matched to the element whose standard atomic mass is closest.
+    Atoms with a mass of exactly zero are treated as virtual sites: their
+    guessed element is set to an empty string. Guessing for masses above 140 is
+    unreliable and emits a warning.
+
+    Parameters
+    ----------
+    masses : float or list of float
+        A single atomic mass or a sequence of atomic masses.
+
+    Returns
+    -------
+    elements : str or list of str
+        If a single mass is given, the guessed element symbol is returned as a
+        string. If multiple masses are given, a list of element symbols is
+        returned together with ``virtualsites`` (see below).
+    virtualsites : np.ndarray
+        Only returned when multiple masses are given. A boolean array, True for
+        atoms identified as virtual sites (mass equal to zero).
+    """
     from moleculekit.util import ensurelist
     from moleculekit.distance import cdist
 

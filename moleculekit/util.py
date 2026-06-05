@@ -3,16 +3,21 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
+from typing import TYPE_CHECKING
+
 import numpy as np
 import os
 import tempfile
 import logging
 
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
+
 
 logger = logging.getLogger(__name__)
 
 
-def tempname(suffix="", create=False):
+def tempname(suffix: str = "", create: bool = False):
     if create:
         file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     else:
@@ -26,6 +31,28 @@ def ensurelist(tocheck, tomod=None):
 
     Lists and tuples are left as is. If a second argument is given,
     the type check is performed on the first argument, and the second argument is converted.
+
+    Parameters
+    ----------
+    tocheck : object
+        The value whose type determines the conversion. Numpy arrays and ranges are
+        converted to lists; lists and tuples are returned unchanged; any other scalar
+        is wrapped in a single-element list.
+    tomod : object, optional
+        If given, the value that is actually converted/returned, while `tocheck` is
+        only used for the type check. Defaults to `tocheck`.
+
+    Returns
+    -------
+    result : list or tuple
+        `tomod` converted to a list, or returned as-is if it is already a list or tuple.
+
+    Examples
+    --------
+    >>> ensurelist(3)
+    [3]
+    >>> ensurelist([1, 2, 3])
+    [1, 2, 3]
     """
     if tomod is None:
         tomod = tocheck
@@ -40,7 +67,7 @@ def ensurelist(tocheck, tomod=None):
     return tomod
 
 
-def rotationMatrix(axis, theta):
+def rotationMatrix(axis: list | np.ndarray, theta: float) -> np.ndarray:
     """Produces a rotation matrix given an axis and radians
 
     Return the rotation matrix associated with counterclockwise rotation about
@@ -90,27 +117,41 @@ def rotationMatrix(axis, theta):
     )
 
 
-def molRMSD(mol, refmol, rmsdsel1, rmsdsel2):
+def molRMSD(
+    mol: "Molecule",
+    refmol: "Molecule",
+    rmsdsel1: np.ndarray,
+    rmsdsel2: np.ndarray,
+) -> np.ndarray:
     """Calculates the RMSD between two Molecules
+
+    The two selections must pick the same number of atoms, in corresponding order,
+    so that atom ``k`` of `rmsdsel1` is compared against atom ``k`` of `rmsdsel2`.
+    No alignment is performed; the RMSD is computed on the coordinates as given.
 
     Parameters
     ----------
     mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
-    refmol
-    rmsdsel1
-    rmsdsel2
+        The Molecule whose coordinates are compared against `refmol`.
+    refmol : :class:`Molecule <moleculekit.molecule.Molecule>` object
+        The reference Molecule.
+    rmsdsel1 : numpy.ndarray
+        Atom indices (or a boolean mask) selecting the atoms of `mol` to include.
+    rmsdsel2 : numpy.ndarray
+        Atom indices (or a boolean mask) selecting the corresponding atoms of `refmol`.
 
     Returns
     -------
-    rmsd : float
-        The RMSD between the two structures
+    rmsd : numpy.ndarray
+        The RMSD between the two structures. A scalar when both molecules have a
+        single frame, otherwise an array with one value per frame.
     """
     dist = mol.coords[rmsdsel1, :, :] - refmol.coords[rmsdsel2, :, :]
     rmsd = np.sqrt(np.mean(np.sum(dist * dist, axis=1), axis=0))
     return np.squeeze(rmsd)
 
 
-def orientOnAxes(mol, sel="all"):
+def orientOnAxes(mol: "Molecule", sel: str | np.ndarray = "all") -> "Molecule":
     """Rotate a molecule so that its main axes are oriented along XYZ.
 
     The calculation is based on the axes of inertia of the given
@@ -121,10 +162,11 @@ def orientOnAxes(mol, sel="all"):
 
     Parameters
     ----------
-    mol :
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
         The Molecule to be rotated
-    sel : str
-        Atom selection string on which the rotation is computed.
+    sel : str or np.ndarray
+        Atom selection (string, boolean mask, or integer index array) on which
+        the rotation is computed.
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
     Examples
@@ -150,7 +192,12 @@ def orientOnAxes(mol, sel="all"):
     return mol
 
 
-def sequenceID(field, prepend=None, step=1, return_idx=False):
+def sequenceID(
+    field: np.ndarray | tuple,
+    prepend: str | None = None,
+    step: int = 1,
+    return_idx: bool = False,
+):
     """Array of integers which increments at value change of another array
 
     Parameters
@@ -268,15 +315,18 @@ def _missingSegID(mol):
             )
 
 
-def maxDistance(mol, sel="all", origin=None):
+def maxDistance(
+    mol: "Molecule", sel: str | np.ndarray = "all", origin: list | None = None
+) -> float:
     """Calculates the max distance of a set of atoms from an origin
 
     Parameters
     ----------
     mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
         The molecule containing the atoms
-    sel : str
-        Atom selection string for atoms for which to calculate distances.
+    sel : str or np.ndarray
+        Atom selection (string, boolean mask, or integer index array) for atoms
+        for which to calculate distances.
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
     origin : list
         The origin x,y,z coordinates
@@ -301,15 +351,15 @@ def maxDistance(mol, sel="all", origin=None):
     return np.max(dists)
 
 
-def boundingBox(mol, sel="all"):
+def boundingBox(mol: "Molecule", sel: str | np.ndarray = "all") -> np.ndarray:
     """Calculates the bounding box of a selection of atoms.
 
     Parameters
     ----------
     mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
         The molecule containing the atoms
-    sel : str
-        Atom selection string of atoms. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+    sel : str or np.ndarray
+        Atom selection (string, boolean mask, or integer index array) of atoms. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
     Returns
     -------
@@ -329,7 +379,7 @@ def boundingBox(mol, sel="all"):
     return np.vstack((minc, maxc))
 
 
-def uniformRandomRotation():
+def uniformRandomRotation() -> np.ndarray:
     """
     Return a uniformly distributed rotation 3 x 3 matrix
 
@@ -342,10 +392,12 @@ def uniformRandomRotation():
     https://github.com/tmadl/sklearn-random-rotation-ensembles/blob/5346f29855eb87241e616f6599f360eba12437dc/randomrotation.py
     was applied.
 
+    This function takes no parameters.
+
     Returns
     -------
     M : np.ndarray
-        A uniformly distributed rotation 3 x 3 matrix
+        A uniformly distributed rotation matrix of shape (3, 3) with determinant +1.
     """
     q, r = np.linalg.qr(np.random.normal(size=(3, 3)))
     M = np.dot(q, np.diag(np.sign(np.diag(r))))
@@ -354,13 +406,13 @@ def uniformRandomRotation():
     return M
 
 
-def writeVoxels(arr, filename, vecMin, vecRes):
+def writeVoxels(arr, filename: str, vecMin, vecRes):
     """DEPRECACTED: Use writeCube instead"""
     logger.warning("writeVoxels is deprecated. Please use writeCube instead.")
     writeCube(arr, filename, vecMin, vecRes)
 
 
-def writeCube(arr, filename, vecMin, vecRes):
+def writeCube(arr: np.ndarray, filename: str, vecMin: np.ndarray, vecRes: np.ndarray):
     """Writes 3D array to cube file
 
     Parameters
@@ -412,7 +464,7 @@ def writeCube(arr, filename, vecMin, vecRes):
                     cont += 1
 
 
-def readCube(fname):
+def readCube(fname: str):
     """Read 3D numpy array from CUBE file
 
     Parameters
@@ -515,9 +567,27 @@ def _get_pdb_entity_sequences(entities):
     return results
 
 
-def calculateAnglesAndDihedrals(bonds, cyclicdih=False):
-    """
-    Calculate all angles and dihedrals from a set of bonds.
+def calculateAnglesAndDihedrals(bonds: np.ndarray, cyclicdih: bool = False):
+    """Calculate all angles and dihedrals from a set of bonds.
+
+    The bond graph is traversed to enumerate every angle (three connected atoms)
+    and dihedral (four connected atoms). Each angle and dihedral is canonicalized so
+    that an atom triplet/quadruplet and its reverse are not reported twice.
+
+    Parameters
+    ----------
+    bonds : numpy.ndarray
+        A 2D array of shape (N, 2) with the atom-index pairs defining the bonds.
+    cyclicdih : bool
+        If True, dihedrals that close a ring (cyclic dihedrals) are also included.
+        Default is False.
+
+    Returns
+    -------
+    angles : numpy.ndarray
+        A 2D array of shape (N, 3) with the atom-index triplets of all angles.
+    dihedrals : numpy.ndarray
+        A 2D array of shape (M, 4) with the atom-index quadruplets of all dihedrals.
     """
     from moleculekit.cython_utils import calculateAnglesAndDihedrals as _calculate
     from moleculekit.molecule import Molecule
@@ -540,7 +610,7 @@ def calculateAnglesAndDihedrals(bonds, cyclicdih=False):
     return angles, dihedrals
 
 
-def guessAnglesAndDihedrals(bonds, cyclicdih=False):
+def guessAnglesAndDihedrals(bonds, cyclicdih: bool = False):
     """
     Calculate all angles and dihedrals from a set of bonds.
     """
@@ -550,7 +620,7 @@ def guessAnglesAndDihedrals(bonds, cyclicdih=False):
     return calculateAnglesAndDihedrals(bonds, cyclicdih)
 
 
-def assertSameAsReferenceDir(compareDir, outdir="."):
+def assertSameAsReferenceDir(compareDir: str, outdir: str = "."):
     """Check if files in refdir are present in the directory given as second argument AND their content matches.
 
     Raise an exception if not."""
@@ -585,7 +655,7 @@ def natsorted(items):
     return sorted(items, key=natural_sort_key)
 
 
-def file_diff(file, reference):
+def file_diff(file: str, reference: str):
     import difflib
 
     with open(reference) as f:
@@ -601,7 +671,7 @@ def file_diff(file, reference):
         raise RuntimeError("".join(diff))
 
 
-def folder_diff(folder, reference, ignore_ftypes=(".log", ".txt")):
+def folder_diff(folder: str, reference: str, ignore_ftypes: tuple = (".log", ".txt")):
     import filecmp
 
     def list_files(filepath):
@@ -622,7 +692,7 @@ def folder_diff(folder, reference, ignore_ftypes=(".log", ".txt")):
             file_diff(newfile, reffile)
 
 
-def find_executable(execname):
+def find_executable(execname: str):
     import shutil
 
     exe = shutil.which(execname, mode=os.X_OK)
@@ -637,14 +707,24 @@ def find_executable(execname):
     return exe
 
 
-def wait_for_port(port, host="127.0.0.1", timeout=240.0, _logger=False):
+def wait_for_port(
+    port: int, host: str = "127.0.0.1", timeout: float = 240.0, _logger=False
+):
     """Wait until a port starts accepting TCP connections.
-    Args:
-        port (int): Port number.
-        host (str): Host address on which the port should exist.
-        timeout (float): In seconds. How long to wait before raising errors.
-    Raises:
-        TimeoutError: The port isn't accepting connection after time specified in `timeout`.
+
+    Parameters
+    ----------
+    port : int
+        Port number.
+    host : str
+        Host address on which the port should exist.
+    timeout : float
+        In seconds. How long to wait before raising errors.
+
+    Raises
+    ------
+    TimeoutError
+        The port isn't accepting connections after the time specified in `timeout`.
     """
     import time
     import socket
@@ -665,7 +745,7 @@ def wait_for_port(port, host="127.0.0.1", timeout=240.0, _logger=False):
                 ) from ex
 
 
-def check_port(port, host="127.0.0.1", timeout=120):
+def check_port(port: int, host: str = "127.0.0.1", timeout: float = 120):
     import socket
 
     try:
@@ -676,7 +756,7 @@ def check_port(port, host="127.0.0.1", timeout=120):
         return False
 
 
-def string_to_tempfile(content, ext):
+def string_to_tempfile(content: str, ext: str):
     from tempfile import NamedTemporaryFile
 
     f = NamedTemporaryFile(delete=False, suffix="." + ext)
@@ -685,7 +765,7 @@ def string_to_tempfile(content, ext):
     return f.name
 
 
-def opm(pdbid, keep=False, keepaltloc="A", validateElements=True):
+def opm(pdbid: str, keep: bool = False, keepaltloc: str = "A", validateElements: bool = True):
     from moleculekit.opm import get_opm_pdb
 
     logger.warning(
@@ -696,7 +776,7 @@ def opm(pdbid, keep=False, keepaltloc="A", validateElements=True):
     )
 
 
-def rotation_matrix_from_vectors(vec1, vec2):
+def rotation_matrix_from_vectors(vec1: np.ndarray, vec2: np.ndarray) -> np.ndarray:
     """Find the rotation matrix that aligns vec1 to vec2
 
     Taken from: https://stackoverflow.com/a/67767180
@@ -713,8 +793,6 @@ def rotation_matrix_from_vectors(vec1, vec2):
     mat : np.ndarray
         A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
     """
-    import numpy as np
-
     a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (
         vec2 / np.linalg.norm(vec2)
     ).reshape(3)

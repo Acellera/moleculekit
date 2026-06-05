@@ -31,8 +31,23 @@ def _getRCSBtext(url, attempts=3):
     return text
 
 
-def rcsbFindMutatedResidues(pdbid):
-    """
+def rcsbFindMutatedResidues(pdbid: str) -> dict:
+    """Find the modified/mutated residues of a PDB entry.
+
+    Scrapes the RCSB PDB entry page for its table of modified residues and maps
+    each non-standard residue name to the standard residue it derives from.
+
+    Parameters
+    ----------
+    pdbid : str
+        The 4-letter PDB code to look up.
+
+    Returns
+    -------
+    tomutate : dict
+        A mapping from each modified residue name to its parent standard residue
+        name (e.g. ``{'MSE': 'MET'}``). Empty if no modified residues are found.
+
     Examples
     --------
     >>> rcsbFindMutatedResidues('3onq')
@@ -64,8 +79,23 @@ def rcsbFindMutatedResidues(pdbid):
     return tomutate
 
 
-def rcsbFindLigands(pdbid):
-    """
+def rcsbFindLigands(pdbid: str) -> list:
+    """Find the ligands present in a PDB entry.
+
+    Scrapes the RCSB PDB entry page for its table of ligands and returns their
+    residue names.
+
+    Parameters
+    ----------
+    pdbid : str
+        The 4-letter PDB code to look up.
+
+    Returns
+    -------
+    ligands : list of str
+        The residue names of the ligands found in the entry (e.g.
+        ``['SO4', 'GOL']``). Empty if no ligands are found.
+
     Examples
     --------
     >>> rcsbFindLigands('3onq')

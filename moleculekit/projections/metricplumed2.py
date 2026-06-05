@@ -77,7 +77,7 @@ def _printDFS(n):
 
 
 # Static utility functions ---------------------------------------------------------
-def genTemplate(action, include_optional=False):
+def genTemplate(action: str, include_optional: bool = False):
     """Return the template for the given action
 
     Parameters
@@ -101,7 +101,7 @@ def genTemplate(action, include_optional=False):
     return info
 
 
-def manual(action):
+def manual(action: str):
     """Return the manual for the given action.
 
     The manual is returned as a pseudo-HTML string.
@@ -113,9 +113,14 @@ def manual(action):
     action : str
         The action to be documented
 
+    Returns
+    -------
+    manual : str
+        The manual for the given action, as a pseudo-HTML string.
+
     Examples
     --------
-    >> manual("GYRATION")
+    >>> doc = manual("GYRATION")
     """
 
     cl = ["plumed", "--standalone-executable", "manual", "--action", action]
@@ -157,8 +162,6 @@ class PlumedCV(PlumedStatement):
         The CV action, as a string (e.g.: "DISTANCE"). (PLUMED is Case-insensitive.)
     label : str
         The label assigned to the CV
-    args :
-        Named arguments and keywords to the CV (see details).
     verbatim : str, optional
         Code which will be added as-is to the CV line
 
@@ -182,7 +185,7 @@ class PlumedCV(PlumedStatement):
     rgyr3: GYRATION ATOMS=lab_1
     """
 
-    def __init__(self, cv, label, verbatim=None, **kw):
+    def __init__(self, cv: str, label: str, verbatim: str | None = None, **kw):
         self.label = label
         self.cv = cv
         self.args = kw
@@ -261,8 +264,13 @@ class PlumedCV(PlumedStatement):
 
         return r.strip()
 
-    def genTemplate(self, include_optional=False):
+    def genTemplate(self, include_optional: bool = False):
         """Return the template for the given action
+
+        Parameters
+        ----------
+        include_optional : bool
+            If True, include the optional keywords of the action in the template.
 
         Examples
         --------
@@ -307,7 +315,7 @@ class PlumedMolinfo(PlumedStatement):
            [ 20.09723854], ...
     """
 
-    def __init__(self, mol):
+    def __init__(self, mol: Molecule):
         self.localmol = mol.copy()
 
     def __str__(self):
@@ -320,15 +328,23 @@ class PlumedMolinfo(PlumedStatement):
 class PlumedVerbatim(PlumedStatement):
     """An arbitrary Plumed statement, as a string.
 
+    Use this to inject a PLUMED line into a :class:`MetricPlumed2` script verbatim, when no
+    dedicated wrapper class exists for it.
+
     Parameters
     ----------
-    txt:
-        The statement
-    comment: bool
-        Whether it is a comment.
+    txt : str
+        The statement, written in PLUMED syntax.
+    comment : bool
+        Whether it is a comment. If True, the statement is prefixed with "# " so PLUMED ignores it.
+
+    Examples
+    --------
+    >>> stmt = PlumedVerbatim("d1: DISTANCE ATOMS=2,3")
+    >>> metr = MetricPlumed2([stmt])
     """
 
-    def __init__(self, txt, comment=False):
+    def __init__(self, txt: str, comment: bool = False):
         if comment:
             self.txt = "# " + txt
         else:
@@ -341,7 +357,7 @@ class PlumedVerbatim(PlumedStatement):
 class PlumedGenericGroup(PlumedStatement):
     """Abstract class from which PLUMED groups are inherited. Do not use directly."""
 
-    def __init__(self, mol, label, sel, type=""):
+    def __init__(self, mol: Molecule, label, sel: str | numpy.ndarray, type: str = ""):
         global cvcounter
         al = mol.get("serial", sel)
         al = list(al)
@@ -380,7 +396,7 @@ class PlumedGroup(PlumedGenericGroup):
     'lab_2'
     """
 
-    def __init__(self, mol, label, sel="all"):
+    def __init__(self, mol: Molecule, label: str, sel: str | numpy.ndarray = "all"):
         super(PlumedGroup, self).__init__(mol, label, sel, "GROUP")
 
 
@@ -403,7 +419,7 @@ class PlumedCOM(PlumedGenericGroup):
     ben_cm: COM ATOMS=1632,1633,1634,1635,1636,1637,1638,1639,1640
     """
 
-    def __init__(self, mol, label, sel="all"):
+    def __init__(self, mol: Molecule, label: str, sel: str | numpy.ndarray = "all"):
         super(PlumedCOM, self).__init__(mol, label, sel, "COM")
 
 
@@ -487,17 +503,23 @@ class MetricPlumed2(Projection):
         res = {}
         return res
 
-    def getMapping(self, mol):
+    def getMapping(self, mol: Molecule):
         """Return the labels of the colvars used in this projection.
 
         Can only be used after the projection has been executed.
 
         TODO: Update to pandas.
 
+        Parameters
+        ----------
+        mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+            A :class:`Molecule <moleculekit.molecule.Molecule>` object (unused; kept for
+            interface compatibility with other projection classes).
+
         Returns
         -------
-        cvnames
-            A list of cv names
+        cvnames : list of str
+            A list of collective-variable names, or None if the projection has not been run yet.
         """
         if self.cvnames:
             return self.cvnames
@@ -508,11 +530,11 @@ class MetricPlumed2(Projection):
             # raise Exception("MetricPlumed's getMapping can only be called after the projection")
 
     # Arguments are actually self, mol
-    def project(self, mol, debug=False):
+    def project(self, mol: Molecule, debug: bool = False) -> numpy.ndarray:
         """Project molecule.
 
         Parameters
-        ------------
+        ----------
         mol : :class:`Molecule <moleculekit.molecule.Molecule>`
             A :class:`Molecule <moleculekit.molecule.Molecule>` object to project.
         debug : bool

@@ -4,8 +4,12 @@
 # No redistribution in whole or part
 #
 from moleculekit.projections.projection import Projection
+from typing import TYPE_CHECKING
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -18,11 +22,11 @@ class MetricSasa(Projection):
 
     Parameters
     ----------
-    sel : str
-        Atom selection string for atoms or residues for which to calculate the SASA.
+    sel : str or np.ndarray
+        Atom selection for atoms or residues for which to calculate the SASA (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    filtersel : str
-        Keep only the selected atoms in the system. All other atoms will be removed and will
+    filtersel : str or np.ndarray
+        Keep only the selected atoms in the system (a selection string, boolean mask, or integer index array). All other atoms will be removed and will
         not contribute to the SASA calculation. Keep in mind that the SASA of an atom or residue
         is affected by the presence of other atoms around it so this will change the SASA of the remaining atoms.
     probeRadius : float
@@ -40,11 +44,11 @@ class MetricSasa(Projection):
 
     def __init__(
         self,
-        sel="protein",
-        filtersel="all",
-        probeRadius=1.4,
-        numSpherePoints=960,
-        mode="atom",
+        sel: str | np.ndarray = "protein",
+        filtersel: str | np.ndarray = "all",
+        probeRadius: float = 1.4,
+        numSpherePoints: int = 960,
+        mode: str = "atom",
     ):
         super().__init__()
 
@@ -105,7 +109,7 @@ class MetricSasa(Projection):
 
         return res
 
-    def project(self, mol):
+    def project(self, mol: "Molecule") -> np.ndarray:
         """Project molecule.
 
         Parameters
@@ -153,7 +157,7 @@ class MetricSasa(Projection):
         assert not np.any(out == -1), "Some atoms are not excluded"
         return out
 
-    def getMapping(self, mol):
+    def getMapping(self, mol: "Molecule"):
         """Returns the description of each projected dimension.
 
         Parameters

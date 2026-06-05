@@ -6,8 +6,12 @@
 
 from moleculekit.projections.projection import Projection
 from moleculekit.util import ensurelist
+from typing import TYPE_CHECKING
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +21,11 @@ class MetricDistance(Projection):
 
     Parameters
     ----------
-    sel1 : str
-        Atom selection string for the first set of atoms.
+    sel1 : str or np.ndarray
+        Atom selection for the first set of atoms (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    sel2 : str
-        Atom selection string for the second set of atoms. If sel1 != sel2, it will calculate inter-set distances.
+    sel2 : str or np.ndarray
+        Atom selection for the second set of atoms (a selection string, boolean mask, or integer index array). If sel1 != sel2, it will calculate inter-set distances.
         If sel1 == sel2, it will calculate intra-set distances.
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
     periodic : str
@@ -76,17 +80,17 @@ class MetricDistance(Projection):
 
     def __init__(
         self,
-        sel1,
-        sel2,
-        periodic,
-        groupsel1=None,
-        groupsel2=None,
-        metric="distances",
-        threshold=8,
-        truncate=None,
-        groupreduce1="closest",
-        groupreduce2="closest",
-        pairs=False,
+        sel1: str | np.ndarray,
+        sel2: str | np.ndarray,
+        periodic: str,
+        groupsel1: str | None = None,
+        groupsel2: str | None = None,
+        metric: str = "distances",
+        threshold: float = 8,
+        truncate: float | None = None,
+        groupreduce1: str = "closest",
+        groupreduce2: str = "closest",
+        pairs: bool = False,
     ):
         super().__init__()
 
@@ -125,7 +129,7 @@ class MetricDistance(Projection):
                 "Ensure that chains are properly defined in your topology file."
             )
 
-    def project(self, mol):
+    def project(self, mol: "Molecule") -> np.ndarray:
         """Project molecule.
 
         Parameters
@@ -237,7 +241,7 @@ class MetricDistance(Projection):
             newsel[i, idx[gg[res]]] = True
         return newsel
 
-    def getMapping(self, mol):
+    def getMapping(self, mol: "Molecule"):
         """Returns the description of each projected dimension.
 
         Parameters
@@ -317,19 +321,19 @@ class MetricDistance(Projection):
 class MetricSelfDistance(MetricDistance):
     def __init__(
         self,
-        sel,
-        groupsel=None,
-        metric="distances",
-        threshold=8,
-        periodic=None,
-        truncate=None,
+        sel: str | np.ndarray,
+        groupsel: str | None = None,
+        metric: str = "distances",
+        threshold: float = 8,
+        periodic: str | None = None,
+        truncate: float | None = None,
     ):
         """Creates a MetricSelfDistance object
 
         Parameters
         ----------
-        sel : str
-            Atom selection string for which to calculate the self distance.
+        sel : str or np.ndarray
+            Atom selection for which to calculate the self distance (a selection string, boolean mask, or integer index array).
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         groupsel : ['all','residue'], optional
             Group all atoms in `sel` to the single minimum distance. Alternatively can calculate the minimum distance
@@ -342,12 +346,10 @@ class MetricSelfDistance(MetricDistance):
             See documentation of MetricDistance class
         truncate : float, optional
             Set all distances larger than `truncate` to `truncate`
-        update :
-            Not functional yet
 
         Returns
         -------
-        proj : MetricDistance object
+        proj : MetricSelfDistance object
         """
 
         super().__init__(
@@ -362,7 +364,29 @@ class MetricSelfDistance(MetricDistance):
         )
 
 
-def contactVecToMatrix(vector, atomIndexes):
+def contactVecToMatrix(vector: np.ndarray, atomIndexes: list):
+    """Converts a 1D contact/distance vector into a square symmetric matrix.
+
+    Parameters
+    ----------
+    vector : np.ndarray
+        A 1D vector of contacts or distances, one value per atom-group pair.
+    atomIndexes : list
+        The ``atomIndexes`` column of a mapping DataFrame, i.e. a list of ``[group1, group2]``
+        atom-index pairs describing the two atom groups each entry of `vector` refers to.
+
+    Returns
+    -------
+    matrix : np.ndarray
+        A square symmetric 2D matrix of shape ``(num, num)`` (where ``num`` is the number
+        of unique atom groups) containing the values of `vector` placed at the row/column
+        of each atom-group pair.
+    mapping : np.ndarray
+        A square 2D integer matrix of the same shape mapping each matrix cell back to the
+        index in `vector` it came from (``-1`` where no value exists).
+    uqAtomGroups : list
+        The sorted list of unique atom groups, giving the row/column order of `matrix`.
+    """
     from copy import deepcopy
 
     if np.ndim(vector) != 1:
@@ -395,15 +419,15 @@ def contactVecToMatrix(vector, atomIndexes):
 
 
 def reconstructContactMap(
-    vector,
+    vector: np.ndarray | list,
     mapping,
-    truecontacts=None,
-    plot=True,
-    figsize=(7, 7),
-    dpi=80,
-    title=None,
-    outfile=None,
-    colors=None,
+    truecontacts: np.ndarray | list | None = None,
+    plot: bool = True,
+    figsize: tuple = (7, 7),
+    dpi: int = 80,
+    title: str | None = None,
+    outfile: str | None = None,
+    colors: np.ndarray | list | None = None,
 ):
     """Plots a given vector as a contact map
 
@@ -421,8 +445,12 @@ def reconstructContactMap(
         The size of the final plot in inches
     dpi : int
         Dots per inch
+    title : str
+        The title of the plot
     outfile : str
         Path of file in which to save the plot
+    colors : np.ndarray or list
+        A vector of values or colors used to color the plotted contacts
 
     Returns
     -------

@@ -591,7 +591,13 @@ def _merge_template_bonds(mol, bb_sc_connections, chain, resid, insertion, segid
     )
 
 
-def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
+def mutate_residue(
+    mol: "Molecule",
+    sel: str | np.ndarray,
+    newres: str,
+    rotamer_mode: str = "best",
+    minimize: bool = False,
+):
     """Mutate a residue, fully reconstructing the side-chain.
 
     The mutation proceeds in up to three phases:
@@ -610,8 +616,9 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
     ----------
     mol : Molecule
         The molecule to mutate (modified **in place**).
-    sel : str
-        Atom selection string identifying a single residue.
+    sel : str or np.ndarray
+        Atom selection identifying a single residue. A selection string, a
+        boolean mask, or an integer index array.
     newres : str
         3-letter code of the target residue (e.g. ``"ARG"``).  Protonation
         variants such as ``"HID"``, ``"HIE"``, ``"HIP"``, ``"CYX"``,
@@ -631,6 +638,20 @@ def mutate_residue(mol, sel, newres, rotamer_mode="best", minimize=False):
         placement.  After rotamer selection, perform a brief sidechain
         energy minimization to relax residual strain.  Requires OpenMM.
         Default False.
+
+    Returns
+    -------
+    None
+        The mutation is applied in place to ``mol``; nothing is returned.
+
+    Raises
+    ------
+    ValueError
+        If ``newres`` (or its parent residue) is not a supported residue, if
+        ``sel`` matches no atoms or more than one residue, if the selected
+        residue is missing a backbone atom (N, CA or C) needed to align the
+        template, or if ``rotamer_mode`` is not one of ``"best"``, ``"first"``
+        or ``"random"``.
 
     Examples
     --------

@@ -4,9 +4,13 @@
 # No redistribution in whole or part
 #
 from moleculekit.util import boundingBox
+from typing import TYPE_CHECKING
 import numpy as np
 from functools import lru_cache
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 
 logger = logging.getLogger(__name__)
@@ -24,7 +28,7 @@ _order = (
 
 
 def viewVoxelFeatures(
-    features, centers, nvoxels, voxelsize=None, draw="wireframe", featurenames=_order
+    features: np.ndarray, centers: np.ndarray, nvoxels: np.ndarray, voxelsize: np.ndarray | None = None, draw: str = "wireframe", featurenames: list = _order
 ):
     """Visualize in VMD the voxel features produced by getVoxelDescriptors.
 
@@ -36,6 +40,12 @@ def viewVoxelFeatures(
         An array of (n_centers, 3) shape containing the coordinates of each voxel center
     nvoxels : np.ndarray
         An array of (3,) shape containing the number of voxels in each X, Y, Z dimension
+    voxelsize : np.ndarray
+        An array of (3,) shape containing the voxel size in each X, Y, Z dimension. If None it is inferred from the centers.
+    draw : str
+        The drawing method passed to VMD for the isosurfaces.
+    featurenames : list
+        The names of the features to visualize.
 
     Example
     -------
@@ -60,7 +70,27 @@ def viewVoxelFeatures(
         )
 
 
-def rotateCoordinates(coords, rotations, center):
+def rotateCoordinates(coords: np.ndarray, rotations: list, center: list) -> np.ndarray:
+    """Rotates a set of coordinates around a center point.
+
+    The rotation is applied sequentially around the x, y and z axes by the
+    angles given in `rotations`.
+
+    Parameters
+    ----------
+    coords : np.ndarray
+        The coordinates to rotate, with shape (natoms, 3).
+    rotations : list
+        The rotation angles in radians around the x, y and z axes as a list of
+        three values [rx, ry, rz].
+    center : list
+        The [x, y, z] coordinates of the center point around which to rotate.
+
+    Returns
+    -------
+    coords : np.ndarray
+        The rotated coordinates.
+    """
     from moleculekit.util import rotationMatrix
 
     def rotate(coords, rotMat, center=(0, 0, 0)):
@@ -97,7 +127,40 @@ def _getGridCenters(x, y, z, resolution):
     return combined
 
 
-def getChannels(mol, aromaticNitrogen=False, version=2, validitychecks=True):
+def getChannels(
+    mol: "Molecule",
+    aromaticNitrogen: bool = False,
+    version: int = 2,
+    validitychecks: bool = True,
+):
+    """Computes the voxelization channels (atom property descriptors) of a molecule.
+
+    For each atom it computes a set of property channels (hydrophobic, aromatic,
+    hydrogen-bond acceptor, hydrogen-bond donor, positive/negative ionizable,
+    metal and occupancy). Boolean channels are scaled by the van der Waals radius
+    of each atom.
+
+    Parameters
+    ----------
+    mol : Molecule or SmallMol object
+        The molecule for which to compute the channels.
+    aromaticNitrogen : bool
+        If True, treats aromatic nitrogens as a separate atom type.
+    version : int
+        The version of the atom typing to use. Version 1 uses PDBQT atom type
+        properties directly, version 2 recomputes PDBQT atom types and charges
+        and derives features from them.
+    validitychecks : bool
+        If True, performs validity checks on the molecule before atom typing.
+
+    Returns
+    -------
+    channels : np.ndarray
+        A (natoms, nchannels) array of the per-atom property channels.
+    mol : Molecule or SmallMol object
+        A copy of the input molecule (with atom types and charges assigned for
+        version 2).
+    """
     from moleculekit.smallmol.smallmol import SmallMol
     from moleculekit.molecule import Molecule
 
@@ -126,7 +189,9 @@ def getChannels(mol, aromaticNitrogen=False, version=2, validitychecks=True):
     return channels, mol
 
 
-def getCenters(mol=None, buffer=0, boxsize=None, center=None, voxelsize=1):
+def getCenters(
+    mol: "Molecule | None" = None, buffer: float = 0, boxsize: list | None = None, center: list | None = None, voxelsize: float = 1
+):
     """Get a set of centers for voxelization.
 
     Parameters
@@ -146,6 +211,13 @@ def getCenters(mol=None, buffer=0, boxsize=None, center=None, voxelsize=1):
         The [x, y, z] coordinates of the center. Use this only in combination with the `boxsize` argument.
     voxelsize : float
         The voxel size in A
+
+    Returns
+    -------
+    centers : np.ndarray
+        A (nvoxels, 3) array with the xyz coordinates of the center of each voxel.
+    nvoxels : np.ndarray
+        A (3,) array with the number of voxels along the x, y and z dimensions.
     """
     if boxsize is None:
         # Calculate the bbox and the number of voxels
@@ -168,18 +240,18 @@ def getCenters(mol=None, buffer=0, boxsize=None, center=None, voxelsize=1):
 
 
 def getVoxelDescriptors(
-    mol,
-    boxsize=None,
-    voxelsize=1,
-    buffer=0,
-    center=None,
-    usercenters=None,
-    userchannels=None,
-    usercoords=None,
-    aromaticNitrogen=False,
-    method="C",
-    version=2,
-    validitychecks=True,
+    mol: "Molecule",
+    boxsize: list | None = None,
+    voxelsize: float = 1,
+    buffer: float = 0,
+    center: list | None = None,
+    usercenters: np.ndarray | None = None,
+    userchannels: np.ndarray | None = None,
+    usercoords: np.ndarray | None = None,
+    aromaticNitrogen: bool = False,
+    method: str = "C",
+    version: int = 2,
+    validitychecks: bool = True,
 ):
     """Calculate descriptors of atom properties for voxels in a grid bounding the Molecule object.
 
@@ -215,6 +287,8 @@ def getVoxelDescriptors(
         of passing a `mol` object (set it to None if that's the case).
     aromaticNitrogen : bool
         Set to True if you want nitrogens in aromatic rings to be added to the aromatic channel.
+    method : str
+        The method used to compute the voxel occupancies.
     version : int
         Setting version to 1 will use the old voxelization code which requires you to first obtain pdbqt atom types for the protein.
         By default it uses version 2 which does the atom typing internally.

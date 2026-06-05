@@ -118,14 +118,14 @@ def _align_by_sequence_alignment(
 
 
 def sequenceStructureAlignment(
-    mol,
-    ref,
-    molseg=None,
-    refseg=None,
-    molsel="all",
-    refsel="all",
-    maxalignments=10,
-    nalignfragment=1,
+    mol: Molecule,
+    ref: Molecule,
+    molseg: str | None = None,
+    refseg: str | None = None,
+    molsel: str | np.ndarray = "all",
+    refsel: str | np.ndarray = "all",
+    maxalignments: int = 10,
+    nalignfragment: int = 1,
 ):
     """Aligns two structures by their longests sequences alignment
 
@@ -139,6 +139,12 @@ def sequenceStructureAlignment(
         The segment of `mol` we want to align
     refseg : str
         The segment of `ref` we want to align to
+    molsel : str or np.ndarray
+        The atom selection of `mol` we want to align. Can be a selection string,
+        a boolean mask, or an integer index array. Defaults to "all".
+    refsel : str or np.ndarray
+        The atom selection of `ref` we want to align to. Can be a selection
+        string, a boolean mask, or an integer index array. Defaults to "all".
     maxalignments : int
         The maximum number of alignments we want to produce
     nalignfragment : int

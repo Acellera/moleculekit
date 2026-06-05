@@ -6,9 +6,12 @@ import hashlib
 import threading
 import uuid
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 
 _TOPO_FIELDS = (
@@ -18,11 +21,21 @@ _TOPO_FIELDS = (
 )
 
 
-def topo_hash(mol) -> str:
+def topo_hash(mol: "Molecule") -> str:
     """Stable sha1 hex over the topology-defining fields of a Molecule.
 
     Skipped: coords, beta, occupancy, charge (partial charge) — these can
     vary without a structural change to the rendered scene.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to hash.
+
+    Returns
+    -------
+    digest : str
+        The hex sha1 digest of the topology fields and bonds.
     """
     h = hashlib.sha1()
     for field in _TOPO_FIELDS:
@@ -36,11 +49,21 @@ def topo_hash(mol) -> str:
     return h.hexdigest()
 
 
-def coords_to_bytes(mol) -> bytes:
+def coords_to_bytes(mol: "Molecule") -> bytes:
     """Return all frames as little-endian float32 bytes.
 
     Layout: per frame, the flat [x0..xN, y0..yN, z0..zN] vector matching
     the per-frame layout used by molecule_to_dict.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule whose coordinates are encoded.
+
+    Returns
+    -------
+    blob : bytes
+        Little-endian float32 bytes for all frames, frame-major.
     """
     num_atoms = mol.coords.shape[0]
     num_frames = mol.coords.shape[2]
@@ -52,6 +75,24 @@ def coords_to_bytes(mol) -> bytes:
 
 @dataclass
 class Slot:
+    """A single registered molecule tracked by the viewer Registry.
+
+    Attributes
+    ----------
+    uuid : str
+        Short uppercase hex identifier for the slot.
+    mol_ref : Molecule
+        The live, mutable Molecule reference held by the user.
+    snapshot : Molecule
+        A ``mol.copy()`` snapshot used for diffing against ``mol_ref``.
+    topo_hash : str
+        The topology hash of ``snapshot`` (see ``topo_hash``).
+    label : str
+        Human-readable label shown in the viewer.
+    visible : bool
+        Whether the slot is currently shown. Defaults to True.
+    """
+
     uuid: str
     mol_ref: Any   # a Molecule (live, mutable reference held by the user)
     snapshot: Any  # a Molecule (mol.copy() snapshot for diffing)
@@ -61,13 +102,33 @@ class Slot:
 
 
 class Registry:
-    """Thread-safe slot table for the molstar viewer."""
+    """Thread-safe slot table for the molstar viewer.
+
+    Maps slot uuids to ``Slot`` entries, each holding a live Molecule reference
+    and a snapshot for change detection. All mutating operations are guarded by
+    an internal lock so the monitor thread and request handlers can share it.
+    """
 
     def __init__(self):
         self._lock = threading.Lock()
         self.slots: dict[str, Slot] = {}
 
-    def register(self, mol) -> str:
+    def register(self, mol: "Molecule") -> str:
+        """Register a molecule and return its slot uuid.
+
+        If ``mol`` is already registered (same object identity), its existing
+        uuid is returned and no new slot is created.
+
+        Parameters
+        ----------
+        mol : Molecule
+            The live molecule to track.
+
+        Returns
+        -------
+        uid : str
+            The slot uuid for ``mol``.
+        """
         with self._lock:
             for slot in self.slots.values():
                 if slot.mol_ref is mol:
@@ -83,15 +144,28 @@ class Registry:
             return uid
 
     def remove(self, uid: str) -> None:
+        """Remove the slot with the given uuid, if present.
+
+        Parameters
+        ----------
+        uid : str
+            The slot uuid to remove. A missing uuid is a no-op.
+        """
         with self._lock:
             self.slots.pop(uid, None)
 
     def diff_and_snapshot(self) -> list[tuple[str, str, dict]]:
         """Diff each slot's live mol against its snapshot.
 
-        Returns a list of (kind, slot_uuid, payload_hints) tuples. Updates
-        each slot's snapshot/topo_hash in place after diffing. Empty list
-        when nothing changed.
+        Updates each changed slot's snapshot (and topo_hash on a topology
+        change) in place after diffing.
+
+        Returns
+        -------
+        changes : list of tuple of (str, str, dict)
+            One ``(kind, slot_uuid, payload_hints)`` tuple per changed slot,
+            where ``kind`` is ``"topology"`` or ``"coords"``. Empty when
+            nothing changed.
         """
         with self._lock:
             uids = list(self.slots.keys())

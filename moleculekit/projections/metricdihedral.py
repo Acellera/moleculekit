@@ -4,8 +4,12 @@
 # No redistribution in whole or part
 #
 from moleculekit.projections.projection import Projection
+from typing import TYPE_CHECKING
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +20,21 @@ class AtomNotFoundException(Exception):
 
 class Dihedral:
     """Class to store atoms defining a dihedral angle.
+
+    Parameters
+    ----------
+    atom1 : dict
+        Dictionary describing the first atom of the dihedral with keys such as "name", "resid", "segid", "insertion" and "chain".
+    atom2 : dict
+        Dictionary describing the second atom of the dihedral.
+    atom3 : dict
+        Dictionary describing the third atom of the dihedral.
+    atom4 : dict
+        Dictionary describing the fourth atom of the dihedral.
+    dihedraltype : str
+        A label describing the type of the dihedral angle (e.g. "phi", "psi", "chi1").
+    check_valid : bool
+        If True, validate the atom dictionary keys and fill in missing keys with default values.
 
     Example
     -------
@@ -31,7 +50,7 @@ class Dihedral:
     >>> d = Dihedral(atom1, atom2, atom3, atom4)
     """
 
-    def __init__(self, atom1, atom2, atom3, atom4, dihedraltype=None, check_valid=True):
+    def __init__(self, atom1: dict, atom2: dict, atom3: dict, atom4: dict, dihedraltype: str | None = None, check_valid: bool = True):
         if check_valid:
             valid_keys = ("name", "resid", "segid", "insertion", "chain")
             default_values = {
@@ -92,7 +111,7 @@ class Dihedral:
         return descr
 
     @staticmethod
-    def dihedralsToIndexes(mol, dihedrals, sel="all"):
+    def dihedralsToIndexes(mol: "Molecule", dihedrals: list, sel: str | np.ndarray = "all"):
         """Converts dihedral objects to atom indexes of a given Molecule
 
         Parameters
@@ -101,8 +120,8 @@ class Dihedral:
             A Molecule object from which to obtain atom information
         dihedrals : list
             A single dihedral or a list of Dihedral objects
-        sel : str
-            Atom selection string to restrict the application of the selections.
+        sel : str or np.ndarray
+            Atom selection to restrict the application of the selections (a selection string, boolean mask, or integer index array).
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
         Returns
@@ -228,7 +247,10 @@ class Dihedral:
 
     @staticmethod
     def proteinDihedrals(
-        mol, sel="protein or resname ACE NME", dih=("psi", "phi"), ff="amber"
+        mol: "Molecule",
+        sel: str | np.ndarray = "protein or resname ACE NME",
+        dih: tuple = ("psi", "phi"),
+        ff: str = "amber",
     ):
         """Returns a list of tuples containing the four resid/atom pairs for each dihedral of the protein
 
@@ -236,11 +258,14 @@ class Dihedral:
         ----------
         mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
             A Molecule object from which to obtain structural information
-        sel : str
-            Atom selection string to restrict the atoms for which to calculate dihedrals (e.g. only one of many chains).
+        sel : str or np.ndarray
+            Atom selection to restrict the atoms for which to calculate dihedrals (a selection string, boolean mask, or integer index array; e.g. only one of many chains).
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         dih : tuple
             A tuple of the dihedral types we want to calculate (phi, psi, omega, chi1, chi2, chi3, chi4, chi5)
+        ff : str
+            The force field whose atom-naming convention to use when selecting the dihedral
+            atoms. Either "amber" or "charmm" (this only affects some chi2 sidechain atom names).
 
         Returns
         -------
@@ -300,14 +325,14 @@ class Dihedral:
     # http://www.ccp14.ac.uk/ccp/web-mirrors/garlic/garlic/commands/dihedrals.html
     @staticmethod
     def phi(
-        mol,
-        res1,
-        res2,
-        segid=None,
-        chain=None,
-        insertion1=None,
-        insertion2=None,
-        ff="amber",
+        mol: "Molecule",
+        res1: int,
+        res2: int,
+        segid: str | None = None,
+        chain: str | None = None,
+        insertion1: str | None = None,
+        insertion2: str | None = None,
+        ff: str = "amber",
     ):
         """Constructs a Dihedral object corresponding to the phi angle of res1 and res2
 
@@ -327,6 +352,9 @@ class Dihedral:
             The insertion letter of residue 1
         insertion2 : str
             The insertion letter of residue 2
+        ff : str
+            The force field whose atom-naming convention to use when selecting the dihedral
+            atoms. Either "amber" or "charmm".
 
         Returns
         -------
@@ -348,14 +376,14 @@ class Dihedral:
 
     @staticmethod
     def psi(
-        mol,
-        res1,
-        res2,
-        segid=None,
-        chain=None,
-        insertion1=None,
-        insertion2=None,
-        ff="amber",
+        mol: "Molecule",
+        res1: int,
+        res2: int,
+        segid: str | None = None,
+        chain: str | None = None,
+        insertion1: str | None = None,
+        insertion2: str | None = None,
+        ff: str = "amber",
     ):
         """Constructs a Dihedral object corresponding to the psi angle of res1 and res2
 
@@ -375,6 +403,9 @@ class Dihedral:
             The insertion letter of residue 1
         insertion2 : str
             The insertion letter of residue 2
+        ff : str
+            The force field whose atom-naming convention to use when selecting the dihedral
+            atoms. Either "amber" or "charmm".
 
         Returns
         -------
@@ -397,14 +428,14 @@ class Dihedral:
 
     @staticmethod
     def omega(
-        mol,
-        res1,
-        res2,
-        segid=None,
-        chain=None,
-        insertion1=None,
-        insertion2=None,
-        ff="amber",
+        mol: "Molecule",
+        res1: int,
+        res2: int,
+        segid: str | None = None,
+        chain: str | None = None,
+        insertion1: str | None = None,
+        insertion2: str | None = None,
+        ff: str = "amber",
     ):
         """Constructs a Dihedral object corresponding to the omega angle of res1 and res2
 
@@ -424,6 +455,9 @@ class Dihedral:
             The insertion letter of residue 1
         insertion2 : str
             The insertion letter of residue 2
+        ff : str
+            The force field whose atom-naming convention to use when selecting the dihedral
+            atoms. Either "amber" or "charmm".
 
         Returns
         -------
@@ -444,7 +478,14 @@ class Dihedral:
         return Dihedral(a1, a2, a3, a4, dihedraltype="omega", check_valid=False)
 
     @staticmethod
-    def chi1(mol, res, segid=None, chain=None, insertion=None, ff="amber"):
+    def chi1(
+        mol: "Molecule",
+        res: int,
+        segid: str | None = None,
+        chain: str | None = None,
+        insertion: str | None = None,
+        ff: str = "amber",
+    ):
         """Constructs a Dihedral object corresponding to the chi1 angle of a residue
 
         Parameters
@@ -459,6 +500,9 @@ class Dihedral:
             The chain letter of the residue
         insertion : str
             The insertion letter of the residue
+        ff : str
+            The force field whose atom-naming convention to use when selecting the dihedral
+            atoms. Either "amber" or "charmm".
 
         Returns
         -------
@@ -502,7 +546,14 @@ class Dihedral:
         )
 
     @staticmethod
-    def chi2(mol, res, segid=None, chain=None, insertion=None, ff="amber"):
+    def chi2(
+        mol: "Molecule",
+        res: int,
+        segid: str | None = None,
+        chain: str | None = None,
+        insertion: str | None = None,
+        ff: str = "amber",
+    ):
         """Constructs a Dihedral object corresponding to the chi2 angle of a residue
 
         Parameters
@@ -517,6 +568,9 @@ class Dihedral:
             The chain letter of the residue
         insertion : str
             The insertion letter of the residue
+        ff : str
+            The force field whose atom-naming convention to use when selecting the dihedral
+            atoms. Either "amber" or "charmm"; the two differ for the chi2 atoms of some residues.
 
         Returns
         -------
@@ -575,7 +629,14 @@ class Dihedral:
         )
 
     @staticmethod
-    def chi3(mol, res, segid=None, chain=None, insertion=None, ff="amber"):
+    def chi3(
+        mol: "Molecule",
+        res: int,
+        segid: str | None = None,
+        chain: str | None = None,
+        insertion: str | None = None,
+        ff: str = "amber",
+    ):
         """Constructs a Dihedral object corresponding to the chi3 angle of a residue
 
         Parameters
@@ -590,6 +651,9 @@ class Dihedral:
             The chain letter of the residue
         insertion : str
             The insertion letter of the residue
+        ff : str
+            The force field whose atom-naming convention to use when selecting the dihedral
+            atoms. Either "amber" or "charmm".
 
         Returns
         -------
@@ -619,7 +683,14 @@ class Dihedral:
         )
 
     @staticmethod
-    def chi4(mol, res, segid=None, chain=None, insertion=None, ff="amber"):
+    def chi4(
+        mol: "Molecule",
+        res: int,
+        segid: str | None = None,
+        chain: str | None = None,
+        insertion: str | None = None,
+        ff: str = "amber",
+    ):
         """Constructs a Dihedral object corresponding to the chi4 angle of a residue
 
         Parameters
@@ -634,6 +705,9 @@ class Dihedral:
             The chain letter of the residue
         insertion : str
             The insertion letter of the residue
+        ff : str
+            The force field whose atom-naming convention to use when selecting the dihedral
+            atoms. Either "amber" or "charmm".
 
         Returns
         -------
@@ -657,7 +731,14 @@ class Dihedral:
         )
 
     @staticmethod
-    def chi5(mol, res, segid=None, chain=None, insertion=None, ff="amber"):
+    def chi5(
+        mol: "Molecule",
+        res: int,
+        segid: str | None = None,
+        chain: str | None = None,
+        insertion: str | None = None,
+        ff: str = "amber",
+    ):
         """Constructs a Dihedral object corresponding to the chi5 angle of a residue
 
         Parameters
@@ -672,6 +753,9 @@ class Dihedral:
             The chain letter of the residue
         insertion : str
             The insertion letter of the residue
+        ff : str
+            The force field whose atom-naming convention to use when selecting the dihedral
+            atoms. Either "amber" or "charmm".
 
         Returns
         -------
@@ -735,8 +819,8 @@ class MetricDihedral(Projection):
         You can provide your own list of Dihedral objects. See example.
     sincos : bool, optional
         Set to True to return the dihedral angles as their sine and cosine components. Makes them periodic.
-    protsel : str, optional
-        Atom selection string for the protein segment for which to calculate dihedral angles. Resids should be unique
+    protsel : str or np.ndarray, optional
+        Atom selection for the protein segment for which to calculate dihedral angles (a selection string, boolean mask, or integer index array). Resids should be unique
         within that segment. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
     Examples
@@ -754,7 +838,12 @@ class MetricDihedral(Projection):
     >>> met.getMapping(mol)
     """
 
-    def __init__(self, dih=None, sincos=True, protsel="protein or resname ACE NME"):
+    def __init__(
+        self,
+        dih: list | None = None,
+        sincos: bool = True,
+        protsel: str | np.ndarray = "protein or resname ACE NME",
+    ):
         super().__init__()
 
         if dih is not None and not isinstance(dih[0], Dihedral):
@@ -766,7 +855,7 @@ class MetricDihedral(Projection):
         self._sincos = sincos
         self._dihedrals = dih
 
-    def project(self, mol):
+    def project(self, mol: "Molecule") -> np.ndarray:
         """Project molecule.
 
         Parameters
@@ -782,7 +871,7 @@ class MetricDihedral(Projection):
         dihedrals = self._getMolProp(mol, "dihedrals")
         return self._calcDihedralAngles(mol, dihedrals, sincos=self._sincos)
 
-    def getMapping(self, mol):
+    def getMapping(self, mol: "Molecule"):
         """Returns the description of each projected dimension.
 
         Parameters

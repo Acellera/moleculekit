@@ -1,11 +1,19 @@
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
+
+
 def find_clashes(
-    mol,
-    sel1=None,
-    sel2=None,
-    overlap=0.6,
-    exclude_bonded=True,
-    exclude_14=True,
-    guess_bonds=True,
+    mol: "Molecule",
+    sel1: str | np.ndarray | None = None,
+    sel2: str | np.ndarray | None = None,
+    overlap: float = 0.6,
+    exclude_bonded: bool = True,
+    exclude_14: bool = True,
+    guess_bonds: bool = True,
 ):
     """Find pairs of atoms that sterically clash with each other.
 
@@ -18,10 +26,12 @@ def find_clashes(
     ----------
     mol : Molecule
         The molecule to analyze.
-    sel1 : str, ndarray of bool, or None, optional
-        First selection.  If None, all atoms are used.
-    sel2 : str, ndarray of bool, or None, optional
-        Second selection.  If None, uses ``sel1`` (self-clashes).
+    sel1 : str or np.ndarray, optional
+        First selection (atom-selection string, boolean mask, or integer index
+        array).  If None, all atoms are used.
+    sel2 : str or np.ndarray, optional
+        Second selection (atom-selection string, boolean mask, or integer index
+        array).  If None, uses ``sel1`` (self-clashes).
     overlap : float, optional
         How much VdW overlap is tolerated before flagging as a clash, in
         Angstroms.  Default 0.6 -- i.e. atoms clash when they overlap by
@@ -60,7 +70,6 @@ def find_clashes(
     ...     print(f"{mol.name[a]}({a}) <-> {mol.name[b]}({b}): "
     ...           f"d={d:.2f} overlap={o:.2f}")
     """
-    import numpy as np
     from moleculekit.kdtree import cKDTree
     from moleculekit.periodictable import periodictable
 
@@ -209,9 +218,28 @@ def find_clashes(
     return pairs[order], distances[order], overlaps[order]
 
 
-def cdist(coords1, coords2):
+def cdist(coords1: np.ndarray, coords2: np.ndarray) -> np.ndarray:
+    """Compute the pairwise Euclidean distances between two sets of points.
+
+    Parameters
+    ----------
+    coords1 : numpy.ndarray
+        A 2D array of shape (N, D) with the coordinates of the first set of points.
+    coords2 : numpy.ndarray
+        A 2D array of shape (M, D) with the coordinates of the second set of points.
+        The second dimension D must match that of `coords1`.
+
+    Returns
+    -------
+    distances : numpy.ndarray
+        A 2D array of shape (N, M) and dtype float32 where element ``[i, j]`` is
+        the Euclidean distance between ``coords1[i]`` and ``coords2[j]``.
+
+    Examples
+    --------
+    >>> distances = cdist(coords1, coords2)
+    """
     from moleculekit.distance_utils import cdist
-    import numpy as np
 
     assert coords1.ndim == 2, "cdist only supports 2D arrays"
     assert coords2.ndim == 2, "cdist only supports 2D arrays"
@@ -228,9 +256,26 @@ def cdist(coords1, coords2):
     return results
 
 
-def pdist(coords):
+def pdist(coords: np.ndarray) -> np.ndarray:
+    """Compute the pairwise Euclidean distances within a single set of points.
+
+    Parameters
+    ----------
+    coords : numpy.ndarray
+        A 2D array of shape (N, D) with the coordinates of the points.
+
+    Returns
+    -------
+    distances : numpy.ndarray
+        A 1D array of length ``N * (N - 1) / 2`` and dtype float32 containing the
+        condensed upper-triangular pairwise distances. Use :func:`squareform` to
+        convert it to a full (N, N) distance matrix.
+
+    Examples
+    --------
+    >>> distances = pdist(coords)
+    """
     from moleculekit.distance_utils import pdist
-    import numpy as np
 
     assert coords.ndim == 2, "pdist only supports 2D arrays"
     if coords.dtype != np.float32:
@@ -242,16 +287,77 @@ def pdist(coords):
     return results
 
 
-def squareform(distances):
+def squareform(distances: np.ndarray) -> np.ndarray:
+    """Convert a condensed pairwise distance vector into a square distance matrix.
+
+    Parameters
+    ----------
+    distances : numpy.ndarray
+        A 1D condensed distance vector of length ``N * (N - 1) / 2``, such as the
+        one produced by :func:`pdist`.
+
+    Returns
+    -------
+    matrix : numpy.ndarray
+        A 2D symmetric distance matrix of shape (N, N) with a zero diagonal.
+
+    Examples
+    --------
+    >>> matrix = squareform(pdist(coords))
+    """
     from moleculekit.distance_utils import squareform
-    import numpy as np
 
     return np.array(squareform(distances.astype(np.float32)))
 
 
-def calculate_contacts(mol, sel1, sel2, periodic, threshold=4):
+def calculate_contacts(
+    mol: "Molecule",
+    sel1: np.ndarray,
+    sel2: np.ndarray,
+    periodic: str | None,
+    threshold: float = 4,
+) -> list:
+    """Calculate atom contacts within a distance threshold for each frame.
+
+    For every frame of `mol`, finds all pairs of atoms (one from `sel1` and one
+    from `sel2`) whose interatomic distance is below `threshold`.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
+        The Molecule (single or multi-frame) whose coordinates are used.
+    sel1 : numpy.ndarray
+        A 1D boolean atom-selection mask (length ``mol.numAtoms``) selecting the
+        first group of atoms.
+    sel2 : numpy.ndarray
+        A 1D boolean atom-selection mask (length ``mol.numAtoms``) selecting the
+        second group of atoms. If it is equal to `sel1`, self-contacts within the
+        selection are computed.
+    periodic : str or None
+        How to treat periodic boundary conditions when computing distances.
+        If None, no periodic wrapping is applied (the molecule box is ignored).
+        If ``"chains"``, the minimum image convention is applied across atoms of
+        different chains. If ``"selections"``, it is applied between the two
+        selections. When not None, `mol` must contain non-zero box dimensions for
+        every frame.
+    threshold : float
+        Distance cutoff in Angstrom below which a pair of atoms is considered in
+        contact. Default is 4.
+
+    Returns
+    -------
+    contacts : list of numpy.ndarray
+        One entry per frame of `mol`. Each entry is a 2D array of shape (N, 2) and
+        dtype uint32 containing the atom-index pairs in contact for that frame.
+
+    Raises
+    ------
+    RuntimeError
+        If `periodic` is not None but the molecule has no valid box dimensions, if
+        the number of box frames does not match the number of coordinate frames, or
+        if `periodic` is not one of None, ``"chains"`` or ``"selections"``.
+    """
     from moleculekit.distance_utils import contacts_trajectory
-    import numpy as np
 
     assert isinstance(sel1, np.ndarray) and sel1.dtype == bool
     assert isinstance(sel2, np.ndarray) and sel2.dtype == bool

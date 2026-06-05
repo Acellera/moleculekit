@@ -102,10 +102,10 @@ def rdkitmol_to_molecule(rmol):
 
 def molecule_to_rdkitmol(
     mol: Molecule,
-    sanitize=False,
-    kekulize=False,
-    assignStereo=True,
-    guessBonds=False,
+    sanitize: bool = False,
+    kekulize: bool = False,
+    assignStereo: bool = True,
+    guessBonds: bool = False,
     _logger=True,
 ):
     """Converts the Molecule to an RDKit molecule
@@ -122,8 +122,6 @@ def molecule_to_rdkitmol(
         If True the molecule will have stereochemistry assigned from its 3D coordinates
     guessBonds : bool
         If True the molecule will have bonds guessed
-    _logger : bool
-        If True the logger will be used to print information
     """
     from moleculekit.molecule import calculateUniqueBonds
     from rdkit.Chem.rdchem import BondType
@@ -357,8 +355,6 @@ def template_residue_from_smiles(
     guessBonds : bool
         If True, run distance-based bond guessing on the residue before
         templating. Use when ``mol.bonds`` is empty.
-    _logger : bool
-        If False, suppress informational logging.
 
     Raises
     ------
@@ -774,8 +770,6 @@ def extend_residue_from_smiles(
     minimize : bool
         If True and OpenMM is available, run a soft-potential energy
         minimization of the residue against its surroundings after insertion.
-    _logger : bool
-        If True the logger will be used to print information
 
     Examples
     --------

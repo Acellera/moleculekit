@@ -10,7 +10,12 @@ from rdkit import Chem
 from rdkit.Chem.rdchem import HybridizationType, BondType
 from collections import defaultdict
 from moleculekit.smallmol.util import _depictMol, convertToString
+from typing import TYPE_CHECKING
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
+    from moleculekit.smallmol.smallmollib import SmallMolLib
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +70,10 @@ class SmallMol(object):
         If True, the missing hydrogens are assigned, the others are correctly assinged into the graph of the molecule
     removeHs: bool
         If True, remove the hydrogens
+    verbose: bool
+        If True, additional information is logged during initialization.
+    sanitize: bool
+        If True, the molecule is sanitized after reading.
 
     Examples
     --------
@@ -123,12 +132,12 @@ class SmallMol(object):
     def __init__(
         self,
         mol,
-        ignore_errors=False,
-        force_reading=False,
-        fixHs=True,
-        removeHs=False,
-        verbose=True,
-        sanitize=True,
+        ignore_errors: bool = False,
+        force_reading: bool = False,
+        fixHs: bool = True,
+        removeHs: bool = False,
+        verbose: bool = True,
+        sanitize: bool = True,
         _logger=True,
         **kwargs,
     ):
@@ -345,7 +354,16 @@ class SmallMol(object):
         )
 
     @property
-    def ligname(self):
+    def ligname(self) -> str:
+        """The ligand name of the molecule.
+
+        Returns the value of the molecule's ``_Name`` property, or ``"UNK"`` if it is not set.
+
+        Returns
+        -------
+        ligname : str
+            The ligand name
+        """
         return self._mol.GetProp("_Name") if self._mol.HasProp("_Name") else "UNK"
 
     @property
@@ -386,7 +404,19 @@ class SmallMol(object):
         return np.zeros(self.numAtoms, dtype=SmallMol._dtypes["virtualsite"])
 
     @property
-    def frame(self):
+    def frame(self) -> int:
+        """The currently active conformer (frame) index.
+
+        Returns
+        -------
+        frame : int
+            The index of the active conformer
+
+        Raises
+        ------
+        RuntimeError
+            If the stored frame index is out of the range of available conformers
+        """
         if self._frame < 0 or self._frame >= self.numFrames:
             raise RuntimeError("frame out of range")
         return self._frame
@@ -441,11 +471,25 @@ class SmallMol(object):
         return np.array(["HETATM" for _ in range(self.numAtoms)], dtype=object)
 
     @property
-    def numAtoms(self):
+    def numAtoms(self) -> int:
+        """The number of atoms in the molecule.
+
+        Returns
+        -------
+        numatoms : int
+            The number of atoms
+        """
         return self._mol.GetNumAtoms()
 
     @property
-    def numFrames(self):
+    def numFrames(self) -> int:
+        """The number of conformers (frames) of the molecule.
+
+        Returns
+        -------
+        numframes : int
+            The number of conformers
+        """
         return self._mol.GetNumConformers()
 
     @property
@@ -455,15 +499,38 @@ class SmallMol(object):
     def _getBonds(self, fileBonds=True, guessBonds=True):
         return self._bonds
 
-    def getProp(self, prop_name):
-        """Returns a given property of the molecule"""
+    def getProp(self, prop_name: str) -> str:
+        """Returns a given property of the molecule.
+
+        Parameters
+        ----------
+        prop_name : str
+            The name of the property to return
+
+        Returns
+        -------
+        value : str
+            The value of the property
+        """
         return self._mol.GetProp(prop_name)
 
-    def filter(self, sel):
+    def filter(self, sel: str | np.ndarray):
+        """Not implemented.
+
+        Parameters
+        ----------
+        sel : str or np.ndarray
+            Atom selection (string, boolean mask, or integer index array).
+
+        Raises
+        ------
+        NotImplementedError
+            Always, since filtering atoms is not supported.
+        """
         # Not implemented
         raise NotImplementedError("Filtering atoms not supported yet.")
 
-    def copy(self):
+    def copy(self) -> "SmallMol":
         """
         Create a copy of the molecule object
 
@@ -476,7 +543,13 @@ class SmallMol(object):
             Chem.Mol(self._mol), fixHs=False, removeHs=False
         )  # Chem.Mol creates a deep copy of the C++ object
 
-    def get(self, returnField, sel="all", convertType=True, invert=False):
+    def get(
+        self,
+        returnField: str,
+        sel: str = "all",
+        convertType: bool = True,
+        invert: bool = False,
+    ):
         """
         Returns the property for the atom specified with the selection. The selection is another atom property
 
@@ -485,7 +558,10 @@ class SmallMol(object):
         returnField: str
             The field of the atom to return
         sel: str
-            The selection string. atom field name followed by spaced values for that field
+            The selection string. It is an atom field name followed by one or more space-separated
+            values to match for that field, for example ``"idx 0 1 7"`` or ``"element N"``. Atoms
+            whose value for that field equals any of the given values are selected. Use ``"all"`` to
+            select every atom.
         convertType: bool
             If True, and where possible the returnField is converted in rdkit object
             Default: True
@@ -576,10 +652,13 @@ class SmallMol(object):
 
         return _arrayTo[idxs]
 
-    def foundBondBetween(self, sel1, sel2, bondtype=None):
+    def foundBondBetween(self, sel1: str, sel2: str, bondtype: str | int | None = None):
         """
-        Returns True if at least a bond is found between the two selections. It is possible to check for specific bond
-        type. A tuple is returned in the form (bool, [ [(idx1,idx2), rdkit.Chem.rdchem.BondType]] ])
+        Checks whether at least one bond exists between the two atom selections.
+
+        It is possible to restrict the check to a specific bond type. If one or more matching bonds
+        are found, a tuple ``(True, details)`` is returned where ``details`` describes each bond. If
+        no matching bond is found, the bare value ``False`` is returned.
 
         Parameters
         ----------
@@ -593,10 +672,10 @@ class SmallMol(object):
 
         Returns
         -------
-        isbond: bool
-            True if a bond was found
-        details: list
-            A list of lists with the index of atoms in the bond and its type
+        result : tuple or bool
+            If a bond was found, a tuple ``(True, details)`` where ``details`` is a list of lists,
+            each holding the ``(idx1, idx2)`` atom indices of the bond and its bond type as a string.
+            If no bond was found, the bare boolean ``False``.
         """
 
         if isinstance(bondtype, str):
@@ -625,7 +704,7 @@ class SmallMol(object):
 
         return False
 
-    def isChiral(self, returnDetails=False):
+    def isChiral(self, returnDetails: bool = False):
         """
         Returns True if the molecule has at least one chiral atom. If returnDetails is set as True,
         a list of tuples with the atom idx and chiral type is returned.
@@ -666,30 +745,40 @@ class SmallMol(object):
 
         return True, None
 
-    def getAtoms(self):
+    def getAtoms(self) -> np.ndarray:
         """
-        Retuns an array with the rdkit.Chem.rdchem.Atom present in the molecule
+        Returns an array with the rdkit.Chem.rdchem.Atom objects present in the molecule.
+
+        Returns
+        -------
+        atoms : np.ndarray
+            An object array of the rdkit.Chem.rdchem.Atom objects of the molecule
         """
         return np.array([a for a in self._mol.GetAtoms()])
 
-    def getCenter(self):
+    def getCenter(self) -> np.ndarray:
         """
-        Returns geometrical center of molecule conformation
+        Returns the geometrical center of the molecule for the currently active conformation.
+
+        Returns
+        -------
+        center : np.ndarray
+            The (x, y, z) coordinates of the geometrical center
         """
         coords = self._coords[:, :, self.frame]
         return coords.mean(axis=0).astype(np.float32)
 
     def generateConformers(
         self,
-        num_confs=400,
-        optimizemode="mmff",
-        align=True,
-        append=True,
-        pruneRmsThresh=0.5,
-        maxAttempts=10000,
-        seed=None,
-        numThreads=1,
-        useRandomCoords=True,
+        num_confs: int = 400,
+        optimizemode: str = "mmff",
+        align: bool = True,
+        append: bool = True,
+        pruneRmsThresh: float = 0.5,
+        maxAttempts: int = 10000,
+        seed: int | None = None,
+        numThreads: int = 1,
+        useRandomCoords: bool = True,
     ):
         """
         Generates ligand conformers
@@ -756,7 +845,18 @@ class SmallMol(object):
 
         self._mol = mol
 
-    def align(self, refmol):
+    def align(self, refmol: 'SmallMol | Chem.Mol | "Molecule"'):
+        """
+        Aligns the molecule in place onto a reference molecule using an Open3DAlign overlay.
+
+        The molecule's coordinates are modified so that it is superimposed onto the reference and
+        the resulting RMSD is logged.
+
+        Parameters
+        ----------
+        refmol : :class:`SmallMol` or rdkit.Chem.rdchem.Mol or moleculekit.molecule.Molecule
+            The reference molecule to align this molecule onto
+        """
         from rdkit.Chem.rdMolAlign import GetO3A
         from moleculekit.molecule import Molecule
 
@@ -769,7 +869,22 @@ class SmallMol(object):
         rmsd = pyO3A.Align()
         logger.info(f"Alignment with a RMSD of {rmsd}")
 
-    def dropFrames(self, frames="all"):
+    def dropFrames(self, frames: str | int | list | np.ndarray = "all"):
+        """
+        Removes conformers (frames) from the molecule in place.
+
+        Parameters
+        ----------
+        frames : str or int or list or np.ndarray
+            The frame indices to remove. Use ``"all"`` to remove every conformer, an integer to
+            remove a single frame, or a list/array of indices to remove several.
+            Default: "all"
+
+        Raises
+        ------
+        RuntimeError
+            If any requested frame index is greater than or equal to the number of conformers
+        """
         if isinstance(frames, int):
             frames = np.array([frames])
         if isinstance(frames, list):
@@ -787,7 +902,26 @@ class SmallMol(object):
             for f in frames:
                 self._mol.RemoveConformer(int(ids[f]))
 
-    def write(self, fname, frames=None, merge=True):
+    def write(self, fname: str, frames: list | None = None, merge: bool = True):
+        """
+        Writes the molecule to a file.
+
+        The output format is determined by the file extension. For ``.sdf`` files the molecule is
+        written with rdkit; other formats are written by first converting to a
+        moleculekit.molecule.Molecule.
+
+        Parameters
+        ----------
+        fname : str
+            The output file name. The extension determines the file format.
+        frames : list
+            The conformer indices to write. If None, all conformers are written.
+            Default: None
+        merge : bool
+            Only used for ``.sdf`` output. If True, all conformers are written to a single file. If
+            False, one file is written per conformer with the frame index appended to the file name.
+            Default: True
+        """
         ext = os.path.splitext(fname)[-1]
         if ext == ".sdf":
             chemwrite = Chem.SDWriter
@@ -809,9 +943,15 @@ class SmallMol(object):
             mol.write(fname, frames)
 
     def view(self, *args, **kwargs):
+        """
+        Visualizes the molecule.
+
+        The molecule is converted to a moleculekit.molecule.Molecule and all arguments are forwarded
+        to its ``view`` method.
+        """
         self.toMolecule().view(*args, **kwargs)
 
-    def getDescriptors(self, prefix="", ignore=("Ipc",)):
+    def getDescriptors(self, prefix: str = "", ignore: list = ("Ipc",)):
         """Calculate descriptors for the molecule
 
         Returns rdkit descriptors for the molecule, like DESC_NumRotatableBonds or DESC_MolLogP.
@@ -849,22 +989,31 @@ class SmallMol(object):
 
         return descriptors
 
-    def getFingerprint(self, mode, radius=2, num_bits=1024):
+    def getFingerprint(self, mode: str, radius: int = 2, num_bits: int = 1024):
         """
-        Returns Morgan, MACCS and AvalonCount fingerprints at specified radius and num_bits
+        Computes a single molecular fingerprint of the requested type.
 
         Parameters
         ----------
         mode : str
-            One of 'Morgan', 'MACCS', 'AvalonCount'
+            The fingerprint type to compute. One of 'Morgan', 'MACCS', 'AvalonCount'.
         radius: int
-           Radius to define a local environment for the relevant fingeprints
+           Radius to define a local environment. Only used for the 'Morgan' fingerprint.
         num_bits: int
-            The number of bits to use in the fingerprint. Larger avoids collisions.
+            The number of bits to use in the fingerprint. Larger avoids collisions. Used for the
+            'Morgan' and 'AvalonCount' fingerprints.
 
         Returns
         -------
-        A list with the three fingerprints
+        fingerprint : rdkit fingerprint object
+            The computed fingerprint for the chosen ``mode``: a hashed Morgan count fingerprint for
+            'Morgan', a MACCS keys bit vector for 'MACCS', or an Avalon count fingerprint for
+            'AvalonCount'.
+
+        Raises
+        ------
+        RuntimeError
+            If ``mode`` is not one of the supported fingerprint types
         """
         if mode not in ("Morgan", "MACCS", "AvalonCount"):
             raise RuntimeError(
@@ -894,7 +1043,8 @@ class SmallMol(object):
         self._mol = remover.StripMol(self._mol)
 
     def containsMetals(
-        self, metalSMARTS="[Mg,Ca,Zn,As,Mn,Al,Pd,Pt,Co,Ba,Cr,Cu,Ni,Ag,Fe,Hg,Cd,Gd,Na]"
+        self,
+        metalSMARTS: str = "[Mg,Ca,Zn,As,Mn,Al,Pd,Pt,Co,Ba,Cr,Cu,Ni,Ag,Fe,Hg,Cd,Gd,Na]",
     ):
         """Returns True if the molecule contains metals
 
@@ -911,13 +1061,24 @@ class SmallMol(object):
         query = Chem.MolFromSmarts(metalSMARTS)
         return self._mol.HasSubstructMatch(query)
 
-    def assignStereoChemistry(self, from3D=True):
+    def assignStereoChemistry(self, from3D: bool = True):
+        """
+        Assigns stereochemistry to the molecule in place.
+
+        Parameters
+        ----------
+        from3D : bool
+            If True, the stereochemistry is derived from the 3D conformer coordinates. If False, it
+            is assigned from the molecular graph, recomputing and overwriting any existing stereo
+            information.
+            Default: True
+        """
         if from3D:
             Chem.AssignStereochemistryFrom3D(self._mol)
         else:
             Chem.AssignStereochemistry(self._mol, force=True, cleanIt=True)
 
-    def toSMARTS(self, explicitHs=False):
+    def toSMARTS(self, explicitHs: bool = False):
         """
         Returns the smarts string of the molecule
 
@@ -939,7 +1100,7 @@ class SmallMol(object):
 
         return Chem.MolToSmarts(rmol, isomericSmiles=True)
 
-    def toSMILES(self, explicitHs=False, kekulizeSmile=True):
+    def toSMILES(self, explicitHs: bool = False, kekulizeSmile: bool = True):
         """
         Returns the smiles string of the molecule
 
@@ -970,7 +1131,7 @@ class SmallMol(object):
 
         return smi
 
-    def toMolecule(self, ids=None):
+    def toMolecule(self, ids: list | None = None) -> "Molecule":
         """
         Return the moleculekit.molecule.Molecule
 
@@ -1019,15 +1180,15 @@ class SmallMol(object):
 
     def depict(
         self,
-        sketch=True,
-        filename=None,
-        ipython=False,
-        optimize=False,
-        optimizemode="std",
-        removeHs=True,
-        atomlabels=None,
-        highlightAtoms=None,
-        resolution=(400, 200),
+        sketch: bool = True,
+        filename: str | None = None,
+        ipython: bool = False,
+        optimize: bool = False,
+        optimizemode: str = "std",
+        removeHs: bool = True,
+        atomlabels: str | None = None,
+        highlightAtoms: list | None = None,
+        resolution: tuple = (400, 200),
     ):
         """
         Depicts the molecules. It is possible to save it into an svg file and also generates a jupiter-notebook rendering
@@ -1056,7 +1217,8 @@ class SmallMol(object):
 
         Returns
         -------
-            ipython_svg: SVG object if ipython is set to True
+        ipython_svg : IPython.display.SVG or None
+            An SVG rendering object if ``ipython`` is True, otherwise None
 
         Example
         -------
@@ -1134,23 +1296,71 @@ class SmallMol(object):
             resolution=resolution,
         )
 
-    def addHs(self, addCoords=True):
+    def addHs(self, addCoords: bool = True):
+        """
+        Adds explicit hydrogen atoms to the molecule in place.
+
+        Parameters
+        ----------
+        addCoords : bool
+            If True, 3D coordinates are also generated for the added hydrogens.
+            Default: True
+        """
         self._mol = Chem.AddHs(self._mol, addCoords=addCoords)
 
     def removeHs(self):
+        """
+        Removes explicit hydrogen atoms from the molecule in place.
+        """
         self._mol = Chem.RemoveHs(self._mol)
 
     def sanitize(self):
+        """
+        Sanitizes the molecule in place using rdkit.
+
+        This cleans up the molecule, computing properties such as valences, ring information and
+        aromaticity.
+        """
         Chem.SanitizeMol(self._mol)
 
     def getTautomers(
         self,
-        canonical=True,
-        genConformers=False,
-        returnScores=True,
-        maxTautomers=200,
-        filterTauts=None,
+        canonical: bool = True,
+        genConformers: bool = False,
+        returnScores: bool = True,
+        maxTautomers: int = 200,
+        filterTauts: float | None = None,
     ):
+        """
+        Enumerates the tautomers of the molecule.
+
+        Parameters
+        ----------
+        canonical : bool
+            If True, only the single canonical tautomer is returned. If False, all enumerated
+            tautomers are returned.
+            Default: True
+        genConformers : bool
+            If True, a conformer is generated for each returned tautomer.
+            Default: False
+        returnScores : bool
+            If True, the tautomer scores are also returned alongside the tautomers.
+            Default: True
+        maxTautomers : int
+            The maximum number of tautomers to enumerate.
+            Default: 200
+        filterTauts : float
+            If not None, only tautomers whose score is within this value of the maximum score are
+            kept.
+            Default: None
+
+        Returns
+        -------
+        tautomers : :class:`SmallMolLib`
+            A library containing the enumerated tautomers
+        scores : list
+            The scores of the returned tautomers. Only returned if ``returnScores`` is True.
+        """
         from rdkit.Chem.MolStandardize import rdMolStandardize
         from moleculekit.smallmol.smallmollib import SmallMolLib
 
@@ -1188,7 +1398,19 @@ class SmallMol(object):
 
         return sms
 
-    def setProp(self, key, value):
+    def setProp(self, key: str, value):
+        """
+        Sets a property on the molecule.
+
+        The value is stored as a string on the underlying molecule.
+
+        Parameters
+        ----------
+        key : str
+            The name of the property to set
+        value
+            The value to store. It is converted to a string before being stored.
+        """
         self._mol.SetProp(key, str(value))
 
     def __repr__(self):

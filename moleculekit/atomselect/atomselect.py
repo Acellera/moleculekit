@@ -1,8 +1,12 @@
 from moleculekit.atomselect._languageparser import parser
 from moleculekit.atomselect.analyze import analyze
 from moleculekit.atomselect_utils import within_distance
+from typing import TYPE_CHECKING
 import numpy as np
 import re
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 molpropmap = {
     "serial": "serial",
@@ -267,7 +271,38 @@ def traverse_ast(mol, analysis, node):
     raise RuntimeError(f"Invalid operation {operation}")
 
 
-def atomselect(mol, selection, bonds, _debug=False, _analysis=None, _return_ast=False):
+def atomselect(
+    mol: "Molecule", selection: str, bonds: np.ndarray, _debug: bool = False, _analysis=None, _return_ast=False
+):
+    """Select atoms of a molecule using an atom selection language.
+
+    Parses the selection string into an abstract syntax tree and evaluates it
+    against the molecule's properties (name, resname, resid, chain, element,
+    coordinates, etc.) and connectivity-derived properties (fragments,
+    waters, ions, lipids, protein/nucleic backbone, ...).
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
+        The molecule on which to perform the atom selection.
+    selection : str
+        The atom selection string, e.g. ``"protein and name CA"`` or
+        ``"within 5 of resname MOL"``.
+    bonds : np.ndarray
+        The bond connectivity of the molecule, used to compute properties
+        such as fragments and the protein/nucleic classification.
+
+    Returns
+    -------
+    mask : np.ndarray
+        A boolean mask of length ``mol.numAtoms`` which is True for the
+        selected atoms. If the molecule has no atoms an empty boolean array is
+        returned.
+
+    Examples
+    --------
+    >>> mask = atomselect(mol, "protein and name CA", mol.bonds)
+    """
     if mol.numAtoms == 0:
         mask = np.zeros(0, dtype=bool)
         if _return_ast:

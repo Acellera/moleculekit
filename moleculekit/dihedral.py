@@ -16,7 +16,7 @@ def _wrapBondedDistance(pos, box):
     return pos
 
 
-def dihedralAngle(pos, box=None):
+def dihedralAngle(pos: np.ndarray, box: np.ndarray | None = None) -> float:
     """Calculates a dihedral angle.
 
     Parameters

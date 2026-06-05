@@ -3,7 +3,12 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
+from typing import TYPE_CHECKING
+
 import numpy as np
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 
 def _pp_measure_fit(P, Q):
@@ -186,18 +191,55 @@ def _reorder_ref_atoms(ref, refsel, mapping, mol_chains):
     return np.concatenate(reordered)
 
 
-def molTMscore(mol, ref, molsel="protein", refsel="protein"):
+def molTMscore(
+    mol: "Molecule",
+    ref: "Molecule",
+    molsel: str | np.ndarray = "protein",
+    refsel: str | np.ndarray = "protein",
+):
+    """Calculates the TMscore between two protein Molecules
+
+    This is a thin wrapper around :func:`molTMalign` that does not return the
+    aligned structures or transformation matrices (i.e. it calls ``molTMalign``
+    with ``return_alignments=False``).
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>` object
+        A Molecule containing a single or multiple frames
+    ref : :class:`Molecule <moleculekit.molecule.Molecule>` object
+        A reference Molecule containing a single frame. Will automatically keep only ref.frame.
+    molsel : str or np.ndarray
+        Atoms of `mol` to use, as an atom selection string, a boolean mask, or an
+        integer index array (see :meth:`Molecule.atomselect <moleculekit.molecule.Molecule.atomselect>`).
+    refsel : str or np.ndarray
+        Atoms of `ref` to use, as an atom selection string, a boolean mask, or an
+        integer index array (see :meth:`Molecule.atomselect <moleculekit.molecule.Molecule.atomselect>`).
+
+    Returns
+    -------
+    tmscore : numpy.ndarray
+        TM score (normalized by length of ref) for each frame in mol
+    rmsd : numpy.ndarray
+        RMSD only OF COMMON RESIDUES for all frames. This is not the same as a full protein RMSD!!!
+    nali : numpy.ndarray
+        Number of aligned residues for each frame in mol
+
+    Examples
+    --------
+    >>> tmscore, rmsd, nali = molTMscore(mol, ref)
+    """
     return molTMalign(mol, ref, molsel, refsel, return_alignments=False)
 
 
 def molTMalign(
-    mol,
-    ref,
-    molsel="protein",
-    refsel="protein",
-    return_alignments=True,
-    frames=None,
-    matchingframes=False,
+    mol: "Molecule",
+    ref: "Molecule",
+    molsel: str | np.ndarray = "protein",
+    refsel: str | np.ndarray = "protein",
+    return_alignments: bool = True,
+    frames: list | range | np.ndarray | None = None,
+    matchingframes: bool = False,
 ):
     """Calculates the TMscore between two protein Molecules
 
@@ -207,10 +249,12 @@ def molTMalign(
         A Molecule containing a single or multiple frames
     ref : :class:`Molecule <moleculekit.molecule.Molecule>` object
         A reference Molecule containing a single frame. Will automatically keep only ref.frame.
-    molsel : str
-        Atomselect string for which atoms of `mol` to calculate TMScore
-    refsel : str
-        Atomselect string for which atoms of `ref` to calculate TMScore
+    molsel : str or np.ndarray
+        Atoms of `mol` to use, as an atom selection string, a boolean mask, or an
+        integer index array (see :meth:`Molecule.atomselect <moleculekit.molecule.Molecule.atomselect>`).
+    refsel : str or np.ndarray
+        Atoms of `ref` to use, as an atom selection string, a boolean mask, or an
+        integer index array (see :meth:`Molecule.atomselect <moleculekit.molecule.Molecule.atomselect>`).
     return_alignments : bool
         If True it will return the aligned structures of mol and the transformation matrices used to produce them
     frames : list

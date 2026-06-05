@@ -25,7 +25,7 @@ fdefName = os.path.join(RDConfig.RDDataDir, "BaseFeatures.fdef")
 factory = ChemicalFeatures.BuildFeatureFactory(fdefName)
 
 
-def getRCSBLigandByLigname(ligname, returnMol2=False):
+def getRCSBLigandByLigname(ligname: str, returnMol2: bool = False):
     """
     Returns a SmallMol object of a ligand by its three letter lignane. This molecule is retrieve from RCSB and a mol2
     written. It is possible to return also the mol2 filename.
@@ -77,7 +77,7 @@ def getRCSBLigandByLigname(ligname, returnMol2=False):
     return sm
 
 
-def getChemblLigandByDrugName(drugname, returnSmile=False):
+def getChemblLigandByDrugName(drugname: str, returnSmile: bool = False):
     """
     Returns a SmallMol object of a ligand by its drug name. This molecule is retrieve from Chembl. It is possible to
     return also the smile of the ligand.
@@ -91,11 +91,10 @@ def getChemblLigandByDrugName(drugname, returnSmile=False):
 
     Returns
     -------
-    sm: moleculekit.smallmol.smallmol.SmallMol
-        The SmallMol object
-
-    smile: str
-        The smile
+    sm: moleculekit.smallmol.smallmol.SmallMol or None
+        The SmallMol object for the matched drug, or None if no drug matched the name. If
+        ``returnSmile`` is True, a tuple ``(sm, smile)`` is returned instead, where ``smile`` is the
+        canonical SMILES string of the ligand.
 
     Example
     -------
@@ -142,7 +141,7 @@ def getChemblLigandByDrugName(drugname, returnSmile=False):
     return sm
 
 
-def getChemblSimilarLigandsBySmile(smi, threshold=85, returnSmiles=False):
+def getChemblSimilarLigandsBySmile(smi: str, threshold: int = 85, returnSmiles: bool = False):
     """
     Returns a SmallMolLib object of the ligands having a similarity with a smile of at least the specified
     threshold.. This molecules are retrieve from Chembl. It is possible to return also the list smiles.
@@ -158,11 +157,10 @@ def getChemblSimilarLigandsBySmile(smi, threshold=85, returnSmiles=False):
 
     Returns
     -------
-    sm: moleculekit.smallmol.smallmol.SmallMol
-        The SmallMol object
-
-    smiles: str
-        The list of smiles
+    lib: moleculekit.smallmol.smallmollib.SmallMolLib
+        A SmallMolLib containing the similar ligands. If ``returnSmiles`` is True, a tuple
+        ``(lib, smiles)`` is returned instead, where ``smiles`` is the list of SMILES strings of the
+        ligands.
 
     Example
     -------
@@ -326,15 +324,17 @@ def _depictMol(
 
 
 def depictMultipleMols(
-    mols_list,
-    filename=None,
-    ipython=False,
-    legends=None,
-    highlightAtoms=None,
-    mols_perrow=3,
+    mols_list: list,
+    filename: str | None = None,
+    ipython: bool = False,
+    legends: list | None = None,
+    highlightAtoms: list | None = None,
+    mols_perrow: int = 3,
 ):
     """
-    Returns the image or the ipython rendering.
+    Depicts multiple molecules in a single grid image.
+
+    Optionally saves the image to a file and/or returns an SVG rendering for Jupyter notebooks.
 
     Parameters
     ----------
@@ -353,9 +353,8 @@ def depictMultipleMols(
 
     Returns
     -------
-    svg: SVG
-        If ipython set as True, the SVG rendering is returned
-
+    svg : IPython.display.SVG or None
+        An SVG rendering object if ``ipython`` is True, otherwise None
     """
     from rdkit.Chem.Draw import MolsToGridImage
     from os.path import splitext

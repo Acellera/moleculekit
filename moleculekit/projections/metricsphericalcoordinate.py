@@ -4,8 +4,12 @@
 # No redistribution in whole or part
 #
 from moleculekit.projections.projection import Projection
+from typing import TYPE_CHECKING
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -18,20 +22,20 @@ class MetricSphericalCoordinate(Projection):
     ----------
     refmol : :class:`Molecule <moleculekit.molecule.Molecule>` object
         The reference Molecule to which we will align.
-    targetcom : str
-        Atom selection string from which to calculate the target center of mass.
+    targetcom : str or np.ndarray
+        Atom selection from which to calculate the target center of mass (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    refcom : str
-        Atom selection string from which to calculate the reference center of mass.
+    refcom : str or np.ndarray
+        Atom selection from which to calculate the reference center of mass (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    trajalnsel : str, optional
-        Atom selection string for the trajectories from which to align to the reference structure.
+    trajalnsel : str or np.ndarray, optional
+        Atom selection for the trajectories from which to align to the reference structure (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    refalnsel : str, optional
-        Atom selection string for `refmol` from which to align to the reference structure. If None, it defaults to the
+    refalnsel : str or np.ndarray, optional
+        Atom selection for `refmol` from which to align to the reference structure (a selection string, boolean mask, or integer index array). If None, it defaults to the
         same as `trajalnstr`. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    centersel : str, optional
-        Atom selection string around which to wrap the simulation.
+    centersel : str or np.ndarray, optional
+        Atom selection around which to wrap the simulation (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
     pbc : bool
         Enable or disable coordinate wrapping based on periodic boundary conditions.
@@ -43,13 +47,13 @@ class MetricSphericalCoordinate(Projection):
 
     def __init__(
         self,
-        refmol,
-        targetcom,
-        refcom,
-        trajalnsel="protein and name CA",
-        refalnsel=None,
-        centersel="protein",
-        pbc=True,
+        refmol: "Molecule",
+        targetcom: str | np.ndarray,
+        refcom: str | np.ndarray,
+        trajalnsel: str | np.ndarray = "protein and name CA",
+        refalnsel: str | np.ndarray | None = None,
+        centersel: str | np.ndarray = "protein",
+        pbc: bool = True,
     ):
         super().__init__()
 
@@ -63,7 +67,7 @@ class MetricSphericalCoordinate(Projection):
         self._refcom = refcom
         self._pbc = pbc
 
-    def project(self, mol):
+    def project(self, mol: "Molecule") -> np.ndarray:
         """Project molecule.
 
         Parameters
@@ -117,7 +121,7 @@ class MetricSphericalCoordinate(Projection):
                 raise RuntimeError("Atom selection for `refcom` resulted in 0 atoms.")
         return res
 
-    def getMapping(self, mol):
+    def getMapping(self, mol: "Molecule"):
         """Returns the description of each projected dimension.
 
         Parameters

@@ -1,5 +1,18 @@
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
+
+
 class Representations:
     """Class that stores representations for Molecule.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The Molecule object for which the representations are stored.
 
     Examples
     --------
@@ -12,23 +25,43 @@ class Representations:
     >>> mol.reps.remove() # doctest: +SKIP
     """
 
-    def __init__(self, mol):
+    def __init__(self, mol: "Molecule"):
         self.replist = []
         self._mol = mol
         return
 
-    def append(self, reps):
+    def append(self, reps: "Representations"):
+        """Append the representations of another Representations object.
+
+        Parameters
+        ----------
+        reps : :class:`Representations` object
+            The Representations object whose representations will be appended
+            to this one.
+
+        Raises
+        ------
+        RuntimeError
+            If `reps` is not a Representations object.
+        """
         if not isinstance(reps, Representations):
             raise RuntimeError("You can only append Representations objects.")
         self.replist += reps.replist
 
-    def add(self, sel=None, style=None, color=None, frames=None, opacity=None):
+    def add(
+        self,
+        sel: str | np.ndarray | None = None,
+        style: str | None = None,
+        color: "str | int | None" = None,
+        frames: list | None = None,
+        opacity: float | None = None,
+    ):
         """Adds a new representation for Molecule.
 
         Parameters
         ----------
-        sel : str
-            Atom selection string for the representation.
+        sel : str or np.ndarray
+            Atom selection (string, boolean mask, or integer index array) for the representation.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         style : str
             Representation style. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node55.html>`__.
@@ -42,7 +75,7 @@ class Representations:
         """
         self.replist.append(_Representation(sel, style, color, frames, opacity))
 
-    def remove(self, index=None):
+    def remove(self, index: int | None = None):
         """Removed one or all representations.
 
         Parameters
@@ -56,7 +89,11 @@ class Representations:
             del self.replist[index]
 
     def list(self):
-        """Lists all representations. Equivalent to using print."""
+        """Print all currently stored representations.
+
+        Prints, for each representation, its index, atom selection, style and
+        color. Equivalent to printing the Representations object directly.
+        """
         print(self)
 
     def __str__(self):
@@ -199,6 +236,10 @@ class _Representation:
     color : str or int
         Coloring mode (str) or ColorID (int).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
+    frames : list
+        List of frames to visualize with this representation. If None it will visualize the current frame only.
+    opacity : float
+        Opacity of the representation. 0 is fully transparent and 1 is fully opaque.
 
     Examples
     --------

@@ -5,8 +5,12 @@
 #
 
 from moleculekit.projections.projection import Projection
+from typing import TYPE_CHECKING
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +20,8 @@ class MetricSecondaryStructure(Projection):
 
     Parameters
     ----------
-    sel : str
-        Atom selection string for the protein.
+    sel : str or np.ndarray
+        Atom selection for the protein (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
     simplified: bool
         Uses the simplified 3-letter code
@@ -47,7 +51,7 @@ class MetricSecondaryStructure(Projection):
     in the topology.
     """
 
-    def __init__(self, sel="protein", simplified=True, integer=True):
+    def __init__(self, sel: str | np.ndarray = "protein", simplified: bool = True, integer: bool = True):
         super().__init__()
 
         self.sel = sel
@@ -94,7 +98,7 @@ class MetricSecondaryStructure(Projection):
         res["chain_ids"] = chain_ids
         return res
 
-    def project(self, mol):
+    def project(self, mol: "Molecule") -> np.ndarray:
         """Project molecule.
 
         Parameters
@@ -167,7 +171,7 @@ class MetricSecondaryStructure(Projection):
 
         return data
 
-    def getMapping(self, mol):
+    def getMapping(self, mol: "Molecule"):
         """Returns the description of each projected dimension.
 
         Parameters

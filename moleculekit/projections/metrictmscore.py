@@ -4,8 +4,12 @@
 # No redistribution in whole or part
 #
 from moleculekit.projections.projection import Projection
+from typing import TYPE_CHECKING
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -17,18 +21,20 @@ class MetricTMscore(Projection):
     ----------
     refmol : :class:`Molecule <moleculekit.molecule.Molecule>` object
         The reference Molecule to which we want to calculate the TMscore.
-    trajtmstr : str
-        Atom selection string for the trajectories from which to calculate the TMscore.
+    trajtmstr : str or np.ndarray
+        Atom selection for the trajectories from which to calculate the TMscore (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    reftmstr : str, optional
-        Atom selection string for the reference structure from which to calculate the TMscore. If None, it defaults to
-        `trajrmsdstr`. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    centerstr : str, optional
-        Atom selection string around which to center the wrapping of the trajectories.
-        See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+    reftmstr : str or np.ndarray, optional
+        Atom selection for the reference structure from which to calculate the TMscore (a selection string, boolean mask, or integer index array). If None, it defaults to
+        `trajtmstr`. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
     """
 
-    def __init__(self, refmol, trajtmstr, reftmstr=None):
+    def __init__(
+        self,
+        refmol: "Molecule",
+        trajtmstr: str | np.ndarray,
+        reftmstr: str | np.ndarray | None = None,
+    ):
         super().__init__()
 
         if reftmstr is None:
@@ -44,7 +50,7 @@ class MetricTMscore(Projection):
             raise RuntimeError("RMSD atom selection resulted in 0 atoms.")
         return res
 
-    def project(self, mol):
+    def project(self, mol: "Molecule") -> np.ndarray:
         """Project molecule.
 
         Parameters
@@ -65,7 +71,7 @@ class MetricTMscore(Projection):
         tm, _, _ = molTMscore(mol, self._refmol, trajtmsel, self._reftmsel)
         return tm[:, np.newaxis]
 
-    def getMapping(self, mol):
+    def getMapping(self, mol: "Molecule"):
         """Returns the description of each projected dimension.
 
         Parameters

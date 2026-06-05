@@ -1,11 +1,28 @@
 import numpy as np
+from typing import TYPE_CHECKING
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
 
 class SmallMolCDP:
-    def __init__(self, filename):
+    """
+    Class to manipulate small molecule structures backed by the Chemical Data Processing Library (CDPKit).
+
+    The molecule is stored internally as a ``CDPL.Chem.BasicMolecule`` and atom/bond properties are
+    exposed as numpy arrays. This class is primarily useful for CDPKit-based conformer generation.
+
+    Parameters
+    ----------
+    filename : str or moleculekit.molecule.Molecule
+        Either the path to a molecule file readable by CDPKit, or a moleculekit
+        moleculekit.molecule.Molecule object, which is written to a temporary SDF file and read back.
+    """
+
+    def __init__(self, filename: 'str | "Molecule"'):
         from moleculekit.molecule import Molecule
         import CDPL.Chem as Chem
         import tempfile
@@ -22,7 +39,11 @@ class SmallMolCDP:
             reader.read(self._mol)
 
     def generateConformers(
-        self, num_confs=1, timeout=3600, min_rmsd=0.5, e_window=20.0
+        self,
+        num_confs: int = 1,
+        timeout: int = 3600,
+        min_rmsd: float = 0.5,
+        e_window: float = 20.0,
     ):
         """Generate conformers for the molecule.
 
@@ -100,7 +121,14 @@ class SmallMolCDP:
             conf_gen.setConformers(self._mol)
 
     @property
-    def element(self):
+    def element(self) -> np.ndarray:
+        """The element symbol of each atom.
+
+        Returns
+        -------
+        element : np.ndarray
+            An object array with the element symbol of each atom
+        """
         import CDPL.Chem as Chem
 
         return np.array(
@@ -109,7 +137,14 @@ class SmallMolCDP:
         )
 
     @property
-    def formalcharge(self):
+    def formalcharge(self) -> np.ndarray:
+        """The formal charge of each atom.
+
+        Returns
+        -------
+        formalcharge : np.ndarray
+            An object array with the formal charge of each atom
+        """
         import CDPL.Chem as Chem
 
         return np.array(
@@ -118,7 +153,16 @@ class SmallMolCDP:
         )
 
     @property
-    def charge(self):
+    def charge(self) -> np.ndarray:
+        """The partial charge of each atom.
+
+        Returns the MOL2 partial charge of each atom, defaulting to 0 when not set.
+
+        Returns
+        -------
+        charge : np.ndarray
+            An object array with the partial charge of each atom
+        """
         import CDPL.Chem as Chem
 
         return np.array(
@@ -130,7 +174,16 @@ class SmallMolCDP:
         )
 
     @property
-    def name(self):
+    def name(self) -> np.ndarray:
+        """The name of each atom.
+
+        Returns the MOL2 atom name of each atom, defaulting to an empty string when not set.
+
+        Returns
+        -------
+        name : np.ndarray
+            An object array with the name of each atom
+        """
         import CDPL.Chem as Chem
 
         return np.array(
@@ -142,13 +195,27 @@ class SmallMolCDP:
         )
 
     @property
-    def bonds(self):
+    def bonds(self) -> np.ndarray:
+        """The bonds of the molecule as pairs of atom indices.
+
+        Returns
+        -------
+        bonds : np.ndarray
+            An array of shape (nbonds, 2) with the begin and end atom indices of each bond
+        """
         return np.array(
             [[b.getBegin().index, b.getEnd().index] for b in self._mol.bonds]
         )
 
     @property
-    def bondtype(self):
+    def bondtype(self) -> np.ndarray:
+        """The bond order of each bond as a string.
+
+        Returns
+        -------
+        bondtype : np.ndarray
+            An object array with the bond order of each bond
+        """
         import CDPL.Chem as Chem
 
         return np.array(
@@ -157,7 +224,16 @@ class SmallMolCDP:
         )
 
     @property
-    def atomtype(self):
+    def atomtype(self) -> np.ndarray:
+        """The Sybyl atom type of each atom.
+
+        Returns the Sybyl atom type of each atom, defaulting to an empty string when not set.
+
+        Returns
+        -------
+        atomtype : np.ndarray
+            An object array with the Sybyl atom type of each atom
+        """
         import CDPL.Chem as Chem
 
         return np.array(
@@ -169,7 +245,15 @@ class SmallMolCDP:
         )
 
     @property
-    def coords(self):
+    def coords(self) -> np.ndarray:
+        """The atom coordinates of the molecule.
+
+        Returns
+        -------
+        coords : np.ndarray
+            A float32 array of shape (natoms, 3, nframes) with the coordinates of each atom for each
+            conformer
+        """
         import CDPL.Chem as Chem
 
         if (
@@ -189,20 +273,43 @@ class SmallMolCDP:
             return np.vstack(cc).astype(np.float32)[:, :, None].copy()
 
     @property
-    def numAtoms(self):
+    def numAtoms(self) -> int:
+        """The number of atoms in the molecule.
+
+        Returns
+        -------
+        numatoms : int
+            The number of atoms
+        """
         return len(self._mol.atoms)
 
     @property
-    def numFrames(self):
+    def numFrames(self) -> int:
+        """The number of conformers (frames) of the molecule.
+
+        Returns
+        -------
+        numframes : int
+            The number of conformers
+        """
         return self.coords.shape[2]
 
     @property
-    def ligname(self):
+    def ligname(self) -> str:
+        """The ligand name of the molecule.
+
+        Returns the molecule's name property, defaulting to ``"LIG"`` when not set.
+
+        Returns
+        -------
+        ligname : str
+            The ligand name
+        """
         import CDPL.Chem as Chem
 
         return self._mol.getPropertyOrDefault(Chem.MolecularGraphProperty.NAME, "LIG")
 
-    def toMolecule(self):
+    def toMolecule(self) -> "Molecule":
         """
         Return a moleculekit.molecule.Molecule
 
@@ -241,4 +348,10 @@ class SmallMolCDP:
         return mol
 
     def view(self, *args, **kwargs):
+        """
+        Visualizes the molecule.
+
+        The molecule is converted to a moleculekit.molecule.Molecule and all arguments are forwarded
+        to its ``view`` method.
+        """
         self.toMolecule().view(*args, **kwargs)

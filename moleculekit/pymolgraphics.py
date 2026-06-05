@@ -1,4 +1,31 @@
-def draw_cylinder(objname, xyz1, xyz2, rgb1, rgb2=None, alpha=1, radius=2):
+def draw_cylinder(
+    objname: str, xyz1, xyz2, rgb1, rgb2=None, alpha: float = 1, radius: float = 2
+) -> str:
+    """Draw a cylinder as a CGO object in PyMOL.
+
+    Parameters
+    ----------
+    objname : str
+        The name to give to the created PyMOL object.
+    xyz1 : list
+        The starting coordinates of the cylinder as ``[x, y, z]``.
+    xyz2 : list
+        The ending coordinates of the cylinder as ``[x, y, z]``.
+    rgb1 : list
+        The color of the starting cap as ``[red, green, blue]``.
+    rgb2 : list
+        The color of the ending cap as ``[red, green, blue]``. If None the
+        same color as `rgb1` is used.
+    alpha : float
+        The opacity of the cylinder.
+    radius : float
+        The radius of the cylinder.
+
+    Returns
+    -------
+    objname : str
+        The name of the created PyMOL object.
+    """
     from pymol import cmd
 
     if rgb2 is None:
@@ -13,7 +40,16 @@ def draw_cylinder(objname, xyz1, xyz2, rgb1, rgb2=None, alpha=1, radius=2):
     return objname
 
 
-def group_objects(groupname, objects):
+def group_objects(groupname: str, objects: list):
+    """Group several PyMOL objects together under a single name.
+
+    Parameters
+    ----------
+    groupname : str
+        The name of the group to create or add to.
+    objects : list
+        A list of names of the PyMOL objects to add to the group.
+    """
     from pymol import cmd
 
     cmd.group(groupname, " ".join(objects), "add")

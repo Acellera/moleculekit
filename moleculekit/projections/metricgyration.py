@@ -5,8 +5,12 @@
 #
 from moleculekit.projections.projection import Projection
 from moleculekit.periodictable import periodictable
+from typing import TYPE_CHECKING
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +20,22 @@ class MetricGyration(Projection):
 
     Parameters
     ----------
-    atomsel : str
-        Atom selection string for the atoms whose ROG we want to calculate.
+    atomsel : str or np.ndarray
+        Atom selection for the atoms whose ROG we want to calculate (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+    refmol : Molecule
+        The reference Molecule to which we will align.
+    trajalnsel : str or np.ndarray, optional
+        Atom selection for the trajectories from which to align to the reference structure (a selection string, boolean mask, or integer index array).
+        If it's None and a `refmol` is passed it will default to 'protein and name CA'.
+    refalnsel : str or np.ndarray, optional
+        Atom selection for `refmol` from which to align to the reference structure (a selection string, boolean mask, or integer index array). If None, it defaults to the
+        same as `trajalnsel`.
+    centersel : str or np.ndarray, optional
+        Atom selection around which to wrap the simulation (a selection string, boolean mask, or integer index array).
+        See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+    pbc : bool
+        Enable or disable coordinate wrapping based on periodic boundary conditions.
 
     Returns
     -------
@@ -27,12 +44,12 @@ class MetricGyration(Projection):
 
     def __init__(
         self,
-        atomsel,
-        refmol=None,
-        trajalnsel=None,
-        refalnsel=None,
-        centersel="protein",
-        pbc=True,
+        atomsel: str | np.ndarray | None,
+        refmol: "Molecule | None" = None,
+        trajalnsel: str | np.ndarray | None = None,
+        refalnsel: str | np.ndarray | None = None,
+        centersel: str | np.ndarray = "protein",
+        pbc: bool = True,
     ):
         super().__init__()
 
@@ -88,7 +105,7 @@ class MetricGyration(Projection):
                 raise RuntimeError("Centering selection resulted in 0 atoms.")
         return res
 
-    def project(self, mol):
+    def project(self, mol: "Molecule") -> np.ndarray:
         """Project molecule.
 
         Parameters
@@ -139,7 +156,7 @@ class MetricGyration(Projection):
 
         return rog
 
-    def getMapping(self, mol):
+    def getMapping(self, mol: "Molecule"):
         """Returns the description of each projected dimension.
 
         Parameters

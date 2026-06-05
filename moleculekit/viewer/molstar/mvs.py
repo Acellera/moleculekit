@@ -6,6 +6,12 @@ moleculekit's viewer shows. The structure data URL is supplied by the caller
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -69,16 +75,57 @@ def _apply_color(component, color):
 
 
 def build_mvs(
-    mol,
+    mol: "Molecule",
     *,
     structure_url: str,
-    ball_and_stick_sel: str | None = None,
+    ball_and_stick_sel: str | np.ndarray | None = None,
     representations: list[dict] | None = None,
     highlight_bonds: list[tuple[str, str]] | None = None,
-    focus_sel: str | None = None,
+    focus_sel: str | np.ndarray | None = None,
 ) -> str:
-    """Build the mvsj string for ``mol`` with ``structure_url`` as the download
-    href. See the design spec for the representation semantics."""
+    """Build the MolViewSpec (mvsj) JSON string describing the scene for ``mol``.
+
+    A cartoon representation is used for the polymer when ``mol`` has at least
+    ``MIN_CARTOON_RESIDUES`` standard polymer residues; ligands, ions, water,
+    branched entities and any non-standard residues are drawn as ball-and-stick.
+    Otherwise the whole structure is drawn as ball-and-stick. Formal-charge
+    labels are added for charged atoms (up to ``MAX_FORMAL_CHARGE_LABELS``).
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule whose topology/coordinates drive the scene. The structure
+        data itself is fetched by the viewer from ``structure_url``; ``mol`` is
+        used here to decide components, resolve selections and place labels.
+    structure_url : str
+        The href the viewer downloads and parses as BinaryCIF (a published
+        ``.bcif`` URL in docs, or an inlined ``data:`` URL in notebooks).
+    ball_and_stick_sel : str or np.ndarray or None, optional
+        An extra atom selection to additionally draw as ball-and-stick. Ignored
+        when it matches no atoms.
+    representations : list of dict or None, optional
+        Extra representations to add. Each dict may carry ``atom_indices`` or a
+        ``sel`` atom selection (one is required to pick atoms), plus ``color``,
+        ``opacity`` and any representation keywords (``type`` defaults to
+        ``"ball_and_stick"``). ``color`` is ``None`` (element theme), a
+        ``{"theme": name}`` dict, or an SVG/hex color string.
+    highlight_bonds : list of tuple of (str, str) or None, optional
+        Pairs of atom selections, each of which must pick exactly one atom; an
+        orange tube primitive is drawn between the two atoms of each pair.
+    focus_sel : str or np.ndarray or None, optional
+        An atom selection the camera is focused on. Ignored when it matches no
+        atoms.
+
+    Returns
+    -------
+    mvsj : str
+        The serialized MolViewSpec scene as a JSON string.
+
+    Raises
+    ------
+    ValueError
+        If any ``highlight_bonds`` selection does not pick exactly one atom.
+    """
     mvs, ComponentExpression = _import_mvs()
 
     builder = mvs.create_builder()

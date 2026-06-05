@@ -1,3 +1,4 @@
+import numpy as np
 from moleculekit.molecule import Molecule
 from tqdm import tqdm
 import tempfile
@@ -23,7 +24,23 @@ def _filter_opm_pdb(lines, keep_dum=False):
     return newlines
 
 
-def generate_opm_sequences(opm_pdbs, outjson):
+def generate_opm_sequences(opm_pdbs: list, outjson: str):
+    """Extract protein and nucleic sequences from OPM PDB files into a JSON file.
+
+    Each input PDB is filtered of its DUM placeholder atoms, loaded as a
+    Molecule, and split into protein and nucleic components. The per-chain
+    sequences (dropping chains shorter than 5 residues or consisting only of
+    unknown ``X`` residues) are collected and written to a JSON file keyed by
+    the PDB file basename. This is used to build the searchable database
+    consumed by :func:`align_to_opm`.
+
+    Parameters
+    ----------
+    opm_pdbs : list of str
+        Paths to the OPM PDB files to process.
+    outjson : str
+        Path to the JSON file that the collected sequences are written to.
+    """
     sequences = {}
     with tempfile.TemporaryDirectory() as tmpdir:
         outf = os.path.join(tmpdir, "new.pdb")
@@ -72,7 +89,28 @@ def generate_opm_sequences(opm_pdbs, outjson):
         json.dump(sequences, f, indent=4)
 
 
-def blast_search_opm(query, sequences):
+def blast_search_opm(query: str, sequences: dict) -> list:
+    """Search a query sequence against OPM protein sequences using BLAST+.
+
+    Builds a temporary BLAST protein database from the protein sequences of the
+    OPM database and runs ``blastp`` for the query sequence. This requires the
+    ``makeblastdb`` and ``blastp`` executables (from BLAST+) to be available on
+    the system PATH.
+
+    Parameters
+    ----------
+    query : str
+        The query protein sequence to search for.
+    sequences : dict
+        The OPM sequences database, as produced by
+        :func:`generate_opm_sequences`, keyed by PDB id with a ``"protein"``
+        entry mapping chain ids to sequences.
+
+    Returns
+    -------
+    hits : list
+        The BLAST search hits, as parsed from the ``blastp`` JSON output.
+    """
     import json
     from subprocess import call
     import tempfile
@@ -100,12 +138,14 @@ def blast_search_opm(query, sequences):
     return results["BlastOutput2"][0]["report"]["results"]["search"]["hits"]
 
 
-def get_opm_pdb(pdbid, keep=False, keepaltloc="A", validateElements=False):
+def get_opm_pdb(
+    pdbid: str, keep: bool = False, keepaltloc: str = "A", validateElements: bool = False
+):
     """Download a membrane system from the OPM.
 
     Parameters
     ----------
-    pdb: str
+    pdbid : str
         The 4-letter PDB code
     keep: bool
         If False, removes the DUM atoms. If True, it keeps them.
@@ -168,7 +208,13 @@ def get_opm_pdb(pdbid, keep=False, keepaltloc="A", validateElements=False):
     return mol, thickness
 
 
-def align_to_opm(mol, molsel="all", maxalignments=3, opmid=None, macrotype="protein"):
+def align_to_opm(
+    mol: "Molecule",
+    molsel: str | np.ndarray = "all",
+    maxalignments: int = 3,
+    opmid: str | None = None,
+    macrotype: str = "protein",
+) -> list:
     """Align a Molecule to proteins/nucleics in the OPM database by sequence search
 
     This function requires BLAST+ to be installed. You can find the latest BLAST executables here:
@@ -181,8 +227,9 @@ def align_to_opm(mol, molsel="all", maxalignments=3, opmid=None, macrotype="prot
     ----------
     mol : Molecule
         The query molecule. The alignments will be done on the first frame only.
-    molsel : str
-        The atom selection for the query molecule to use
+    molsel : str or np.ndarray
+        The atom selection for the query molecule to use. Can be an atom selection
+        string, a boolean mask, or an integer index array.
     maxalignments : int
         The maximum number of aligned structures to return
     opmid : str
@@ -200,7 +247,6 @@ def align_to_opm(mol, molsel="all", maxalignments=3, opmid=None, macrotype="prot
     """
     from moleculekit import __share_dir
     from moleculekit.align import molTMalign
-    import numpy as np
 
     with open(os.path.join(__share_dir, "opm_sequences.json"), "r") as f:
         sequences = json.load(f)

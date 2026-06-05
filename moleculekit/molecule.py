@@ -11,15 +11,22 @@ from moleculekit.residues import (
     SINGLE_LETTER_RESIDUE_NAME_TABLE,
     SINGLE_LETTER_MODIFIED_RESIDUE_NAME_TABLE,
 )
-from typing import Annotated
+from typing import Annotated, TYPE_CHECKING
 from copy import deepcopy
 import logging
 import os
+
+if TYPE_CHECKING:
+    from openmm.app import Topology as OpenMMTopology
+    from openmm.unit import Quantity as OpenMMQuantity
+    from rdkit.Chem.rdchem import Mol as RDKitMol
 
 logger = logging.getLogger(__name__)
 
 
 class TopologyInconsistencyError(Exception):
+    """Raised when the topology of a Molecule is inconsistent or invalid."""
+
     def __init__(self, value):
         self.value = value
 
@@ -87,8 +94,6 @@ class Molecule(object):
             assume it is a PDB accession code and try to download from the RCSB web server.
     name : str
         Give a name to the Molecule that will be used for visualization
-    kwargs :
-        Accepts any further arguments that should be passed to the Molecule.read method.
 
     Examples
     --------
@@ -257,7 +262,7 @@ class Molecule(object):
         "time": (0,),
     }
 
-    def __init__(self, filename=None, name=None, **kwargs):
+    def __init__(self, filename: str | list | None = None, name: str | None = None, **kwargs):
         for field in self._dtypes:
             self.__dict__[field] = np.empty(
                 self._dims[field], dtype=self._dtypes[field]
@@ -323,14 +328,37 @@ class Molecule(object):
         return None
 
     @property
-    def frame(self):
-        """The currently active frame of the Molecule on which methods will be applied"""
+    def frame(self) -> int:
+        """The currently active frame of the Molecule on which methods will be applied.
+
+        Returns
+        -------
+        frame : int
+            The index of the currently active frame.
+
+        Raises
+        ------
+        RuntimeError
+            If the active frame is out of range for the current number of frames.
+        """
         if self._frame < 0 or self._frame >= self.numFrames:
             raise RuntimeError("frame out of range")
         return self._frame
 
     @frame.setter
-    def frame(self, value):
+    def frame(self, value: int):
+        """Set the currently active frame.
+
+        Parameters
+        ----------
+        value : int
+            The index of the frame to make active. Frames are 0-indexed.
+
+        Raises
+        ------
+        RuntimeError
+            If `value` is out of range for the current number of frames.
+        """
         if value < 0 or ((self.numFrames != 0) and (value >= self.numFrames)):
             raise RuntimeError(
                 "Frame index out of range. Molecule contains {} frame(s). Frames are 0-indexed.".format(
@@ -341,9 +369,9 @@ class Molecule(object):
 
     def getResidues(
         self,
-        fields=("resid", "insertion", "chain"),
-        sel="all",
-        return_idx=True,
+        fields: tuple | np.ndarray = ("resid", "insertion", "chain"),
+        sel: str | np.ndarray = "all",
+        return_idx: bool = True,
     ):
         """Get unique ids for the residues of the Molecule
 
@@ -354,7 +382,8 @@ class Molecule(object):
             will be created in `residues`. The default fields are ("resid", "insertion", "chain")
             which means that a new residue ID will be created if the resid or insertion or chain changes
             from the previous atom to the next one.
-        sel : str
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atomselection for which to return the residues. Default is "all".
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         return_idx : bool
@@ -424,14 +453,16 @@ class Molecule(object):
 
     def insert(
         self,
-        mol,
-        index,
-        collisions=False,
-        coldist=1.3,
-        removesel="all",
-        invertcollisions=False,
+        mol: "Molecule",
+        index: int,
+        collisions: bool = False,
+        coldist: float = 1.3,
+        removesel: str | np.ndarray = "all",
+        invertcollisions: bool = False,
     ):
         """Insert the atoms of one molecule into another at a specific index.
+
+        This modifies the current Molecule in-place.
 
         Parameters
         ----------
@@ -440,14 +471,18 @@ class Molecule(object):
         index : integer
                 The atom index at which the passed molecule will be inserted
         collisions : bool
-            If set to True it will remove residues of `mol` which collide with atoms of this Molecule object.
+            If set to True it will remove residues which collide with atoms of the other molecule.
         coldist : float
             Collision distance in Angstrom between atoms of the two molecules. Anything closer will be considered a collision.
-        removesel : str
-            Atomselection for atoms to be removed from the molecule in case of collisions.
+        removesel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
+            Atomselection restricting which atoms are considered when detecting collisions. When
+            `invertcollisions` is False it selects atoms of the passed `mol`; when `invertcollisions`
+            is True it selects atoms of this Molecule.
         invertcollisions : bool
-            If invertcollisions is set to True it will remove residues of this Molecule which collide
-            with atoms of the passed `mol` molecule.
+            If False (default), residues of the passed `mol` which collide with atoms of this Molecule
+            are removed before insertion. If True, residues of this Molecule which collide with atoms
+            of the passed `mol` are removed instead.
 
         Example
         -------
@@ -558,13 +593,14 @@ class Molecule(object):
                 f'Failed to insert/append molecule at position {index} with error: "{err}"'
             )
 
-    def remove(self, selection, _logger=True):
+    def remove(self, selection: str | np.ndarray, _logger=True) -> np.ndarray:
         """
         Remove atoms from the Molecule
 
         Parameters
         ----------
-        selection : str
+        selection : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection string of the atoms we want to remove.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
@@ -596,14 +632,22 @@ class Molecule(object):
             )
         return sel
 
-    def get(self, field, sel=None, fileBonds=True, guessBonds=True):
+    def get(
+        self,
+        field: str,
+        sel: str | np.ndarray | None = None,
+        fileBonds: bool = True,
+        guessBonds: bool = True,
+    ) -> np.ndarray:
         """Retrieve a specific PDB field based on the selection
 
         Parameters
         ----------
         field : str
             The field we want to get. To see a list of all available fields do `print(Molecule._atom_and_coord_fields)`.
-        sel : str
+            The special value 'index' returns the 0-based atom indices of the selected atoms.
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection string for which atoms we want to get the field from. Default all.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         fileBonds : bool
@@ -614,7 +658,8 @@ class Molecule(object):
         Returns
         -------
         vals : np.ndarray
-            Array of values of `field` for all atoms in the selection.
+            Array of values of `field` for all atoms in the selection. If `field` is 'index' it
+            returns the 0-based indices of the selected atoms.
 
         Examples
         --------
@@ -639,7 +684,7 @@ class Molecule(object):
         else:
             return self.__dict__[field][s]
 
-    def set(self, field, value, sel=None):
+    def set(self, field: str, value, sel: str | np.ndarray | None = None):
         """Set the values of a Molecule field based on the selection
 
         Parameters
@@ -649,7 +694,8 @@ class Molecule(object):
         value : string or integer
             All atoms that match the atom selection will have the field `field` set to this scalar value
             (or 3-vector if setting the coordinates)
-        sel : str
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection string for atom which to set.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
@@ -668,12 +714,12 @@ class Molecule(object):
 
     def align(
         self,
-        sel,
-        refmol=None,
-        refsel=None,
-        frames=None,
-        matchingframes=False,
-        mode="index",
+        sel: str | np.ndarray,
+        refmol: "Molecule | None" = None,
+        refsel: str | np.ndarray | None = None,
+        frames: list | range | np.ndarray | None = None,
+        matchingframes: bool = False,
+        mode: str = "index",
         _logger=True,
     ):
         """Align conformations.
@@ -684,13 +730,15 @@ class Molecule(object):
 
         Parameters
         ----------
-        sel : str
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection string for aligning.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         refmol : :class:`Molecule`, optional
             Optionally pass a reference Molecule on which to align. If None is given, it will align on the first frame
             of the same Molecule
-        refsel : str, optional
+        refsel : str or np.ndarray, optional
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection for the `refmol` if one is given. Default: same as `sel`.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         frames : list or range
@@ -770,14 +818,14 @@ class Molecule(object):
 
     def alignBySequence(
         self,
-        ref,
-        molseg=None,
-        refseg=None,
-        molsel="all",
-        refsel="all",
-        nalignfragment=1,
-        returnAlignments=False,
-        maxalignments=1,
+        ref: "Molecule",
+        molseg: str | None = None,
+        refseg: str | None = None,
+        molsel: str | np.ndarray = "all",
+        refsel: str | np.ndarray = "all",
+        nalignfragment: int = 1,
+        returnAlignments: bool = False,
+        maxalignments: int = 1,
     ):
         """Aligns the Molecule to a reference Molecule by their longest sequence alignment
 
@@ -785,11 +833,17 @@ class Molecule(object):
         ----------
         ref : :class:`Molecule <moleculekit.molecule.Molecule>` object
             The reference Molecule to which we want to align
-        molsel : str
+        molseg : str, optional
+            The segment of this Molecule we want to align. If None it will be guessed.
+        refseg : str, optional
+            The segment of `ref` we want to align to. If None it will be guessed.
+        molsel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             The atom selection of this Molecule we want to align
-        refsel : str
+        refsel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             The atom selection of `ref` we want to align to
-        nalignfragments : int
+        nalignfragment : int
             The number of fragments used for the alignment.
         returnAlignments : bool
             Return all alignments as a list of Molecules
@@ -825,11 +879,11 @@ class Molecule(object):
 
     def append(
         self,
-        mol,
-        collisions=False,
-        coldist=1.3,
-        removesel="all",
-        invertcollisions=False,
+        mol: "Molecule",
+        collisions: bool = False,
+        coldist: float = 1.3,
+        removesel: str | np.ndarray = "all",
+        invertcollisions: bool = False,
     ):
         """Append a molecule at the end of the current molecule
 
@@ -841,7 +895,8 @@ class Molecule(object):
             If set to True it will remove residues of `mol` which collide with atoms of this Molecule object.
         coldist : float
             Collision distance in Angstrom between atoms of the two molecules. Anything closer will be considered a collision.
-        removesel : str
+        removesel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atomselection for atoms to be removed from the passed molecule in case of collisions.
         invertcollisions : bool
             If invertcollisions is set to True it will remove residues of this Molecule which collide
@@ -894,13 +949,13 @@ class Molecule(object):
 
     def atomselect(
         self,
-        sel,
-        indexes=False,
-        strict=False,
-        fileBonds=True,
-        guessBonds=True,
+        sel: str | np.ndarray | None,
+        indexes: bool = False,
+        strict: bool = False,
+        fileBonds: bool = True,
+        guessBonds: bool = True,
         _debug=False,
-    ):
+    ) -> np.ndarray:
         """Get a boolean mask or the indexes of a set of selected atoms
 
         Parameters
@@ -991,20 +1046,28 @@ class Molecule(object):
                 mask = new_mask
 
         if ast is not None:
-            return mask, ast
+            return mask, ast  # type: ignore[return-value]  # _debug-only path
         return mask
 
-    def copy(self, frames=None, sel=None):
+    def copy(
+        self,
+        frames: list | range | np.ndarray | None = None,
+        sel: str | np.ndarray | None = None,
+    ) -> "Molecule":
         """Create a copy of the Molecule object
+
+        Parameters
+        ----------
+        frames : list or range or np.ndarray
+            If specified, only the selected frames will be copied.
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
+            Atom selection for atoms to keep in the copy.
 
         Returns
         -------
         newmol : :class:`Molecule`
             A copy of the object
-        frames : list of int
-            If specified, only the selected frames will be copied.
-        sel : str
-            Atom selection for atoms to keep in the copy.
         """
         if frames is None and sel is None:
             return deepcopy(self)
@@ -1058,13 +1121,16 @@ class Molecule(object):
                 newmol.coords = newmol.coords[sel].copy()
             return newmol
 
-    def filter(self, sel, _logger=True):
+    def filter(self, sel: str | np.ndarray, _logger=True) -> np.ndarray:
         """Removes all atoms not included in the selection
+
+        This modifies the current Molecule in-place.
 
         Parameters
         ----------
-        sel: str
-            Atom selection string. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+        sel : str or np.ndarray
+            Atom selection string, or a boolean array (one element per atom) flagging the atoms to keep.
+            See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
         Returns
         -------
@@ -1122,12 +1188,13 @@ class Molecule(object):
             if field == "bonds" and len(self.bondtype):
                 self.bondtype = self.bondtype[stays]
 
-    def deleteBonds(self, sel, inter=True):
+    def deleteBonds(self, sel: str | np.ndarray, inter: bool = True):
         """Deletes all bonds that contain atoms in sel or between atoms in sel.
 
         Parameters
         ----------
-        sel : str
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection string of atoms whose bonds will be deleted.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         inter : bool
@@ -1170,7 +1237,23 @@ class Molecule(object):
         else:
             return guess_bonds(self)
 
-    def guessBonds(self, rdkit=False):
+    def guessBonds(self, rdkit: bool = False):
+        """Guess the bonds of the Molecule and store them in-place.
+
+        Computes the bonds (and bond types) from the atom coordinates of the currently active frame
+        and overwrites the `bonds` and `bondtype` fields of this Molecule with the result.
+
+        Parameters
+        ----------
+        rdkit : bool
+            If True, use RDKit to guess bonds, which also assigns bond orders. If False, use the
+            distance-based bond guesser and assign all bonds an unknown ('un') bond type.
+
+        Examples
+        --------
+        >>> mol = Molecule("3PTB")
+        >>> mol.guessBonds()
+        """
         if rdkit:
             bonds, bondtypes = self._guessBonds(rdkit)
             self.bonds = np.array(bonds, dtype=self._dtypes["bonds"])
@@ -1187,21 +1270,22 @@ class Molecule(object):
             return
         self.box = np.zeros((3, self.numFrames), dtype=self._dtypes["box"])
 
-    def translateBy(self, vector, sel=None):
+    def translateBy(self, vector: list, sel: str | np.ndarray | None = None):
         """Move a selection of atoms by a given vector
 
         Parameters
         ----------
         vector: list
             3D coordinates to add to the Molecule coordinates
-        sel: str
+        sel: str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection string of atoms which we want to move.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
         Examples
         --------
         >>> mol=tryp.copy()
-        >>> mol.moveBy([3, 45 , -8])
+        >>> mol.translateBy([3, 45 , -8])
         """
         vector = np.array(vector)
         if np.size(vector) != 3:
@@ -1211,10 +1295,28 @@ class Molecule(object):
         s = self.atomselect(sel)
         self.coords[s, :, self.frame] += vector
 
-    def moveBy(self, vector, sel=None):
+    def moveBy(self, vector: list, sel: str | np.ndarray | None = None):
+        """Move a selection of atoms by a given vector.
+
+        Alias of :meth:`translateBy`.
+
+        Parameters
+        ----------
+        vector: list
+            3D coordinates to add to the Molecule coordinates
+        sel: str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
+            Atom selection string of atoms which we want to move.
+            See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+
+        Examples
+        --------
+        >>> mol=tryp.copy()
+        >>> mol.moveBy([3, 45 , -8])
+        """
         self.translateBy(vector, sel)
 
-    def rotateBy(self, M, center=(0, 0, 0), sel="all"):
+    def rotateBy(self, M: np.ndarray, center: list = (0, 0, 0), sel: str | np.ndarray = "all"):
         """Rotate a selection of atoms by a given rotation matrix around a center
 
         Parameters
@@ -1223,7 +1325,8 @@ class Molecule(object):
             The rotation matrix
         center : list
             The rotation center
-        sel : str
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection string for atoms to rotate.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
@@ -1246,7 +1349,7 @@ class Molecule(object):
         newcoords = np.dot(newcoords, np.transpose(M)) + center
         self.set("coords", newcoords, sel=sel)
 
-    def getDihedral(self, atom_quad):
+    def getDihedral(self, atom_quad: list):
         """Get the value of a dihedral angle.
 
         Parameters
@@ -1267,7 +1370,7 @@ class Molecule(object):
 
         return dihedralAngle(self.coords[atom_quad, :, self.frame])
 
-    def setDihedral(self, atom_quad, radians, bonds=None, guessBonds=False):
+    def setDihedral(self, atom_quad: list, radians: float, bonds: np.ndarray | None = None, guessBonds: bool = False):
         """Sets the angle of a dihedral.
 
         Parameters
@@ -1313,14 +1416,15 @@ class Molecule(object):
         M = rotationMatrix(rotax, radians - rads)
         self.rotateBy(M, center=self.coords[atom_quad[1], :, self.frame], sel=right)
 
-    def center(self, loc=(0, 0, 0), sel="all"):
+    def center(self, loc: list = (0, 0, 0), sel: str | np.ndarray = "all") -> np.ndarray:
         """Moves the geometric center of the Molecule to a given location
 
         Parameters
         ----------
         loc : list, optional
             The location to which to move the geometric center
-        sel : str
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection string of the atoms whose geometric center we want to center on the `loc` position.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
 
@@ -1346,15 +1450,15 @@ class Molecule(object):
 
     def read(
         self,
-        filename,
-        type=None,
-        skip=None,
-        frames=None,
-        append=False,
-        overwrite="all",
-        keepaltloc="A",
-        guess=None,
-        guessNE=None,
+        filename: str,
+        type: str | None = None,
+        skip: int | None = None,
+        frames: list | range | np.ndarray | None = None,
+        append: bool = False,
+        overwrite: str | list = "all",
+        keepaltloc: str = "A",
+        guess: list | None = None,
+        guessNE: list | None = None,
         _logger=True,
         **kwargs,
     ):
@@ -1655,14 +1759,21 @@ class Molecule(object):
             self.fileloc = mol.fileloc
             self.viewname = mol.viewname
 
-    def write(self, filename, sel=None, type=None, **kwargs):
+    def write(
+        self,
+        filename: str,
+        sel: str | np.ndarray | None = None,
+        type: str | None = None,
+        **kwargs,
+    ):
         """Writes the topology and coordinates of the Molecule in any of the supported formats.
 
         Parameters
         ----------
         filename : str
             The filename of the file we want to write to disk
-        sel : str, optional
+        sel : str or np.ndarray, optional
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection string of the atoms we want to write. If None, it will write all atoms.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         type : str, optional
@@ -1692,7 +1803,7 @@ class Molecule(object):
                 "us on the github moleculekit issue tracker.".format(ext)
             )
 
-    def reorderAtoms(self, order):
+    def reorderAtoms(self, order: list | np.ndarray):
         """Reorder atoms in Molecule
 
         Changes the order of atoms in the Molecule to the defined order.
@@ -1791,7 +1902,12 @@ class Molecule(object):
                 delattr(self, field)
 
     def mutateResidue(
-        self, sel, newres, reconstruct=True, rotamer_mode="best", minimize=False
+        self,
+        sel: str | np.ndarray,
+        newres: str,
+        reconstruct: bool = True,
+        rotamer_mode: str = "best",
+        minimize: bool = False,
     ):
         """Mutate a residue, optionally reconstructing the side-chain.
 
@@ -1802,7 +1918,8 @@ class Molecule(object):
 
         Parameters
         ----------
-        sel : str
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection string for the residue we want to mutate. The
             selection needs to include all atoms of the residue.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
@@ -1840,11 +1957,11 @@ class Molecule(object):
 
     def wrap(
         self,
-        wrapsel="all",
-        fileBonds=True,
-        guessBonds=False,
+        wrapsel: str | np.ndarray = "all",
+        fileBonds: bool = True,
+        guessBonds: bool = False,
         wrapcenter=None,
-        unitcell="rectangular",
+        unitcell: str = "rectangular",
     ):
         """Wraps the coordinates of the molecule into the simulation box
 
@@ -1854,7 +1971,8 @@ class Molecule(object):
 
         Parameters
         ----------
-        wrapsel : str
+        wrapsel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection string of atoms on which to center the wrapping box.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         fileBonds : bool
@@ -1953,7 +2071,7 @@ class Molecule(object):
             self.__dict__[field] = self._empty(numAtoms, field, numFrames)
         self.fileloc = []
 
-    def empty(self, numAtoms, numFrames=0):
+    def empty(self, numAtoms: int, numFrames: int = 0):
         """Creates an empty molecule of `numAtoms` atoms.
 
         Parameters
@@ -1973,10 +2091,10 @@ class Molecule(object):
 
     def getSequence(
         self,
-        one_letter=True,
-        dict_key="chain",
-        return_idx=False,
-        sel="all",
+        one_letter: bool = True,
+        dict_key: str | None = "chain",
+        return_idx: bool = False,
+        sel: str | np.ndarray | None = "all",
         _logger=True,
     ):
         """Return the aminoacid sequence of the Molecule.
@@ -2071,9 +2189,37 @@ class Molecule(object):
         return segSequences
 
     def sequence(
-        self, oneletter=True, noseg=False, return_idx=False, sel="all", _logger=True
+        self,
+        oneletter: bool = True,
+        noseg: bool = False,
+        return_idx: bool = False,
+        sel: str | np.ndarray = "all",
+        _logger=True,
     ):
-        """DEPRECATED: Use getSequence instead."""
+        """Get the protein/nucleic sequence of the Molecule.
+
+        .. deprecated::
+            Use :meth:`getSequence` instead. Note that ``getSequence`` returns by default a
+            dictionary keyed by chain IDs rather than segment IDs.
+
+        Parameters
+        ----------
+        oneletter : bool
+            If True, return the one-letter sequence. Otherwise return three-letter residue names.
+        noseg : bool
+            If True, ignore segments and return a single combined sequence.
+        return_idx : bool
+            If True, also return the atom indexes corresponding to each residue of the sequence.
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
+            Atom selection string restricting which atoms are used to build the sequence.
+            See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
+
+        Returns
+        -------
+        sequence : dict
+            A dictionary of sequences keyed by segment ID (or a single sequence if `noseg` is True).
+        """
         logger.warning(
             "Molecule.sequence() method is deprecated. Please use the new Molecule.getSequence() method instead."
             "Take care that the new method returns by default a dictionary with the chain IDs as keys instead of segment IDs."
@@ -2086,7 +2232,11 @@ class Molecule(object):
             _logger=_logger,
         )
 
-    def dropFrames(self, drop=None, keep=None):
+    def dropFrames(
+        self,
+        drop: int | list | np.ndarray | None = None,
+        keep: int | list | np.ndarray | str | None = None,
+    ):
         """Removes trajectory frames from the Molecule
 
         Parameters
@@ -2153,7 +2303,7 @@ class Molecule(object):
             elements[i] = elem
         return elements
 
-    def appendFrames(self, mol):
+    def appendFrames(self, mol: "Molecule"):
         """Appends the frames of another Molecule object to this object.
 
         Parameters
@@ -2171,16 +2321,30 @@ class Molecule(object):
         self.step = np.concatenate((self.step, mol.step))
         self.time = np.concatenate((self.time, mol.time))
 
-    def renumberResidues(self, returnMapping=False, start=0, modulo=None):
+    def renumberResidues(
+        self, returnMapping: bool = False, start: int = 0, modulo: int | None = None
+    ):
         """Renumbers protein residues incrementally.
 
         It checks for changes in either of the resid, insertion, chain or segid fields and in case of a change it
         creates a new residue number.
 
+        The renumbering is applied in-place and the insertion codes are cleared.
+
         Parameters
         ----------
         returnMapping : bool
             If set to True, the method will also return the mapping between the old and new residues
+        start : int
+            The residue number assigned to the first residue. Subsequent residues are numbered incrementally.
+        modulo : int, optional
+            If given, the new residue numbers are wrapped using modulo arithmetic (``resid % modulo``).
+
+        Returns
+        -------
+        mapping : pandas.DataFrame
+            Only returned if `returnMapping` is True. A DataFrame mapping the new residue numbers to the
+            old `resid`, `insertion`, `resname`, `chain` and `segid` of each residue.
 
         Examples
         --------
@@ -2295,21 +2459,22 @@ class Molecule(object):
 
     def view(
         self,
-        sel=None,
-        style=None,
-        color=None,
-        guessBonds=True,
-        viewer=None,
-        hold=False,
-        name=None,
+        sel: str | np.ndarray | None = None,
+        style: str | None = None,
+        color: str | int | None = None,
+        guessBonds: bool = True,
+        viewer: str | None = None,
+        hold: bool = False,
+        name: str | None = None,
         viewerhandle=None,
-        gui=False,
+        gui: bool = False,
     ):
         """Visualizes the molecule in a molecular viewer
 
         Parameters
         ----------
-        sel : str
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection string for the representation.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         style : str
@@ -2330,6 +2495,14 @@ class Molecule(object):
             A name to give to the molecule in the viewer
         viewerhandle : :class:`VMD <moleculekit.vmdviewer.VMD>` object, optional
             A specific viewer in which to visualize the molecule. If None it will use the current default viewer.
+        gui : bool
+            If set to True, show the graphical user interface of the viewer (only used by the webgl/ngl backend).
+
+        Returns
+        -------
+        viewer
+            The viewer handle for the webgl/ngl and molstar backends. For other backends and when `hold`
+            is True nothing is returned.
         """
         from moleculekit.util import tempname, find_executable
 
@@ -2467,10 +2640,24 @@ class Molecule(object):
         self._tempreps.remove()
         return w
 
-    def toGraph(self, fields=None, distances=False):
+    def toGraph(self, fields: str | list | None = None, distances: bool = False):
         """Converts the Molecule to a networkx graph.
 
-        Each node corresponds to an atom and edges correspond to bonds
+        Each node corresponds to an atom and edges correspond to bonds.
+
+        Parameters
+        ----------
+        fields : str or list of str, optional
+            The atom fields to attach as attributes to each node. If None, all per-atom fields are used.
+        distances : bool
+            If set to True, each edge will additionally carry a 'distance' attribute with the distance
+            between the two bonded atoms in the currently active frame.
+
+        Returns
+        -------
+        graph : networkx.Graph
+            A graph whose nodes are atom indexes (carrying the selected `fields` as attributes) and whose
+            edges are the bonds (carrying a 'type' attribute and, optionally, a 'distance' attribute).
         """
         import networkx as nx
         from moleculekit.distance import pdist, squareform
@@ -2501,7 +2688,7 @@ class Molecule(object):
         graph.add_edges_from(edges)
         return graph
 
-    def hasBond(self, idx1, idx2):
+    def hasBond(self, idx1: int, idx2: int):
         """Checks if the Molecule has a bond between two atom indexes
 
         Parameters
@@ -2529,7 +2716,7 @@ class Molecule(object):
                 return True, self.bondtype[idx[0]], idx[0]
         return False, None, None
 
-    def addBond(self, idx1, idx2, btype):
+    def addBond(self, idx1: int, idx2: int, btype: str):
         """Add a new bond to a pair of atoms
 
         If the bond already exists it will only update it's type
@@ -2562,7 +2749,7 @@ class Molecule(object):
                 .copy()
             )
 
-    def removeBond(self, idx1, idx2):
+    def removeBond(self, idx1: int, idx2: int):
         """Remove an existing bond between a pair of atoms
 
         Parameters
@@ -2577,7 +2764,7 @@ class Molecule(object):
             self.bonds = np.delete(self.bonds, oldidx, axis=0)
             self.bondtype = np.delete(self.bondtype, oldidx, axis=0)
 
-    def getNeighbors(self, idx, bonds=None):
+    def getNeighbors(self, idx: int, bonds: np.ndarray | None = None):
         """Returns all atoms bonded to a specific atom
 
         Parameters
@@ -2600,7 +2787,32 @@ class Molecule(object):
     def _ix(self, resid, name):
         return np.where((self.name == name) & (self.resid == resid))[0][0]
 
-    def toOpenFFMolecule(self, sanitize=False, kekulize=False, assignStereo=True):
+    def toOpenFFMolecule(
+        self,
+        sanitize: bool = False,
+        kekulize: bool = False,
+        assignStereo: bool = True,
+    ):
+        """Convert the Molecule to an OpenFF Molecule.
+
+        The conversion goes through an RDKit molecule. Partial charges are taken from the `charge`
+        field and the per-atom residue identity (resname, resid, chain, insertion) is propagated into
+        the OpenFF Molecule metadata so that its residue/chain hierarchy schemes can reproduce it.
+
+        Parameters
+        ----------
+        sanitize : bool
+            Whether to sanitize the intermediate RDKit molecule.
+        kekulize : bool
+            Whether to kekulize the intermediate RDKit molecule.
+        assignStereo : bool
+            Whether to assign stereochemistry on the intermediate RDKit molecule.
+
+        Returns
+        -------
+        offmol : openff.toolkit.topology.Molecule
+            The OpenFF Molecule representation of this Molecule.
+        """
         from openff.toolkit.topology import Molecule as OFFMolecule
         from openff.units import unit
 
@@ -2635,13 +2847,18 @@ class Molecule(object):
 
         return offmol
 
-    def toDict(self, fields=None):
+    def toDict(self, fields: list | None = None):
         """Returns a dictionary representation of the molecule
 
         Parameters
         ----------
         fields : list of str
             The fields to include in the representation. By default it will include only topology fields.
+
+        Returns
+        -------
+        result : dict
+            A dictionary mapping each requested field name to its value, with numpy arrays converted to lists.
         """
         if fields is None:
             fields = self._topo_fields
@@ -2657,7 +2874,22 @@ class Molecule(object):
         return result
 
     @staticmethod
-    def fromDict(moldict):
+    def fromDict(moldict: dict) -> "Molecule":
+        """Create a Molecule from a dictionary representation.
+
+        This is the inverse of :meth:`toDict`.
+
+        Parameters
+        ----------
+        moldict : dict
+            A dictionary mapping Molecule field names to their values, such as the one produced by
+            :meth:`toDict`.
+
+        Returns
+        -------
+        mol : :class:`Molecule`
+            A new Molecule populated with the fields from `moldict`.
+        """
         mol = Molecule()
         for field in moldict:
             data = moldict[field]
@@ -2666,12 +2898,13 @@ class Molecule(object):
             setattr(mol, field, data)
         return mol
 
-    def getCenter(self, sel="all", com=False):
+    def getCenter(self, sel: str | np.ndarray = "all", com: bool = False) -> np.ndarray:
         """Get the center of an atom selection
 
         Parameters
         ----------
-        sel : str
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             Atom selection string for which to calculate the center of mass
         com : bool
             If True it will calculate the center of mass. If False it will calculate the geometric center.
@@ -2696,7 +2929,7 @@ class Molecule(object):
         return (coords * masses).sum(axis=0) / masses.sum()
 
     @staticmethod
-    def fromOpenMMTopology(topology, positions):
+    def fromOpenMMTopology(topology: "OpenMMTopology", positions: "OpenMMQuantity"):
         """Converts an OpenMM topology and positions to a Molecule object
 
         Parameters
@@ -2718,7 +2951,7 @@ class Molecule(object):
         return openmm_to_molecule(topology, positions)
 
     @staticmethod
-    def fromRDKitMol(rmol):
+    def fromRDKitMol(rmol: "RDKitMol"):
         """Converts an RDKit molecule to a Molecule object
 
         Parameters
@@ -2742,10 +2975,10 @@ class Molecule(object):
 
     def toRDKitMol(
         self,
-        sanitize=False,
-        kekulize=False,
-        assignStereo=True,
-        guessBonds=False,
+        sanitize: bool = False,
+        kekulize: bool = False,
+        assignStereo: bool = True,
+        guessBonds: bool = False,
         _logger=True,
     ):
         """Converts the Molecule to an RDKit molecule
@@ -2760,8 +2993,6 @@ class Molecule(object):
             If True the molecule will have stereochemistry assigned from its 3D coordinates
         guessBonds : bool
             If True the molecule will have bonds guessed
-        _logger : bool
-            If True the logger will be used to print information
         """
         from moleculekit.rdkittools import molecule_to_rdkitmol
 
@@ -2776,12 +3007,12 @@ class Molecule(object):
 
     def templateResidueFromSmiles(
         self,
-        sel,
-        smiles,
-        sanitizeSmiles=True,
-        addHs=False,
-        onlyOnAtoms=None,
-        guessBonds=False,
+        sel: str | np.ndarray,
+        smiles: str,
+        sanitizeSmiles: bool = True,
+        addHs: bool = False,
+        onlyOnAtoms: str | np.ndarray | None = None,
+        guessBonds: bool = False,
         _logger=True,
     ):
         """Assign bonds, bond orders, formal charges and (optionally) hydrogens
@@ -2813,7 +3044,8 @@ class Molecule(object):
 
         Parameters
         ----------
-        sel : str or numpy.ndarray
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             VMD-style atom selection or boolean mask of the residue(s) to
             template. May span multiple residues with the same chemistry.
         smiles : str
@@ -2826,15 +3058,14 @@ class Molecule(object):
             If True, hydrogens are added to the residue using RDKit's
             ``AddHs`` after bond orders are transferred, respecting the
             boundary-bond H-count corrections described above.
-        onlyOnAtoms : str
+        onlyOnAtoms : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             VMD-style selection within the residue restricting which heavy
             atoms get hydrogens added. Only used when ``addHs=True``.
         guessBonds : bool
             If True, run distance-based bond guessing on the residue before
             templating. Use this when ``mol.bonds`` is empty for the
             selection (e.g. PDB inputs without CONECT records).
-        _logger : bool
-            If False, suppress informational logging.
 
         Raises
         ------
@@ -2874,9 +3105,9 @@ class Molecule(object):
 
     def extendResidueFromSmiles(
         self,
-        sel: str,
+        sel: str | np.ndarray,
         extension_smiles: str | None = None,
-        target_atom_sel: str | None = None,
+        target_atom_sel: str | np.ndarray | None = None,
         new_smiles: str | None = None,
         sanitizeSmiles: bool = True,
         minimize: bool = False,
@@ -2900,11 +3131,13 @@ class Molecule(object):
 
         Parameters
         ----------
-        sel : str
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array.
             The atom selection of the residue which we want to extend
         extension_smiles : str, optional
             The SMILES string of the extension moiety with a dummy atom ``*``
-        target_atom_sel : str, optional
+        target_atom_sel : str or np.ndarray, optional
+            An atom selection string, a boolean mask, or an integer index array.
             The atom selection of the target atom to which the extension will
             be attached (required with extension_smiles)
         new_smiles : str, optional
@@ -2916,8 +3149,6 @@ class Molecule(object):
             If True and OpenMM is available, run a soft-potential energy
             minimization of the residue against its surroundings after
             insertion.
-        _logger : bool
-            If True the logger will be used to print information
 
         Examples
         --------
@@ -2951,9 +3182,25 @@ class UniqueAtomID:
     def __init__(self, **kwargs):
         """Unique atom identifier
 
+        Identifies a single atom by a combination of fields so that it can be re-located in a Molecule
+        even after atoms have been added or removed (and indexes have changed).
+
         Parameters
         ----------
-        kwargs
+        name : str, optional
+            The atom name.
+        altloc : str, optional
+            The alternative location indicator.
+        resname : str, optional
+            The residue name.
+        chain : str, optional
+            The chain identifier.
+        resid : int, optional
+            The residue number.
+        insertion : str, optional
+            The residue insertion code.
+        segid : str, optional
+            The segment identifier.
 
         Examples
         --------
@@ -2975,7 +3222,28 @@ class UniqueAtomID:
                 )
 
     @staticmethod
-    def fromMolecule(mol, sel=None, idx=None):
+    def fromMolecule(
+        mol: "Molecule", sel: str | np.ndarray | None = None, idx: int | None = None
+    ) -> "UniqueAtomID":
+        """Create a UniqueAtomID from a single atom of a Molecule.
+
+        Exactly one of `sel` or `idx` must be given, and it must resolve to exactly one atom.
+
+        Parameters
+        ----------
+        mol : :class:`Molecule`
+            The Molecule from which to read the atom identity.
+        sel : str or np.ndarray, optional
+            An atom selection string, a boolean mask, or an integer index array.
+            An atom selection string that must match exactly one atom.
+        idx : int, optional
+            The index of the atom.
+
+        Returns
+        -------
+        uqid : :class:`UniqueAtomID`
+            A unique identifier for the selected atom.
+        """
         if (sel is not None and idx is not None) or (sel is None and idx is None):
             raise RuntimeError(
                 "Either sel or idx arguments must be used (and not both)."
@@ -2995,7 +3263,30 @@ class UniqueAtomID:
             setattr(self, f, getattr(mol, f)[atom][0])
         return self
 
-    def selectAtom(self, mol, indexes=True, ignore=None):
+    def selectAtom(
+        self, mol: "Molecule", indexes: bool = True, ignore: str | list | None = None
+    ):
+        """Locate the atom matching this identifier in a Molecule.
+
+        Parameters
+        ----------
+        mol : :class:`Molecule`
+            The Molecule in which to locate the atom.
+        indexes : bool
+            If True, return the integer index of the matching atom. If False, return a boolean mask.
+        ignore : str or list of str, optional
+            One or more identifier fields to ignore when matching.
+
+        Returns
+        -------
+        atom : int or np.ndarray
+            The index of the matching atom if `indexes` is True, otherwise a boolean mask flagging it.
+
+        Raises
+        ------
+        RuntimeError
+            If the atom is no longer unique or no longer present in the Molecule.
+        """
         sel = np.ones(mol.numAtoms, dtype=bool)
         for f in UniqueAtomID._fields:
             if ignore is not None:
@@ -3049,9 +3340,21 @@ class UniqueResidueID:
     def __init__(self, **kwargs):
         """Unique residue identifier
 
+        Identifies a single residue by a combination of fields so that it can be re-located in a Molecule
+        even after atoms have been added or removed (and indexes have changed).
+
         Parameters
         ----------
-        kwargs
+        resname : str, optional
+            The residue name.
+        chain : str, optional
+            The chain identifier.
+        resid : int, optional
+            The residue number.
+        insertion : str, optional
+            The residue insertion code.
+        segid : str, optional
+            The segment identifier.
 
         Examples
         --------
@@ -3073,7 +3376,9 @@ class UniqueResidueID:
                 )
 
     @staticmethod
-    def fromMolecule(mol, sel=None, idx=None):
+    def fromMolecule(
+        mol: "Molecule", sel: str | np.ndarray | None = None, idx: int | None = None
+    ) -> "UniqueResidueID":
         if (sel is not None and idx is not None) or (sel is None and idx is None):
             raise RuntimeError("Only one of sel or idx arguments can be used.")
 
@@ -3096,7 +3401,30 @@ class UniqueResidueID:
             setattr(self, f, vals[0])
         return self
 
-    def selectAtoms(self, mol, indexes=True, ignore=None):
+    def selectAtoms(
+        self, mol: "Molecule", indexes: bool = True, ignore: str | list | None = None
+    ) -> np.ndarray:
+        """Locate the atoms of the residue matching this identifier in a Molecule.
+
+        Parameters
+        ----------
+        mol : :class:`Molecule`
+            The Molecule in which to locate the residue.
+        indexes : bool
+            If True, return the integer indexes of the matching atoms. If False, return a boolean mask.
+        ignore : str or list of str, optional
+            One or more identifier fields to ignore when matching.
+
+        Returns
+        -------
+        atoms : np.ndarray
+            The indexes of the matching atoms if `indexes` is True, otherwise a boolean mask flagging them.
+
+        Raises
+        ------
+        RuntimeError
+            If no atoms of the residue are present in the Molecule.
+        """
         sel = np.ones(mol.numAtoms, dtype=bool)
         for f in UniqueResidueID._fields:
             if ignore is not None:
@@ -3141,13 +3469,13 @@ class UniqueResidueID:
 
 
 def mol_equal(
-    mol1,
-    mol2,
-    checkFields=Molecule._atom_and_coord_fields,
-    exceptFields=None,
-    fieldPrecision=None,
-    dtypes=False,
-    uqBonds=False,
+    mol1: "Molecule",
+    mol2: "Molecule",
+    checkFields: list = Molecule._atom_and_coord_fields,
+    exceptFields: list | None = None,
+    fieldPrecision: dict | None = None,
+    dtypes: bool = False,
+    uqBonds: bool = False,
     _logger=True,
 ):
     """Compare two Molecules for equality.
@@ -3168,8 +3496,6 @@ def mol_equal(
         Set to True to also compare datatypes of the fields
     uqBonds : bool
         Set to True to compare unique bonds instead of all bonds
-    _logger : bool
-        Set to False to disable the printing of the differences in the two Molecules
 
     Returns
     -------
@@ -3309,7 +3635,7 @@ def _getResidueIndexesByAtom(mol, idx):
     return torem, len(allres)
 
 
-def calculateUniqueBonds(bonds, bondtype):
+def calculateUniqueBonds(bonds: np.ndarray, bondtype: np.ndarray):
     """Given bonds and bondtypes calculates unique bonds dropping any duplicates
 
     Parameters
@@ -3366,7 +3692,7 @@ def calculateUniqueBonds(bonds, bondtype):
         return (bonds[sortidx].astype(Molecule._dtypes["bonds"]).copy(), bondtype)
 
 
-def getBondedGroups(mol, bonds=None):
+def getBondedGroups(mol: "Molecule", bonds: np.ndarray | None = None):
     """Calculates all bonded groups in a Molecule
 
     Parameters

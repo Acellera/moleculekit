@@ -4,8 +4,12 @@
 # No redistribution in whole or part
 #
 from moleculekit.projections.projection import Projection
+from typing import TYPE_CHECKING
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -15,22 +19,20 @@ class MetricCoordinate(Projection):
 
     Parameters
     ----------
-    atomsel : str
-        Atom selection string for the atoms whose coordinates we want to calculate.
+    atomsel : str or np.ndarray
+        Atom selection for the atoms whose coordinates we want to calculate (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
     refmol : :class:`Molecule <moleculekit.molecule.Molecule>` object
         The reference Molecule to which we will align.
-    trajalnsel : str, optional
-        Atom selection string for the trajectories from which to align to the reference structure.
+    trajalnsel : str or np.ndarray, optional
+        Atom selection for the trajectories from which to align to the reference structure (a selection string, boolean mask, or integer index array).
         If it's None and a `refmol` is passed it will default to 'protein and name CA'.
-    refalnsel : str, optional
-        Atom selection string for `refmol` from which to align to the reference structure. If None, it defaults to the
+    refalnsel : str or np.ndarray, optional
+        Atom selection for `refmol` from which to align to the reference structure (a selection string, boolean mask, or integer index array). If None, it defaults to the
         same as `trajalnsel`.
-    centersel : str, optional
-        Atom selection string around which to wrap the simulation.
+    centersel : str or np.ndarray, optional
+        Atom selection around which to wrap the simulation (a selection string, boolean mask, or integer index array).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    metric : str
-        Can be ["all", "com", "centroid"]
     groupsel : ['all', 'residue'], optional
         Group all atoms in `atomsel` to a single ('all' atoms in group) or multiple groups per residue ('residue').
     groupreduce : ['centroid', 'com'], optional
@@ -46,14 +48,14 @@ class MetricCoordinate(Projection):
 
     def __init__(
         self,
-        atomsel,
-        refmol=None,
-        trajalnsel=None,
-        refalnsel=None,
-        centersel="protein",
-        groupsel=None,
-        groupreduce="com",
-        pbc=True,
+        atomsel: str | np.ndarray | None,
+        refmol: "Molecule | None" = None,
+        trajalnsel: str | np.ndarray | None = None,
+        refalnsel: str | np.ndarray | None = None,
+        centersel: str | np.ndarray = "protein",
+        groupsel: str | None = None,
+        groupreduce: str = "com",
+        pbc: bool = True,
     ):
         super().__init__()
 
@@ -94,7 +96,7 @@ class MetricCoordinate(Projection):
                 raise RuntimeError("Centering selection resulted in 0 atoms.")
         return res
 
-    def project(self, mol):
+    def project(self, mol: "Molecule") -> np.ndarray:
         """Project molecule.
 
         Parameters
@@ -162,7 +164,7 @@ class MetricCoordinate(Projection):
 
         return coords
 
-    def getMapping(self, mol):
+    def getMapping(self, mol: "Molecule"):
         """Returns the description of each projected dimension.
 
         Parameters

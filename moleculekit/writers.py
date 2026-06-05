@@ -146,11 +146,11 @@ def checkTruncations(mol):
                 )
 
 
-def PDBQTwrite(mol, filename, frames=None, writebonds=True):
+def PDBQTwrite(mol, filename, frames=None, writebonds: bool = True):
     PDBwrite(mol, filename, frames, writebonds, mode="pdbqt")
 
 
-def PDBwrite(mol, filename, frames=None, writebonds=True, mode="pdb"):
+def PDBwrite(mol, filename, frames=None, writebonds: bool = True, mode: str = "pdb"):
     import networkx as nx
 
     if frames is None and mol.numFrames != 0:
@@ -1047,9 +1047,9 @@ def CIFwrite(
     filename,
     explicitbonds=None,
     chemcomp=None,
-    return_data=False,
-    writebonds=True,
-    fp_precision=3,
+    return_data: bool = False,
+    writebonds: bool = True,
+    fp_precision: int = 3,
 ):
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
     from moleculekit.residues import ORIGINAL_RESIDUE_NAME_TABLE

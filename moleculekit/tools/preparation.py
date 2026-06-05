@@ -1264,21 +1264,21 @@ def _apply_detect_spec_renames(mol, detect_specs):
 
 def systemPrepare(
     mol_in: Molecule,
-    titration=True,
-    pH=7.4,
-    force_protonation=None,
-    no_opt=None,
-    no_prot=None,
-    no_titr=None,
-    hold_nonpeptidic_bonds=True,
-    verbose=True,
-    return_details=False,
-    hydrophobic_thickness=None,
-    plot_pka=None,
+    titration: bool = True,
+    pH: float = 7.4,
+    force_protonation: list | None = None,
+    no_opt: list | None = None,
+    no_prot: list | None = None,
+    no_titr: list | None = None,
+    hold_nonpeptidic_bonds: bool = True,
+    verbose: bool = True,
+    return_details: bool = False,
+    hydrophobic_thickness: float | None = None,
+    plot_pka: str | None = None,
     _logger_level="ERROR",
-    titrate=None,
-    detect_specs=None,
-    restore_missing_sidechains=False,
+    titrate: list | None = None,
+    detect_specs: list | None = None,
+    restore_missing_sidechains: bool = False,
 ):
     """Prepare a molecular system by adding hydrogens, assigning protonation
     states, and optimizing the H-bond network.
@@ -1344,8 +1344,10 @@ def systemPrepare(
         Input molecule. Not mutated — an internal copy is taken on the
         first frame only.
     titration : bool
-        If True, run PROPKA to assign titration states. If False, just add
-        and optimize hydrogens at the input resnames' default protonation.
+        Master switch for titration. If True, run PROPKA to assign titration
+        states. If False, just add and optimize hydrogens at the input
+        resnames' default protonation, and the ``titrate`` argument has no
+        effect.
     pH : float
         Solution pH used by PROPKA to pick titration states. Default 7.4.
     force_protonation : list of tuple[str, str], optional
@@ -1380,10 +1382,10 @@ def systemPrepare(
         Path to a ``.png`` file. When set, writes a titration diagram for
         the system's titratable residues.
     titrate : list[str], optional
-        Restrict titration to a subset of the canonical AAs in the table
-        above (e.g. ``["HIS", "ARG"]``). All other AAs in the table are
-        added to ``no_titr``. When None (default), every AA in the table
-        is titratable.
+        When ``titration`` is True, restrict titration to a subset of the
+        canonical AAs in the table above (e.g. ``["HIS", "ARG"]``). All other
+        AAs in the table are added to ``no_titr``. When None (default), every
+        AA in the table is titratable. Ignored when ``titration`` is False.
     detect_specs : list[PerResidueSpec], optional
         Per-residue specs from
         :func:`moleculekit.tools.nonstandard_residues.detectNonStandardResidues`.

@@ -3,12 +3,16 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
+from typing import TYPE_CHECKING
 from moleculekit import __share_dir
 import string
 import json
 import os
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -123,17 +127,17 @@ def _polymer_linked(
 
 
 def autoSegment(
-    mol,
-    sel="all",
-    basename="P",
-    fields=("segid",),
-    protein_cutoff=2.0,
-    nucleic_cutoff=2.2,
-    ca_fallback_cutoff=5.0,
-    nucleic_fallback_cutoff=3.2,
-    single_other_segment=False,
+    mol: "Molecule",
+    sel: str | np.ndarray = "all",
+    basename: str = "P",
+    fields: tuple = ("segid",),
+    protein_cutoff: float = 2.0,
+    nucleic_cutoff: float = 2.2,
+    ca_fallback_cutoff: float = 5.0,
+    nucleic_fallback_cutoff: float = 3.2,
+    single_other_segment: bool = False,
     _logger=True,
-):
+) -> "Molecule":
     """Segment a Molecule by physical backbone continuity.
 
     Walks the selected residues in file order and starts a new segment when the
@@ -150,8 +154,9 @@ def autoSegment(
     ----------
     mol : :class:`Molecule <moleculekit.molecule.Molecule>`
         The Molecule object.
-    sel : str
-        Atom selection to segment. Atoms outside the selection keep their
+    sel : str or np.ndarray
+        Atom selection to segment. A selection string, a boolean mask, or an
+        integer index array. Atoms outside the selection keep their
         existing chain/segid.
     basename : str
         Base name for segment ids (e.g. 'P' -> 'P0', 'P1', ...).
@@ -297,21 +302,46 @@ def autoSegment(
 
 
 def autoSegment2(
-    mol,
-    sel="(protein or resname ACE NME)",
-    basename="P",
-    fields=("segid",),
-    residgaps=False,
-    residgaptol=1,
-    chaingaps=True,
+    mol: "Molecule",
+    sel: str | np.ndarray = "(protein or resname ACE NME)",
+    basename: str = "P",
+    fields: tuple = ("segid",),
+    residgaps: bool = False,
+    residgaptol: int = 1,
+    chaingaps: bool = True,
     _logger=True,
-):
+) -> "Molecule":
     """Deprecated alias of :func:`autoSegment`.
 
     Kept as a thin backward-compatible wrapper that forwards to
     :func:`autoSegment`. The ``residgaps``, ``residgaptol`` and ``chaingaps``
     arguments are accepted but ignored: :func:`autoSegment` decides continuity
     from backbone geometry rather than ``resid`` numbering.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The Molecule object.
+    sel : str or np.ndarray
+        Atom selection to segment. A selection string, a boolean mask, or an
+        integer index array. Atoms outside the selection keep their
+        existing chain/segid.
+    basename : str
+        Base name for segment ids (e.g. 'P' -> 'P0', 'P1', ...).
+    fields : tuple
+        Fields to set: any combination of "segid" and "chain".
+    residgaps : bool
+        Ignored. Accepted only for backward compatibility.
+    residgaptol : int
+        Ignored. Accepted only for backward compatibility.
+    chaingaps : bool
+        Ignored. Accepted only for backward compatibility.
+
+    Returns
+    -------
+    newmol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        A copy with the requested fields set, as produced by
+        :func:`autoSegment`.
     """
     import warnings
 

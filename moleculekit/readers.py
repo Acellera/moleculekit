@@ -17,7 +17,27 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def openFileOrStringIO(strData, mode=None):
+def openFileOrStringIO(strData, mode: str | None = None):
+    """Context manager yielding a readable handle for a file path or StringIO.
+
+    If ``strData`` is a :class:`io.StringIO` it is yielded directly. If it is a
+    path to an existing file it is opened (transparently decompressing ``.gz``
+    files) and yielded. In both cases the handle is closed on exit.
+
+    Parameters
+    ----------
+    strData : str or io.StringIO
+        Either a path to a file on disk or an in-memory ``StringIO`` object.
+    mode : str
+        The mode used when opening a file path (e.g. ``"r"`` or ``"rb"``). For
+        ``.gz`` files a ``"t"`` suffix is appended to read text. Ignored when a
+        ``StringIO`` is passed.
+
+    Yields
+    ------
+    handle : file-like object
+        An open, readable handle to the data.
+    """
     from io import StringIO
     import os
 
@@ -191,11 +211,18 @@ class TopologyInconsistencyError(Exception):
 
 
 class MolFactory(object):
-    """This class converts Topology and Trajectory data into Molecule objects"""
+    """Constructs Molecule objects from parsed topology and trajectory data.
+
+    The various file readers in this module parse their inputs into intermediate
+    ``Topology`` and ``Trajectory`` objects. ``MolFactory`` takes those parsed
+    objects and assembles them into one or more fully populated
+    :class:`~moleculekit.molecule.Molecule` objects, validating elements and
+    deduplicating bonds as requested.
+    """
 
     @staticmethod
     def construct(
-        topos, trajs, filename, frame, validateElements=True, uniqueBonds=False
+        topos, trajs, filename, frame, validateElements: bool = True, uniqueBonds: bool = False
     ):
         from moleculekit.molecule import Molecule
 
@@ -573,7 +600,7 @@ def GJFread(filename, frame=None, topoloc=None):
     return MolFactory.construct(topo, traj, filename, frame)
 
 
-def MOL2read(filename, frame=None, topoloc=None, singlemol=True, validateElements=True):
+def MOL2read(filename, frame=None, topoloc=None, singlemol: bool = True, validateElements: bool = True):
     from moleculekit.periodictable import periodictable
 
     topologies = []  # Allow reading of multi-mol MOL2 files
@@ -686,6 +713,10 @@ def MAEread(fname, frame=None, topoloc=None):
     ----------
     fname : str
         .mae file
+    frame : int
+        The frame to read from the file.
+    topoloc : str
+        The location of the topology file.
 
     Returns
     -------
@@ -856,10 +887,33 @@ def _getPDB(pdbid):
     return filepath, tempfile
 
 
-def pdbGuessElementByName(elements, names, onlymissing=True):
-    """
-    https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/tutorials/pdbintro.html#misalignment which states that elements
-    should be right-aligned in columns 13-14 unless it's a 4 letter name when it would end up being left-aligned.
+def pdbGuessElementByName(elements, names, onlymissing: bool = True):
+    """Guess atomic elements from PDB atom names by column alignment.
+
+    Follows the convention described at
+    https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/tutorials/pdbintro.html#misalignment
+    which states that elements should be right-aligned in columns 13-14 unless
+    it's a 4 letter name, in which case it would end up being left-aligned. When
+    a name is ambiguous between a one- and two-letter element a warning is
+    emitted suggesting how to correct it.
+
+    Parameters
+    ----------
+    elements : list of str
+        The existing element strings for each atom. Empty strings or values not
+        present in the periodic table are treated as missing.
+    names : list of str
+        The PDB atom names, used to infer the element from column alignment.
+    onlymissing : bool
+        If True only atoms whose element is missing or invalid are guessed. If
+        False (or if all elements are missing) every atom is guessed.
+
+    Returns
+    -------
+    noelem : np.ndarray
+        Integer indices of the atoms for which an element was guessed.
+    guessed : np.ndarray
+        The guessed element strings, aligned with ``noelem``.
     """
     from moleculekit.periodictable import periodictable
     from collections import defaultdict
@@ -935,11 +989,11 @@ def pdbGuessElementByName(elements, names, onlymissing=True):
 
 def PDBread(
     filename,
-    mode="pdb",
+    mode: str = "pdb",
     frame=None,
     topoloc=None,
-    validateElements=True,
-    uniqueBonds=True,
+    validateElements: bool = True,
+    uniqueBonds: bool = True,
 ):
     import io
 
@@ -1431,7 +1485,7 @@ def PDBQTread(filename, frame=None, topoloc=None):
     return PDBread(filename, mode="pdbqt", frame=frame, topoloc=topoloc)
 
 
-def PRMTOPread(filename, frame=None, topoloc=None, validateElements=False):
+def PRMTOPread(filename, frame=None, topoloc=None, validateElements: bool = False):
     with open(filename, "r") as f:
         topo = Topology()
         uqresnames = []
@@ -1593,7 +1647,7 @@ def PRMTOPread(filename, frame=None, topoloc=None, validateElements=False):
     )
 
 
-def PSFread(filename, frame=None, topoloc=None, validateElements=False):
+def PSFread(filename, frame=None, topoloc=None, validateElements: bool = False):
     import re
 
     residinsertion = re.compile(r"(\d+)([a-zA-Z])")
@@ -1855,7 +1909,7 @@ def BINCOORread(filename, frame=None, topoloc=None):
     return MolFactory.construct(None, Trajectory(coords=coords), filename, frame)
 
 
-def MDTRAJread(filename, frame=None, topoloc=None, validateElements=True):
+def MDTRAJread(filename, frame=None, topoloc=None, validateElements: bool = True):
     try:
         import mdtraj as md
     except ImportError:
@@ -1888,7 +1942,7 @@ def MDTRAJread(filename, frame=None, topoloc=None, validateElements=True):
     )
 
 
-def MDTRAJTOPOread(filename, frame=None, topoloc=None, validateElements=True):
+def MDTRAJTOPOread(filename, frame=None, topoloc=None, validateElements: bool = True):
     translate = {
         "serial": "serial",
         "name": "name",
@@ -2133,8 +2187,8 @@ def CIFread(
     frame=None,
     topoloc=None,
     data=None,
-    covalentonly=True,
-    validateElements=True,
+    covalentonly: bool = True,
+    validateElements: bool = True,
 ):
     from moleculekit.pdbx.reader.PdbxReader import PdbxReader
     from collections import defaultdict
@@ -2826,8 +2880,23 @@ def parseV3000SDF(lines, chargemap, bondmap):
     return topo, coords
 
 
-def sdf_generator(sdffile):
-    """Generates Molecule objects from an SDF file"""
+def sdf_generator(sdffile: str):
+    """Generator yielding Molecule objects from a multi-entry SDF file.
+
+    The file is read incrementally and a :class:`~moleculekit.molecule.Molecule`
+    is produced for each ``$$$$``-delimited record, allowing large SDF files to
+    be iterated without loading every molecule into memory at once.
+
+    Parameters
+    ----------
+    sdffile : str
+        Path to the SDF file to read.
+
+    Yields
+    ------
+    mol : Molecule
+        A Molecule object for each entry in the SDF file.
+    """
     from io import StringIO
 
     sdfstr = ""
@@ -2841,7 +2910,7 @@ def sdf_generator(sdffile):
 
 
 # This is a hack to fix the URL fetching of MMTF in pyodide
-def get_raw_data_from_url(pdb_id, reduced=False):
+def get_raw_data_from_url(pdb_id, reduced: bool = False):
     """Get the msgpack unpacked data given a PDB id.
 
     Parameters
@@ -2871,7 +2940,7 @@ def get_raw_data_from_url(pdb_id, reduced=False):
     return _unpack(data)
 
 
-def MMTFread(filename, frame=None, topoloc=None, validateElements=True):
+def MMTFread(filename, frame=None, topoloc=None, validateElements: bool = True):
     from mmtf.api import default_api
 
     # Monkey-patch the function to fix bug in data = response.read() which should not have read()
@@ -2980,8 +3049,8 @@ def ALPHAFOLDread(
     filename,
     frame=None,
     topoloc=None,
-    validateElements=True,
-    uri="https://alphafold.ebi.ac.uk/files/AF-{uniprot}-F1-model_v6.cif",
+    validateElements: bool = True,
+    uri: str = "https://alphafold.ebi.ac.uk/files/AF-{uniprot}-F1-model_v6.cif",
 ):
     import urllib.request
     import tempfile
@@ -3002,9 +3071,9 @@ def BCIFread(
     filename,
     frame=None,
     topoloc=None,
-    uri="https://models.rcsb.org/{pdbid}.bcif.gz",
-    covalentonly=True,
-    validateElements=True,
+    uri: str = "https://models.rcsb.org/{pdbid}.bcif.gz",
+    covalentonly: bool = True,
+    validateElements: bool = True,
 ):
     from moleculekit.pdbx.reader.BinaryCifReader import BinaryCifReader
 

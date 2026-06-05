@@ -80,7 +80,9 @@ def _place_crystal(mol, size, angles, axes):
         _move_inside(mol, axes, cellloc, center)
 
 
-def generateCrystalPacking(pdbid, hexagonal=False, visualize=False, viewerhandle=None):
+def generateCrystalPacking(
+    pdbid: str, hexagonal: bool = False, visualize: bool = False, viewerhandle=None
+):
     """
     Generates the crystal packing of a PDB protein.
 
@@ -92,7 +94,9 @@ def generateCrystalPacking(pdbid, hexagonal=False, visualize=False, viewerhandle
     pdbid : str
         ID from the Protein Databank
     hexagonal : bool
-        # TODO: Undocumented
+        If True and the crystal space group is hexagonal, builds and returns the
+        hexagonal unit cell (and, when visualizing, draws hexagonal unit cell
+        boundaries) instead of the default rectangular cell.
     visualize : bool
         If True, this function also visualizes the crystal packing
     viewerhandle : :class:`VMD <moleculekit.vmdviewer.VMD>` object, optional

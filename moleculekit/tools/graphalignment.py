@@ -10,13 +10,17 @@ except ImportError:
         "Could not import networkx which is necessary for graph alignment. You can install it with `conda install networkx`."
     )
 from moleculekit.util import ensurelist
+from typing import TYPE_CHECKING
 import numpy as np
 import logging
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 logger = logging.getLogger(__name__)
 
 
-def createProductGraph(G, H, tolerance, fields):
+def createProductGraph(G, H, tolerance: float, fields):
     # Calculate product graph by creating a node for each feature-matching pair of points
     newnodes = []
     for gn in G.nodes():
@@ -46,7 +50,43 @@ def createProductGraph(G, H, tolerance, fields):
     return Gprod
 
 
-def compareGraphs(G, H, fields=("element",), tolerance=0.5, returnmatching=False):
+def compareGraphs(
+    G, H, fields: tuple = ("element",), tolerance: float = 0.5, returnmatching: bool = False
+):
+    """Computes a similarity score between two molecular graphs.
+
+    The score is based on the size of the maximum common substructure found via
+    the maximal clique of the product graph of `G` and `H`, normalized by the
+    size of the larger graph. The algorithm is based on "Chemoisosterism in the
+    Proteome", X. Jalencas, J. Mestres, JCIM 2013.
+
+    Parameters
+    ----------
+    G : :class:`networkx.Graph`
+        The first molecular graph.
+    H : :class:`networkx.Graph`
+        The second molecular graph.
+    fields : tuple
+        A tuple of the node fields that are used to match atoms between the two
+        graphs.
+    tolerance : float
+        How different distances between two atom pairs can be for them to match
+        in the product graph.
+    returnmatching : bool
+        If True, also returns the size of the maximum common substructure and
+        the matching node pairs.
+
+    Returns
+    -------
+    score : float
+        The similarity score between the two graphs, between 0 and 1.
+    cliquesize : int
+        The number of matched nodes in the maximum common substructure. Only
+        returned if `returnmatching` is True.
+    matching : list
+        A list of (node_G, node_H) pairs describing the matched nodes. Only
+        returned if `returnmatching` is True.
+    """
     # Comparison algorithm based on:
     # "Chemoisosterism in the Proteome", X. Jalencas, J. Mestres, JCIM 2013
     # http://pubs.acs.org/doi/full/10.1021/ci3002974
@@ -99,14 +139,14 @@ def makeMolGraph(mol, sel, fields):
 
 
 def maximalSubstructureAlignment(
-    mol1,
-    mol2,
-    sel1="all",
-    sel2="all",
-    fields=("element",),
-    tolerance=0.5,
-    visualize=False,
-):
+    mol1: "Molecule",
+    mol2: "Molecule",
+    sel1: str | np.ndarray = "all",
+    sel2: str | np.ndarray = "all",
+    fields: tuple = ("element",),
+    tolerance: float = 0.5,
+    visualize: bool = False,
+) -> "Molecule":
     """Aligns two molecules on the largest common substructure
 
     Parameters
@@ -115,11 +155,13 @@ def maximalSubstructureAlignment(
         The reference molecule on which to align
     mol2 : :class:`Molecule`
         The second molecule which will be rotated and translated to align on mol1
-    sel1 : str
-        Atom selection string of the atoms of `mol1` to align.
+    sel1 : str or np.ndarray
+        Atom selection of the atoms of `mol1` to align. Can be a selection
+        string, a boolean mask, or an integer index array.
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
-    sel2 : str
-        Atom selection string of the atoms of `mol2` to align.
+    sel2 : str or np.ndarray
+        Atom selection of the atoms of `mol2` to align. Can be a selection
+        string, a boolean mask, or an integer index array.
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
     fields : tuple
         A tuple of the fields that are used to match atoms
@@ -165,7 +207,11 @@ def maximalSubstructureAlignment(
 
 
 def mcsAtomMatching(
-    mol1, mol2, atomCompare="elements", bondCompare="any", _logger=True
+    mol1: "Molecule",
+    mol2: "Molecule",
+    atomCompare: str = "elements",
+    bondCompare: str = "any",
+    _logger=True,
 ):
     """Maximum common substructure atom matching.
 

@@ -50,14 +50,14 @@ io.SavePDB(final_model, "model.pdb")"""
 
 
 def model_gaps(
-    mol,
-    sequence,
-    segid,
-    promod_img,
-    minimize=False,
-    build_sidechains=True,
-    merge_distance=4,
-):
+    mol: Molecule,
+    sequence: str,
+    segid: str,
+    promod_img: str,
+    minimize: bool = False,
+    build_sidechains: bool = True,
+    merge_distance: float = 4,
+) -> Molecule:
     """Closes residue gaps in a Molecule by sequence using ProMod3.
     Requires a ProMod3 Singularity image; see Notes.
 

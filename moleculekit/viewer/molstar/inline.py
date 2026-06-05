@@ -9,11 +9,15 @@ import html as _html
 import json
 import os
 import struct
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from moleculekit.util import tempname
 from moleculekit.viewer.molstar.mvs import build_mvs
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 
 def _get_ipython():
@@ -28,8 +32,15 @@ def _get_ipython():
 
 def running_in_notebook() -> bool:
     """True only inside a Jupyter/IPython *kernel* (ZMQInteractiveShell).
+
     Terminal IPython and plain Python return False, so view() falls back to
-    the server there."""
+    the server there.
+
+    Returns
+    -------
+    in_notebook : bool
+        True when running inside a Jupyter/IPython kernel, otherwise False.
+    """
     shell = _get_ipython()
     return shell is not None and type(shell).__name__ == "ZMQInteractiveShell"
 
@@ -79,9 +90,20 @@ def _b64(data: bytes) -> str:
     return base64.b64encode(data).decode("ascii")
 
 
-def coords_to_dcd_bytes(mol) -> bytes:
+def coords_to_dcd_bytes(mol: "Molecule") -> bytes:
     """Encode all frames of mol.coords (Angstrom) into a CHARMM/NAMD DCD byte
-    string in memory. Lossless float32, no unit cell, no temp file."""
+    string in memory. Lossless float32, no unit cell, no temp file.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule whose coordinate frames are encoded.
+
+    Returns
+    -------
+    dcd : bytes
+        The in-memory DCD-format byte string for all frames of ``mol``.
+    """
     coords = mol.coords  # (natoms, 3, nframes)
     natoms = int(coords.shape[0])
     nframes = int(coords.shape[2])
@@ -128,11 +150,30 @@ def _json_for_script(text: str) -> str:
 
 
 class MolstarInlineView:
-    """Notebook cell output. Its _repr_html_ is an <iframe srcdoc> that loads
-    Mol* from a CDN and renders the inlined scene/data."""
+    """Notebook cell output that renders a Mol* viewer inline.
+
+    Its ``_repr_html_`` returns an ``<iframe srcdoc>`` that loads Mol* from a
+    CDN and renders the inlined scene/data with no running server. Construct it
+    with either a MolViewSpec ``mvsj`` string (single-frame path) or a
+    ``payload`` dict (multi-frame trajectory path); exactly one is used.
+    """
 
     def __init__(self, *, height: int, mvsj: str | None = None,
                  payload: dict | None = None):
+        """Create an inline viewer.
+
+        Parameters
+        ----------
+        height : int
+            Height of the rendered iframe in pixels.
+        mvsj : str or None, optional
+            A MolViewSpec scene JSON string for the single-frame path. When
+            given, the viewer loads it via ``loadMvsData``.
+        payload : dict or None, optional
+            Trajectory payload for the multi-frame path, with base64 ``topo``
+            (BinaryCIF) and ``dcd`` (DCD coordinates) entries. Used when
+            ``mvsj`` is None.
+        """
         self._height = height
         self._mvsj = mvsj
         self._payload = payload
@@ -201,9 +242,29 @@ class MolstarInlineView:
         )
 
 
-def build_inline_view(mol, scene: dict, *, height: int = DEFAULT_HEIGHT):
-    """Build a MolstarInlineView for ``mol``. Single frame -> MVS path;
-    multi-frame -> trajectory path (Phase 2)."""
+def build_inline_view(
+    mol: "Molecule", scene: dict, *, height: int = DEFAULT_HEIGHT
+) -> "MolstarInlineView":
+    """Build a MolstarInlineView for ``mol``.
+
+    A single-frame molecule takes the MVS path (custom representations from
+    ``scene`` are applied); a multi-frame molecule takes the trajectory path.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to render.
+    scene : dict
+        Scene description with a ``representations`` list (as produced for the
+        viewer). Used only on the single-frame path.
+    height : int, optional
+        Height of the rendered iframe in pixels. Defaults to ``DEFAULT_HEIGHT``.
+
+    Returns
+    -------
+    view : MolstarInlineView
+        A notebook cell output rendering the inline viewer.
+    """
     if mol.numFrames == 1:
         data_url = "data:application/octet-stream;base64," + _b64(_bcif_bytes(mol))
         rep_kwargs = {"representations": scene.get("representations") or None}

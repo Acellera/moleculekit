@@ -15,7 +15,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def csvReader(file, removeHs, fixHs, isgzip=False, _logger=True):
+def csvReader(file, removeHs: bool, fixHs: bool, isgzip: bool = False, _logger=True):
     from tqdm import tqdm
     import pandas as pd
 
@@ -57,7 +57,7 @@ def csvReader(file, removeHs, fixHs, isgzip=False, _logger=True):
     return mols
 
 
-def smiReader(file, removeHs, fixHs, isgzip=False, _logger=True):
+def smiReader(file, removeHs: bool, fixHs: bool, isgzip: bool = False, _logger=True):
     from tqdm import tqdm
 
     if isgzip:
@@ -89,7 +89,7 @@ def smiReader(file, removeHs, fixHs, isgzip=False, _logger=True):
     return mols
 
 
-def sdfReader(file, removeHs, fixHs, sanitize, isgzip=False, _logger=True):
+def sdfReader(file, removeHs: bool, fixHs: bool, sanitize: bool, isgzip: bool = False, _logger=True):
     from tqdm import tqdm
     from moleculekit.util import tempname
 
@@ -128,12 +128,14 @@ class SmallMolLib(object):
 
     Parameters
     ----------
-    lib_file: str
+    libfile: str
         The sdf or smi file path
     removeHs: bool
         If True, the hydrogens of the molecules will be removed
     fixHs: bool
         If True, the hydrogens are added and optimized
+    sanitize: bool
+        If True, the molecules are sanitized after reading.
 
     Example
     -------
@@ -152,10 +154,10 @@ class SmallMolLib(object):
 
     def __init__(
         self,
-        libfile=None,
-        removeHs=False,
-        fixHs=True,
-        sanitize=True,
+        libfile: str | None = None,
+        removeHs: bool = False,
+        fixHs: bool = True,
+        sanitize: bool = True,
         _logger=True,
     ):  # , n_jobs=1
         if removeHs and _logger:
@@ -194,13 +196,18 @@ class SmallMolLib(object):
             raise RuntimeError(f"Invalid file extension {ext}. Could not read it.")
 
     @property
-    def numMols(self):
+    def numMols(self) -> int:
         """
-        Returns the number of molecules
+        Returns the number of molecules in the library.
+
+        Returns
+        -------
+        nummols : int
+            The number of molecules
         """
         return len(self._mols)
 
-    def getMols(self, ids=None):
+    def getMols(self, ids: list | None = None):
         """
         Returns the SmallMol objects that corresponds ot the indexes of the list passed
 
@@ -228,7 +235,7 @@ class SmallMolLib(object):
 
         return np.array(self._mols)[ids]
 
-    def writeSdf(self, sdf_name, fields=None):
+    def writeSdf(self, sdf_name: str, fields: list | None = None):
         """
         Writes an sdf file with molecules stored. Is it possible also to manage which field will be written
 
@@ -251,7 +258,13 @@ class SmallMolLib(object):
         for m in self._mols:
             writer.write(m._mol)
 
-    def writeSmiles(self, smi_name, explicitHs=True, names=False, header=None):
+    def writeSmiles(
+        self,
+        smi_name: str,
+        explicitHs: bool = True,
+        names: bool = False,
+        header: str | None = None,
+    ):
         """
         Writes a smi file with molecules stored. Is it possible to specify the header of the smi file. The name of the
         ligands can be their ligand name or a sequential ID.
@@ -260,6 +273,8 @@ class SmallMolLib(object):
         ----------
         smi_name: str
             The ouput smi filename
+        explicitHs: bool
+            Set as True to write explicit hydrogens in the SMILES strings.
         names: bool
             Set as True to use the own ligand name for each ligand. Otherwise a sequential ID will be used
         header: str
@@ -282,7 +297,9 @@ class SmallMolLib(object):
 
         f.close()
 
-    def appendSmallLib(self, smallLib, strictField=False, strictDirection=1):
+    def appendSmallLib(
+        self, smallLib: "SmallMolLib", strictField: bool = False, strictDirection: int = 1
+    ):
         """
         Merge two moleculekit.smallmol.smallmol.SmallMolLib objects
 
@@ -290,21 +307,35 @@ class SmallMolLib(object):
         ----------
         smallLib: moleculekit.smallmol.smallmol.SmallMolLib
             The new SmallMolLib to merge
+        strictField: bool
+            Currently unused.
+            Default: False
+        strictDirection: int
+            Currently unused.
+            Default: 1
         """
         self._mols += smallLib._mols
 
-    def appendSmallMol(self, smallmolecule, strictField=False, strictDirection=0):
+    def appendSmallMol(
+        self, smallmolecule: "SmallMol", strictField: bool = False, strictDirection: int = 0
+    ):
         """
         Adds a new moleculekit.smallmol.smallmol.SmallMol object in the current SmallMolLib object
 
         Parameters
         ---------
-        smallmol: moleculekit.smallmol.smallmol.SmallMol
+        smallmolecule: moleculekit.smallmol.smallmol.SmallMol
             The SmallMol object to add
+        strictField: bool
+            Currently unused.
+            Default: False
+        strictDirection: int
+            Currently unused.
+            Default: 0
         """
         self._mols = np.append(self._mols, smallmolecule)
 
-    def removeMols(self, ids):
+    def removeMols(self, ids: list):
         """
         Removes the moleculekit.smallmol.smallmol.SmallMol object based on the indexes in the list
 
@@ -326,7 +357,7 @@ class SmallMolLib(object):
             "molecules are {} ".format(_oldNumMols, ids, self.numMols)
         )
 
-    def toDataFrame(self, fields=None, molAsImage=True, sketch=True):
+    def toDataFrame(self, fields: list | None = None, molAsImage: bool = True, sketch: bool = True):
         """
         Returns a pandas.DataFrame of the SmallMolLib object.
 
@@ -372,9 +403,14 @@ class SmallMolLib(object):
             PandasTools.ChangeMoleculeRendering(df)
         return df
 
-    def copy(self):
+    def copy(self) -> "SmallMolLib":
         """
-        Returns a copy of the SmallMolLib object
+        Returns a deep copy of the SmallMolLib object.
+
+        Returns
+        -------
+        newlib : :class:`SmallMolLib`
+            A copy of the object
         """
         from copy import deepcopy
 
@@ -402,16 +438,16 @@ class SmallMolLib(object):
 
     def depict(
         self,
-        ids=None,
-        sketch=True,
-        filename=None,
-        ipython=False,
-        optimize=False,
-        optimizemode="std",
-        removeHs=True,
-        legends=None,
-        highlightAtoms=None,
-        mols_perrow=3,
+        ids: list | None = None,
+        sketch: bool = True,
+        filename: str | None = None,
+        ipython: bool = False,
+        optimize: bool = False,
+        optimizemode: str = "std",
+        removeHs: bool = True,
+        legends: str | None = None,
+        highlightAtoms: list | None = None,
+        mols_perrow: int = 3,
     ):
         """
         Depicts the molecules into a grid. It is possible to save it into an svg file and also generates a
@@ -443,8 +479,8 @@ class SmallMolLib(object):
 
         Returns
         -------
-            ipython_svg: SVG object if ipython is set to True
-
+        ipython_svg : IPython.display.SVG or None
+            An SVG rendering object if ``ipython`` is True, otherwise None
         """
         from rdkit.Chem.AllChem import (
             Compute2DCoords,
