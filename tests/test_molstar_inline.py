@@ -1,8 +1,18 @@
+import importlib.util
+
 import numpy as np
+import pytest
 
 from moleculekit.molecule import Molecule
 from moleculekit.representations import Representations
 from moleculekit.viewer.molstar import inline
+
+# The single-frame inline view builds a MolViewSpec scene, which needs the
+# optional molviewspec dependency (not installed during cibuildwheel).
+needs_molviewspec = pytest.mark.skipif(
+    importlib.util.find_spec("molviewspec") is None,
+    reason="molviewspec not installed (optional 'notebook' dependency)",
+)
 
 
 def _ala_mol():
@@ -55,6 +65,7 @@ def test_scene_from_reps_empty_when_no_reps():
     assert scene["representations"] == []
 
 
+@needs_molviewspec
 def test_single_frame_repr_html_embeds_iframe_and_mvsj():
     mol = _ala_mol()  # 1 frame
     scene = inline._scene_from_reps(mol, [])
@@ -69,6 +80,7 @@ def test_single_frame_repr_html_embeds_iframe_and_mvsj():
     assert "data:application/octet-stream;base64," in html
 
 
+@needs_molviewspec
 def test_single_frame_no_files_left(tmp_path, monkeypatch):
     # build_inline_view must not leave temp files in the cwd
     monkeypatch.chdir(tmp_path)
@@ -77,6 +89,7 @@ def test_single_frame_no_files_left(tmp_path, monkeypatch):
     assert list(tmp_path.iterdir()) == []
 
 
+@needs_molviewspec
 def test_view_returns_inline_view_in_notebook(monkeypatch):
     mol = _ala_mol()
     monkeypatch.setattr(inline, "running_in_notebook", lambda: True)
