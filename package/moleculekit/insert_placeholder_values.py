@@ -11,10 +11,13 @@ except Exception:
 pyproject = toml.load("pyproject.toml")
 deps = pyproject["project"]["dependencies"]
 
-# Fix msgpack pypi package which exists as msgpack-python in conda
+# Map pypi package names to their conda equivalents
 for i in range(len(deps)):
     if deps[i].startswith("msgpack"):
         deps[i] = "msgpack-python"
+    elif deps[i].startswith("acellera-propka"):
+        # acellera-propka is a pypi-only fork; conda uses upstream propka
+        deps[i] = "propka"
 
 # Fix conda meta.yaml
 with open("package/moleculekit/recipe_template.yaml", "r") as f:
