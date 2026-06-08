@@ -201,6 +201,19 @@ mol_out, specs = systemPrepare(mol)
 {py:func}`~moleculekit.tools.preparation.systemPrepare` calls {py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues` internally, so it will pick
 up the ligand spec automatically.
 
+If you already have the residue as a reference structure with correct
+connectivity (e.g. an RCSB chemical-component CIF), use
+{py:meth}`~moleculekit.molecule.Molecule.templateResidueFromMolecule` instead of
+a SMILES string. It matches the residue to the reference by atom name (the two
+must share the same heavy-atom names) and copies the reference's bond orders and
+formal charges verbatim, so those must already be correct in the reference:
+
+```python
+ref = Molecule("LIG.cif")   # correct bonds, bond orders, and formal charges
+mol.templateResidueFromMolecule("resname LIG", ref, addHs=True)
+mol_out, specs = systemPrepare(mol)
+```
+
 ### mutateResidue before systemPrepare
 
 When you want to swap canonical residues (e.g. a point mutation), call

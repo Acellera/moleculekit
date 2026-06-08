@@ -26,7 +26,7 @@ of length `mol.numAtoms`. The most commonly used fields are:
 | `charge` | `float32` | Partial charge (populated by force-field tools) |
 | `masses` | `float32` | Atomic mass in Da |
 | `record` | `object` | PDB record type: `"ATOM"` or `"HETATM"` |
-| `formalcharge` | `int32` | Integer formal charge (populated by {py:func}`~moleculekit.tools.preparation.systemPrepare` and {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromSmiles`) |
+| `formalcharge` | `int32` | Integer formal charge (populated by {py:func}`~moleculekit.tools.preparation.systemPrepare`, {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromSmiles`, and {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromMolecule`) |
 | `atomtype` | `object` | Force-field atom type (populated downstream) |
 
 Because these arrays are NumPy arrays you can inspect, compare, and manipulate

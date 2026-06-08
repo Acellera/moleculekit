@@ -3103,6 +3103,62 @@ class Molecule(object):
             _logger=_logger,
         )
 
+    def templateResidueFromMolecule(
+        self,
+        sel: "str | np.ndarray",
+        refmol: "Molecule",
+        addHs: bool = False,
+        onlyOnAtoms: "str | np.ndarray | None" = None,
+        guessBonds: bool = False,
+        _logger=True,
+    ):
+        """Assign bonds, bond orders, formal charges and (optionally) hydrogens
+        to a residue from a reference Molecule template, matched by atom name.
+
+        Like :meth:`templateResidueFromSmiles`, but the template is a reference
+        Molecule (e.g. loaded from a CIF) that already carries bonds, bond
+        orders and formal charges. The selected residue's heavy atoms are
+        mapped onto the reference by NAME and the reference's bond orders and
+        formal charges are transferred verbatim, so they must already be
+        correct in the reference (this function does not re-derive them). The
+        reference is used only as a template and is never appended. The
+        molecule is mutated in place. The residue and reference must share the
+        same set of heavy-atom names.
+
+        Parameters
+        ----------
+        sel : str or np.ndarray
+            An atom selection string, a boolean mask, or an integer index array
+            of the residue(s) to template. May span multiple copies.
+        refmol : Molecule
+            The reference template. Its bonds, bond orders and formal charges
+            are copied onto the residue verbatim, so they must already be
+            correct; heavy-atom names must be unique and must match the
+            residue's.
+        addHs : bool
+            If True, add hydrogens after bond orders are transferred.
+        onlyOnAtoms : str or np.ndarray
+            Restrict which heavy atoms get hydrogens (only used with addHs).
+        guessBonds : bool
+            If True, distance-guess the residue's bonds before templating.
+
+        Examples
+        --------
+        >>> mol = Molecule("complex.pdb")  # doctest: +SKIP
+        >>> mol.templateResidueFromMolecule("resname LIG", Molecule("LIG.cif"), addHs=True, guessBonds=True)
+        """
+        from moleculekit.rdkittools import template_residue_from_molecule
+
+        template_residue_from_molecule(
+            mol=self,
+            sel=sel,
+            refmol=refmol,
+            addHs=addHs,
+            onlyOnAtoms=onlyOnAtoms,
+            guessBonds=guessBonds,
+            _logger=_logger,
+        )
+
     def extendResidueFromSmiles(
         self,
         sel: str | np.ndarray,

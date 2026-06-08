@@ -116,6 +116,12 @@ mask = mol.resname == "NAG"
 mol.templateResidueFromSmiles(mask, smiles="CC(=O)NC1C(O)C(O)C(CO)OC1O", addHs=True)
 ```
 
+To template from a reference structure (e.g. an RCSB chemical-component CIF)
+instead of a SMILES string, use `templateResidueFromMolecule(mask, refmol,
+addHs=True)`.  It matches the residue to the reference by atom name (same
+heavy-atom names required) and copies the reference's bond orders and formal
+charges verbatim, so those must already be correct in `refmol`.
+
 ---
 
 ### Compute a per-frame projection

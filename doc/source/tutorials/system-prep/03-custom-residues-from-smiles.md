@@ -96,6 +96,17 @@ show3d(mol, representations=[{"sel": "resname HRG ALC OIC NLE '200'", "type": "b
 
 The per-resname atom counts after templating — each NCAA now carries heavy atoms + the hydrogens the SMILES specified.
 
+### Alternative: template from a reference Molecule
+
+If you already have the residue as a small reference structure that carries correct connectivity (for example an RCSB chemical-component CIF for the ligand), you can template from that {py:class}`~moleculekit.molecule.Molecule` instead of writing a SMILES string, using {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromMolecule`:
+
+```python
+ref = Molecule("HRG.cif")   # reference carrying correct bonds, bond orders, and formal charges
+mol.templateResidueFromMolecule("resname HRG", ref, addHs=True)
+```
+
+The reference is matched to the residue by **atom name** (not by MCS, as with SMILES), so the two must share the same set of heavy-atom names and the reference's heavy-atom names must be unique. The bond orders and formal charges are copied straight from the reference: they must therefore already be correct in the template Molecule, because `templateResidueFromMolecule` transfers them verbatim and does not re-derive them. Everything else (`addHs`, `guessBonds`, automatic cross-residue bond handling, and per-copy templating) works exactly as in the SMILES variant.
+
 ## Step 4 — Run systemPrepare
 
 ```{code-cell} python
@@ -116,6 +127,7 @@ The five NCAAs all survive the preparation pipeline with their full heavy-atom t
 - It removes any hydrogens already on the matched residue and re-adds them from the SMILES (`addHs=True`), so the hydrogen pattern is deterministic — no manual pre-stripping needed.
 - One SMILES per residue type; the templater handles every copy automatically and trims terminal atoms (OXT, terminal NH) for mid-chain residues.
 - Cross-residue covalent bonds — peptide bonds, glycosidic bonds, isopeptide bonds — are detected automatically; the boundary atom's H count is corrected so it is not over-protonated.
+- {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromMolecule` is the same operation with a reference {py:class}`~moleculekit.molecule.Molecule` (e.g. a CIF) as the template instead of a SMILES string. It matches by atom name rather than MCS and copies the reference's bond orders and formal charges verbatim, so those must already be correct in the reference.
 
 ## Next
 

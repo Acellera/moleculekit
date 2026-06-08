@@ -95,7 +95,7 @@ rdmol = mol.toRDKitMol(sanitize=False)   # sanitize=False for non-canonical resi
 
 ## Gotchas
 
-- Conversion needs explicit bonds. If `mol.bonds` is empty (plain PDB load), run {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromSmiles` for non-canonical residues so the conversion gets correct bond orders, or pass `guessBonds=True` for a distance-based fallback.
+- Conversion needs explicit bonds. If `mol.bonds` is empty (plain PDB load), run {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromSmiles` (or {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromMolecule`, when you have a reference structure such as a CIF with correct bond orders and formal charges) for non-canonical residues so the conversion gets correct bond orders, or pass `guessBonds=True` for a distance-based fallback.
 - `sanitize=True` will raise on residues whose bonding or formal charges are inconsistent with chemical rules. For a freshly read PDB this often happens around metal centers and covalent ligands; template those residues first (see [Custom residues from SMILES](../tutorials/system-prep/03-custom-residues-from-smiles.md)).
 - Hydrogens must be present for stereochemistry / valence checks. Run {py:func}`~moleculekit.tools.preparation.systemPrepare` (or set explicit Hs via `templateResidueFromSmiles(..., addHs=True)`) before conversion.
 - `toOpenFFMolecule` requires `openff-toolkit` and `openff-units` installed.

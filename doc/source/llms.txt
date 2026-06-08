@@ -8,7 +8,7 @@
 - [Atom selection](tutorials/02-atom-selection.md): VMD syntax and mask-based fast path.
 - [System prep: basic protonation](tutorials/system-prep/01-basic-protonation.md): `systemPrepare` at chosen pH; the default 2-tuple `(mol_out, detect_specs)` return (3-tuple `(mol_out, detect_specs, details)` with `return_details=True`).
 - [System prep: non-standard residues](tutorials/system-prep/02-non-standard-residues.md): `detectNonStandardResidues` + `systemPrepare(detect_specs=...)`.
-- [System prep: custom residues from SMILES](tutorials/system-prep/03-custom-residues-from-smiles.md): `templateResidueFromSmiles` with `addHs=True`.
+- [System prep: custom residues from SMILES](tutorials/system-prep/03-custom-residues-from-smiles.md): `templateResidueFromSmiles` with `addHs=True`; `templateResidueFromMolecule` to template from a reference Molecule (e.g. a CIF) carrying correct bond orders and formal charges.
 - [System prep: mutation, gap closing, segmentation](tutorials/system-prep/04-mutation-gap-closing-segmentation.md): `mutateResidue`, `model_gaps`, `autoSegment`.
 
 ## How-to guides

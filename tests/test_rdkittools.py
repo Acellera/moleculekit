@@ -61,6 +61,51 @@ def test_templateResidueFromSmiles():
     _cmp(mol, ref_mol)
 
 
+def test_templateResidueFromMolecule():
+    def _cmp(mol, ref_mol):
+        assert mol_equal(
+            mol,
+            ref_mol,
+            checkFields=Molecule._all_fields,
+            exceptFields=["crystalinfo", "fileloc"],
+            uqBonds=True,
+            fieldPrecision={"coords": 1e-3},
+        )
+
+    testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
+    start_file = os.path.join(testdir, "BEN.pdb")
+    ref_template = Molecule(os.path.join(testdir, "BEN_pH7.4.cif"))
+
+    # Heavy-atom-only template (addHs re-adds the hydrogens)
+    mol = Molecule(start_file)
+    mol.templateResidueFromMolecule(
+        "resname BEN", ref_template, addHs=False, guessBonds=True
+    )
+    _cmp(mol, ref_template.copy(sel="noh"))
+
+    mol = Molecule(start_file)
+    mol.templateResidueFromMolecule(
+        "resname BEN", ref_template, addHs=True, guessBonds=True
+    )
+    _cmp(mol, ref_template)
+
+    # Templating inside the full complex
+    mol = Molecule("3ptb")
+    mol.templateResidueFromMolecule(
+        "resname BEN", ref_template, addHs=True, guessBonds=True
+    )
+    _cmp(mol, Molecule(os.path.join(testdir, "3PTB_BEN_pH7.4.cif")))
+
+    # A reference missing a heavy atom present in the residue is an error
+    bad_ref = ref_template.copy()
+    bad_ref.remove("name C1", _logger=False)  # drop a heavy atom
+    mol = Molecule(start_file)
+    with pytest.raises(RuntimeError):
+        mol.templateResidueFromMolecule(
+            "resname BEN", bad_ref, addHs=True, guessBonds=True
+        )
+
+
 def test_templateResidueFromSmiles_multiresidue():
     """A selection that spans multiple residues with the same resname
     (e.g. ``resname BEN`` when there are several BEN copies in the

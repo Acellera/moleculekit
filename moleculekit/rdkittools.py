@@ -313,6 +313,230 @@ def _try_strip_unmatched_terminals(
         return None
 
 
+_BONDTYPE_ORDER = {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "ar": 1, "un": 1, "mc": 1}
+
+
+def _detect_cross_residue_bonds(mol, selidx):
+    """Return ``(cross_bonds, sel_start, sel_end)`` for covalent bonds linking
+    the selected residue to the rest of ``mol``.
+
+    ``cross_bonds`` is a list of ``(local_residue_idx, external_global_idx,
+    bondtype_str)``. Detects bonds already present in ``mol.bonds`` that cross
+    the residue boundary, plus peptide (N-C) and nucleic-acid (P-O3') bonds
+    inferred by proximity when ``mol.bonds`` lacks them. Pure read; ``mol`` is
+    not mutated.
+    """
+    import numpy as np
+
+    sel_start = int(selidx[0])
+    sel_end = int(selidx[-1])
+    cross_bonds = []  # (local_residue_idx, external_global_idx, bondtype_str)
+    if len(mol.bonds):
+        in_sel = (mol.bonds >= sel_start) & (mol.bonds <= sel_end)
+        cross_mask = in_sel.sum(axis=1) == 1
+        for bidx in np.where(cross_mask)[0]:
+            a, b = int(mol.bonds[bidx, 0]), int(mol.bonds[bidx, 1])
+            bt = str(mol.bondtype[bidx]) if len(mol.bondtype) > bidx else "1"
+            if sel_start <= a <= sel_end:
+                cross_bonds.append((a - sel_start, b, bt))
+            else:
+                cross_bonds.append((b - sel_start, a, bt))
+
+    # PDB inputs often arrive without explicit peptide / phosphodiester bonds
+    # (CONECT records cover only HET groups). Without them, the boundary
+    # atoms look free-standing and AddHs over-protonates them. Mirror the
+    # proximity check used by ``_has_peptide_neighbour`` in
+    # nonstandard_residues so a caller doesn't have to run ``mol.guessBonds``
+    # first.
+    sel_names = mol.name[selidx]
+    sel_elems = mol.element[selidx]
+
+    def _add_cross_by_proximity(local_idx, other_mask_full, threshold):
+        if local_idx in {li for li, _, _ in cross_bonds}:
+            return
+        own_pos = mol.coords[selidx[local_idx], :, mol.frame]
+        other_mask = other_mask_full.copy()
+        other_mask[selidx] = False
+        candidates = np.where(other_mask)[0]
+        if not len(candidates):
+            return
+        d = np.linalg.norm(
+            mol.coords[candidates, :, mol.frame] - own_pos, axis=1
+        )
+        within = d < threshold
+        if not within.any():
+            return
+        partner = int(candidates[np.argmin(np.where(within, d, np.inf))])
+        cross_bonds.append((local_idx, partner, "1"))
+
+    # Peptide N-C bonds (~1.33 A, threshold 1.6 A)
+    if {"N", "CA", "C"}.issubset(sel_names):
+        for own_side, other_name in (("N", "C"), ("C", "N")):
+            hits = np.where(sel_names == own_side)[0]
+            if len(hits):
+                _add_cross_by_proximity(
+                    int(hits[0]), mol.name == other_name, threshold=1.6
+                )
+
+    # Nucleic acid phosphodiester P-O3' bonds (~1.6 A, threshold 1.8 A).
+    # Two directions: (1) own P to external O3' of previous residue,
+    # (2) own O3' to external P of next residue. The O3' check also runs for
+    # 5'-terminal residues that lack their own P but still bond to next.
+    if "P" in sel_elems:
+        for own_p_idx in np.where(sel_elems == "P")[0]:
+            _add_cross_by_proximity(
+                int(own_p_idx), mol.element == "O", threshold=1.8
+            )
+    for own_o3_idx in np.where(sel_names == "O3'")[0]:
+        _add_cross_by_proximity(
+            int(own_o3_idx), mol.element == "P", threshold=1.8
+        )
+
+    return cross_bonds, sel_start, sel_end
+
+
+def _apply_template_mapping(
+    mol,
+    selidx,
+    sel_start,
+    sel_end,
+    residue,
+    rmol,
+    ref_rdkit,
+    at1,
+    at2,
+    atom_mapping,
+    cross_bonds,
+    addHs,
+    onlyOnAtoms,
+    _logger,
+):
+    """Apply a built atom mapping (residue RDKit mol ``rmol`` <-> template RDKit
+    mol ``ref_rdkit``) to ``mol`` in place.
+
+    Transfers formal charges and bond orders through the mapping, optionally
+    adds hydrogens (with cross-residue boundary corrections), round-trips the
+    templated residue back into ``mol``, and restores inter-residue bonds.
+    ``at1``/``at2`` are matched atom-index lists into ``rmol``/``ref_rdkit``;
+    ``atom_mapping`` maps ``ref_rdkit`` atom idx -> ``rmol`` atom idx.
+    """
+    from rdkit import Chem
+    from moleculekit.molecule import Molecule
+    import numpy as np
+
+    # Transfer the formal charge, bonds and bond orders from ref_rdkit to rmol
+    for i, j in zip(at1, at2):
+        fch = ref_rdkit.GetAtomWithIdx(j).GetFormalCharge()
+        rmol.GetAtomWithIdx(i).SetFormalCharge(fch)
+
+    # The template drives every matched bond's type, including DATIVE arrows
+    # (e.g. [N]->[Fe]). Those round-trip through fromRDKitMol as "mc".
+    for bond in ref_rdkit.GetBonds():
+        i = atom_mapping[bond.GetBeginAtomIdx()]
+        j = atom_mapping[bond.GetEndAtomIdx()]
+        rbond = rmol.GetBondBetweenAtoms(i, j)
+        if rbond is None:
+            raise RuntimeError(f"Bond between atoms {i} and {j} not found in residue")
+        rbond.SetBondType(bond.GetBondType())
+
+    # For atoms covalently bonded to other residues, the template assumes those
+    # bonds are hydrogens. Reduce the explicit H count on each boundary atom by
+    # the order of its external bonds so AddHs doesn't over-protonate. Bonds
+    # whose external partner is a metal element are tracked separately:
+    # coordinating an -SH / -OH / -COOH to a metal is chemically a
+    # deprotonation, so the donor's formal charge is reduced by one per
+    # metal-bond order to keep the residue's net charge correct.
+    rmol_to_smi = dict(zip(at1, at2))
+    boundary_ext_order = {}
+    boundary_metal_order = {}
+    for local_idx, ext_global_idx, bt in cross_bonds:
+        order = _BONDTYPE_ORDER.get(bt, 1)
+        boundary_ext_order[local_idx] = boundary_ext_order.get(local_idx, 0) + order
+        if str(mol.element[ext_global_idx]) in _METAL_ELEMENTS:
+            boundary_metal_order[local_idx] = (
+                boundary_metal_order.get(local_idx, 0) + order
+            )
+
+    # Protonate the residue according to the template
+    if addHs:
+        if onlyOnAtoms is not None:
+            onlyOnAtoms = residue.atomselect(onlyOnAtoms, indexes=True).tolist()
+
+        # Don't sanitize to not lose bond orders
+        rmol = Chem.RemoveHs(rmol, sanitize=True)
+
+        # Boundary H counts must be set AFTER RemoveHs: RemoveHs increments
+        # NumExplicitHs by the number of removed H neighbors, so applying
+        # this before would double-count.
+        for local_idx, ext_order in boundary_ext_order.items():
+            if local_idx not in rmol_to_smi:
+                continue
+            smi_atom = ref_rdkit.GetAtomWithIdx(rmol_to_smi[local_idx])
+            smi_hs = int(smi_atom.GetTotalNumHs())
+            target_hs = max(0, smi_hs - int(ext_order))
+            atom = rmol.GetAtomWithIdx(local_idx)
+            atom.SetNumExplicitHs(target_hs)
+            atom.SetNoImplicit(True)
+            metal_order = boundary_metal_order.get(local_idx, 0)
+            if metal_order:
+                hs_stripped = smi_hs - target_hs
+                delta = min(metal_order, hs_stripped)
+                if delta:
+                    atom.SetFormalCharge(atom.GetFormalCharge() - delta)
+
+        rmol = Chem.AddHs(rmol, addCoords=True, onlyOnAtoms=onlyOnAtoms)
+        Chem.Kekulize(rmol)  # Sanitization ruins kekulization
+
+    new_residue = Molecule.fromRDKitMol(rmol)
+    new_residue.resid[:] = residue.resid[0]
+    new_residue.chain[:] = residue.chain[0]
+    new_residue.segid[:] = residue.segid[0]
+    new_residue.insertion[:] = residue.insertion[0]
+
+    # Restore per-atom metadata that doesn't round-trip through RDKit
+    # (beta, occupancy, record, altloc) by matching atoms back by name.
+    orig_by_name = {}
+    for orig_idx, name in enumerate(residue.name):
+        if name in orig_by_name:
+            orig_by_name[name] = None  # ambiguous; skip
+        else:
+            orig_by_name[name] = orig_idx
+    for new_idx, name in enumerate(new_residue.name):
+        orig_idx = orig_by_name.get(name)
+        if orig_idx is None:
+            continue
+        for field in ("beta", "occupancy", "record", "altloc"):
+            getattr(new_residue, field)[new_idx] = getattr(residue, field)[orig_idx]
+
+    # If the residue is the entire molecule, ``mol.remove`` empties it and the
+    # subsequent ``mol.insert`` adopts ``new_residue``'s zero-initialised box.
+    # Snapshot them so we can restore the simulation cell after the round-trip.
+    saved_box = mol.box.copy() if mol.box is not None else None
+    saved_boxangles = mol.boxangles.copy() if mol.boxangles is not None else None
+
+    mol.remove(selidx, _logger=False)
+    mol.insert(new_residue, selidx[0])
+
+    if saved_box is not None and np.any(saved_box):
+        mol.box = saved_box
+    if saved_boxangles is not None and np.any(saved_boxangles):
+        mol.boxangles = saved_boxangles
+
+    # Restore the inter-residue bonds. Atoms originally past the residue were
+    # shifted by (new_residue.numAtoms - len(selidx)); atoms before are
+    # unchanged.
+    if cross_bonds:
+        shift = new_residue.numAtoms - len(selidx)
+        for local_idx, ext_global_idx, bt in cross_bonds:
+            if ext_global_idx < sel_start:
+                new_ext = ext_global_idx
+            elif ext_global_idx > sel_end:
+                new_ext = ext_global_idx + shift
+            else:
+                continue
+            mol.addBond(sel_start + local_idx, new_ext, bt)
+
+
 def template_residue_from_smiles(
     mol: Molecule,
     sel: str,
@@ -421,81 +645,7 @@ def template_residue_from_smiles(
             "The selection contains gaps in the atom indexes. Please select a single molecule residue only."
         )
 
-    # Identify covalent bonds that link the residue to the rest of the
-    # molecule. mol.copy()/remove()/insert() would otherwise drop these, and
-    # Chem.AddHs would over-protonate the boundary atoms because it has no
-    # knowledge of the external bonds.
-    # "mc" (metal coordination) contributes 1 to the donor's "H slot displaced
-    # by external bond" count. Chemically a Tyr-OH or Cys-SH coordinating a
-    # metal centre is a deprotonation: the H leaves as H+, the donor keeps
-    # the bonding electrons and donates them as a lone pair to the metal.
-    # That's one H slot occupied (so the boundary-H stripping logic correctly
-    # removes the hydroxyl/thiol H), and the metal-deprotonation branch below
-    # then picks up the -1 formal-charge adjustment via boundary_metal_order.
-    _bondtype_order = {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "ar": 1, "un": 1, "mc": 1}
-    sel_start = int(selidx[0])
-    sel_end = int(selidx[-1])
-    cross_bonds = []  # (local_residue_idx, external_global_idx, bondtype_str)
-    if len(mol.bonds):
-        in_sel = (mol.bonds >= sel_start) & (mol.bonds <= sel_end)
-        cross_mask = in_sel.sum(axis=1) == 1
-        for bidx in np.where(cross_mask)[0]:
-            a, b = int(mol.bonds[bidx, 0]), int(mol.bonds[bidx, 1])
-            bt = str(mol.bondtype[bidx]) if len(mol.bondtype) > bidx else "1"
-            if sel_start <= a <= sel_end:
-                cross_bonds.append((a - sel_start, b, bt))
-            else:
-                cross_bonds.append((b - sel_start, a, bt))
-
-    # PDB inputs often arrive without explicit peptide / phosphodiester bonds
-    # (CONECT records cover only HET groups). Without them, the boundary
-    # atoms look free-standing and AddHs over-protonates them. Mirror the
-    # proximity check used by ``_has_peptide_neighbour`` in
-    # nonstandard_residues so a caller doesn't have to run ``mol.guessBonds``
-    # first.
-    sel_names = mol.name[selidx]
-    sel_elems = mol.element[selidx]
-
-    def _add_cross_by_proximity(local_idx, other_mask_full, threshold):
-        if local_idx in {li for li, _, _ in cross_bonds}:
-            return
-        own_pos = mol.coords[selidx[local_idx], :, mol.frame]
-        other_mask = other_mask_full.copy()
-        other_mask[selidx] = False
-        candidates = np.where(other_mask)[0]
-        if not len(candidates):
-            return
-        d = np.linalg.norm(
-            mol.coords[candidates, :, mol.frame] - own_pos, axis=1
-        )
-        within = d < threshold
-        if not within.any():
-            return
-        partner = int(candidates[np.argmin(np.where(within, d, np.inf))])
-        cross_bonds.append((local_idx, partner, "1"))
-
-    # Peptide N-C bonds (~1.33 A, threshold 1.6 A)
-    if {"N", "CA", "C"}.issubset(sel_names):
-        for own_side, other_name in (("N", "C"), ("C", "N")):
-            hits = np.where(sel_names == own_side)[0]
-            if len(hits):
-                _add_cross_by_proximity(
-                    int(hits[0]), mol.name == other_name, threshold=1.6
-                )
-
-    # Nucleic acid phosphodiester P-O3' bonds (~1.6 A, threshold 1.8 A).
-    # Two directions: (1) own P to external O3' of previous residue,
-    # (2) own O3' to external P of next residue. The O3' check also runs for
-    # 5'-terminal residues that lack their own P but still bond to next.
-    if "P" in sel_elems:
-        for own_p_idx in np.where(sel_elems == "P")[0]:
-            _add_cross_by_proximity(
-                int(own_p_idx), mol.element == "O", threshold=1.8
-            )
-    for own_o3_idx in np.where(sel_names == "O3'")[0]:
-        _add_cross_by_proximity(
-            int(own_o3_idx), mol.element == "P", threshold=1.8
-        )
+    cross_bonds, sel_start, sel_end = _detect_cross_residue_bonds(mol, selidx)
 
     residue = mol.copy(sel=selidx)
     if guessBonds:
@@ -596,136 +746,176 @@ def template_residue_from_smiles(
                 "mol.guessBonds() before templating, or rely on LINK/CONECT records)."
             )
 
-    # Transfer the formal charge, bonds and bond orders from rmol_smi to rmol
-    for i, j in zip(at1, at2):
-        fch = rmol_smi.GetAtomWithIdx(j).GetFormalCharge()
-        rmol.GetAtomWithIdx(i).SetFormalCharge(fch)
+    _apply_template_mapping(
+        mol,
+        selidx,
+        sel_start,
+        sel_end,
+        residue,
+        rmol,
+        rmol_smi,
+        at1,
+        at2,
+        atom_mapping,
+        cross_bonds,
+        addHs,
+        onlyOnAtoms,
+        _logger,
+    )
 
-    # The SMILES drives every matched bond's type, including DATIVE arrows
-    # the user wrote (e.g. [N]->[Fe]). Those round-trip through
-    # fromRDKitMol as "mc" in the output Molecule.
-    for bond in rmol_smi.GetBonds():
-        i = atom_mapping[bond.GetBeginAtomIdx()]
-        j = atom_mapping[bond.GetEndAtomIdx()]
-        rbond = rmol.GetBondBetweenAtoms(i, j)
-        if rbond is None:
-            raise RuntimeError(f"Bond between atoms {i} and {j} not found in residue")
-        rbond.SetBondType(bond.GetBondType())
 
-    # For atoms that are covalently bonded to other residues, the SMILES
-    # template assumes those bonds are hydrogens. Reduce the explicit H
-    # count on each boundary atom by the order of its external bonds so
-    # that AddHs doesn't over-protonate. Bonds whose external partner is
-    # a metal element are tracked separately: coordinating an -SH /
-    # -OH / -COOH to a metal is chemically a deprotonation, not just a
-    # bond swap, so the donor's formal charge is reduced by one per
-    # metal-bond order to keep the residue's net charge correct.
-    rmol_to_smi = dict(zip(at1, at2))
-    boundary_ext_order = {}
-    boundary_metal_order = {}
-    for local_idx, ext_global_idx, bt in cross_bonds:
-        order = _bondtype_order.get(bt, 1)
-        boundary_ext_order[local_idx] = boundary_ext_order.get(local_idx, 0) + order
-        if str(mol.element[ext_global_idx]) in _METAL_ELEMENTS:
-            boundary_metal_order[local_idx] = (
-                boundary_metal_order.get(local_idx, 0) + order
+def template_residue_from_molecule(
+    mol: Molecule,
+    sel,
+    refmol: Molecule,
+    addHs: bool = False,
+    onlyOnAtoms=None,
+    guessBonds: bool = False,
+    _logger: bool = True,
+):
+    """Assign bonds, bond orders, formal charges and (optionally) hydrogens to a
+    residue from a reference :class:`Molecule` template, matched by atom name.
+
+    Mirrors :func:`template_residue_from_smiles` but the template source is a
+    reference Molecule (e.g. ``Molecule("LIG.cif")``) that already carries
+    ``bonds``, ``bondtype`` and ``formalcharge``. Heavy atoms of the selected
+    residue are mapped onto the reference by NAME (not MCS); bond orders and
+    formal charges are transferred through that mapping. The reference is used
+    only as a template and is never appended to ``mol``. ``mol`` is mutated in
+    place.
+
+    The residue and the reference must have the same set of heavy-atom names.
+
+    Raises
+    ------
+    RuntimeError
+        If the selection is empty/gapped/multi-residue, has no bonds, the
+        reference has duplicate heavy-atom names, or the residue and reference
+        heavy-atom names do not match.
+    """
+    from rdkit import Chem
+    import numpy as np
+
+    selidx = mol.atomselect(sel, indexes=True)
+    if len(selidx) == 0:
+        raise RuntimeError(f"Selection {sel!r} matched no atoms; nothing to template.")
+
+    # Multi-residue dispatch: template each copy individually (indexes are
+    # snapshotted because templating mutates mol). Mirrors the SMILES variant.
+    keys = list(
+        dict.fromkeys(
+            zip(
+                mol.resid[selidx],
+                mol.insertion[selidx],
+                mol.chain[selidx],
+                mol.segid[selidx],
             )
+        )
+    )
+    if len(keys) > 1:
+        for resid, insertion, chain, segid in keys:
+            mask = (
+                (mol.resid == resid)
+                & (mol.insertion == insertion)
+                & (mol.chain == chain)
+                & (mol.segid == segid)
+            )
+            template_residue_from_molecule(
+                mol,
+                mask,
+                refmol,
+                addHs=addHs,
+                onlyOnAtoms=onlyOnAtoms,
+                guessBonds=guessBonds,
+                _logger=_logger,
+            )
+        return
+    if not np.all(np.diff(selidx) == 1):
+        raise RuntimeError(
+            "The selection contains gaps in the atom indexes. Please select a single molecule residue only."
+        )
 
-    # Protonate the residue according to the SMILES template
-    if addHs:
-        if onlyOnAtoms is not None:
-            onlyOnAtoms = residue.atomselect(onlyOnAtoms, indexes=True).tolist()
+    cross_bonds, sel_start, sel_end = _detect_cross_residue_bonds(mol, selidx)
 
-        # Don't sanitize to not lose bond orders
-        rmol = Chem.RemoveHs(rmol, sanitize=True)
+    residue = mol.copy(sel=selidx)
+    if guessBonds:
+        residue.guessBonds()
+    for field in ("resname", "chain", "segid", "resid", "insertion"):
+        if len(set(getattr(residue, field))) != 1:
+            raise RuntimeError(
+                f"The selection contains multiple {field}s. Please select a single molecule residue only."
+            )
+    if len(residue.bonds) == 0:
+        raise RuntimeError(
+            "The selection contains no bonds. Please set the bonds of the residue or guess them with guessBonds=True"
+        )
 
-        # Boundary H counts must be set AFTER RemoveHs: RemoveHs increments
-        # NumExplicitHs by the number of removed H neighbors, so applying
-        # this before would double-count (one for the boundary subtraction
-        # and one for the existing H atom on the boundary heavy atom that
-        # RemoveHs is about to strip).
-        for local_idx, ext_order in boundary_ext_order.items():
-            if local_idx not in rmol_to_smi:
-                continue
-            smi_atom = rmol_smi.GetAtomWithIdx(rmol_to_smi[local_idx])
-            smi_hs = int(smi_atom.GetTotalNumHs())
-            target_hs = max(0, smi_hs - int(ext_order))
-            atom = rmol.GetAtomWithIdx(local_idx)
-            atom.SetNumExplicitHs(target_hs)
-            atom.SetNoImplicit(True)
-            # Metal-bonded boundary atoms have their H removal modelled as a
-            # deprotonation (donor keeps the bonding electrons, H leaves as
-            # H+); the donor's formal charge picks up -1 per metal-bond
-            # order, capped by how many Hs were actually stripped (so a
-            # SMILES that already encodes [S-]/[O-] etc. is not double-
-            # counted).
-            metal_order = boundary_metal_order.get(local_idx, 0)
-            if metal_order:
-                hs_stripped = smi_hs - target_hs
-                delta = min(metal_order, hs_stripped)
-                if delta:
-                    atom.SetFormalCharge(atom.GetFormalCharge() - delta)
+    # Build the residue and reference RDKit mols. The residue keeps its Hs (the
+    # AddHs tail strips/re-adds them); the reference is reduced to heavy atoms so
+    # the name mapping is over heavy atoms only.
+    rmol = residue.toRDKitMol(
+        sanitize=False, kekulize=False, assignStereo=False, _logger=False
+    )
+    ref_rdkit = refmol.toRDKitMol(
+        sanitize=False, kekulize=False, assignStereo=False, _logger=False
+    )
+    ref_rdkit = Chem.RemoveAllHs(ref_rdkit)
+    Chem.Kekulize(ref_rdkit)
 
-        rmol = Chem.AddHs(rmol, addCoords=True, onlyOnAtoms=onlyOnAtoms)
-        Chem.Kekulize(rmol)  # Sanitization ruins kekulization
+    # Map residue heavy atoms onto the reference heavy atoms by NAME. RDKit atom
+    # order follows Molecule atom order, so the residue's i-th atom is rmol atom
+    # i, and the reference's k-th heavy atom is ref_rdkit atom k.
+    res_heavy_mask = residue.element != "H"
+    res_heavy_rdkit_idx = np.where(res_heavy_mask)[0]
+    res_heavy_names = residue.name[res_heavy_mask]
+    ref_heavy_names = refmol.name[refmol.element != "H"]
 
-    # Whatever DATIVE bonds the residue now carries — explicit dative
-    # arrows from the SMILES, plus anything RDKit's valence inference
-    # introduced inside RemoveHs / AddHs / Kekulize — is what we honour
-    # in the output. They round-trip through fromRDKitMol as "mc".
+    ref_name_to_idx = {}
+    for idx, nm in enumerate(ref_heavy_names):
+        if nm in ref_name_to_idx:
+            raise RuntimeError(
+                f"Reference template has duplicate atom name {nm!r}; atom-name "
+                "templating requires unique heavy-atom names."
+            )
+        ref_name_to_idx[nm] = idx
 
-    new_residue = Molecule.fromRDKitMol(rmol)
-    new_residue.resid[:] = residue.resid[0]
-    new_residue.chain[:] = residue.chain[0]
-    new_residue.segid[:] = residue.segid[0]
-    new_residue.insertion[:] = residue.insertion[0]
+    at1, at2 = [], []  # rmol atom idx, ref_rdkit atom idx
+    for rdkit_idx, nm in zip(res_heavy_rdkit_idx, res_heavy_names):
+        if nm not in ref_name_to_idx:
+            raise RuntimeError(
+                f"Residue atom {nm!r} has no same-named atom in the reference "
+                "template; cannot map by name. Provide a matching reference or "
+                "use a SMILES template instead."
+            )
+        at1.append(int(rdkit_idx))
+        at2.append(ref_name_to_idx[nm])
 
-    # Restore per-atom metadata that doesn't round-trip through RDKit
-    # (beta, occupancy, record, altloc) by matching atoms back to the
-    # original residue by name. Atoms whose names didn't survive the
-    # roundtrip — newly-added Hs and any other atoms with non-unique
-    # names — keep the defaults from ``fromRDKitMol``.
-    orig_by_name = {}
-    for orig_idx, name in enumerate(residue.name):
-        if name in orig_by_name:
-            orig_by_name[name] = None  # ambiguous; skip
-        else:
-            orig_by_name[name] = orig_idx
-    for new_idx, name in enumerate(new_residue.name):
-        orig_idx = orig_by_name.get(name)
-        if orig_idx is None:
-            continue
-        for field in ("beta", "occupancy", "record", "altloc"):
-            getattr(new_residue, field)[new_idx] = getattr(residue, field)[orig_idx]
+    if len(at2) != len(ref_heavy_names):
+        extra = sorted(set(ref_heavy_names) - set(res_heavy_names))
+        raise RuntimeError(
+            f"The reference template has heavy atoms not present in the residue: "
+            f"{extra}. Atom-name templating requires the reference and residue to "
+            "have the same heavy-atom names."
+        )
 
-    # If the residue is the entire molecule, ``mol.remove`` empties it
-    # and the subsequent ``mol.insert`` adopts ``new_residue``'s
-    # zero-initialised ``box`` / ``boxangles`` arrays. Snapshot them so
-    # we can restore the simulation cell after the round-trip.
-    saved_box = mol.box.copy() if mol.box is not None else None
-    saved_boxangles = mol.boxangles.copy() if mol.boxangles is not None else None
+    atom_mapping = {j: i for i, j in zip(at1, at2)}
 
-    mol.remove(selidx, _logger=False)
-    mol.insert(new_residue, selidx[0])
-
-    if saved_box is not None and np.any(saved_box):
-        mol.box = saved_box
-    if saved_boxangles is not None and np.any(saved_boxangles):
-        mol.boxangles = saved_boxangles
-
-    # Restore the inter-residue bonds. Atoms originally past the residue
-    # were shifted by (new_residue.numAtoms - len(selidx)) due to the
-    # remove/insert sequence; atoms before the residue are unchanged.
-    if cross_bonds:
-        shift = new_residue.numAtoms - len(selidx)
-        for local_idx, ext_global_idx, bt in cross_bonds:
-            if ext_global_idx < sel_start:
-                new_ext = ext_global_idx
-            elif ext_global_idx > sel_end:
-                new_ext = ext_global_idx + shift
-            else:
-                continue
-            mol.addBond(sel_start + local_idx, new_ext, bt)
+    _apply_template_mapping(
+        mol,
+        selidx,
+        sel_start,
+        sel_end,
+        residue,
+        rmol,
+        ref_rdkit,
+        at1,
+        at2,
+        atom_mapping,
+        cross_bonds,
+        addHs,
+        onlyOnAtoms,
+        _logger,
+    )
 
 
 def extend_residue_from_smiles(

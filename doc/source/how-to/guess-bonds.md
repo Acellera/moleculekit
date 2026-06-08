@@ -29,7 +29,7 @@ assert mol.bonds.shape[0] > 0, "No bonds guessed — check coordinates and eleme
 
 ## Gotchas
 
-- `mol.guessBonds()` does not infer bond orders; every entry in `mol.bondtype` is `"un"` (unknown). When bond orders matter (e.g. for {py:meth}`~moleculekit.molecule.Molecule.toRDKitMol` conversion or SMILES output), template the relevant residues from SMILES with {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromSmiles` instead.
+- `mol.guessBonds()` does not infer bond orders; every entry in `mol.bondtype` is `"un"` (unknown). When bond orders matter (e.g. for {py:meth}`~moleculekit.molecule.Molecule.toRDKitMol` conversion or SMILES output), template the relevant residues from SMILES with {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromSmiles` instead, or from a reference {py:class}`~moleculekit.molecule.Molecule` (e.g. a CIF carrying correct bond orders and formal charges) with {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromMolecule`.
 - Very close non-bonded atoms (e.g. crystal contacts, stacking interactions) can be incorrectly identified as bonded.
 - **Do not assign `mol.bonds = guess_bonds(mol)` directly.** Always use `mol.guessBonds()`, which updates `mol.bonds` and `mol.bondtype` together. See [The Molecule data model: Bonds](../explanation/molecule-data-model.md#bonds-bonds-and-bondtype) for why the two arrays must stay in lockstep.
 
