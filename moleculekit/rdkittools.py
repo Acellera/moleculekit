@@ -786,6 +786,30 @@ def template_residue_from_molecule(
 
     The residue and the reference must have the same set of heavy-atom names.
 
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule containing the residue(s) to template. Mutated in place.
+    sel : str or numpy.ndarray
+        VMD-style atom selection or boolean mask. May span multiple residues
+        with the same chemistry; each residue is templated in sequence with the
+        same reference.
+    refmol : Molecule
+        Reference Molecule used as the template. Must carry ``bonds``,
+        ``bondtype`` and ``formalcharge``, and have unique heavy-atom names
+        matching the residue.
+    addHs : bool
+        If True, add hydrogens after bond orders are transferred. Boundary atoms
+        (those involved in cross-residue covalent bonds) have their explicit H
+        count reduced by the order of the external bond so they are not
+        over-protonated.
+    onlyOnAtoms : str or numpy.ndarray
+        VMD-style selection or boolean mask within the residue restricting which
+        heavy atoms get hydrogens added. Only used when ``addHs=True``.
+    guessBonds : bool
+        If True, run distance-based bond guessing on the residue before
+        templating. Use when ``mol.bonds`` is empty.
+
     Raises
     ------
     RuntimeError
