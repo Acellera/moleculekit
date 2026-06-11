@@ -3113,17 +3113,24 @@ class Molecule(object):
         _logger=True,
     ):
         """Assign bonds, bond orders, formal charges and (optionally) hydrogens
-        to a residue from a reference Molecule template, matched by atom name.
+        to a residue from a reference Molecule template.
 
         Like :meth:`templateResidueFromSmiles`, but the template is a reference
         Molecule (e.g. loaded from a CIF) that already carries bonds, bond
-        orders and formal charges. The selected residue's heavy atoms are
-        mapped onto the reference by NAME and the reference's bond orders and
-        formal charges are transferred verbatim, so they must already be
-        correct in the reference (this function does not re-derive them). The
-        reference is used only as a template and is never appended. The
-        molecule is mutated in place. The residue and reference must share the
-        same set of heavy-atom names.
+        orders and formal charges. When the reference's heavy-atom names are
+        unique and equal to the residue's, the atoms are mapped by NAME and the
+        reference's bond orders and formal charges are transferred verbatim
+        (ideal for CIF references: unambiguous under molecular symmetry). When
+        the names do not match (for example a reference read from an SDF file,
+        whose atom names are only element symbols), the reference is converted
+        to a SMILES and matched by element and connectivity instead; for a
+        symmetric residue this can place a charge or double bond on an
+        equivalent atom differently while giving the same molecule. Either way
+        the reference is used only as a template and is never appended, and the
+        molecule is mutated in place. The reference must describe the same
+        residue: it may carry extra terminal atoms (such as a free amino acid's
+        OXT or a covalent leaving group), which are stripped, but a reference
+        missing heavy atoms of the residue raises.
 
         Parameters
         ----------
@@ -3132,9 +3139,9 @@ class Molecule(object):
             of the residue(s) to template. May span multiple copies.
         refmol : Molecule
             The reference template. Its bonds, bond orders and formal charges
-            are copied onto the residue verbatim, so they must already be
-            correct; heavy-atom names must be unique and must match the
-            residue's.
+            must already be correct. When its heavy-atom names are unique and
+            match the residue's they are used directly; otherwise it is matched
+            by SMILES, so unnamed references (e.g. from SDF) are supported.
         addHs : bool
             If True, add hydrogens after bond orders are transferred.
         onlyOnAtoms : str or np.ndarray
@@ -3145,7 +3152,7 @@ class Molecule(object):
         Examples
         --------
         >>> mol = Molecule("complex.pdb")  # doctest: +SKIP
-        >>> mol.templateResidueFromMolecule("resname LIG", Molecule("LIG.cif"), addHs=True, guessBonds=True)
+        >>> mol.templateResidueFromMolecule("resname LIG", Molecule("LIG.cif"), addHs=True, guessBonds=True)  # doctest: +SKIP
         """
         from moleculekit.rdkittools import template_residue_from_molecule
 

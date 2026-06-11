@@ -746,6 +746,23 @@ def template_residue_from_smiles(
                 "mol.guessBonds() before templating, or rely on LINK/CONECT records)."
             )
 
+    # Every residue heavy atom must be covered by the match. The check above
+    # handles a template that is a superset of the residue (extra template
+    # atoms are stripped); this handles the opposite case, an incomplete
+    # template that would leave a residue heavy atom with its guessed bonds.
+    # Erroring here keeps a reference missing heavy atoms (routed in from
+    # template_residue_from_molecule) from producing structurally wrong output.
+    res_heavy_idx = [a.GetIdx() for a in rmol.GetAtoms() if a.GetSymbol() != "H"]
+    unmatched_res = sorted(set(res_heavy_idx) - set(at1))
+    if unmatched_res:
+        unmatched_names = [str(residue.name[i]) for i in unmatched_res]
+        raise RuntimeError(
+            f"The SMILES template '{smiles}' does not cover all heavy atoms of "
+            f"the residue; unmatched residue atoms: {unmatched_names}. The "
+            "template must describe the same residue (it may carry extra "
+            "terminal atoms, but must not be missing any)."
+        )
+
     _apply_template_mapping(
         mol,
         selidx,
@@ -858,6 +875,42 @@ def template_residue_from_molecule(
         raise RuntimeError(
             "The selection contains gaps in the atom indexes. Please select a single molecule residue only."
         )
+
+    # Decide the matching strategy for this single residue. Verbatim name
+    # matching is only viable when both sides have unique heavy-atom names and
+    # the name sets are equal (e.g. a CIF reference); it is unambiguous under
+    # molecular symmetry. Otherwise (e.g. an SDF reference, whose atom names are
+    # only element symbols) convert the reference to a SMILES and match by
+    # element and connectivity through the SMILES path.
+    res_heavy_names = mol.name[selidx][mol.element[selidx] != "H"]
+    ref_heavy_names = refmol.name[refmol.element != "H"]
+    name_match_viable = (
+        len(set(res_heavy_names)) == len(res_heavy_names)
+        and len(set(ref_heavy_names)) == len(ref_heavy_names)
+        and set(res_heavy_names) == set(ref_heavy_names)
+    )
+    if not name_match_viable:
+        ref_rdkit = refmol.toRDKitMol(
+            sanitize=True, kekulize=False, assignStereo=False, _logger=False
+        )
+        smiles = Chem.MolToSmiles(ref_rdkit)
+        if _logger:
+            logger.info(
+                "Reference atom names do not match the residue (e.g. an SDF "
+                "reference); matching by SMILES instead. Reference SMILES: "
+                f"{smiles!r}"
+            )
+        template_residue_from_smiles(
+            mol,
+            selidx,
+            smiles,
+            sanitizeSmiles=True,
+            addHs=addHs,
+            onlyOnAtoms=onlyOnAtoms,
+            guessBonds=guessBonds,
+            _logger=_logger,
+        )
+        return
 
     cross_bonds, sel_start, sel_end = _detect_cross_residue_bonds(mol, selidx)
 

@@ -106,6 +106,50 @@ def test_templateResidueFromMolecule():
         )
 
 
+def test_templateResidueFromMolecule_sdf_reference(tmp_path):
+    """A reference Molecule without matching atom names (e.g. read from an SDF
+    file, whose atom names are only element symbols) is matched by converting it
+    to SMILES and using MCS, giving the same result as the name-matched path."""
+    import numpy as np
+
+    testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
+    ref_named = Molecule(os.path.join(testdir, "BEN_pH7.4.cif"))
+
+    # Round-trip the reference through SDF. SDF keeps bonds, bond orders and
+    # formal charges but assigns element-only atom names, so name matching is no
+    # longer viable and the SMILES route is taken.
+    sdf_path = os.path.join(tmp_path, "ref.sdf")
+    ref_named.write(sdf_path)
+    ref_sdf = Molecule(sdf_path)
+    # The SDF reference's names are not unique (element symbols repeat), so the
+    # name path cannot apply and the SMILES route must be exercised.
+    assert len(np.unique(ref_sdf.name)) < ref_sdf.numAtoms
+
+    mol = Molecule(os.path.join(testdir, "BEN.pdb"))
+    mol.templateResidueFromMolecule(
+        "resname BEN", ref_sdf, addHs=True, guessBonds=True
+    )
+
+    # The SMILES / MCS path is symmetry-tolerant: benzamidine's two amidine
+    # nitrogens are interchangeable, so which one carries the +1 and the double
+    # bond can differ from the name-matched reference by a resonance swap. It is
+    # the same molecule, so compare by canonical SMILES (invariant under that
+    # automorphism) plus atom count, composition and net charge.
+    from rdkit import Chem
+
+    def _canonical(m):
+        rd = m.toRDKitMol(
+            sanitize=True, kekulize=False, assignStereo=False, _logger=False
+        )
+        return Chem.MolToSmiles(Chem.RemoveHs(rd))
+
+    ben = mol.copy(sel="resname BEN")
+    assert ben.numAtoms == ref_named.numAtoms
+    assert sorted(ben.element) == sorted(ref_named.element)
+    assert int(ben.formalcharge.sum()) == int(ref_named.formalcharge.sum())
+    assert _canonical(ben) == _canonical(ref_named)
+
+
 def test_templateResidueFromSmiles_multiresidue():
     """A selection that spans multiple residues with the same resname
     (e.g. ``resname BEN`` when there are several BEN copies in the
@@ -197,6 +241,16 @@ def test_templateResidueFromSmiles_incorrect_smiles():
     assert ben.numBonds == 9
     assert np.all(ben.formalcharge == 0)
     assert "2" in ben.bondtype
+
+
+def test_templateResidueFromSmiles_incomplete_template_errors():
+    """A SMILES that does not cover every residue heavy atom must raise rather
+    than silently leaving atoms untemplated. Benzene matches only BEN's ring,
+    leaving the amidine C and two N atoms unmatched."""
+    testdir = os.path.join(curr_dir, "test_molecule", "test_templating")
+    mol = Molecule(os.path.join(testdir, "BEN.pdb"))
+    with pytest.raises(RuntimeError):
+        mol.templateResidueFromSmiles("resname BEN", "c1ccccc1", guessBonds=True)
 
 
 @pytest.mark.parametrize(
