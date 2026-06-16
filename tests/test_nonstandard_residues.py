@@ -971,6 +971,80 @@ def test_bonds_to_waters_are_ignored():
     assert specs == []
 
 
+def test_guessed_backbone_anchor_is_ignored():
+    """A bond *guessed* from coordinates that lands on a canonical AA's
+    backbone O (an atom that never forms a real crosslink) must be treated
+    as a spurious close contact and ignored, not raised on. This is the
+    common modelled-structure case: no input bonds, slightly-off geometry."""
+    mol = Molecule().empty(5)
+    # ASN backbone N-CA-C-O, plus a free LIG atom placed ~1.2 A from ASN's O.
+    mol.name[:] = ["N", "CA", "C", "O", "C1"]
+    mol.element[:] = ["N", "C", "C", "O", "C"]
+    mol.resname[:] = ["ASN", "ASN", "ASN", "ASN", "LIG"]
+    mol.resid[:] = [1, 1, 1, 1, 2]
+    mol.chain[:] = "A"
+    mol.segid[:] = "A"
+    mol.insertion[:] = ""
+    coords = np.array(
+        [
+            [0.0, 0.0, 0.0],  # N
+            [1.5, 0.0, 0.0],  # CA
+            [2.0, 1.3, 0.0],  # C
+            [3.2, 1.3, 0.0],  # O  (C-O ~1.2)
+            [4.4, 1.3, 0.0],  # C1 (O-C1 ~1.2 -> guessed bond to backbone O)
+        ],
+        dtype=np.float32,
+    )
+    mol.coords = coords.reshape(5, 3, 1)
+    # No mol.bonds: the detector guesses them, and the only inter-residue
+    # contact is the spurious ASN-O <-> LIG-C1 one.
+
+    specs = detectNonStandardResidues(mol)
+
+    # ASN is left alone (no ChainResidueSpec); LIG stays a free ligand.
+    assert not any(isinstance(s, ChainResidueSpec) for s in specs)
+    assert [type(s) for s in specs] == [LigandSpec]
+    assert specs[0].resname == "LIG"
+
+
+def test_guess_bonds_false_skips_guessing():
+    """guess_bonds=False must skip distance-based bond guessing entirely:
+    a bondless input whose geometry would otherwise guess a sidechain
+    crosslink at an unknown anchor raises by default, but not when guessing
+    is disabled."""
+    import pytest
+
+    # MET-SD ~1.2 A from a free LIG atom; SD is a sidechain atom with no
+    # ANCHOR_TABLE entry, so a guessed SD bond is a genuine "unknown anchor".
+    mol = Molecule().empty(3)
+    mol.name[:] = ["CA", "SD", "C1"]
+    mol.element[:] = ["C", "S", "C"]
+    mol.resname[:] = ["MET", "MET", "LIG"]
+    mol.resid[:] = [1, 1, 2]
+    mol.chain[:] = "A"
+    mol.segid[:] = "A"
+    mol.insertion[:] = ""
+    coords = np.array(
+        [
+            [0.0, 0.0, 0.0],  # CA
+            [1.81, 0.0, 0.0],  # SD (CA-SD ~1.81)
+            [3.0, 0.0, 0.0],  # C1 (SD-C1 ~1.19 -> guessed bond to MET SD)
+        ],
+        dtype=np.float32,
+    )
+    mol.coords = coords.reshape(3, 3, 1)
+
+    # Default guesses the SD bond and rejects the unknown anchor; the message
+    # makes clear the bonds were guessed.
+    with pytest.raises(RuntimeError, match=r"MET.*SD.*guess"):
+        detectNonStandardResidues(mol)
+
+    # With guessing disabled there are no bonds, so no crosslink is seen.
+    specs = detectNonStandardResidues(mol, guess_bonds=False)
+    assert not any(isinstance(s, ChainResidueSpec) for s in specs)
+    assert [type(s) for s in specs] == [LigandSpec]
+
+
 def test_template_renamed_canonical_residues_5vbl():
     """Calling _template_renamed_canonical_residues on 5VBL specs
     renames GLU 10 to XX#, LYS 13 to XX#, drops OE2 on GLU, places

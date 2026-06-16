@@ -1279,6 +1279,7 @@ def systemPrepare(
     titrate: list | None = None,
     detect_specs: list | None = None,
     restore_missing_sidechains: bool = False,
+    guess_bonds: bool = True,
 ):
     """Prepare a molecular system by adding hydrogens, assigning protonation
     states, and optimizing the H-bond network.
@@ -1405,6 +1406,13 @@ def systemPrepare(
         are reconstructed using the Dunbrack rotamer library before
         PDB2PQR runs, so PDB2PQR's 10 %-missing-atom threshold does not
         reject the structure on a partial input. Default False.
+    guess_bonds : bool, optional
+        Forwarded to :func:`detectNonStandardResidues` when ``detect_specs``
+        is None. When the input molecule has no bonds, controls whether they
+        are guessed from atom coordinates to find crosslinks. Set to False to
+        rely only on explicit input bonds, avoiding spurious crosslinks from
+        slightly-off modelled geometry. Ignored when ``detect_specs`` is
+        passed explicitly.
 
     Returns
     -------
@@ -1505,7 +1513,7 @@ def systemPrepare(
         from moleculekit.tools.nonstandard_residues import (
             detectNonStandardResidues,
         )
-        detect_specs = detectNonStandardResidues(mol_in)
+        detect_specs = detectNonStandardResidues(mol_in, guess_bonds=guess_bonds)
 
     # Restore canonical residues whose entire sidechain is missing
     # using moleculekit's Dunbrack-rotamer mutator, so PDB2PQR's

@@ -177,8 +177,13 @@ def canonical_anchor_smiles(resname, atom_name):
     entry = lookup_anchor(resname, atom_name)
     if entry is None:
         raise ValueError(
-            f"Unsupported canonical-sidechain crosslink anchor "
-            f"{resname}-{atom_name}. Add it to "
+            f"Found an unrecognized bond at {resname} atom {atom_name}. This "
+            f"is most often a mistake in the input bonds (a spurious or "
+            f"misassigned CONECT / LINK / _struct_conn record), or a bond "
+            f"guessed from slightly-off coordinates; please check that this "
+            f"bond is real. If it is correct, this sidechain chemistry is not "
+            f"yet supported: please contact the developers to add the "
+            f"{resname}-{atom_name} anchor to "
             f"moleculekit.tools._anchor_variants.ANCHOR_TABLE."
         )
     variant = entry["smiles_variant"]

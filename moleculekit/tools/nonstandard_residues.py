@@ -174,6 +174,17 @@ with open(os.path.join(__share_dir, "atomselect", "atomselect.json")) as _f:
 _CAP_RESNAMES = {"ACE", "NME", "NHE", "NH2"}
 
 
+# Backbone atoms of a canonical amino acid that never form a real
+# inter-residue crosslink. A non-peptide bond landing on one of these is
+# treated as a guessed-bond artifact (a spurious close contact from
+# slightly-off coordinates) and ignored, but only when the bonds were
+# guessed: explicit input bonds (CONECT / _struct_conn) are always trusted.
+# ``C`` and ``N`` are intentionally excluded: a backbone C forms real
+# isopeptide bonds (e.g. ubiquitin's C-terminal Gly to a target Lys NZ) and
+# a backbone N can be acylated or cyclized.
+_BACKBONE_NONANCHOR_ATOMS = {"O", "CA"}
+
+
 def _canonical_resnames():
     names = set(PROTEIN_RESIDUE_NAMES)
     names |= set(NUCLEIC_RESIDUE_NAMES)
@@ -220,14 +231,18 @@ def _residue_groups(mol):
     return a2r, residues, atom_idxs
 
 
-def _ensure_bonds(mol):
-    """Return ``mol.bonds`` if populated, otherwise fall back to distance-
-    based bond guessing. Does not mutate ``mol``."""
+def _ensure_bonds(mol, guess=True):
+    """Return ``mol.bonds`` if populated. Otherwise fall back to distance-
+    based bond guessing when ``guess`` is True, or an empty bond array when
+    it is False. Does not mutate ``mol``."""
     if len(mol.bonds):
         return mol.bonds
+    if not guess:
+        return np.zeros((0, 2), dtype=np.int64)
     logger.warning(
         "Molecule has no bonds; falling back to distance-based bond guessing "
-        "for non-standard residue detection."
+        "for non-standard residue detection. Pass guess_bonds=False to skip "
+        "this and rely only on explicit input bonds."
     )
     bonds = mol._guessBonds(rdkit=False)
     return np.asarray(bonds, dtype=np.int64)
@@ -338,7 +353,7 @@ def _disambiguate_terminus_resnames(specs):
 # ---------------------------------------------------------------------------
 
 
-def detectNonStandardResidues(mol):
+def detectNonStandardResidues(mol, guess_bonds=True):
     """Walk ``mol`` and emit one spec per residue that needs special
     handling by a downstream parameterizer / builder.
 
@@ -408,9 +423,19 @@ def detectNonStandardResidues(mol):
         Input molecule. Should already carry covalent bonds (read from a
         PDB ``CONECT`` block, a CIF ``_struct_conn`` block, or set up via
         :meth:`Molecule.templateResidueFromSmiles`). If ``mol.bonds`` is
-        empty, the detector falls back to distance-based bond guessing
-        via ``mol._guessBonds()`` and logs a warning. The molecule is
-        not mutated.
+        empty and ``guess_bonds`` is True, the detector falls back to
+        distance-based bond guessing via ``mol._guessBonds()`` and logs a
+        warning. The molecule is not mutated.
+    guess_bonds : bool
+        When ``mol.bonds`` is empty, guess bonds from atom coordinates so
+        crosslinks (disulfides, glycosidic bonds, ...) can still be found.
+        Set to False to skip guessing and rely only on explicit input
+        bonds: useful for modelled structures whose slightly-off geometry
+        produces spurious close contacts that would otherwise be flagged as
+        bonds. When guessing is on, non-peptide bonds landing on a canonical
+        amino acid's backbone ``O`` / ``CA`` (atoms that never form a real
+        crosslink) are treated as guessing artifacts and ignored; explicit
+        input bonds are always trusted.
 
     Returns
     -------
@@ -455,7 +480,8 @@ def detectNonStandardResidues(mol):
 
     >>> pmol, specs, df = systemPrepare(mol, return_details=True)  # doctest: +SKIP
     """
-    bonds = _ensure_bonds(mol)
+    bonds_guessed = guess_bonds and len(mol.bonds) == 0
+    bonds = _ensure_bonds(mol, guess=guess_bonds)
     a2r, residues, atom_idxs = _residue_groups(mol)
     n_res = len(residues)
 
@@ -503,8 +529,23 @@ def detectNonStandardResidues(mol):
                 peptide_attached_c[r1] = True
                 peptide_attached_n[r2] = True
         else:
-            nonpep_partners[r1].add((r2, n1))
-            nonpep_partners[r2].add((r1, n2))
+            # Drop guessed-bond artifacts that land on a canonical amino
+            # acid's backbone O / CA (atoms that never form a real
+            # crosslink); a slightly-off modelled structure otherwise yields
+            # spurious close contacts here. Explicit input bonds are trusted.
+            spurious = bonds_guessed and (
+                (
+                    residues[r1].resname in PROTEIN_RESNAMES
+                    and n1 in _BACKBONE_NONANCHOR_ATOMS
+                )
+                or (
+                    residues[r2].resname in PROTEIN_RESNAMES
+                    and n2 in _BACKBONE_NONANCHOR_ATOMS
+                )
+            )
+            if not spurious:
+                nonpep_partners[r1].add((r2, n1))
+                nonpep_partners[r2].add((r1, n2))
 
     # Distance fallback: residues with a backbone N or C atom but no
     # explicit peptide bond on that side may still be chain-resident.
@@ -560,11 +601,28 @@ def detectNonStandardResidues(mol):
 
         # Validate the anchor against ANCHOR_TABLE.
         if lookup_anchor(residue.resname, anchor_atom) is None:
+            if bonds_guessed:
+                cause = (
+                    "The molecule had no bonds, so they were guessed from "
+                    "atom coordinates; this is most likely a spurious close "
+                    "contact from slightly-off geometry (common with modelled "
+                    "structures) rather than a real bond. Provide explicit "
+                    "bonds (CONECT / _struct_conn records), or pass "
+                    "guess_bonds=False to skip bond guessing."
+                )
+            else:
+                cause = (
+                    "This is most often a mistake in the input bonds (a "
+                    "spurious or misassigned CONECT / LINK / _struct_conn "
+                    "record); please check that this bond is real."
+                )
             raise RuntimeError(
-                f"Unsupported canonical-sidechain crosslink anchor "
-                f"{residue.resname}-{anchor_atom} on residue "
-                f"{residue.chain}:{residue.resid}{residue.insertion} "
-                f"bonded to {partner_resname}. Add it to "
+                f"Found an unrecognized bond between {residue.resname} "
+                f"{residue.chain}:{residue.resid}{residue.insertion} atom "
+                f"{anchor_atom} and {partner_resname}. {cause} If the bond is "
+                f"correct, this sidechain chemistry is not yet supported: "
+                f"please contact the developers to add the "
+                f"{residue.resname}-{anchor_atom} anchor to "
                 f"moleculekit.tools._anchor_variants.ANCHOR_TABLE."
             )
 
