@@ -495,17 +495,6 @@ def detectNonStandardResidues(mol, guess_bonds=True):
     """
     bonds_guessed = guess_bonds and len(mol.bonds) == 0
     bonds = _ensure_bonds(mol, guess=guess_bonds)
-    # Bond types aligned with ``bonds``. Only meaningful when the bonds came
-    # straight from the input (``mol.bonds``); distance-guessed bonds carry no
-    # type, so fall back to None and rely on the resname check below.
-    if (
-        not bonds_guessed
-        and mol.bondtype is not None
-        and len(mol.bondtype) == len(bonds)
-    ):
-        bondtypes = [str(bt).lower() for bt in mol.bondtype]
-    else:
-        bondtypes = None
     a2r, residues, atom_idxs = _residue_groups(mol)
     n_res = len(residues)
 
