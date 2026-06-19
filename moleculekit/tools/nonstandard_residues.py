@@ -509,7 +509,7 @@ def detectNonStandardResidues(mol, guess_bonds=True):
     has_peptide_bond = [False] * n_res
 
     seen_bonds = set()
-    for i, (a1, a2) in enumerate(bonds):
+    for a1, a2 in bonds:
         a1, a2 = int(a1), int(a2)
         bond_key = (a1, a2) if a1 < a2 else (a2, a1)
         if bond_key in seen_bonds:
@@ -518,26 +518,23 @@ def detectNonStandardResidues(mol, guess_bonds=True):
         r1, r2 = int(a2r[a1]), int(a2r[a2])
         if r1 == r2 or r1 < 0 or r2 < 0:
             continue
-        # Metal-coordination bonds declared by the input (mmCIF
-        # ``_struct_conn`` "metalc" or a PDB LINK to a metal element, both
-        # read as bondtype "mc") are not covalent. This is the authoritative
-        # signal and covers metals regardless of resname (e.g. the Fe/Zn
-        # binuclear centre in calcineurin, where Fe coordinates Asp/His).
-        if bondtypes is not None and bondtypes[i] == "mc":
-            continue
-        # Resname fallback for inputs that carry no bond types (distance-
-        # guessed bonds, plain CONECT records). A bond touching one of these
-        # is coordination / spurious, not covalent:
+        # A bond touching one of these is coordination / spurious, not
+        # covalent, so skip it:
         #   * a free metal ion - by PDB convention its residue is named after
         #     the element symbol in uppercase (FE, ZN, CA, MN, ...), which is
         #     what ``_METAL_ION_RESNAMES`` holds. This is resname- not
         #     element-based on purpose: a metal that is a genuine atom of a
-        #     larger residue (an organometallic cofactor) keeps any real bond.
-        #   * a non-metal ion (halides such as CL / IOD) or water, which can
-        #     appear in LINK records (chelated inhibitors, water bridges) but
-        #     are never real covalent partners.
+        #     larger residue (an organometallic cofactor such as a HEM iron)
+        #     keeps any real bond, including a coordination that changes a
+        #     partner residue's protonation.
+        #   * a non-metal ion (halides such as CL / IOD) or a standalone ion
+        #     in ``_ION_RESNAMES``, or water - all of which can appear in
+        #     LINK / metal-coordination records (chelated inhibitors, water
+        #     bridges) but are never real covalent partners.
         # Skipping these keeps such partners classified as free ligands /
-        # ions rather than scaffolds.
+        # ions rather than scaffolds. The Zn/Fe centre in calcineurin (1M63)
+        # and the Ca2+ in 3PTB are skipped here; the HEM-Fe...Tyr coordination
+        # in 1u5u is intentionally not.
         if (
             residues[r1].resname in _METAL_ION_RESNAMES
             or residues[r2].resname in _METAL_ION_RESNAMES
