@@ -20,8 +20,11 @@ alanine = Molecule(os.path.join(__share_dir, "ALA.cif"))
 
 def _reorder_residue_atoms(mol, resid):
     # Reorder atoms. AMBER order is: N H CA HA [sidechain] C O
-    # the H atom will get added later
-    first_bbatoms = [_get_idx(mol, x, resid) for x in ["N", "CA", "HA"]]
+    # the H atom will get added later. HA2 / HA3 cover the glycine-like CH2
+    # alpha carbon (e.g. GLY, sarcosine).
+    first_bbatoms = [
+        _get_idx(mol, x, resid) for x in ["N", "CA", "HA", "HA2", "HA3"]
+    ]
     first_bbatoms = [x for x in first_bbatoms if x is not None]
     last_bbatoms = [_get_idx(mol, x, resid) for x in ["C", "O"]]
     last_bbatoms = [x for x in last_bbatoms if x is not None]
@@ -73,13 +76,25 @@ def _process_custom_residue(mol: Molecule, resid: int = None, align: bool = True
             f"Cannot prepare residues with elongated backbones. This backbone consists of atoms {' '.join(mol.name[sp])}"
         )
 
-    # Fix hydrogen names for CA / N
+    # Fix hydrogen names for CA / N. An sp3 alpha carbon has four bonds and
+    # must use two of them on the backbone N and C, so it carries at most two
+    # alpha hydrogens. Name them by count rather than assuming a single chiral
+    # HA: a glycine-like CA (no sidechain, e.g. GLY or the N-substituted
+    # glycine sarcosine) is a CH2 with two alpha hydrogens, which AMBER names
+    # HA2 / HA3. More than two means the backbone topology is broken.
     ca_idx = _get_idx(mol, "CA", resid)
     ca_hs = [nn for nn in gg.neighbors(ca_idx) if gg.nodes[nn]["element"] == "H"]
-    if len(ca_hs) > 1:
-        raise RuntimeError("Found more than 1 hydrogen on CA atom!")
     if len(ca_hs) == 1:
         mol.name[ca_hs[0]] = "HA"
+    elif len(ca_hs) == 2:
+        mol.name[ca_hs[0]] = "HA2"
+        mol.name[ca_hs[1]] = "HA3"
+    elif len(ca_hs) > 2:
+        raise RuntimeError(
+            f"CA atom of residue {resname} has {len(ca_hs)} hydrogens; a "
+            "backbone alpha carbon can carry at most two (glycine-like). The "
+            "input topology is probably wrong."
+        )
 
     # Remove all N terminal hydrogens
     gg = mol.toGraph()

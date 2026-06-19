@@ -48,6 +48,7 @@ from moleculekit.residues import (
     WATER_RESIDUE_NAMES,
 )
 from moleculekit.tools._anchor_variants import lookup_anchor
+from moleculekit.periodictable import METAL_ELEMENTS
 from moleculekit import __share_dir
 
 logger = logging.getLogger(__name__)
@@ -168,6 +169,13 @@ PerResidueSpec = Union[
 with open(os.path.join(__share_dir, "atomselect", "atomselect.json")) as _f:
     _ION_RESNAMES = set(json.load(_f).get("ion_resnames", []))
 
+# Free monatomic metal ions follow the PDB convention of naming the residue
+# after the element symbol in uppercase (FE, ZN, CA, MN, NI, ...). Used as a
+# resname-based fallback to recognise metal-coordination bonds on inputs that
+# carry no bond types; resname- not element-based so a metal that is a genuine
+# atom of a larger residue (an organometallic cofactor) is left untouched.
+_METAL_ION_RESNAMES = frozenset(e.upper() for e in METAL_ELEMENTS)
+
 
 # Standard peptide-terminus caps. AMBER ff14SB / ff19SB ship parameters for
 # these so they don't need user-driven parameterization.
@@ -193,6 +201,11 @@ def _canonical_resnames():
         names.update(rr.resname_variants)
     names |= WATER_RESIDUE_NAMES
     names |= _ION_RESNAMES
+    # Free monatomic metal ions (resname == element symbol, e.g. FE, NI) need
+    # no parameterization any more than the ions already in _ION_RESNAMES;
+    # without this they would fall through to a LigandSpec and antechamber
+    # would be asked to parameterize a bare metal atom.
+    names |= _METAL_ION_RESNAMES
     names |= _CAP_RESNAMES
     return names
 
@@ -482,6 +495,17 @@ def detectNonStandardResidues(mol, guess_bonds=True):
     """
     bonds_guessed = guess_bonds and len(mol.bonds) == 0
     bonds = _ensure_bonds(mol, guess=guess_bonds)
+    # Bond types aligned with ``bonds``. Only meaningful when the bonds came
+    # straight from the input (``mol.bonds``); distance-guessed bonds carry no
+    # type, so fall back to None and rely on the resname check below.
+    if (
+        not bonds_guessed
+        and mol.bondtype is not None
+        and len(mol.bondtype) == len(bonds)
+    ):
+        bondtypes = [str(bt).lower() for bt in mol.bondtype]
+    else:
+        bondtypes = None
     a2r, residues, atom_idxs = _residue_groups(mol)
     n_res = len(residues)
 
@@ -496,7 +520,7 @@ def detectNonStandardResidues(mol, guess_bonds=True):
     has_peptide_bond = [False] * n_res
 
     seen_bonds = set()
-    for a1, a2 in bonds:
+    for i, (a1, a2) in enumerate(bonds):
         a1, a2 = int(a1), int(a2)
         bond_key = (a1, a2) if a1 < a2 else (a2, a1)
         if bond_key in seen_bonds:
@@ -505,14 +529,30 @@ def detectNonStandardResidues(mol, guess_bonds=True):
         r1, r2 = int(a2r[a1]), int(a2r[a2])
         if r1 == r2 or r1 < 0 or r2 < 0:
             continue
-        # Metal-coordination contacts (e.g. PDB LINK records between a Zn ion
-        # and a Zn-chelating inhibitor) are stored as bonds but are not
-        # covalent. Skipping them keeps such inhibitors classified as free
-        # ligands rather than scaffolds. Bonds touching waters get the
-        # same treatment: waters can appear in LINK records (coordinating
-        # waters, water bridges) but are never real covalent partners.
+        # Metal-coordination bonds declared by the input (mmCIF
+        # ``_struct_conn`` "metalc" or a PDB LINK to a metal element, both
+        # read as bondtype "mc") are not covalent. This is the authoritative
+        # signal and covers metals regardless of resname (e.g. the Fe/Zn
+        # binuclear centre in calcineurin, where Fe coordinates Asp/His).
+        if bondtypes is not None and bondtypes[i] == "mc":
+            continue
+        # Resname fallback for inputs that carry no bond types (distance-
+        # guessed bonds, plain CONECT records). A bond touching one of these
+        # is coordination / spurious, not covalent:
+        #   * a free metal ion - by PDB convention its residue is named after
+        #     the element symbol in uppercase (FE, ZN, CA, MN, ...), which is
+        #     what ``_METAL_ION_RESNAMES`` holds. This is resname- not
+        #     element-based on purpose: a metal that is a genuine atom of a
+        #     larger residue (an organometallic cofactor) keeps any real bond.
+        #   * a non-metal ion (halides such as CL / IOD) or water, which can
+        #     appear in LINK records (chelated inhibitors, water bridges) but
+        #     are never real covalent partners.
+        # Skipping these keeps such partners classified as free ligands /
+        # ions rather than scaffolds.
         if (
-            residues[r1].resname in _ION_RESNAMES
+            residues[r1].resname in _METAL_ION_RESNAMES
+            or residues[r2].resname in _METAL_ION_RESNAMES
+            or residues[r1].resname in _ION_RESNAMES
             or residues[r2].resname in _ION_RESNAMES
             or residues[r1].resname in WATER_RESIDUE_NAMES
             or residues[r2].resname in WATER_RESIDUE_NAMES

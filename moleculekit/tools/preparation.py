@@ -420,10 +420,21 @@ def _canonicalize_ncaa_h_names(mol, detect_specs):
             bb_atoms = res_idx[mol.name[res_idx] == backbone_name]
             if not len(bb_atoms):
                 continue
-            for nb in mol.getNeighbors(int(bb_atoms[0])):
-                if int(nb) in res_set and mol.element[int(nb)] == "H":
-                    mol.name[int(nb)] = h_target
-                    break
+            h_neighbors = [
+                int(nb)
+                for nb in mol.getNeighbors(int(bb_atoms[0]))
+                if int(nb) in res_set and mol.element[int(nb)] == "H"
+            ]
+            if not h_neighbors:
+                continue
+            if backbone_name == "CA" and len(h_neighbors) == 2:
+                # Glycine-like CH2 alpha carbon (e.g. sarcosine): AMBER names
+                # the pair HA2 / HA3, matching the FF template that
+                # _process_custom_residue writes for this residue.
+                mol.name[h_neighbors[0]] = "HA2"
+                mol.name[h_neighbors[1]] = "HA3"
+            else:
+                mol.name[h_neighbors[0]] = h_target
 
 
 def _delete_no_titrate(pka_list, no_titr):
