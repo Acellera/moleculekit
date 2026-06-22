@@ -130,6 +130,83 @@ def test_3ptb_calcium_coordination_skips_ion_residue():
     assert specs[0].resname == "BEN"
 
 
+def test_1m63_free_iron_coordination_skipped():
+    """1M63: the calcineurin Fe/Zn binuclear centre has Fe coordinated by
+    Asp90 / His92 / Asp118. The iron is a standalone single-atom residue
+    named 'FE', which is not in _ION_RESNAMES but is recognised as a free
+    metal ion from its element-symbol resname (_METAL_ION_RESNAMES). Its
+    coordination bonds are therefore skipped, exactly like the Zn2+ and Ca2+
+    ions, so detection neither crashes on the Asp-Fe bond nor classifies the
+    ion as a ligand to parameterize. The only specs are the cyclosporin
+    NCAAs (two cyclic copies of DAL/ABA/SAR/MLE/MVA/BMT)."""
+    mol = Molecule("1M63")
+    specs = detectNonStandardResidues(mol)
+
+    # No free metal ion surfaces as a spec.
+    assert not any(
+        s.resname in ("FE", "ZN", "CA") for s in specs
+    ), "a free metal ion was classified as a non-standard residue"
+
+    # The cyclosporin NCAAs are all chain-resident specs (no covalent / ligand
+    # / scaffold spurious classifications from the metal-coordination bonds).
+    assert all(isinstance(s, ChainResidueSpec) for s in specs)
+    from collections import Counter
+    counts = Counter(s.resname for s in specs)
+    assert counts == {
+        "MLE": 8, "DAL": 2, "MVA": 2, "BMT": 2, "ABA": 2, "SAR": 2
+    }, counts
+
+
+def _backbone_n_acyl_isopeptide(acceptor_resname):
+    """An ``acceptor_resname`` residue whose BACKBONE amide N is acylated by
+    the side-chain gamma-carbonyl (CD) of a glutamate donor - the generic
+    backbone-N isopeptide seen in 6S6Y's poly-gamma-glutamate methanofuran
+    tails (there the acceptor is GLU). Explicit bonds; geometry placed so no
+    spurious backbone peptide contacts are guessed."""
+    acc_names = ["N", "CA", "C", "O", "CB"]
+    acc_elem = ["N", "C", "C", "O", "C"]
+    don_names = ["N", "CA", "C", "O", "CB", "CG", "CD", "OE1", "OE2"]
+    don_elem = ["N", "C", "C", "O", "C", "C", "C", "O", "O"]
+    na = len(acc_names)
+    mol = Molecule().empty(na + len(don_names))
+    mol.name[:] = acc_names + don_names
+    mol.element[:] = acc_elem + don_elem
+    mol.resname[:] = [acceptor_resname] * na + ["GLU"] * len(don_names)
+    mol.resid[:] = [1] * na + [2] * len(don_names)
+    mol.chain[:] = "A"
+    mol.segid[:] = "P0"
+    mol.record[:] = "ATOM"
+    acc_xyz = [[-1.33, 0, 0], [-2.5, 0.5, 0], [-3.5, 0, 0], [-3.5, -1, 0], [-2.5, 2, 0]]
+    don_xyz = [[5, -1, 0], [4.5, 0, 0], [5.5, 1, 0], [5.5, 2, 0], [3, 0, 0],
+               [1.5, 0, 0], [0, 0, 0], [0.6, 1, 0], [0.6, -1, 0]]  # CD (idx 6) at origin
+    mol.coords = np.array(acc_xyz + don_xyz, dtype=np.float32).reshape(-1, 3, 1)
+    acc_intra = [(0, 1), (1, 2), (2, 3), (1, 4)]
+    don_intra = [(0, 1), (1, 2), (2, 3), (1, 4), (4, 5), (5, 6), (6, 7), (6, 8)]
+    bonds = acc_intra + [(a + na, b + na) for a, b in don_intra] + [(0, na + 6)]
+    mol.bonds = np.array(bonds, dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
+    return mol
+
+
+def test_detect_backbone_n_isopeptide_is_generic():
+    """A canonical residue whose backbone N is acylated by an external
+    side-chain carbonyl (a gamma-glutamyl isopeptide, 6S6Y's
+    poly-gamma-glutamate) must be recognised, not crash with 'unrecognized
+    bond ... <res>-N'. The backbone N is the same atom in every amino acid, so
+    this works for ANY canonical residue, not only GLU. The acceptor's anchor
+    is its backbone N; the glutamate donor keeps its side-chain CD anchor."""
+    for acceptor in ("GLU", "ALA", "LEU"):
+        mol = _backbone_n_acyl_isopeptide(acceptor)
+        specs = detectNonStandardResidues(mol)
+        by_resid = {
+            s.residue.resid: s for s in specs if isinstance(s, ChainResidueSpec)
+        }
+        assert set(by_resid) == {1, 2}, (acceptor, [type(s).__name__ for s in specs])
+        assert by_resid[1].resname == acceptor, acceptor
+        assert by_resid[1].anchor_atom == "N", (acceptor, by_resid[1].anchor_atom)
+        assert by_resid[2].anchor_atom == "CD", (acceptor, by_resid[2].anchor_atom)
+
+
 def test_8qfz_scaffolded_peptide():
     """8QFZ chain B: LFI scaffold thio-ether bonded to three CYS sidechains
     at resids 11, 17, 22. CYS 11 is N-terminal, CYS 22 is C-terminal,

@@ -80,6 +80,117 @@ _LIGAND_SMILES = {
 }
 
 
+def _two_residue_cyclic_closure(closure_dist):
+    """Two residues carrying an explicit backbone N(res1)-C(res2) bond placed
+    exactly ``closure_dist`` Angstrom apart - a synthetic head-to-tail
+    closure for testing cyclic-closure normalization."""
+    mol = Molecule().empty(8)
+    mol.name[:] = ["N", "CA", "C", "O", "N", "CA", "C", "O"]
+    mol.element[:] = ["N", "C", "C", "O", "N", "C", "C", "O"]
+    mol.resname[:] = "ALA"
+    mol.resid[:] = [1, 1, 1, 1, 2, 2, 2, 2]
+    mol.chain[:] = "A"
+    mol.segid[:] = "P0"
+    mol.record[:] = "ATOM"
+    coords = np.zeros((8, 3), np.float32)
+    coords[0] = [0.0, 0.0, 0.0]            # N (res1) at origin
+    coords[1] = [1.5, 0.0, 0.0]            # CA (res1)
+    coords[2] = [2.5, 1.0, 0.0]            # C (res1)
+    coords[3] = [2.0, 2.0, 0.0]            # O (res1)
+    coords[6] = [-closure_dist, 0.0, 0.0]  # C (res2): closure_dist from res1 N
+    coords[4] = [-closure_dist - 1.0, 0.5, 0.0]
+    coords[5] = [-closure_dist - 0.5, 1.0, 0.0]
+    coords[7] = [-closure_dist - 0.3, -1.0, 0.0]
+    mol.coords = coords.reshape(8, 3, 1)
+    mol.bonds = np.array([[0, 6]], dtype=np.uint32)  # res1 N - res2 C
+    mol.bondtype = np.array(["1"], dtype=object)
+    return mol
+
+
+def test_normalize_stretched_cyclic_closure():
+    """A stretched but explicit backbone amide bond (7BTI's cyclic closure is
+    1.468 A) is snapped back to a standard ~1.33 A length so PDB2PQR's
+    geometric peptide-bond detection recognises it."""
+    from moleculekit.tools.preparation import _normalize_stretched_cyclic_closures
+
+    mol = _two_residue_cyclic_closure(1.468)
+    _normalize_stretched_cyclic_closures(mol)
+    d = np.linalg.norm(mol.coords[0, :, 0] - mol.coords[6, :, 0])
+    assert abs(d - 1.33) < 0.02, f"expected ~1.33 A, got {d:.3f}"
+
+
+def test_normalize_leaves_normal_closure_untouched():
+    """A normal-length amide (e.g. 5VAV's 1.334 A closure) is left alone."""
+    from moleculekit.tools.preparation import _normalize_stretched_cyclic_closures
+
+    mol = _two_residue_cyclic_closure(1.334)
+    before = mol.coords.copy()
+    _normalize_stretched_cyclic_closures(mol)
+    assert np.allclose(mol.coords, before)
+
+
+def test_normalize_ignores_implausibly_long_closure():
+    """An explicit N-C bond far beyond a real amide (a misassigned record) is
+    NOT snapped - we never fabricate a closure across a nonsensical gap."""
+    from moleculekit.tools.preparation import _normalize_stretched_cyclic_closures
+
+    mol = _two_residue_cyclic_closure(5.0)
+    before = mol.coords.copy()
+    _normalize_stretched_cyclic_closures(mol)
+    assert np.allclose(mol.coords, before)
+
+
+def _incomplete_sidechain_isopeptide():
+    """An incompletely-modeled glutamate (resid 1): its backbone N is acylated
+    by a gamma-glutamyl isopeptide from a DGL donor, it carries a COMPLETE
+    backbone terminus (OXT present), but its sidechain carboxyl is missing OE2
+    and its CD has no crosslink to explain it. This is exactly 6S6Y's GLU 609:
+    OXT present (so no_oxt=False disables the backbone-OH strip), yet the
+    sidechain OE2 is unmatched and unstrippable. The DGL donor is a non-canonical
+    residue, so only the GLU is canonical-re-templated."""
+    acc_names = ["N", "CA", "C", "O", "OXT", "CB", "CG", "CD", "OE1"]
+    acc_elem = ["N", "C", "C", "O", "O", "C", "C", "C", "O"]
+    don_names = ["N", "CA", "C", "O", "CB", "CG", "CD", "OE1"]
+    don_elem = ["N", "C", "C", "O", "C", "C", "C", "O"]
+    na = len(acc_names)
+    mol = Molecule().empty(na + len(don_names))
+    mol.name[:] = acc_names + don_names
+    mol.element[:] = acc_elem + don_elem
+    mol.resname[:] = ["GLU"] * na + ["DGL"] * len(don_names)
+    mol.resid[:] = [1] * na + [2] * len(don_names)
+    mol.chain[:] = "A"
+    mol.segid[:] = "P0"
+    mol.record[:] = "ATOM"
+    acc = [[-1.33, 0, 0], [-2.5, 0.5, 0], [-3.5, 0, 0], [-3.5, -1, 0], [-4.5, 0.5, 0],
+           [-2.5, 2, 0], [-3.0, 3, 0], [-3.0, 4.5, 0], [-2.0, 5, 0]]
+    don = [[5, -1, 0], [4.5, 0, 0], [5.5, 1, 0], [5.5, 2, 0], [3, 0, 0],
+           [1.5, 0, 0], [0, 0, 0], [0.6, 1, 0]]  # CD (don idx 6 -> global na+6) at origin
+    mol.coords = np.array(acc + don, dtype=np.float32).reshape(na + len(don_names), 3, 1)
+    acc_intra = [(0, 1), (1, 2), (2, 3), (2, 4), (1, 5), (5, 6), (6, 7), (7, 8)]
+    don_intra = [(0, 1), (1, 2), (2, 3), (1, 4), (4, 5), (5, 6), (6, 7)]
+    bonds = acc_intra + [(a + na, b + na) for a, b in don_intra] + [(0, na + 6)]
+    mol.bonds = np.array(bonds, dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
+    return mol
+
+
+def test_incomplete_sidechain_gives_clear_error():
+    """Re-templating a canonical residue that is incompletely modeled (a
+    glutamate missing a sidechain carboxyl oxygen, with no crosslink to explain
+    it - 6S6Y's poly-gamma-glutamate tails) must give a clear error naming the
+    residue, not the cryptic 'SMILES heavy atoms could not be matched'."""
+    from moleculekit.tools.preparation import _template_renamed_canonical_residues
+    from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
+
+    mol = _incomplete_sidechain_isopeptide()
+    specs = detectNonStandardResidues(mol)
+    with pytest.raises(RuntimeError) as exc:
+        _template_renamed_canonical_residues(mol, specs)
+    msg = str(exc.value)
+    assert "A:1" in msg, msg
+    assert "incompletely modeled" in msg, msg
+
+
 @pytest.mark.parametrize("pdb", ["3PTB", "1A25", "1U5U", "1UNC", "6A5J"])
 def test_systemPrepare(pdb):
     test_home = os.path.join(curr_dir, "test_systemprepare", pdb)
