@@ -370,7 +370,30 @@ def _template_renamed_canonical_residues(mol, specs):
         # res_mask was computed against the original resname and the
         # atoms still live at the same indices after the rename above,
         # so it's still the correct selection here.
-        mol.templateResidueFromSmiles(res_mask, smiles, addHs=True, guessBonds=True)
+        try:
+            mol.templateResidueFromSmiles(
+                res_mask, smiles, addHs=True, guessBonds=True
+            )
+        except RuntimeError as e:
+            # The standard template has heavy atoms the residue lacks, with no
+            # covalent bond to explain their absence - almost always an
+            # incompletely-modeled residue in the input (e.g. a poorly-resolved
+            # sidechain missing a carboxyl oxygen). Surface WHICH residue rather
+            # than the cryptic SMILES-matching error from deep in rdkittools.
+            present = sorted(
+                {str(n) for n in mol.name[res_mask] if not str(n).startswith("H")}
+            )
+            raise RuntimeError(
+                f"Could not re-template canonical residue {spec.resname} "
+                f"{rid.chain}:{rid.resid}{rid.insertion} (segid {rid.segid}, "
+                f"anchor {spec.anchor_atom}) from its standard template. The "
+                f"residue is most likely incompletely modeled in the input - it "
+                f"is missing one or more expected heavy atoms (e.g. a sidechain "
+                f"carboxyl oxygen on a poorly-resolved residue) and no covalent "
+                f"bond explains their absence. Heavy atoms present: {present}. "
+                f"Complete the missing atoms or remove this residue before "
+                f"building. Underlying error: {e}"
+            ) from e
 
 
 def _canonicalize_ncaa_h_names(mol, detect_specs):
@@ -811,6 +834,85 @@ def _fix_backbone_amide_h_names(mol):
         logger.info(
             f"Renamed backbone amide {old} to H on {resname} "
             f"{mol.resid[n_idx]} {mol.chain[n_idx]}"
+        )
+
+
+# Standard backbone amide C-N bond length, and the strict window within which a
+# stretched-but-EXPLICIT head-to-tail closure bond is snapped back to it.
+# PDB2PQR detects peptide bonds geometrically; a cyclic peptide whose closure is
+# modeled long (e.g. 7BTI's 1.468 A HYP-CYS closure) is otherwise read as two
+# free chain termini and capped. Only the closure bond the input itself declares
+# is touched, and only up to _AMIDE_CN_NORMALIZE_MAX - beyond that the bond is
+# almost certainly a misassigned record, so it is left alone rather than
+# collapsed across a nonsensical gap. Regular sequential peptide bonds are never
+# touched: PDB2PQR handles those via the chain sequence regardless of length.
+_AMIDE_CN_LENGTH = 1.33
+_AMIDE_CN_NORMALIZE_MIN = 1.40
+_AMIDE_CN_NORMALIZE_MAX = 1.60
+
+
+def _normalize_stretched_cyclic_closures(mol):
+    """Snap a cyclic peptide's head-to-tail closure bond back to a standard
+    amide length when it was modeled stretched, so the downstream PDB2PQR pass
+    recognises it as a peptide bond instead of capping the peptide's ends as
+    free termini.
+
+    A closure is identified per segment as an explicit bond between the first
+    residue's backbone ``N`` and the last residue's backbone ``C``. Only such
+    closures with a length in (:data:`_AMIDE_CN_NORMALIZE_MIN`,
+    :data:`_AMIDE_CN_NORMALIZE_MAX`] are normalized (by moving the carbonyl
+    ``C`` along the bond vector); longer ones are warned about and left alone.
+    tLeap rebuilds geometry from templates afterwards, so only the PDB handed
+    to PDB2PQR is affected.
+    """
+    if mol.bonds is None or not len(mol.bonds):
+        return
+    coords = mol.coords[:, :, 0]
+    bond_set = {(int(a), int(b)) for a, b in mol.bonds}
+    bond_set |= {(b, a) for (a, b) in bond_set}
+
+    for seg in np.unique(mol.segid):
+        seg_idx = np.where(mol.segid == seg)[0]
+        if not len(seg_idx):
+            continue
+        first_resid, first_ins = mol.resid[seg_idx[0]], mol.insertion[seg_idx[0]]
+        last_resid, last_ins = mol.resid[seg_idx[-1]], mol.insertion[seg_idx[-1]]
+        n_atoms = seg_idx[
+            (mol.resid[seg_idx] == first_resid)
+            & (mol.insertion[seg_idx] == first_ins)
+            & (mol.name[seg_idx] == "N")
+        ]
+        c_atoms = seg_idx[
+            (mol.resid[seg_idx] == last_resid)
+            & (mol.insertion[seg_idx] == last_ins)
+            & (mol.name[seg_idx] == "C")
+        ]
+        if len(n_atoms) != 1 or len(c_atoms) != 1:
+            continue
+        n_idx, c_idx = int(n_atoms[0]), int(c_atoms[0])
+        if (n_idx, c_idx) not in bond_set:
+            continue  # no explicit head-to-tail closure on this segment
+
+        d = float(np.linalg.norm(coords[n_idx] - coords[c_idx]))
+        if d <= _AMIDE_CN_NORMALIZE_MIN:
+            continue  # already a normal amide length; PDB2PQR will see it
+        if d > _AMIDE_CN_NORMALIZE_MAX:
+            logger.warning(
+                f"Cyclic closure bond on segment {seg} ({mol.resname[c_idx]} "
+                f"{mol.resid[c_idx]}{mol.insertion[c_idx]}:C - {mol.resname[n_idx]} "
+                f"{mol.resid[n_idx]}{mol.insertion[n_idx]}:N) spans {d:.2f} A - too "
+                "long to be a real amide; leaving its geometry untouched (likely a "
+                "misassigned bond record)."
+            )
+            continue
+
+        mol.coords[c_idx, :, 0] = (
+            coords[n_idx] + (coords[c_idx] - coords[n_idx]) / d * _AMIDE_CN_LENGTH
+        )
+        logger.info(
+            f"Normalized stretched cyclic closure on segment {seg} "
+            f"({d:.2f} A -> {_AMIDE_CN_LENGTH} A) so PDB2PQR recognises the "
+            "head-to-tail peptide bond."
         )
 
 
@@ -1629,6 +1731,7 @@ def systemPrepare(
     _prepare_nucleics(mol_in)
     _fix_protonation_resnames(mol_in)
     _fix_backbone_amide_h_names(mol_in)
+    _normalize_stretched_cyclic_closures(mol_in)
 
     definition, forcefield = _get_custom_ff()
     definition, forcefield = _generate_nonstandard_residues_ff(
