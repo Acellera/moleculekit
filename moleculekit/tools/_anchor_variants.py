@@ -151,11 +151,45 @@ def lookup_anchor(resname, atom_name):
     entry exists.
 
     Replaces the old ``lookup_anchor_variant``; consumers reading
-    ``entry["variant"]`` should switch to ``entry["ff_variant"]``."""
+    ``entry["variant"]`` should switch to ``entry["ff_variant"]``.
+
+    A backbone amide ``N`` acylated by an external carbonyl is handled
+    generically (see :func:`_backbone_n_anchor`): unlike sidechain chemistry,
+    the backbone N is the same atom in every amino acid, so there is no
+    per-residue ``("<res>", "N")`` row - the entry is synthesized on the fly
+    for any canonical amino acid."""
     from moleculekit.residues import ORIGINAL_RESIDUE_NAME_TABLE
 
     base = ORIGINAL_RESIDUE_NAME_TABLE.get(str(resname), str(resname))
-    return ANCHOR_TABLE.get((base, str(atom_name)))
+    entry = ANCHOR_TABLE.get((base, str(atom_name)))
+    if entry is not None:
+        return entry
+    return _backbone_n_anchor(base, str(atom_name))
+
+
+def _backbone_n_anchor(base_resname, atom_name):
+    """Synthesize the generic backbone-N acyl-acceptor anchor for a canonical
+    amino acid whose backbone amide ``N`` is acylated by an external carbonyl
+    (e.g. a gamma-glutamyl isopeptide in poly-gamma-glutamate / methanofuran
+    tails, 6S6Y). Returns ``None`` for anything that is not a protein-residue
+    backbone N.
+
+    No heavy atom is displaced (only an N-hydrogen), and the residue is
+    re-templated with its own canonical SMILES - the external bond drives the
+    N's H count, exactly like the sidechain-N anchors in :data:`ANCHOR_TABLE`.
+    There is no fixed FF variant, so the detector renames it to an
+    auto-generated ``XX#`` and parameterizes it in the crosslink cluster.
+    """
+    from moleculekit.residues import PROTEIN_RESIDUE_NAMES
+
+    if atom_name != "N" or base_resname not in PROTEIN_RESIDUE_NAMES:
+        return None
+    return {
+        "displaced_heavy": (),
+        "smiles_variant": base_resname,
+        "ff_variant": None,
+        "drop_h": [],
+    }
 
 
 def canonical_anchor_smiles(resname, atom_name):
