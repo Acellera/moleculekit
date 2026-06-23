@@ -594,6 +594,24 @@ def detectNonStandardResidues(mol, guess_bonds=True):
         for r in range(n_res)
     ]
 
+    # A residue is a free N- / C-terminus only if its backbone N / C carries NO
+    # inter-residue bond at all. peptide_attached_* covers standard N-C peptide
+    # bonds; a backbone N or C can also be acylated by a NON-peptide bond (an
+    # isopeptide / acyl link landing on "N" or "C"), recorded in nonpep_partners
+    # with that atom name. Such an atom is bonded, hence not a free terminus.
+    # (e.g. microcystin's DAM: its backbone N is bonded to a Glu gamma-carboxyl,
+    # so it must not be flagged N-terminal and capped by PDB2PQR.)
+    is_n_terminus = [
+        not peptide_attached_n[r]
+        and not any(name == "N" for _, name in nonpep_partners[r])
+        for r in range(n_res)
+    ]
+    is_c_terminus = [
+        not peptide_attached_c[r]
+        and not any(name == "C" for _, name in nonpep_partners[r])
+        for r in range(n_res)
+    ]
+
     # Plan the canonical renames. Bucket key is (canonical_resname,
     # anchor_atom_name, partner_resname, n_term, c_term); residues
     # sharing a bucket get the same 3-char custom resname so the
@@ -652,8 +670,8 @@ def detectNonStandardResidues(mol, guess_bonds=True):
                 f"moleculekit.tools._anchor_variants.ANCHOR_TABLE."
             )
 
-        n_term = not peptide_attached_n[r_idx]
-        c_term = not peptide_attached_c[r_idx]
+        n_term = is_n_terminus[r_idx]
+        c_term = is_c_terminus[r_idx]
 
         # Disulfide special case: both ends share the fixed name 'CYX'.
         # AMBER's CYX ff14SB template handles the chemistry; htmd's
@@ -691,8 +709,8 @@ def detectNonStandardResidues(mol, guess_bonds=True):
                     residue=residue,
                     new_resname=canonical_renames.get(r_idx),
                     anchor_atom=anchor_atoms.get(r_idx),
-                    is_n_term=not peptide_attached_n[r_idx],
-                    is_c_term=not peptide_attached_c[r_idx],
+                    is_n_term=is_n_terminus[r_idx],
+                    is_c_term=is_c_terminus[r_idx],
                 )
             )
         elif nonpep_count >= 2:
