@@ -106,23 +106,66 @@ def _polymer_linked(
         c = _residue_atom_coord(mol, prev_idx, "C")
         n = _residue_atom_coord(mol, curr_idx, "N")
         if c is not None and n is not None:
-            return float(np.linalg.norm(c - n)) <= protein_cutoff
-        ca0 = _residue_atom_coord(mol, prev_idx, "CA")
-        ca1 = _residue_atom_coord(mol, curr_idx, "CA")
-        if ca0 is not None and ca1 is not None:
-            return float(np.linalg.norm(ca0 - ca1)) <= ca_fallback_cutoff
-        return False
+            if float(np.linalg.norm(c - n)) <= protein_cutoff:
+                return True
+        else:
+            ca0 = _residue_atom_coord(mol, prev_idx, "CA")
+            ca1 = _residue_atom_coord(mol, curr_idx, "CA")
+            if ca0 is not None and ca1 is not None:
+                if float(np.linalg.norm(ca0 - ca1)) <= ca_fallback_cutoff:
+                    return True
+        # Distance alone misses NON-standard backbone links - the backbone N of
+        # ``curr`` acylated by a side-chain carbonyl of ``prev`` (e.g. the
+        # gamma-glutamyl isopeptide FGA.CD->DAM.N in microcystin), or prev's
+        # backbone C bonded into curr. Honor such an explicit bond so the
+        # connected polymer stays one segment.
+        return _has_interresidue_backbone_bond(
+            mol, prev_idx, curr_idx, prev_names=("C",), curr_names=("N",)
+        )
 
     if category == "nucleic":
         o3 = _residue_atom_coord(mol, prev_idx, ("O3'", "O3*"))
         p = _residue_atom_coord(mol, curr_idx, "P")
         if o3 is not None and p is not None:
-            return float(np.linalg.norm(o3 - p)) <= nucleic_cutoff
-        c3 = _residue_atom_coord(mol, prev_idx, ("C3'", "C3*"))
-        if c3 is not None and p is not None:
-            return float(np.linalg.norm(c3 - p)) <= nucleic_fallback_cutoff
-        return False
+            if float(np.linalg.norm(o3 - p)) <= nucleic_cutoff:
+                return True
+        else:
+            c3 = _residue_atom_coord(mol, prev_idx, ("C3'", "C3*"))
+            if c3 is not None and p is not None:
+                if float(np.linalg.norm(c3 - p)) <= nucleic_fallback_cutoff:
+                    return True
+        return _has_interresidue_backbone_bond(
+            mol, prev_idx, curr_idx,
+            prev_names=("O3'", "O3*", "C3'", "C3*"), curr_names=("P",),
+        )
 
+    return False
+
+
+def _has_interresidue_backbone_bond(mol, prev_idx, curr_idx, prev_names, curr_names):
+    """Return True if an explicit bond joins the two residues at the backbone:
+    a bond from ``curr``'s backbone atom (any of ``curr_names``) to any atom of
+    ``prev``, or from ``prev``'s backbone atom (any of ``prev_names``) to any
+    atom of ``curr``. This catches non-standard backbone linkages (e.g. an
+    isopeptide acylating curr's N) that a pure distance check misses, while
+    NOT merging side-chain-only crosslinks (e.g. a disulfide), which touch
+    neither backbone atom. Only consulted as a fallback when the distance
+    checks fail, so the per-pair bond scan runs at most at chain breaks.
+    """
+    if mol.bonds is None or len(mol.bonds) == 0:
+        return False
+    prev_set = set(int(i) for i in prev_idx)
+    curr_set = set(int(i) for i in curr_idx)
+    curr_bb = {int(i) for i in curr_idx if str(mol.name[int(i)]) in curr_names}
+    prev_bb = {int(i) for i in prev_idx if str(mol.name[int(i)]) in prev_names}
+    if not curr_bb and not prev_bb:
+        return False
+    for a, b in mol.bonds:
+        a, b = int(a), int(b)
+        if (a in curr_bb and b in prev_set) or (b in curr_bb and a in prev_set):
+            return True
+        if (a in prev_bb and b in curr_set) or (b in prev_bb and a in curr_set):
+            return True
     return False
 
 
@@ -239,10 +282,13 @@ def autoSegment(
         prev_i = i
 
     # --- 2. Water: one segment; ions: one segment ---
+    ion_seg = -1
     for bucket in ("water", "ion"):
         members = [i for i, c in enumerate(cats) if c == bucket]
         if members:
             seg_idx += 1
+            if bucket == "ion":
+                ion_seg = seg_idx
             for i in members:
                 seg_of_res[i] = seg_idx
 
@@ -297,6 +343,32 @@ def autoSegment(
             while segid in mol.segid:
                 segid = next(segid_gen)
             mol.segid[atoms] = segid
+
+    # Ions are collapsed into a single segment + chain. Ions that were
+    # distinguished only by chain (e.g. 7BTI's five Mg, each resid 401 in
+    # chains A-E) then collide on (resid, insertion) within that one chain, and
+    # the downstream (resid, insertion, segid) renumbering would fold them into
+    # a single residue, silently dropping the duplicates. Give each colliding
+    # ion a unique resid so all survive. Scoped to the ion segment only - never
+    # renumber polymer residues.
+    if ion_seg >= 0:
+        # Ions collapse into one segment + chain, so each needs a distinct resid
+        # within it: residues distinguished only by chain (e.g. 7BTI's five Mg,
+        # each resid 401 in chains A-E) would otherwise be folded into a single
+        # residue by the downstream (resid, insertion, segid) renumbering and the
+        # duplicates silently dropped. Only when such a collision exists do we
+        # renumber the ions 1..N from scratch; otherwise their resids are kept.
+        # (Resids may repeat across segments - only within-segment uniqueness
+        # matters.)
+        members = np.where(seg_of_res == ion_seg)[0]
+        keys = [
+            (int(mol.resid[residue_idx[i][0]]), str(mol.insertion[residue_idx[i][0]]))
+            for i in members
+        ]
+        if len(set(keys)) != len(keys):
+            for new_resid, i in enumerate(members, start=1):
+                mol.resid[residue_idx[i]] = new_resid
+                mol.insertion[residue_idx[i]] = ""
 
     return mol
 
