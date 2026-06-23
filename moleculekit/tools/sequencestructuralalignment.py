@@ -18,7 +18,7 @@ def _get_sequence(mol: Molecule, sel):
         raise RuntimeError(
             "Your selection contains both protein and nucleic residues. You need to clarify which selection to align."
         )
-    molseg = "protein" if any(protein_mask) else "nucleic"
+    molseg = "protein" if any(protein_mask & sel_mask) else "nucleic"
     seqmol, seqidx = mol.getSequence(
         dict_key=None, return_idx=True, sel=sel, _logger=False
     )
