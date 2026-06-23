@@ -70,10 +70,24 @@ def _process_custom_residue(mol: Molecule, resid: int = None, align: bool = True
             f"Residue {resname} does not contain N or C atoms. List of atoms: {mol.name}"
         )
 
+    # Gate on the shortest N -> C path. This is a LOWER BOUND on the true
+    # backbone length (a ring or sidechain bridging N and C can short-circuit
+    # it), but that is exactly what makes the bound safe: an alpha/beta/gamma
+    # amino acid has a backbone of 3/4/5 atoms, so its shortest N -> C path is
+    # at most 5 regardless of ring topology - and a path of 3 means a standard
+    # alpha backbone (N-CA-C directly bonded). The rigid-body N-CA-C alignment
+    # and atom reordering below use the named N/CA/C atoms (not this path) and
+    # work for beta/gamma backbones too (e.g. microcystin's Adda, N-CA-C18-C).
+    # A path shorter than 3 (degenerate) or longer than 5 means N and C are too
+    # far apart to be an alpha/beta/gamma backbone - usually a spurious bond or
+    # a non-amino-acid residue - so reject it.
     sp = nx.shortest_path(gg, n_idx, c_idx)
-    if len(sp) != 3:
+    if not (3 <= len(sp) <= 5):
         raise RuntimeError(
-            f"Cannot prepare residues with elongated backbones. This backbone consists of atoms {' '.join(mol.name[sp])}"
+            f"Cannot prepare residue {resname}: the shortest N -> C path is "
+            f"{' '.join(mol.name[sp])} ({len(sp)} atoms). Expected at most 5 "
+            f"(an alpha, beta or gamma amino-acid backbone); a longer path "
+            f"usually signals a spurious bond or a non-amino-acid residue."
         )
 
     # Fix hydrogen names for CA / N. An sp3 alpha carbon has four bonds and
