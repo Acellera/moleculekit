@@ -66,6 +66,59 @@ def test_autoSegment_linked():
     assert np.mean(linked) > 0.95
 
 
+def _isopeptide_dipeptide():
+    """Two residues whose ONLY backbone link is a non-standard isopeptide bond:
+    prev (GLU) side-chain CD is bonded to curr (ALA) backbone N, while the
+    standard C(prev)-N(curr) and CA-CA distances are both far beyond the cutoffs
+    (a microcystin-style gamma-glutamyl link, 1FJM FGA->DAM)."""
+    from moleculekit.molecule import Molecule
+
+    names = ["N", "CA", "C", "O", "CB", "CG", "CD", "OE1", "N", "CA", "C", "O", "CB"]
+    elems = ["N", "C", "C", "O", "C", "C", "C", "O", "N", "C", "C", "O", "C"]
+    resid = [1] * 8 + [2] * 5
+    resname = ["GLU"] * 8 + ["ALA"] * 5
+    coords = np.array([
+        [0, 0, 0], [1.5, 0, 0], [2.5, 1, 0], [2.5, 2, 0], [1.5, -1.5, 0],
+        [1.5, -3.0, 0], [1.5, -4.5, 0], [2.5, -5.0, 0],
+        [1.5, -5.83, 0], [2.5, -6.5, 0], [3.5, -6.0, 0], [3.5, -5.0, 0], [2.5, -8.0, 0],
+    ], dtype=np.float32)
+    mol = Molecule().empty(len(names))
+    mol.name[:] = names
+    mol.element[:] = elems
+    mol.resid[:] = resid
+    mol.resname[:] = resname
+    mol.chain[:] = "A"
+    mol.segid[:] = ""
+    mol.record[:] = "ATOM"
+    mol.coords = coords.reshape(-1, 3, 1)
+    bonds = [(0, 1), (1, 2), (2, 3), (1, 4), (4, 5), (5, 6), (6, 7),
+             (8, 9), (9, 10), (10, 11), (9, 12), (6, 8)]  # last = CD(GLU) - N(ALA)
+    mol.bonds = np.array(bonds, dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
+    return mol
+
+
+def test_autoSegment_respects_nonstandard_backbone_bond():
+    """autoSegment must keep two residues in one segment when they are joined by
+    a non-standard backbone bond (isopeptide on curr's N), even though the
+    standard C-N / CA-CA distances exceed the cutoffs. Distance-only continuity
+    wrongly splits them (1FJM's microcystin FGA->DAM)."""
+    from moleculekit.tools.autosegment import _polymer_linked, autoSegment
+
+    mol = _isopeptide_dipeptide()
+    linked = _polymer_linked(
+        mol, np.where(mol.resid == 1)[0], np.where(mol.resid == 2)[0], "protein",
+        protein_cutoff=2.0, nucleic_cutoff=2.2,
+        ca_fallback_cutoff=5.0, nucleic_fallback_cutoff=3.2,
+    )
+    assert linked is True, "isopeptide-linked residues should be backbone-continuous"
+
+    out = autoSegment(mol, fields=("segid",), _logger=False)
+    assert len(set(out.segid.tolist())) == 1, (
+        f"expected 1 segment, got {sorted(set(out.segid.tolist()))}"
+    )
+
+
 def test_autoSegment_1aud_continuous():
     from os import path
     from moleculekit.molecule import Molecule
@@ -107,6 +160,33 @@ def test_autoSegment_3ptb_buckets():
         out.segid[water_idx][0],
     ]
     assert len(set(groups)) == 4
+
+
+def test_autoSegment_distinct_resids_for_collapsed_ions():
+    """Ions distinguished only by chain (same resid in different chains - e.g.
+    7BTI's five Mg, each resid 401 in chains A-E) collapse into one ion segment.
+    They must come out with distinct resids within that segment, or the
+    downstream (resid, insertion, segid) renumbering folds them into one residue
+    and the duplicates are silently dropped (only 1 of 5 Mg survives the build)."""
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol = Molecule().empty(3)
+    mol.name[:] = "MG"
+    mol.element[:] = "Mg"
+    mol.resname[:] = "MG"
+    mol.resid[:] = [401, 401, 401]
+    mol.chain[:] = ["A", "B", "C"]
+    mol.segid[:] = ["A", "B", "C"]
+    mol.record[:] = "HETATM"
+    mol.coords = np.array(
+        [[0, 0, 0], [20, 0, 0], [40, 0, 0]], np.float32
+    ).reshape(3, 3, 1)
+
+    out = autoSegment(mol, fields=("segid", "chain"), _logger=False)
+    # collapsed into a single ion segment, but three distinct resids within it
+    assert len(set(out.segid.tolist())) == 1
+    assert len(set(out.resid.tolist())) == 3
 
 
 def test_autoSegment_system_matrix():

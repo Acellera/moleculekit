@@ -207,6 +207,21 @@ def test_detect_backbone_n_isopeptide_is_generic():
         assert by_resid[2].anchor_atom == "CD", (acceptor, by_resid[2].anchor_atom)
 
 
+def test_backbone_n_isopeptide_is_not_n_terminal():
+    """A backbone N acylated by an inter-residue bond (peptide OR isopeptide) is
+    NOT a free terminus. The acceptor's N is bonded to the donor's CD, so its
+    is_n_term must be False (its C is unbonded, so is_c_term stays True). 1FJM's
+    DAM relies on this: its is_n_term must reflect the FGA gamma-glutamyl bond on
+    its backbone N, not just standard N-C peptide bonds."""
+    mol = _backbone_n_acyl_isopeptide("GLU")
+    specs = detectNonStandardResidues(mol)
+    acceptor = next(
+        s for s in specs if isinstance(s, ChainResidueSpec) and s.residue.resid == 1
+    )
+    assert acceptor.is_n_term is False, "backbone N is isopeptide-bonded, not free"
+    assert acceptor.is_c_term is True, "backbone C is unbonded (free terminus)"
+
+
 def test_8qfz_scaffolded_peptide():
     """8QFZ chain B: LFI scaffold thio-ether bonded to three CYS sidechains
     at resids 11, 17, 22. CYS 11 is N-terminal, CYS 22 is C-terminal,
