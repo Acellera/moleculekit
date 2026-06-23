@@ -21,7 +21,7 @@ dependencies = [
   "mdtraj",
   "acellera-propka",  # Remove once they make a new release
   # "openbabel>=3.1.1",
-  "pdb2pqr>=3.5.3",
+  "acellera-pdb2pqr>=3.7.1.post1",
   "biopython",
 ]
 
@@ -115,3 +115,6 @@ test-command = "pytest -n auto {project}/tests"
 manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
 # build-frontend = "build[uv]"
+
+# [tool.uv.sources]
+# acellera-pdb2pqr = { path = "../pdb2pqr", editable = true }

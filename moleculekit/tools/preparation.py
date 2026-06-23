@@ -190,6 +190,20 @@ def _detect_nonpeptidic_bonds(mol):
     bond_mask[np.any(np.isin(mol.bonds, ion_idx), axis=1), :] = False
     inter_bonds = np.sum(bond_mask, axis=1) == 1
 
+    # A standard backbone peptide bond (atoms named C and N) is peptidic by
+    # definition - never a crosslink to hold - even when one residue is not
+    # classified as "protein" by atomselect. That happens for a beta/gamma
+    # amino acid whose CA and C are not directly bonded (e.g. microcystin's
+    # Adda, backbone N-CA-C18-C): its normal peptide bonds to protein
+    # neighbours would otherwise be flagged here, auto-held, and left
+    # unprotonated by PDB2PQR. Genuine side-chain crosslinks (Cys-SG to a
+    # ligand, a CD->N isopeptide, ...) are not C-N bonds and stay flagged.
+    bn = mol.name[mol.bonds]
+    is_peptide = ((bn[:, 0] == "C") & (bn[:, 1] == "N")) | (
+        (bn[:, 0] == "N") & (bn[:, 1] == "C")
+    )
+    inter_bonds = inter_bonds & ~is_peptide
+
     bonds = mol.bonds[inter_bonds, :]
     b_prot_idx = bonds[bond_mask[inter_bonds]]
     b_other_idx = bonds[~bond_mask[inter_bonds]]
@@ -507,6 +521,7 @@ def _pdb2pqr(
     no_prot=None,
     no_opt=None,
     no_titr=None,
+    non_termini=None,
     propka_args=None,
 ):
     from pdb2pqr.io import get_molecule
@@ -536,6 +551,12 @@ def _pdb2pqr(
         pdblist = drop_water_func(pdblist)
 
     biomolecule, definition, ligand = setup_molecule(pdblist, definition, ligand)
+    # Flag the PDB2PQR residue objects whose backbone N/C an inter-residue amide
+    # already continues, so set_termini leaves that side uncapped. Doing it on the
+    # residue objects here keeps PDB2PQR's terminus logic (and its own cyclic
+    # distance check) almost untouched - it just reads these flags.
+    if non_termini:
+        _stamp_non_termini(biomolecule, non_termini)
     biomolecule.set_termini(neutraln=neutraln, neutralc=neutralc)
     biomolecule.update_bonds()
     if clean:
@@ -637,6 +658,95 @@ def _atomsel_to_hold(mol_in, sel):
             f"no_opt selection {sel} selected multiple residues {residues}. Please be more specific on which residues to hold."
         )
     return residues[0]
+
+
+# Beyond this an inter-residue N-C bond is almost certainly a misassigned bond
+# record, not a real (if stretched) amide, so it is not treated as a backbone
+# continuation. Generous relative to a real amide (~1.33 A) and stretched-but-real
+# closures (7BTI ~1.47 A, microcystin ~1.37 A), tight enough to reject garbage.
+_AMIDE_BOND_SANITY_DIST = 2.0
+
+
+def _detect_non_termini(mol):
+    """Return a set of ``((resid, chain, insertion), side)`` tuples marking the
+    backbone termini that are NOT free because an inter-residue amide bond
+    continues the chain past them.
+
+    ``side`` is ``"N"`` when an inter-residue amide occupies a residue's backbone
+    nitrogen (not a free N-terminus), or ``"C"`` when a residue donates an amide
+    forward from a carbon - its backbone C for a standard peptide, or a side-chain
+    carbonyl for an isopeptide / head-to-tail closure (not a free C-terminus).
+
+    This is the bond-derived signal handed to PDB2PQR so it leaves these sides
+    uncapped and does not split a hidden chain at a residue whose free main-chain
+    carboxyl is continued off its side chain. PDB2PQR cannot consult its own bond
+    graph there (``set_termini`` runs before ``update_bonds``). A geometric
+    head-to-tail closure with NO bond record is left to PDB2PQR's own first-N /
+    last-C distance check, so moleculekit only reports what the bonds prove.
+    Standard backbone bonds are picked up too but are harmless: only chain ends
+    and OXT-bearing residues are ever capped or split, and those keep their free
+    side unless a bond truly continues it. An inter-residue N-C bond longer than
+    :data:`_AMIDE_BOND_SANITY_DIST` is treated as a misassigned record and ignored.
+    """
+    non_termini = set()
+    if mol.bonds is None or not len(mol.bonds):
+        return non_termini
+    name = mol.name
+    element = mol.element
+    resid = mol.resid
+    chain = mol.chain
+    insertion = mol.insertion
+    coords = mol.coords[:, :, 0]
+
+    def reskey(i):
+        return (int(resid[i]), str(chain[i]), str(insertion[i]))
+
+    for a, b in mol.bonds:
+        a, b = int(a), int(b)
+        # An amide-type continuation: a backbone N bonded to a carbon (backbone C
+        # for a standard peptide, or a side-chain carbonyl for an isopeptide /
+        # closure) in a DIFFERENT residue.
+        for n_at, c_at in ((a, b), (b, a)):
+            if name[n_at] != "N" or element[c_at] != "C":
+                continue
+            kn, kc = reskey(n_at), reskey(c_at)
+            if kn == kc:  # intra-residue (e.g. the residue's own N-CA bond)
+                continue
+            if (
+                float(np.linalg.norm(coords[n_at] - coords[c_at]))
+                > _AMIDE_BOND_SANITY_DIST
+            ):
+                continue
+            non_termini.add((kn, "N"))
+            non_termini.add((kc, "C"))
+    return non_termini
+
+
+def _stamp_non_termini(biomolecule, non_termini):
+    """Mark the PDB2PQR residue objects identified by :func:`_detect_non_termini`
+    so its ``set_termini`` leaves the continued backbone side uncapped.
+
+    Sets ``n_term_blocked`` / ``c_term_blocked`` on the ``aa.Amino`` objects for
+    the ``"N"`` / ``"C"`` sides respectively. Resolving the per-side keys to the
+    actual residue objects here (PDB2PQR cannot see moleculekit's bonds) keeps the
+    PDB2PQR change to a couple of ``getattr`` reads.
+    """
+    by_key = {}
+    for residue in biomolecule.residues:
+        key = (
+            int(residue.res_seq),
+            str(residue.chain_id),
+            str(residue.ins_code).strip(),
+        )
+        by_key[key] = residue
+    for (resid, chain, insertion), side in non_termini:
+        residue = by_key.get((int(resid), str(chain), str(insertion).strip()))
+        if residue is None:
+            continue
+        if side == "N":
+            residue.n_term_blocked = True
+        else:
+            residue.c_term_blocked = True
 
 
 def _get_hold_residues(
@@ -834,85 +944,6 @@ def _fix_backbone_amide_h_names(mol):
         logger.info(
             f"Renamed backbone amide {old} to H on {resname} "
             f"{mol.resid[n_idx]} {mol.chain[n_idx]}"
-        )
-
-
-# Standard backbone amide C-N bond length, and the strict window within which a
-# stretched-but-EXPLICIT head-to-tail closure bond is snapped back to it.
-# PDB2PQR detects peptide bonds geometrically; a cyclic peptide whose closure is
-# modeled long (e.g. 7BTI's 1.468 A HYP-CYS closure) is otherwise read as two
-# free chain termini and capped. Only the closure bond the input itself declares
-# is touched, and only up to _AMIDE_CN_NORMALIZE_MAX - beyond that the bond is
-# almost certainly a misassigned record, so it is left alone rather than
-# collapsed across a nonsensical gap. Regular sequential peptide bonds are never
-# touched: PDB2PQR handles those via the chain sequence regardless of length.
-_AMIDE_CN_LENGTH = 1.33
-_AMIDE_CN_NORMALIZE_MIN = 1.40
-_AMIDE_CN_NORMALIZE_MAX = 1.60
-
-
-def _normalize_stretched_cyclic_closures(mol):
-    """Snap a cyclic peptide's head-to-tail closure bond back to a standard
-    amide length when it was modeled stretched, so the downstream PDB2PQR pass
-    recognises it as a peptide bond instead of capping the peptide's ends as
-    free termini.
-
-    A closure is identified per segment as an explicit bond between the first
-    residue's backbone ``N`` and the last residue's backbone ``C``. Only such
-    closures with a length in (:data:`_AMIDE_CN_NORMALIZE_MIN`,
-    :data:`_AMIDE_CN_NORMALIZE_MAX`] are normalized (by moving the carbonyl
-    ``C`` along the bond vector); longer ones are warned about and left alone.
-    tLeap rebuilds geometry from templates afterwards, so only the PDB handed
-    to PDB2PQR is affected.
-    """
-    if mol.bonds is None or not len(mol.bonds):
-        return
-    coords = mol.coords[:, :, 0]
-    bond_set = {(int(a), int(b)) for a, b in mol.bonds}
-    bond_set |= {(b, a) for (a, b) in bond_set}
-
-    for seg in np.unique(mol.segid):
-        seg_idx = np.where(mol.segid == seg)[0]
-        if not len(seg_idx):
-            continue
-        first_resid, first_ins = mol.resid[seg_idx[0]], mol.insertion[seg_idx[0]]
-        last_resid, last_ins = mol.resid[seg_idx[-1]], mol.insertion[seg_idx[-1]]
-        n_atoms = seg_idx[
-            (mol.resid[seg_idx] == first_resid)
-            & (mol.insertion[seg_idx] == first_ins)
-            & (mol.name[seg_idx] == "N")
-        ]
-        c_atoms = seg_idx[
-            (mol.resid[seg_idx] == last_resid)
-            & (mol.insertion[seg_idx] == last_ins)
-            & (mol.name[seg_idx] == "C")
-        ]
-        if len(n_atoms) != 1 or len(c_atoms) != 1:
-            continue
-        n_idx, c_idx = int(n_atoms[0]), int(c_atoms[0])
-        if (n_idx, c_idx) not in bond_set:
-            continue  # no explicit head-to-tail closure on this segment
-
-        d = float(np.linalg.norm(coords[n_idx] - coords[c_idx]))
-        if d <= _AMIDE_CN_NORMALIZE_MIN:
-            continue  # already a normal amide length; PDB2PQR will see it
-        if d > _AMIDE_CN_NORMALIZE_MAX:
-            logger.warning(
-                f"Cyclic closure bond on segment {seg} ({mol.resname[c_idx]} "
-                f"{mol.resid[c_idx]}{mol.insertion[c_idx]}:C - {mol.resname[n_idx]} "
-                f"{mol.resid[n_idx]}{mol.insertion[n_idx]}:N) spans {d:.2f} A - too "
-                "long to be a real amide; leaving its geometry untouched (likely a "
-                "misassigned bond record)."
-            )
-            continue
-
-        mol.coords[c_idx, :, 0] = (
-            coords[n_idx] + (coords[c_idx] - coords[n_idx]) / d * _AMIDE_CN_LENGTH
-        )
-        logger.info(
-            f"Normalized stretched cyclic closure on segment {seg} "
-            f"({d:.2f} A -> {_AMIDE_CN_LENGTH} A) so PDB2PQR recognises the "
-            "head-to-tail peptide bond."
         )
 
 
@@ -1731,7 +1762,6 @@ def systemPrepare(
     _prepare_nucleics(mol_in)
     _fix_protonation_resnames(mol_in)
     _fix_backbone_amide_h_names(mol_in)
-    _normalize_stretched_cyclic_closures(mol_in)
 
     definition, forcefield = _get_custom_ff()
     definition, forcefield = _generate_nonstandard_residues_ff(
@@ -1754,6 +1784,16 @@ def systemPrepare(
     )
     _check_frozen_histidines(mol_in, _no_prot + [key for key, _, _ in _frozen])
 
+    # Backbone termini that are NOT free because an inter-residue amide continues
+    # the chain past them - the single bond-based signal PDB2PQR uses to decide
+    # which sides to cap and where to split a hidden chain (it cannot see its own
+    # bonds at set_termini time). This covers head-to-tail closures (don't cap the
+    # head N / tail C) and isopeptide-linked residues whose free main-chain
+    # carboxyl is continued off a side-chain atom (don't split there) in one go,
+    # honoring stretched-but-real closures and avoiding false positives on folded
+    # linear termini.
+    _non_termini = _detect_non_termini(mol_in)
+
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpin = os.path.join(tmpdir, "input.pdb")
         mol_in.write(tmpin)
@@ -1765,6 +1805,7 @@ def systemPrepare(
             no_opt=_no_opt,
             no_prot=_no_prot,
             no_titr=_no_titr,
+            non_termini=_non_termini,
             definition=definition,
             forcefield_=forcefield,
         )

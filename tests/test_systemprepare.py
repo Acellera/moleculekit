@@ -80,10 +80,10 @@ _LIGAND_SMILES = {
 }
 
 
-def _two_residue_cyclic_closure(closure_dist):
-    """Two residues carrying an explicit backbone N(res1)-C(res2) bond placed
-    exactly ``closure_dist`` Angstrom apart - a synthetic head-to-tail
-    closure for testing cyclic-closure normalization."""
+def _two_res_closure(dist, add_bond):
+    """Two ALA residues whose first-N and last-C are ``dist`` Angstrom apart,
+    optionally with an explicit bond between them (a synthetic head-to-tail
+    closure)."""
     mol = Molecule().empty(8)
     mol.name[:] = ["N", "CA", "C", "O", "N", "CA", "C", "O"]
     mol.element[:] = ["N", "C", "C", "O", "N", "C", "C", "O"]
@@ -93,51 +93,138 @@ def _two_residue_cyclic_closure(closure_dist):
     mol.segid[:] = "P0"
     mol.record[:] = "ATOM"
     coords = np.zeros((8, 3), np.float32)
-    coords[0] = [0.0, 0.0, 0.0]            # N (res1) at origin
-    coords[1] = [1.5, 0.0, 0.0]            # CA (res1)
-    coords[2] = [2.5, 1.0, 0.0]            # C (res1)
-    coords[3] = [2.0, 2.0, 0.0]            # O (res1)
-    coords[6] = [-closure_dist, 0.0, 0.0]  # C (res2): closure_dist from res1 N
-    coords[4] = [-closure_dist - 1.0, 0.5, 0.0]
-    coords[5] = [-closure_dist - 0.5, 1.0, 0.0]
-    coords[7] = [-closure_dist - 0.3, -1.0, 0.0]
+    coords[0] = [0.0, 0.0, 0.0]            # N (res1)
+    coords[1] = [1.5, 0.0, 0.0]
+    coords[2] = [2.5, 1.0, 0.0]
+    coords[3] = [2.0, 2.0, 0.0]
+    coords[6] = [-dist, 0.0, 0.0]          # C (res2): dist from res1 N
+    coords[4] = [-dist - 1.0, 0.5, 0.0]
+    coords[5] = [-dist - 0.5, 1.0, 0.0]
+    coords[7] = [-dist - 0.3, -1.0, 0.0]
     mol.coords = coords.reshape(8, 3, 1)
-    mol.bonds = np.array([[0, 6]], dtype=np.uint32)  # res1 N - res2 C
-    mol.bondtype = np.array(["1"], dtype=object)
+    if add_bond:
+        mol.bonds = np.array([[0, 6]], dtype=np.uint32)
+        mol.bondtype = np.array(["1"], dtype=object)
     return mol
 
 
-def test_normalize_stretched_cyclic_closure():
-    """A stretched but explicit backbone amide bond (7BTI's cyclic closure is
-    1.468 A) is snapped back to a standard ~1.33 A length so PDB2PQR's
-    geometric peptide-bond detection recognises it."""
-    from moleculekit.tools.preparation import _normalize_stretched_cyclic_closures
+def _sidechain_isopeptide():
+    """An isopeptide where residue 2 acylates residue 1's backbone N through a
+    SIDE-CHAIN carbonyl (residue 2's CG), while residue 2 keeps a free MAIN-chain
+    carboxyl (OXT). This is microcystin's beta-methyl-Asp -> Arg junction: the
+    donor's free main-chain acid is not a real chain terminus because the chain
+    continues off its side chain."""
+    names = ["N", "CA", "C", "O", "N", "CA", "C", "O", "OXT", "CB", "CG"]
+    elems = ["N", "C", "C", "O", "N", "C", "C", "O", "O", "C", "C"]
+    mol = Molecule().empty(len(names))
+    mol.name[:] = names
+    mol.element[:] = elems
+    mol.resname[:] = ["ARG"] * 4 + ["ACB"] * 7
+    mol.resid[:] = [1] * 4 + [2] * 7
+    mol.chain[:] = "A"
+    mol.segid[:] = "P0"
+    mol.record[:] = "ATOM"
+    coords = np.zeros((len(names), 3), np.float32)
+    coords[0] = [0.0, 0.0, 0.0]            # ARG1 N (acylated)
+    coords[1] = [1.5, 0.0, 0.0]
+    coords[2] = [2.5, 1.0, 0.0]
+    coords[3] = [2.0, 2.0, 0.0]
+    coords[4] = [5.0, 0.0, 0.0]            # ACB2 N
+    coords[5] = [6.0, 0.0, 0.0]
+    coords[6] = [7.0, 1.0, 0.0]            # ACB2 backbone C (free acid)
+    coords[7] = [7.0, 2.0, 0.0]
+    coords[8] = [8.0, 1.0, 0.0]            # ACB2 OXT
+    coords[9] = [5.5, -1.0, 0.0]           # ACB2 CB
+    coords[10] = [-1.33, 0.0, 0.0]         # ACB2 CG: 1.33 A from ARG1 N
+    mol.coords = coords.reshape(len(names), 3, 1)
+    intra = [(0, 1), (1, 2), (2, 3), (4, 5), (5, 6), (6, 7), (6, 8), (5, 9), (9, 10)]
+    iso = (10, 0)  # ACB2 CG -> ARG1 N
+    bonds = intra + [iso]
+    mol.bonds = np.array(bonds, dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
+    return mol
 
-    mol = _two_residue_cyclic_closure(1.468)
-    _normalize_stretched_cyclic_closures(mol)
-    d = np.linalg.norm(mol.coords[0, :, 0] - mol.coords[6, :, 0])
-    assert abs(d - 1.33) < 0.02, f"expected ~1.33 A, got {d:.3f}"
+
+def _two_cys_disulfide():
+    """Two cysteines linked by an inter-residue SG-SG bond (not an amide)."""
+    names = ["N", "CA", "C", "O", "CB", "SG", "N", "CA", "C", "O", "CB", "SG"]
+    elems = ["N", "C", "C", "O", "C", "S", "N", "C", "C", "O", "C", "S"]
+    mol = Molecule().empty(len(names))
+    mol.name[:] = names
+    mol.element[:] = elems
+    mol.resname[:] = "CYS"
+    mol.resid[:] = [1] * 6 + [2] * 6
+    mol.chain[:] = "A"
+    mol.segid[:] = "P0"
+    mol.record[:] = "ATOM"
+    coords = np.zeros((len(names), 3), np.float32)
+    coords[0] = [-6.0, 5.0, 0.0]           # CYS1 N (backbone far from CYS2 C)
+    coords[1] = [-5.0, 4.0, 0.0]           # CYS1 CA
+    coords[2] = [-5.5, 2.5, 0.0]           # CYS1 C
+    coords[3] = [-6.5, 2.0, 0.0]           # CYS1 O
+    coords[4] = [-3.5, 3.5, 0.0]           # CYS1 CB
+    coords[5] = [0.0, 0.0, 0.0]            # CYS1 SG
+    coords[6] = [8.0, 5.0, 0.0]            # CYS2 N
+    coords[7] = [7.0, 4.0, 0.0]            # CYS2 CA
+    coords[8] = [7.5, 2.5, 0.0]            # CYS2 C (far from CYS1 N)
+    coords[9] = [8.5, 2.0, 0.0]            # CYS2 O
+    coords[10] = [5.5, 3.5, 0.0]           # CYS2 CB
+    coords[11] = [2.05, 0.0, 0.0]          # CYS2 SG (disulfide ~2.05 A)
+    mol.coords = coords.reshape(len(names), 3, 1)
+    bonds = [(0, 1), (1, 2), (2, 3), (1, 4), (4, 5), (6, 7), (7, 8), (8, 9), (7, 10), (10, 11), (5, 11)]
+    mol.bonds = np.array(bonds, dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
+    return mol
 
 
-def test_normalize_leaves_normal_closure_untouched():
-    """A normal-length amide (e.g. 5VAV's 1.334 A closure) is left alone."""
-    from moleculekit.tools.preparation import _normalize_stretched_cyclic_closures
+def test_detect_non_termini_head_to_tail_closure_explicit_bond():
+    """A stretched (1.47 A) but EXPLICITLY bonded head-to-tail closure blocks the
+    first residue's N side and the last residue's C side - the authoritative
+    signal handed to PDB2PQR so it leaves those termini uncapped (a pure distance
+    test would miss 1.47 A)."""
+    from moleculekit.tools.preparation import _detect_non_termini
 
-    mol = _two_residue_cyclic_closure(1.334)
-    before = mol.coords.copy()
-    _normalize_stretched_cyclic_closures(mol)
-    assert np.allclose(mol.coords, before)
+    mol = _two_res_closure(1.47, add_bond=True)
+    assert _detect_non_termini(mol) == {((1, "A", ""), "N"), ((2, "A", ""), "C")}
 
 
-def test_normalize_ignores_implausibly_long_closure():
-    """An explicit N-C bond far beyond a real amide (a misassigned record) is
-    NOT snapped - we never fabricate a closure across a nonsensical gap."""
-    from moleculekit.tools.preparation import _normalize_stretched_cyclic_closures
+def test_detect_non_termini_no_bond_left_to_pdb2pqr():
+    """A head-to-tail closure with NO explicit bond is NOT reported here - a
+    geometric closure with no bond record is left to PDB2PQR's own first-N/last-C
+    distance check, so moleculekit only signals what the bond graph proves."""
+    from moleculekit.tools.preparation import _detect_non_termini
 
-    mol = _two_residue_cyclic_closure(5.0)
-    before = mol.coords.copy()
-    _normalize_stretched_cyclic_closures(mol)
-    assert np.allclose(mol.coords, before)
+    mol = _two_res_closure(1.30, add_bond=False)
+    assert _detect_non_termini(mol) == set()
+
+
+def test_detect_non_termini_ignores_implausible_bond():
+    """An explicit inter-residue N-C bond stretched far beyond a real amide (a
+    misassigned record) is ignored, and the endpoints are too far for a geometric
+    closure."""
+    from moleculekit.tools.preparation import _detect_non_termini
+
+    mol = _two_res_closure(5.0, add_bond=True)
+    assert _detect_non_termini(mol) == set()
+
+
+def test_detect_non_termini_sidechain_isopeptide():
+    """A side-chain isopeptide blocks the acylated residue's N side and the donor
+    residue's C side, even though the donor's MAIN-chain carboxyl is free (OXT).
+    This is what stops PDB2PQR splitting a hidden chain at the donor's free acid."""
+    from moleculekit.tools.preparation import _detect_non_termini
+
+    mol = _sidechain_isopeptide()
+    assert _detect_non_termini(mol) == {((1, "A", ""), "N"), ((2, "A", ""), "C")}
+
+
+def test_detect_non_termini_ignores_disulfide():
+    """An inter-residue disulfide is not a backbone continuation - it must not
+    block any terminus (neither end is a backbone N)."""
+    from moleculekit.tools.preparation import _detect_non_termini
+
+    mol = _two_cys_disulfide()
+    assert _detect_non_termini(mol) == set()
 
 
 def _incomplete_sidechain_isopeptide():
@@ -189,6 +276,110 @@ def test_incomplete_sidechain_gives_clear_error():
     msg = str(exc.value)
     assert "A:1" in msg, msg
     assert "incompletely modeled" in msg, msg
+
+
+def _beta_amino_acid_residue():
+    """A synthetic beta-amino-acid residue whose backbone N->C shortest path is
+    N-CA-C18-C (length 4, one carbon longer than a standard alpha amino acid),
+    mirroring microcystin's Adda (1FJM, resname 1ZN). Fully protonated, explicit
+    bonds. Used to check _process_custom_residue accepts non-alpha backbones."""
+    names = ["N", "CA", "CB", "C18", "C", "O",
+             "H", "H2", "HA", "HB1", "HB2", "HB3", "H181", "H182"]
+    elems = ["N", "C", "C", "C", "C", "O",
+             "H", "H", "H", "H", "H", "H", "H", "H"]
+    coords = np.array([
+        [0.0, 0.0, 0.0], [1.5, 0.0, 0.0], [1.5, -1.5, 0.0], [2.5, 1.0, 0.0],
+        [3.5, 0.5, 0.0], [3.5, -0.7, 0.0],
+        [-0.5, 0.8, 0.0], [-0.5, -0.8, 0.0], [1.5, 0.5, 0.9],
+        [0.6, -2.0, 0.0], [2.4, -2.0, 0.0], [1.5, -2.0, -0.9],
+        [2.4, 1.6, 0.8], [2.4, 1.6, -0.8],
+    ], dtype=np.float32)
+    mol = Molecule().empty(len(names))
+    mol.name[:] = names
+    mol.element[:] = elems
+    mol.resname[:] = "BZA"
+    mol.resid[:] = 1
+    mol.chain[:] = "A"
+    mol.segid[:] = "P0"
+    mol.record[:] = "ATOM"
+    mol.coords = coords.reshape(-1, 3, 1)
+    bonds = [(0, 1), (1, 2), (1, 3), (3, 4), (4, 5),
+             (0, 6), (0, 7), (1, 8), (2, 9), (2, 10), (2, 11), (3, 12), (3, 13)]
+    mol.bonds = np.array(bonds, dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
+    return mol
+
+
+def test_process_custom_residue_accepts_beta_backbone():
+    """A beta-amino-acid residue (N-CA-C18-C backbone, e.g. microcystin's Adda)
+    must be accepted by _process_custom_residue, not rejected as an 'elongated
+    backbone'. The rigid-body N-CA-C alignment and reordering work for it; only
+    the strict length-3 backbone check needs relaxing."""
+    from moleculekit.tools.preparation_customres import _process_custom_residue
+
+    cres = _process_custom_residue(_beta_amino_acid_residue())
+    assert all(a in cres.name for a in ("N", "CA", "C18", "C")), sorted(cres.name)
+    assert "HA" in cres.name, sorted(cres.name)
+
+
+def _peptide_plus_crosslink_mol():
+    """ALA-ALA (protein) with a beta-amino-acid BZA peptide-bonded (C-N) to the
+    second ALA, and a one-atom ligand LIG side-chain-bonded to ALA1.CB. BZA's
+    backbone is N-CA-CM-C (CA and C NOT directly bonded), so atomselect does not
+    classify it as protein - mirroring microcystin's Adda. The ALA2.C-BZA.N
+    peptide bond is then a protein<->non-protein C-N bond; the ALA1.CB-LIG bond
+    is a genuine side-chain crosslink."""
+    names = ["N", "CA", "C", "O", "CB",  # ALA1
+             "N", "CA", "C", "O", "CB",  # ALA2
+             "N", "CA", "CM", "C", "O",  # BZA (beta)
+             "C1"]                        # LIG
+    elems = ["N", "C", "C", "O", "C", "N", "C", "C", "O", "C",
+             "N", "C", "C", "C", "O", "C"]
+    resid = [1] * 5 + [2] * 5 + [3] * 5 + [4]
+    resname = ["ALA"] * 5 + ["ALA"] * 5 + ["BZA"] * 5 + ["LIG"]
+    coords = np.array([
+        [0, 0, 0], [1.5, 0, 0], [2.5, 1, 0], [2.5, 2, 0], [1.5, -1.5, 0],
+        [3.8, 1, 0], [5, 1, 0], [6, 2, 0], [6, 3, 0], [5, -0.5, 0],
+        [7.3, 2, 0], [8.5, 2, 0], [9.5, 3, 0], [10.5, 3.5, 0], [10.5, 4.5, 0],
+        [1.5, -3.0, 0],
+    ], dtype=np.float32)
+    mol = Molecule().empty(len(names))
+    mol.name[:] = names
+    mol.element[:] = elems
+    mol.resid[:] = resid
+    mol.resname[:] = resname
+    mol.chain[:] = "A"
+    mol.segid[:] = "P0"
+    mol.record[:] = "ATOM"
+    mol.coords = coords.reshape(-1, 3, 1)
+    bonds = [(0, 1), (1, 2), (2, 3), (1, 4),       # ALA1
+             (5, 6), (6, 7), (7, 8), (6, 9),       # ALA2
+             (10, 11), (11, 12), (12, 13), (13, 14),  # BZA: N-CA-CM-C (no CA-C)
+             (2, 5),    # ALA1.C - ALA2.N  (peptide, protein-protein)
+             (7, 10),   # ALA2.C - BZA.N   (peptide, protein<->non-protein C-N)
+             (4, 15)]   # ALA1.CB - LIG.C1 (side-chain crosslink)
+    mol.bonds = np.array(bonds, dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
+    return mol
+
+
+def test_detect_nonpeptidic_bonds_excludes_peptide_bonds():
+    """A standard backbone C-N peptide bond to a non-protein-classified residue
+    (a beta amino acid like Adda) must NOT be flagged as a non-peptidic
+    crosslink, while a genuine side-chain crosslink to a ligand still is."""
+    from moleculekit.tools.preparation import _detect_nonpeptidic_bonds
+
+    mol = _peptide_plus_crosslink_mol()
+    # sanity: ALA protein, BZA (beta) not protein
+    prot = mol.atomselect("protein")
+    assert prot[mol.resid == 1].all() and not prot[mol.resid == 3].any()
+
+    pairs = _detect_nonpeptidic_bonds(mol)
+    flagged = {frozenset((int(a), int(b))) for a, b in pairs} if len(pairs) else set()
+    # the ALA2.C - BZA.N peptide bond (atoms 7,10) must be excluded
+    assert frozenset((7, 10)) not in flagged, "C-N peptide bond wrongly flagged"
+    # the ALA1.CB - LIG.C1 side-chain crosslink (atoms 4,15) must stay flagged
+    assert frozenset((4, 15)) in flagged, "side-chain crosslink should be flagged"
 
 
 @pytest.mark.parametrize("pdb", ["3PTB", "1A25", "1U5U", "1UNC", "6A5J"])
