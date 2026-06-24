@@ -284,8 +284,10 @@ def geometric_interresidue_links(mol, atoms_a, atoms_b, frame=None, amide_dist=N
     ----------
     mol : :class:`Molecule <moleculekit.molecule.Molecule>`
         The molecule. Not modified.
-    atoms_a, atoms_b : np.ndarray
-        Atom-index arrays of the two residues to test.
+    atoms_a : np.ndarray
+        Atom-index array of the first residue to test.
+    atoms_b : np.ndarray
+        Atom-index array of the second residue to test.
     frame : int
         Coordinate frame to use; defaults to ``mol.frame``.
     amide_dist : float
