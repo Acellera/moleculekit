@@ -322,6 +322,24 @@ def test_process_custom_residue_accepts_beta_backbone():
     assert "HA" in cres.name, sorted(cres.name)
 
 
+def test_modified_residue_ff_from_shipped_cif():
+    """A force-field-supported modified residue absent from PDB2PQR's own
+    forcefield (e.g. MSE) gets its topology Definition generated from the
+    reference cif shipped in moleculekit and injected at runtime, so PDB2PQR can
+    protonate it. Mirrors the NCAA custom-ff path but sourced from the cif."""
+    from moleculekit.tools.preparation_customres import _get_custom_ff
+    from moleculekit.tools.preparation import _generate_nonstandard_residues_ff
+
+    mol = Molecule().empty(1)
+    mol.resname[:] = "MSE"
+    mol.name[:] = ["SE"]
+    mol.element[:] = ["Se"]
+    definition, ff = _get_custom_ff()
+    assert not ff.has_residue("MSE")  # not in PDB2PQR's base forcefield
+    definition, ff = _generate_nonstandard_residues_ff(mol, definition, ff)
+    assert ff.has_residue("MSE")  # injected from share/residue_cifs/MSE.cif
+
+
 def _peptide_plus_crosslink_mol():
     """ALA-ALA (protein) with a beta-amino-acid BZA peptide-bonded (C-N) to the
     second ALA, and a one-atom ligand LIG side-chain-bonded to ALA1.CB. BZA's
@@ -847,6 +865,46 @@ def test_backbone_fixing():
     assert not np.any((mol.name == "C") & (mol.resid == 245))
     check_backbone(mol)
     assert np.sum((mol.name == "C") & (mol.resid == 245)) == 1
+
+
+def test_capture_bonds_preserves_macrocycle_closure():
+    """A head-to-tail closure between two CANONICAL residues - a NON-consecutive
+    backbone C-N bond - must be captured for restoration across the PDB2PQR
+    round-trip. The FF templates only rebuild the *consecutive* backbone bond, so
+    the closure (and any long-range crosslink) is lost otherwise. The standard
+    consecutive peptide bond and intra-residue bonds stay dropped (rebuilt)."""
+    from moleculekit.tools.preparation import _capture_bonds
+
+    mol = Molecule().empty(12)
+    mol.resname[:] = "ALA"
+    mol.resid[:] = [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3]
+    mol.name[:] = ["N", "CA", "C", "O"] * 3
+    mol.element[:] = ["N", "C", "C", "O"] * 3
+    mol.chain[:] = "A"
+    mol.segid[:] = "P"
+    mol.coords = np.zeros((12, 3, 1), dtype=np.float32)
+    mol.bonds = np.array(
+        [
+            [0, 1], [1, 2], [2, 3],     # res1 intra
+            [4, 5], [5, 6], [6, 7],     # res2 intra
+            [8, 9], [9, 10], [10, 11],  # res3 intra
+            [2, 4],   # res1.C - res2.N  (consecutive peptide)
+            [6, 8],   # res2.C - res3.N  (consecutive peptide)
+            [10, 0],  # res3.C - res1.N  (head-to-tail closure)
+        ],
+        dtype=np.uint32,
+    )
+    mol.bondtype = np.array(["1"] * 12, dtype=object)
+
+    captured = _capture_bonds(mol, detect_specs=[])
+
+    def _idx(uaid):
+        return int(np.atleast_1d(uaid.selectAtom(mol))[0])
+
+    pairs = {frozenset((_idx(a), _idx(b))) for a, b, _, _ in captured}
+    assert frozenset((10, 0)) in pairs, "macrocycle closure must be captured"
+    assert frozenset((2, 4)) not in pairs, "consecutive peptide bond stays dropped"
+    assert frozenset((0, 1)) not in pairs, "intra-residue bond stays dropped"
 
 
 def test_capture_and_restore_bonds():

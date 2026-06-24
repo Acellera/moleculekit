@@ -107,6 +107,8 @@ def _generate_nonstandard_residues_ff(
         _mol_to_xml_def,
     )
     from moleculekit.tools.nonstandard_residues import ChainResidueSpec
+    from moleculekit.residues import MODIFIED_PROTEIN_RESIDUE_NAMES
+    from moleculekit import __share_dir
 
     # Only chain-resident non-canonical amino acids need FF templating here.
     # Free / covalent / scaffold ligands are handled separately (or held by
@@ -126,13 +128,28 @@ def _generate_nonstandard_residues_ff(
             current_resname = spec.new_resname or spec.resname
             spec_by_resname.setdefault(str(current_resname), spec)
 
-    not_in_ff = [r for r in spec_by_resname if not forcefield.has_residue(r)]
+    ncaa_not_in_ff = [r for r in spec_by_resname if not forcefield.has_residue(r)]
 
-    if len(not_in_ff) == 0:
+    # Force-field-supported modified residues (MSE, SEP, TPO, ... in the AMBER
+    # libraries but unknown to PDB2PQR) present in the structure: source their
+    # topology from the reference cif shipped in moleculekit so PDB2PQR can
+    # protonate them and keep the chain/closure intact. PDB2PQR only needs the
+    # topology (atom names/bonds/H build geometry); the MD charges are assigned
+    # later by the AMBER/OpenMM forcefield, so the cif is a sufficient source.
+    cif_dir = os.path.join(__share_dir, "residue_cifs")
+    present_resnames = {str(r) for r in np.unique(mol.resname)}
+    modres_from_cif = sorted(
+        r
+        for r in (present_resnames & set(MODIFIED_PROTEIN_RESIDUE_NAMES))
+        if not forcefield.has_residue(r)
+        and os.path.isfile(os.path.join(cif_dir, f"{r}.cif"))
+    )
+
+    if not ncaa_not_in_ff and not modres_from_cif:
         return definition, forcefield
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        for res in not_in_ff:
+        for res in ncaa_not_in_ff:
             spec = spec_by_resname[res]
             rid = spec.residue
             mask = (
@@ -168,6 +185,46 @@ def _generate_nonstandard_residues_ff(
             # Rename to correct resname
             cres.resname[:] = res
 
+            _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
+            _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
+
+        for res in modres_from_cif:
+            cresmol = Molecule(os.path.join(cif_dir, f"{res}.cif"))
+            cresmol.chain[:] = ""
+            cresmol.segid[:] = ""
+            # The reference cif is the FREE amino acid (N-terminal amine +
+            # C-terminal carboxyl). Strip those terminal-variant atoms so the
+            # Definition is the MID-CHAIN form - otherwise PDB2PQR's heavy-atom
+            # repair adds a spurious OXT (and extra backbone-N hydrogens) to
+            # every internal copy, which tLeap then rejects ("Missing atom type
+            # ... OXT"). PDB2PQR re-adds OXT / terminal H via its CTERM / NTERM
+            # patches only for residues that are genuine termini.
+            drop = np.zeros(cresmol.numAtoms, dtype=bool)
+            if "OXT" in cresmol.name:
+                oxt = int(np.where(cresmol.name == "OXT")[0][0])
+                drop[oxt] = True
+                for n in cresmol.getNeighbors(oxt):
+                    if cresmol.element[n] == "H":
+                        drop[int(n)] = True
+            # Backbone-N hydrogens beyond the mid-chain count: a proline-type N
+            # (bonded to two heavy atoms) carries none mid-chain, every other
+            # residue exactly one (named "H"). Drop the standalone extras.
+            n_at = int(np.where(cresmol.name == "N")[0][0])
+            n_neigh = [int(x) for x in cresmol.getNeighbors(n_at)]
+            n_hs = [x for x in n_neigh if cresmol.element[x] == "H"]
+            n_heavy = sum(1 for x in n_neigh if cresmol.element[x] != "H")
+            if n_heavy >= 2:
+                keep_h = []  # proline-type: no backbone amide H
+            else:
+                named_h = [h for h in n_hs if str(cresmol.name[h]) == "H"]
+                keep_h = named_h[:1] if named_h else n_hs[:1]
+            for h in n_hs:
+                if h not in keep_h:
+                    drop[h] = True
+            if drop.any():
+                cresmol.remove(drop, _logger=False)
+            cres = _process_custom_residue(cresmol)
+            cres.resname[:] = res
             _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
             _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
 
@@ -1060,11 +1117,44 @@ def _capture_bonds(mol, detect_specs):
                 & (mol.insertion == str(r.insertion))
             )
 
+    # Residue index per atom (file order) to tell the standard consecutive
+    # backbone bond - which the FF regenerates - from an inter-residue bond it
+    # will NOT (a head-to-tail macrocycle closure, a long-range crosslink).
+    from moleculekit.util import sequenceID
+
+    resseq = sequenceID((mol.resid, mol.insertion, mol.chain, mol.segid))
+    name = mol.name
+
+    def _is_consecutive_backbone(a, b):
+        # ``C(i)-N(i+1)`` peptide or ``O3'(i)-P(i+1)`` phosphodiester between
+        # sequentially adjacent residues - the bond tLeap / OpenMM rebuild from
+        # the chain. A head-to-tail closure (e.g. CYS7.C-HYP1.N) is also a C-N
+        # amide but between NON-adjacent residues, so it fails this test.
+        na, nb = str(name[a]), str(name[b])
+        if {na, nb} == {"C", "N"}:
+            c_at, n_at = (a, b) if na == "C" else (b, a)
+            return int(resseq[n_at]) == int(resseq[c_at]) + 1
+        if (na in ("O3'", "O3*") and nb == "P") or (
+            nb in ("O3'", "O3*") and na == "P"
+        ):
+            o3_at, p_at = (a, b) if na in ("O3'", "O3*") else (b, a)
+            return int(resseq[p_at]) == int(resseq[o3_at]) + 1
+        return False
+
     out = []
     for i, (a, b) in enumerate(mol.bonds):
         a, b = int(a), int(b)
         if not (needs_capture[a] or needs_capture[b]):
-            continue
+            # Both endpoints are canonical and unlisted. The FF rebuilds
+            # intra-residue bonds and the standard consecutive backbone bond, so
+            # those stay dropped. But an inter-residue bond that is NOT that
+            # standard backbone bond - a head-to-tail macrocycle closure (a
+            # stretched cyclic peptide) or a long-range crosslink - is never
+            # regenerated downstream, so preserve it.
+            if int(resseq[a]) == int(resseq[b]):
+                continue
+            if _is_consecutive_backbone(a, b):
+                continue
         is_h_bond = "H" in mol.element[[a, b]]
         out.append(
             (

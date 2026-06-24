@@ -33,6 +33,44 @@ def _getRCSBtext(url, attempts=3):
     return text
 
 
+def fetchResidueCIF(resname: str, outdir: str, overwrite: bool = False) -> str:
+    """Download a residue's reference structure from the RCSB Chemical Component
+    Dictionary and store it as ``<resname>.cif`` in ``outdir``.
+
+    Used at packaging time to populate moleculekit's ``share/residue_cifs`` with
+    the modified-residue templates that ``systemPrepare`` injects into PDB2PQR so
+    those residues can be protonated. NOT called at runtime - runtime reads the
+    already-shipped cifs. No-op if the file exists unless ``overwrite`` is set.
+
+    Parameters
+    ----------
+    resname : str
+        The PDB chemical-component code, e.g. ``"HYP"``.
+    outdir : str
+        Directory to write ``<resname>.cif`` into.
+    overwrite : bool
+        Re-download even if the file already exists.
+
+    Returns
+    -------
+    path : str
+        Path to the written (or pre-existing) cif file.
+    """
+    import os
+
+    outpath = os.path.join(outdir, f"{resname}.cif")
+    if os.path.isfile(outpath) and not overwrite:
+        return outpath
+    url = f"https://files.rcsb.org/ligands/download/{resname}.cif"
+    text = _getRCSBtext(url)
+    if isinstance(text, bytes):
+        text = text.decode()
+    os.makedirs(outdir, exist_ok=True)
+    with open(outpath, "w") as fh:
+        fh.write(text)
+    return outpath
+
+
 def rcsbFindMutatedResidues(pdbid: str) -> dict:
     """Find the modified/mutated residues of a PDB entry.
 

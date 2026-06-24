@@ -138,6 +138,12 @@ MODIFIED_PROTEIN_RESIDUES = (
         single_letter="Y",
         resname_variants=[],
     ),
+    _Residue(
+        full_name="4-Hydroxyproline",
+        resname="HYP",
+        single_letter="P",
+        resname_variants=[],
+    ),
 )
 NUCLEIC_RESIDUES = (
     _Residue(
