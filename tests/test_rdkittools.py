@@ -798,3 +798,40 @@ def test_extend_residue_from_smiles_preserve_atom_names():
         orig_coor = original_mol.coords[original_mol.name == atom, :, 0]
         new_coor = mol.coords[mol.name == atom, :, 0]
         assert np.allclose(orig_coor, new_coor, atol=1e-3)
+
+
+def test_detect_interresidue_bonds_infers_undeposited_isopeptide():
+    """A side-chain isopeptide the input connectivity omits (microcystin's
+    ACB.CG -> ARG.N, a non-standard junction) must still be detected as a
+    cross-residue bond, so templating does not over-protonate / over-valence the
+    boundary carbon. Mirrors the geometric inference used by autoSegment/detect."""
+    import numpy as np
+    from moleculekit.rdkittools import _detect_interresidue_bonds
+
+    names = ["N", "CA", "C", "O", "OXT", "CB", "CG", "N", "CA", "C", "O"]
+    elems = ["N", "C", "C", "O", "O", "C", "C", "N", "C", "C", "O"]
+    resn = ["ACB"] * 7 + ["ARG"] * 4
+    resid = [1] * 7 + [2] * 4
+    coords = np.array(
+        [
+            [-2, 2, 0], [-3, 1, 0], [-3, 0, 0], [-4, 0, 0], [-3, -1, 0],
+            [-1, 1, 0], [0, 0, 0],          # ACB.CG at origin (free carboxyl C far)
+            [1.33, 0, 0], [2.5, 0.5, 0], [3.5, 0, 0], [3.5, -1, 0],  # ARG.N at 1.33 from CG
+        ],
+        dtype=np.float32,
+    )
+    mol = Molecule().empty(len(names))
+    mol.name[:] = names
+    mol.element[:] = elems
+    mol.resname[:] = resn
+    mol.resid[:] = resid
+    mol.chain[:] = "A"
+    mol.record[:] = "ATOM"
+    mol.coords = coords.reshape(-1, 3, 1)
+
+    acb_idx = mol.atomselect("resname ACB", indexes=True)
+    cross, sel_start, sel_end = _detect_interresidue_bonds(mol, acb_idx)
+    cg_local, arg_n_global = 6, 7
+    assert any(li == cg_local and ext == arg_n_global for li, ext, _ in cross), (
+        f"expected inferred CG->ARG.N cross bond, got {cross}"
+    )

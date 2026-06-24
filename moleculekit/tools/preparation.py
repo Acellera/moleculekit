@@ -7,6 +7,7 @@ import logging
 import tempfile
 import numpy as np
 import os
+import itertools
 from moleculekit.molecule import Molecule, UniqueResidueID
 from moleculekit.tools.backbone import check_backbone
 from moleculekit.util import sequenceID
@@ -667,7 +668,7 @@ def _atomsel_to_hold(mol_in, sel):
 _AMIDE_BOND_SANITY_DIST = 2.0
 
 
-def _detect_non_termini(mol):
+def _detect_non_termini(mol, extra_bonds=()):
     """Return a set of ``((resid, chain, insertion), side)`` tuples marking the
     backbone termini that are NOT free because an inter-residue amide bond
     continues the chain past them.
@@ -687,9 +688,15 @@ def _detect_non_termini(mol):
     and OXT-bearing residues are ever capped or split, and those keep their free
     side unless a bond truly continues it. An inter-residue N-C bond longer than
     :data:`_AMIDE_BOND_SANITY_DIST` is treated as a misassigned record and ignored.
+
+    ``extra_bonds`` are inter-residue bonds inferred from geometry (see
+    :func:`~moleculekit.tools.nonstandard_residues.infer_nonstandard_junction_bonds`)
+    but deliberately not stored on ``mol.bonds``; they are consulted alongside the
+    explicit bonds so an undeposited isopeptide still suppresses a spurious cap.
     """
     non_termini = set()
-    if mol.bonds is None or not len(mol.bonds):
+    have_bonds = mol.bonds is not None and len(mol.bonds)
+    if not have_bonds and not len(extra_bonds):
         return non_termini
     name = mol.name
     element = mol.element
@@ -701,7 +708,8 @@ def _detect_non_termini(mol):
     def reskey(i):
         return (int(resid[i]), str(chain[i]), str(insertion[i]))
 
-    for a, b in mol.bonds:
+    explicit = mol.bonds if have_bonds else ()
+    for a, b in itertools.chain(explicit, extra_bonds):
         a, b = int(a), int(b)
         # An amide-type continuation: a backbone N bonded to a carbon (backbone C
         # for a standard peptide, or a side-chain carbonyl for an isopeptide /
@@ -1791,8 +1799,17 @@ def systemPrepare(
     # head N / tail C) and isopeptide-linked residues whose free main-chain
     # carboxyl is continued off a side-chain atom (don't split there) in one go,
     # honoring stretched-but-real closures and avoiding false positives on folded
-    # linear termini.
-    _non_termini = _detect_non_termini(mol_in)
+    # linear termini. Inter-residue backbone-continuation bonds the input omits at
+    # a non-standard junction are recovered from geometry and consulted too, so an
+    # undeposited side-chain isopeptide still suppresses a spurious terminus
+    # without being stored on mol.bonds.
+    from moleculekit.tools.nonstandard_residues import (
+        infer_nonstandard_junction_bonds,
+    )
+
+    _non_termini = _detect_non_termini(
+        mol_in, extra_bonds=infer_nonstandard_junction_bonds(mol_in)
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpin = os.path.join(tmpdir, "input.pdb")

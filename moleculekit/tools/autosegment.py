@@ -102,24 +102,42 @@ def _polymer_linked(
     ``nucleic_fallback_cutoff``. If no usable atom pair exists, returns False
     (treated as a break).
     """
+    from moleculekit.tools.nonstandard_residues import (
+        geometric_interresidue_links,
+        _CANONICAL_RESNAMES,
+    )
+
     if category == "protein":
-        c = _residue_atom_coord(mol, prev_idx, "C")
-        n = _residue_atom_coord(mol, curr_idx, "N")
-        if c is not None and n is not None:
-            if float(np.linalg.norm(c - n)) <= protein_cutoff:
+        # Geometric backbone continuation via the shared primitive: a peptide
+        # bond always links; a side-chain isopeptide links only at a NON-canonical
+        # junction (geometric inference is less certain than a deposited bond, so
+        # two canonical residues are not merged on a coincidental side-chain
+        # contact - e.g. microcystin's ACB.CG->ARG.N links, a Gln-Lys crosslink
+        # between two standard residues does not).
+        noncanon = (
+            str(mol.resname[prev_idx[0]]) not in _CANONICAL_RESNAMES
+            or str(mol.resname[curr_idx[0]]) not in _CANONICAL_RESNAMES
+        )
+        for _, _, k in geometric_interresidue_links(
+            mol, prev_idx, curr_idx, amide_dist=protein_cutoff
+        ):
+            if k == "peptide" or (k == "isopeptide" and noncanon):
                 return True
-        else:
+        # CA-CA fallback ONLY when the backbone C/N needed for the precise check
+        # is missing (an incomplete residue) - never for present-but-far C/N,
+        # which is a real chain gap.
+        if (
+            _residue_atom_coord(mol, prev_idx, "C") is None
+            or _residue_atom_coord(mol, curr_idx, "N") is None
+        ):
             ca0 = _residue_atom_coord(mol, prev_idx, "CA")
             ca1 = _residue_atom_coord(mol, curr_idx, "CA")
             if ca0 is not None and ca1 is not None:
                 if float(np.linalg.norm(ca0 - ca1)) <= ca_fallback_cutoff:
                     return True
-        # Distance alone misses NON-standard backbone links - the backbone N of
-        # ``curr`` acylated by a side-chain carbonyl of ``prev`` (e.g. the
-        # gamma-glutamyl isopeptide FGA.CD->DAM.N in microcystin), or prev's
-        # backbone C bonded into curr. Honor such an explicit bond so the
-        # connected polymer stays one segment.
-        return _has_interresidue_backbone_bond(
+        # Last resort: honor an explicit deposited backbone bond the geometry
+        # above did not catch (a stretched or non-amide CONECT link).
+        return _has_deposited_backbone_bond(
             mol, prev_idx, curr_idx, prev_names=("C",), curr_names=("N",)
         )
 
@@ -134,7 +152,7 @@ def _polymer_linked(
             if c3 is not None and p is not None:
                 if float(np.linalg.norm(c3 - p)) <= nucleic_fallback_cutoff:
                     return True
-        return _has_interresidue_backbone_bond(
+        return _has_deposited_backbone_bond(
             mol, prev_idx, curr_idx,
             prev_names=("O3'", "O3*", "C3'", "C3*"), curr_names=("P",),
         )
@@ -142,15 +160,15 @@ def _polymer_linked(
     return False
 
 
-def _has_interresidue_backbone_bond(mol, prev_idx, curr_idx, prev_names, curr_names):
-    """Return True if an explicit bond joins the two residues at the backbone:
-    a bond from ``curr``'s backbone atom (any of ``curr_names``) to any atom of
-    ``prev``, or from ``prev``'s backbone atom (any of ``prev_names``) to any
-    atom of ``curr``. This catches non-standard backbone linkages (e.g. an
-    isopeptide acylating curr's N) that a pure distance check misses, while
-    NOT merging side-chain-only crosslinks (e.g. a disulfide), which touch
-    neither backbone atom. Only consulted as a fallback when the distance
-    checks fail, so the per-pair bond scan runs at most at chain breaks.
+def _has_deposited_backbone_bond(mol, prev_idx, curr_idx, prev_names, curr_names):
+    """Return True if an EXPLICIT (deposited) bond joins the two residues at the
+    backbone: a bond from ``curr``'s backbone atom (any of ``curr_names``) to any
+    atom of ``prev``, or from ``prev``'s backbone atom (any of ``prev_names``) to
+    any atom of ``curr``. This honors a deposited CONECT link the geometric
+    :func:`geometric_interresidue_links` check could miss (a stretched or non-amide bond),
+    while NOT merging side-chain-only crosslinks (e.g. a disulfide), which touch
+    neither backbone atom. Only consulted as a fallback when the geometric checks
+    in :func:`_polymer_linked` fail, so the bond scan runs at most at chain breaks.
     """
     if mol.bonds is None or len(mol.bonds) == 0:
         return False

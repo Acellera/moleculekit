@@ -1343,3 +1343,176 @@ def test_systemprepare_8qfz_canonical_to_ncaa_end_to_end():
         names = _residue_atom_names(prepared, spec.new_resname, int(rid.resid))
         assert "SG" in names
         assert "HG" not in names
+
+
+# ---------------------------------------------------------------------------
+# infer_nonstandard_junction_bonds: geometric completion of inter-residue
+# backbone-continuation bonds the input connectivity omits, at junctions
+# involving a non-canonical residue (never between two canonical residues).
+# ---------------------------------------------------------------------------
+
+
+def _mol_from_atoms(atoms, bonds=()):
+    """atoms: list of (resname, resid, chain, name, element, (x, y, z))."""
+    mol = Molecule().empty(len(atoms))
+    mol.resname[:] = [a[0] for a in atoms]
+    mol.resid[:] = [a[1] for a in atoms]
+    mol.chain[:] = [a[2] for a in atoms]
+    mol.name[:] = [a[3] for a in atoms]
+    mol.element[:] = [a[4] for a in atoms]
+    mol.record[:] = "ATOM"
+    mol.coords = np.array([a[5] for a in atoms], dtype=np.float32).reshape(-1, 3, 1)
+    if len(bonds):
+        mol.bonds = np.array(bonds, dtype=np.uint32)
+        mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
+    return mol
+
+
+def _infer(mol):
+    from moleculekit.tools.nonstandard_residues import infer_nonstandard_junction_bonds
+
+    return {tuple(sorted((int(a), int(b)))) for a, b in infer_nonstandard_junction_bonds(mol)}
+
+
+def test_infer_junction_sidechain_isopeptide_forward():
+    """A non-canonical residue's side-chain carbonyl acylating the next residue's
+    backbone N (microcystin's ACB.CG -> ARG.N) is inferred when the junction
+    carries no inter-residue bond."""
+    atoms = [
+        ("ACB", 1, "A", "N", "N", (-2, 2, 0)), ("ACB", 1, "A", "CA", "C", (-3, 1, 0)),
+        ("ACB", 1, "A", "C", "C", (-3, 0, 0)), ("ACB", 1, "A", "O", "O", (-4, 0, 0)),
+        ("ACB", 1, "A", "OXT", "O", (-3, -1, 0)), ("ACB", 1, "A", "CB", "C", (-1, 1, 0)),
+        ("ACB", 1, "A", "CG", "C", (0, 0, 0)),
+        ("ARG", 2, "A", "N", "N", (1.33, 0, 0)), ("ARG", 2, "A", "CA", "C", (2.5, 0.5, 0)),
+        ("ARG", 2, "A", "C", "C", (3.5, 0, 0)), ("ARG", 2, "A", "O", "O", (3.5, -1, 0)),
+    ]
+    mol = _mol_from_atoms(atoms)
+    assert _infer(mol) == {(6, 7)}  # ACB.CG -> ARG.N
+
+
+def test_infer_junction_reverse_backbone_c_to_sidechain_n():
+    """A non-canonical residue's backbone C amide-bonded to the next residue's
+    side-chain amino (the epsilon-poly-lysine direction, alpha-C -> Lys NZ) is
+    inferred too - the rule is symmetric."""
+    atoms = [
+        ("XAA", 1, "A", "N", "N", (-2.5, 1, 0)), ("XAA", 1, "A", "CA", "C", (-1.5, 0, 0)),
+        ("XAA", 1, "A", "C", "C", (0, 0, 0)), ("XAA", 1, "A", "O", "O", (0.3, -1, 0)),
+        ("LYS", 2, "A", "NZ", "N", (1.33, 0, 0)), ("LYS", 2, "A", "CE", "C", (2.5, 0.5, 0)),
+        ("LYS", 2, "A", "CD", "C", (3.5, 0, 0)), ("LYS", 2, "A", "CG", "C", (4.5, 0.5, 0)),
+        ("LYS", 2, "A", "CB", "C", (5.5, 0, 0)), ("LYS", 2, "A", "CA", "C", (6.5, 0.5, 0)),
+        ("LYS", 2, "A", "N", "N", (7.5, 0, 0)), ("LYS", 2, "A", "C", "C", (8.5, 0.5, 0)),
+        ("LYS", 2, "A", "O", "O", (8.5, -0.5, 0)),
+    ]
+    mol = _mol_from_atoms(atoms)
+    assert _infer(mol) == {(2, 4)}  # XAA.C -> LYS.NZ
+
+
+def test_infer_junction_skips_canonical_gap():
+    """Two canonical residues with a missing peptide bond are never bridged,
+    even when geometrically close - that is a real chain gap."""
+    atoms = [
+        ("GLY", 1, "A", "N", "N", (-1, 1, 0)), ("GLY", 1, "A", "CA", "C", (-1, 0, 0)),
+        ("GLY", 1, "A", "C", "C", (0, 0, 0)), ("GLY", 1, "A", "O", "O", (0, -1, 0)),
+        ("ALA", 2, "A", "N", "N", (1.33, 0, 0)), ("ALA", 2, "A", "CA", "C", (2.5, 0, 0)),
+        ("ALA", 2, "A", "C", "C", (3.5, 0, 0)), ("ALA", 2, "A", "O", "O", (3.5, -1, 0)),
+    ]
+    mol = _mol_from_atoms(atoms)
+    assert _infer(mol) == set()
+
+
+def test_infer_junction_skips_when_already_bonded():
+    """If the junction already carries an inter-residue bond, infer nothing."""
+    atoms = [
+        ("ACB", 1, "A", "N", "N", (-2, 2, 0)), ("ACB", 1, "A", "CA", "C", (-3, 1, 0)),
+        ("ACB", 1, "A", "C", "C", (-3, 0, 0)), ("ACB", 1, "A", "O", "O", (-4, 0, 0)),
+        ("ACB", 1, "A", "OXT", "O", (-3, -1, 0)), ("ACB", 1, "A", "CB", "C", (-1, 1, 0)),
+        ("ACB", 1, "A", "CG", "C", (0, 0, 0)),
+        ("ARG", 2, "A", "N", "N", (1.33, 0, 0)), ("ARG", 2, "A", "CA", "C", (2.5, 0.5, 0)),
+        ("ARG", 2, "A", "C", "C", (3.5, 0, 0)), ("ARG", 2, "A", "O", "O", (3.5, -1, 0)),
+    ]
+    mol = _mol_from_atoms(atoms, bonds=[(6, 7)])  # CG -> N already present
+    assert _infer(mol) == set()
+
+
+def test_infer_junction_skips_sidechain_only_contact():
+    """Consecutive non-canonical residues touching only via side chains (a
+    disulfide; no backbone N or C involved) are not a backbone continuation."""
+    atoms = [
+        ("XAA", 1, "A", "N", "N", (-5, 5, 0)), ("XAA", 1, "A", "CA", "C", (-4, 4, 0)),
+        ("XAA", 1, "A", "C", "C", (-5, 3, 0)), ("XAA", 1, "A", "O", "O", (-6, 3, 0)),
+        ("XAA", 1, "A", "CB", "C", (-3, 3, 0)), ("XAA", 1, "A", "SG", "S", (0, 0, 0)),
+        ("XBB", 2, "A", "N", "N", (8, 5, 0)), ("XBB", 2, "A", "CA", "C", (7, 4, 0)),
+        ("XBB", 2, "A", "C", "C", (8, 3, 0)), ("XBB", 2, "A", "O", "O", (9, 3, 0)),
+        ("XBB", 2, "A", "CB", "C", (5, 3, 0)), ("XBB", 2, "A", "SG", "S", (2.05, 0, 0)),
+    ]
+    mol = _mol_from_atoms(atoms)
+    assert _infer(mol) == set()
+
+
+# ---------------------------------------------------------------------------
+# geometric_interresidue_links: the shared geometric primitive that detects typed
+# inter-residue covalent links (peptide / isopeptide / phosphodiester), used by
+# autoSegment, residue templating, detect and systemPrepare.
+# ---------------------------------------------------------------------------
+
+
+def _links(mol):
+    from moleculekit.tools.nonstandard_residues import geometric_interresidue_links
+
+    a = np.where(mol.resid == 1)[0]
+    b = np.where(mol.resid == 2)[0]
+    return {(int(ia), int(ib), k) for ia, ib, k in geometric_interresidue_links(mol, a, b)}
+
+
+def test_geometric_interresidue_links_peptide():
+    atoms = [
+        ("ALA", 1, "A", "N", "N", (-2, 1, 0)), ("ALA", 1, "A", "CA", "C", (-1, 0.5, 0)),
+        ("ALA", 1, "A", "C", "C", (0, 0, 0)), ("ALA", 1, "A", "O", "O", (0, -1, 0)),
+        ("ALA", 2, "A", "N", "N", (1.33, 0, 0)), ("ALA", 2, "A", "CA", "C", (2.5, 0.5, 0)),
+        ("ALA", 2, "A", "C", "C", (3.5, 0, 0)), ("ALA", 2, "A", "O", "O", (3.5, -1, 0)),
+    ]
+    assert _links(_mol_from_atoms(atoms)) == {(2, 4, "peptide")}  # res1.C -> res2.N
+
+
+def test_geometric_interresidue_links_isopeptide_forward():
+    """A side-chain carbon of res1 to res2's backbone N is an isopeptide."""
+    atoms = [
+        ("ACB", 1, "A", "N", "N", (-2, 2, 0)), ("ACB", 1, "A", "CA", "C", (-3, 1, 0)),
+        ("ACB", 1, "A", "C", "C", (-3, 0, 0)), ("ACB", 1, "A", "O", "O", (-4, 0, 0)),
+        ("ACB", 1, "A", "OXT", "O", (-3, -1, 0)), ("ACB", 1, "A", "CB", "C", (-1, 1, 0)),
+        ("ACB", 1, "A", "CG", "C", (0, 0, 0)),
+        ("ARG", 2, "A", "N", "N", (1.33, 0, 0)), ("ARG", 2, "A", "CA", "C", (2.5, 0.5, 0)),
+        ("ARG", 2, "A", "C", "C", (3.5, 0, 0)), ("ARG", 2, "A", "O", "O", (3.5, -1, 0)),
+    ]
+    assert _links(_mol_from_atoms(atoms)) == {(6, 7, "isopeptide")}  # res1.CG -> res2.N
+
+
+def test_geometric_interresidue_links_isopeptide_reverse():
+    """res1's backbone C to res2's side-chain amino (epsilon-poly-lysine)."""
+    atoms = [
+        ("XAA", 1, "A", "N", "N", (-2.5, 1, 0)), ("XAA", 1, "A", "CA", "C", (-1.5, 0, 0)),
+        ("XAA", 1, "A", "C", "C", (0, 0, 0)), ("XAA", 1, "A", "O", "O", (0.3, -1, 0)),
+        ("LYS", 2, "A", "NZ", "N", (1.33, 0, 0)), ("LYS", 2, "A", "CE", "C", (2.5, 0.5, 0)),
+        ("LYS", 2, "A", "CD", "C", (3.5, 0, 0)), ("LYS", 2, "A", "CA", "C", (6.5, 0.5, 0)),
+        ("LYS", 2, "A", "N", "N", (7.5, 0, 0)),
+    ]
+    assert _links(_mol_from_atoms(atoms)) == {(2, 4, "isopeptide")}  # res1.C -> res2.NZ
+
+
+def test_geometric_interresidue_links_phosphodiester():
+    atoms = [
+        ("DG", 1, "A", "O3'", "O", (0, 0, 0)), ("DG", 1, "A", "C3'", "C", (-1, 0.5, 0)),
+        ("DA", 2, "A", "P", "P", (1.6, 0, 0)), ("DA", 2, "A", "OP1", "O", (2, 1, 0)),
+    ]
+    assert _links(_mol_from_atoms(atoms)) == {(0, 2, "phosphodiester")}  # res1.O3' -> res2.P
+
+
+def test_geometric_interresidue_links_none():
+    """Two residues with no atom pair within bonding distance link nothing."""
+    atoms = [
+        ("ALA", 1, "A", "N", "N", (-2, 1, 0)), ("ALA", 1, "A", "CA", "C", (-1, 0.5, 0)),
+        ("ALA", 1, "A", "C", "C", (0, 0, 0)), ("ALA", 1, "A", "O", "O", (0, -1, 0)),
+        ("ALA", 2, "A", "N", "N", (5, 0, 0)), ("ALA", 2, "A", "CA", "C", (6, 0.5, 0)),
+        ("ALA", 2, "A", "C", "C", (7, 0, 0)), ("ALA", 2, "A", "O", "O", (7, -1, 0)),
+    ]
+    assert _links(_mol_from_atoms(atoms)) == set()

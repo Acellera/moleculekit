@@ -244,6 +244,199 @@ def _residue_groups(mol):
     return a2r, residues, atom_idxs
 
 
+# Single source of truth for inter-residue covalent bond-distance thresholds. An
+# amide C-N is ~1.33 A (stretched closures up to ~1.47); a phosphodiester P-O3' is
+# ~1.6 A. Generous enough for stretched links, tight enough that two non-bonded
+# heavy atoms (van der Waals contact >~2.4 A) are never linked.
+AMIDE_LINK_DIST = 1.8
+PHOSPHODIESTER_LINK_DIST = 1.9
+
+# Backwards-compatible alias used by the non-standard junction inference below.
+_JUNCTION_BOND_MAX_DIST = AMIDE_LINK_DIST
+
+_PHOSPHO_DONOR_NAMES = ("O3'", "O3*", "C3'", "C3*")
+
+
+def geometric_interresidue_links(mol, atoms_a, atoms_b, frame=None, amide_dist=None, phosphodiester_dist=None):
+    """Return the geometric inter-residue covalent links between two residues as a
+    list of ``(idx_a, idx_b, kind)`` tuples, where ``idx_a`` is an atom of
+    ``atoms_a``, ``idx_b`` an atom of ``atoms_b``, and ``kind`` is one of:
+
+    - ``"peptide"``: a backbone ``C`` of one residue within ``amide_dist`` of the
+      other's backbone ``N`` (the standard main-chain amide).
+    - ``"isopeptide"``: an amide where one partner is a backbone ``N`` or ``C`` and
+      the other is a SIDE-CHAIN carbon or nitrogen - a side-chain carbonyl acylating
+      a backbone N (gamma-glutamyl / beta-aspartyl, e.g. microcystin's ACB.CG->N) or
+      a backbone carboxyl acylating a side-chain amino (epsilon-poly-lysine, C->NZ).
+    - ``"phosphodiester"``: an ``O3'``/``C3'`` within ``phosphodiester_dist`` of a ``P``.
+
+    This is the single shared definition of inter-residue geometry consulted by
+    ``autoSegment`` (segment grouping), residue templating (boundary-atom H
+    reduction), :func:`infer_nonstandard_junction_bonds` and ``systemPrepare``
+    (terminus assignment), so they agree on one geometry. It is a pure geometric
+    read: ``mol.bonds`` is NOT consulted and ``mol`` is not modified. Deposited
+    bonds are handled separately by each caller because they carry different trust:
+    a deposited backbone bond is honored ungated (it is real and in the file),
+    whereas a geometric isopeptide is gated to non-canonical junctions (proximity
+    alone must not invent a crosslink between two standard residues).
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The molecule. Not modified.
+    atoms_a, atoms_b : np.ndarray
+        Atom-index arrays of the two residues to test.
+    frame : int
+        Coordinate frame to use; defaults to ``mol.frame``.
+    amide_dist : float
+        Max C-N separation for a peptide / isopeptide link. Defaults to
+        :data:`AMIDE_LINK_DIST`.
+    phosphodiester_dist : float
+        Max O3'/C3'-P separation for a phosphodiester link. Defaults to
+        :data:`PHOSPHODIESTER_LINK_DIST`.
+
+    Returns
+    -------
+    links : list
+        ``(idx_a, idx_b, kind)`` tuples, one per detected link.
+    """
+    from moleculekit.distance import cdist
+
+    if frame is None:
+        frame = mol.frame
+    if amide_dist is None:
+        amide_dist = AMIDE_LINK_DIST
+    if phosphodiester_dist is None:
+        phosphodiester_dist = PHOSPHODIESTER_LINK_DIST
+    name = mol.name
+    element = mol.element
+    a = [int(i) for i in atoms_a]
+    b = [int(i) for i in atoms_b]
+    if not a or not b:
+        return []
+    maxd = max(amide_dist, phosphodiester_dist)
+
+    # One compiled pairwise-distance call, then classify only the pairs within
+    # bonding range by atom name/element (the chemistry, which stays per-pair).
+    coords = mol.coords[:, :, frame]
+    dists = cdist(coords[a], coords[b])
+    rows, cols = np.where(dists <= maxd)
+
+    links = []
+    for r, c in zip(rows, cols):
+        ia, ib = a[r], b[c]
+        d = float(dists[r, c])
+        na, ea = name[ia], element[ia]
+        nb, eb = name[ib], element[ib]
+        kind = None
+        if d <= amide_dist:
+            # forward: a backbone N to a carbon (peptide if backbone C, else iso)
+            if na == "N" and eb == "C":
+                kind = "peptide" if nb == "C" else "isopeptide"
+            elif nb == "N" and ea == "C":
+                kind = "peptide" if na == "C" else "isopeptide"
+            # reverse: a backbone C to a side-chain nitrogen
+            elif na == "C" and eb == "N":
+                kind = "isopeptide"
+            elif nb == "C" and ea == "N":
+                kind = "isopeptide"
+        if kind is None and d <= phosphodiester_dist:
+            if na in _PHOSPHO_DONOR_NAMES and nb == "P":
+                kind = "phosphodiester"
+            elif nb in _PHOSPHO_DONOR_NAMES and na == "P":
+                kind = "phosphodiester"
+        if kind is not None:
+            links.append((ia, ib, kind))
+    return links
+
+
+def infer_nonstandard_junction_bonds(mol, max_dist=_JUNCTION_BOND_MAX_DIST):
+    """Infer inter-residue backbone-continuation bonds that the input connectivity
+    omits, at junctions involving a non-canonical residue.
+
+    Some deposited structures carry a non-standard residue whose backbone is
+    continued by an undeposited amide bond - a side-chain isopeptide (microcystin's
+    beta-methyl-Asp CG acylating the next residue's backbone N) or the reverse, a
+    backbone carboxyl acylating the next residue's side-chain amino (as in
+    epsilon-poly-lysine, alpha-C -> Lys NZ). Without that bond ``autoSegment``
+    splits the chain and ``detectNonStandardResidues`` cannot find the anchor. This
+    recovers it from geometry WITHOUT modifying ``mol``; callers fold the result
+    into their own connectivity analysis transiently.
+
+    For each pair of consecutive residues (file order, same chain) that carry NO
+    inter-residue bond between them and where at least one residue is non-canonical,
+    a single amide C-N bond is inferred when a backbone atom of one residue lies
+    within ``max_dist`` of a complementary heavy atom of the other:
+
+    - the later residue's backbone ``N`` to the nearest carbon of the earlier
+      residue (side-chain or backbone carboxyl -> backbone amino), or
+    - the earlier residue's backbone ``C`` to the nearest nitrogen of the later
+      residue (backbone carboxyl -> side-chain or backbone amino).
+
+    Two canonical residues with a missing bond are left untouched (a real chain
+    gap is never invented). Requiring a backbone N/C endpoint excludes pure
+    side-chain crosslinks (disulfides, staples), which are not chain continuations.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The molecule to analyse. It is not modified.
+    max_dist : float
+        Maximum heavy-atom separation, in Angstrom, treated as a bond.
+
+    Returns
+    -------
+    bonds : list
+        A list of ``(atom_index_i, atom_index_j)`` tuples, one per inferred bond.
+    """
+    if mol.numAtoms == 0:
+        return []
+    _, residues, atom_idxs = _residue_groups(mol)
+    coords = mol.coords[:, :, mol.frame]
+
+    bonded_pairs = set()
+    if mol.bonds is not None and len(mol.bonds):
+        for a, b in mol.bonds:
+            bonded_pairs.add((int(a), int(b)))
+            bonded_pairs.add((int(b), int(a)))
+
+    inferred = []
+    seen = set()
+    for i in range(len(residues) - 1):
+        prev, curr = residues[i], residues[i + 1]
+        if prev.chain != curr.chain:
+            continue
+        if (
+            prev.resname in _CANONICAL_RESNAMES
+            and curr.resname in _CANONICAL_RESNAMES
+        ):
+            continue
+        prev_idx = [int(a) for a in atom_idxs[i]]
+        curr_idx = [int(a) for a in atom_idxs[i + 1]]
+        # Already connected at this junction? Nothing to infer.
+        if any((a, b) in bonded_pairs for a in prev_idx for b in curr_idx):
+            continue
+        # Amide (peptide or side-chain isopeptide) links implied by geometry.
+        amides = [
+            (ia, ib)
+            for ia, ib, kind in geometric_interresidue_links(
+                mol, prev_idx, curr_idx, amide_dist=max_dist
+            )
+            if kind in ("peptide", "isopeptide")
+        ]
+        if not amides:
+            continue
+        # One backbone continuation per junction: the closest amide.
+        ia, ib = min(
+            amides, key=lambda p: float(np.linalg.norm(coords[p[0]] - coords[p[1]]))
+        )
+        key = tuple(sorted((ia, ib)))
+        if key not in seen:
+            seen.add(key)
+            inferred.append((ia, ib))
+    return inferred
+
+
 def _ensure_bonds(mol, guess=True):
     """Return ``mol.bonds`` if populated. Otherwise fall back to distance-
     based bond guessing when ``guess`` is True, or an empty bond array when
@@ -265,9 +458,10 @@ def _has_peptide_neighbour(mol, atom_idx, side):
     """Return True if this residue has a peptide-bond neighbour on the
     given side (``"N"`` = previous residue's C atom; ``"C"`` = next
     residue's N atom). Falls back to a distance check (peptide N-C is
-    ~1.32 A; we accept anything under 1.6 A) so sparse CIF inputs that
-    only carry the special inter-residue bonds still get correct
-    chain-terminus flags for canonical amino acids."""
+    ~1.32 A; we accept anything under :data:`AMIDE_LINK_DIST`, the shared
+    inter-residue amide threshold) so sparse CIF inputs that only carry the
+    special inter-residue bonds still get correct chain-terminus flags for
+    canonical amino acids."""
     other_name = "C" if side == "N" else "N"
     own_atoms = set(int(a) for a in atom_idx)
     self_atom_idxs = [int(a) for a in atom_idx if str(mol.name[int(a)]) == side]
@@ -284,7 +478,7 @@ def _has_peptide_neighbour(mol, atom_idx, side):
                 return True
         if other_coords.size:
             self_pos = mol.coords[self_atom, :, mol.frame]
-            if np.linalg.norm(other_coords - self_pos, axis=1).min() < 1.6:
+            if np.linalg.norm(other_coords - self_pos, axis=1).min() < AMIDE_LINK_DIST:
                 return True
     return False
 
@@ -497,6 +691,17 @@ def detectNonStandardResidues(mol, guess_bonds=True):
     bonds = _ensure_bonds(mol, guess=guess_bonds)
     a2r, residues, atom_idxs = _residue_groups(mol)
     n_res = len(residues)
+
+    # Recover inter-residue backbone-continuation bonds the input omits at
+    # non-standard junctions (e.g. an undeposited side-chain isopeptide), so an
+    # NCAA whose backbone runs through a side chain gets the right anchor. Folded
+    # into the local bond list only - mol.bonds is never modified. (When bonds
+    # were guessed from scratch these are already present and dedup harmlessly.)
+    _inferred = infer_nonstandard_junction_bonds(mol)
+    if _inferred:
+        bonds = np.vstack(
+            [np.asarray(bonds, dtype=np.int64), np.asarray(_inferred, dtype=np.int64)]
+        )
 
     # Walk every inter-residue bond once. For each residue we track its
     # non-peptide partners (with the atom name on this side); for every

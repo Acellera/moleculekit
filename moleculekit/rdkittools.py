@@ -316,7 +316,7 @@ def _try_strip_unmatched_terminals(
 _BONDTYPE_ORDER = {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "ar": 1, "un": 1, "mc": 1}
 
 
-def _detect_cross_residue_bonds(mol, selidx):
+def _detect_interresidue_bonds(mol, selidx):
     """Return ``(cross_bonds, sel_start, sel_end)`` for covalent bonds linking
     the selected residue to the rest of ``mol``.
 
@@ -342,55 +342,39 @@ def _detect_cross_residue_bonds(mol, selidx):
             else:
                 cross_bonds.append((b - sel_start, a, bt))
 
-    # PDB inputs often arrive without explicit peptide / phosphodiester bonds
-    # (CONECT records cover only HET groups). Without them, the boundary
-    # atoms look free-standing and AddHs over-protonates them. Mirror the
-    # proximity check used by ``_has_peptide_neighbour`` in
-    # nonstandard_residues so a caller doesn't have to run ``mol.guessBonds``
-    # first.
-    sel_names = mol.name[selidx]
-    sel_elems = mol.element[selidx]
+    # PDB inputs often arrive without explicit peptide / phosphodiester /
+    # isopeptide bonds (CONECT records cover only HET groups). Without them the
+    # boundary atoms look free-standing and AddHs over-protonates them (or leaves
+    # an isopeptide carbon over-valent). Recover them from geometry against the
+    # file-adjacent residues using the shared ``geometric_interresidue_links`` primitive, so
+    # the definition and thresholds match autoSegment / detect / systemPrepare.
+    # This covers the standard peptide / phosphodiester backbone AND the
+    # non-standard side-chain isopeptide (e.g. microcystin's ACB.CG -> ARG.N) in
+    # one pass.
+    from moleculekit.tools.nonstandard_residues import geometric_interresidue_links
 
-    def _add_cross_by_proximity(local_idx, other_mask_full, threshold):
-        if local_idx in {li for li, _, _ in cross_bonds}:
-            return
-        own_pos = mol.coords[selidx[local_idx], :, mol.frame]
-        other_mask = other_mask_full.copy()
-        other_mask[selidx] = False
-        candidates = np.where(other_mask)[0]
-        if not len(candidates):
-            return
-        d = np.linalg.norm(
-            mol.coords[candidates, :, mol.frame] - own_pos, axis=1
+    def _residue_atoms_of(rep):
+        mask = (
+            (mol.resid == mol.resid[rep])
+            & (mol.chain == mol.chain[rep])
+            & (mol.insertion == mol.insertion[rep])
+            & (mol.segid == mol.segid[rep])
         )
-        within = d < threshold
-        if not within.any():
-            return
-        partner = int(candidates[np.argmin(np.where(within, d, np.inf))])
-        cross_bonds.append((local_idx, partner, "1"))
+        return np.where(mask)[0]
 
-    # Peptide N-C bonds (~1.33 A, threshold 1.6 A)
-    if {"N", "CA", "C"}.issubset(sel_names):
-        for own_side, other_name in (("N", "C"), ("C", "N")):
-            hits = np.where(sel_names == own_side)[0]
-            if len(hits):
-                _add_cross_by_proximity(
-                    int(hits[0]), mol.name == other_name, threshold=1.6
-                )
+    neighbors = []
+    if sel_start > 0:
+        neighbors.append(_residue_atoms_of(sel_start - 1))
+    if sel_end + 1 < mol.numAtoms:
+        neighbors.append(_residue_atoms_of(sel_end + 1))
 
-    # Nucleic acid phosphodiester P-O3' bonds (~1.6 A, threshold 1.8 A).
-    # Two directions: (1) own P to external O3' of previous residue,
-    # (2) own O3' to external P of next residue. The O3' check also runs for
-    # 5'-terminal residues that lack their own P but still bond to next.
-    if "P" in sel_elems:
-        for own_p_idx in np.where(sel_elems == "P")[0]:
-            _add_cross_by_proximity(
-                int(own_p_idx), mol.element == "O", threshold=1.8
-            )
-    for own_o3_idx in np.where(sel_names == "O3'")[0]:
-        _add_cross_by_proximity(
-            int(own_o3_idx), mol.element == "P", threshold=1.8
-        )
+    have_cross = {li for li, _, _ in cross_bonds}
+    for neighbor in neighbors:
+        for ia, ib, _kind in geometric_interresidue_links(mol, selidx, neighbor):
+            local_idx = int(ia) - sel_start
+            if local_idx not in have_cross:
+                cross_bonds.append((local_idx, int(ib), "1"))
+                have_cross.add(local_idx)
 
     return cross_bonds, sel_start, sel_end
 
@@ -645,7 +629,7 @@ def template_residue_from_smiles(
             "The selection contains gaps in the atom indexes. Please select a single molecule residue only."
         )
 
-    cross_bonds, sel_start, sel_end = _detect_cross_residue_bonds(mol, selidx)
+    cross_bonds, sel_start, sel_end = _detect_interresidue_bonds(mol, selidx)
 
     residue = mol.copy(sel=selidx)
     if guessBonds:
@@ -912,7 +896,7 @@ def template_residue_from_molecule(
         )
         return
 
-    cross_bonds, sel_start, sel_end = _detect_cross_residue_bonds(mol, selidx)
+    cross_bonds, sel_start, sel_end = _detect_interresidue_bonds(mol, selidx)
 
     residue = mol.copy(sel=selidx)
     if guessBonds:
