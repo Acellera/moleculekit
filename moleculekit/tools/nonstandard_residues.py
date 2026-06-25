@@ -841,17 +841,24 @@ def detectNonStandardResidues(mol, guess_bonds=True):
         anchor_atoms[r_idx] = anchor_atom
 
         residue = residues[r_idx]
-        # Only canonical amino acids get renamed. NCAAs keep their
-        # original resname (the detector's job is to flag them, not
-        # rename them); ions, water and caps are also "canonical" in
-        # the no-need-to-parameterize sense, but they have no sidechain
-        # to crosslink in the first place and never reach here.
-        if residue.resname not in PROTEIN_RESNAMES:
+        # Canonical amino acids and crosslinked KNOWN MODIFIED residues (MSE,
+        # MLZ, SEP, ...) get renamed + re-templated so the crosslink junction
+        # is parameterized: a modified residue's stock template covers only the
+        # free residue, so once its sidechain is crosslinked it must join the
+        # cluster like a renamed canonical anchor. Plain NCAAs keep their
+        # original resname (the detector flags them; a caller SMILES templates
+        # them); ions, water and caps are also "canonical" in the
+        # no-need-to-parameterize sense, but they have no sidechain to crosslink
+        # and never reach here.
+        is_modified = residue.resname in MODIFIED_PROTEIN_RESIDUE_NAMES
+        if residue.resname not in PROTEIN_RESNAMES and not is_modified:
             continue
         partner_resname = residues[other_r].resname
 
-        # Validate the anchor against ANCHOR_TABLE.
-        if lookup_anchor(residue.resname, anchor_atom) is None:
+        # Validate the anchor against ANCHOR_TABLE. Modified residues are
+        # re-templated from their full RESIDUE_SMILES entry (not an anchor
+        # variant), so they need no ANCHOR_TABLE entry.
+        if not is_modified and lookup_anchor(residue.resname, anchor_atom) is None:
             if bonds_guessed:
                 cause = (
                     "The molecule had no bonds, so they were guessed from "
@@ -885,7 +892,8 @@ def detectNonStandardResidues(mol, guess_bonds=True):
         # _canonical_variant_template selects the N/C-terminal variant
         # (NCYX / CCYX) at parameterization time from is_n_term/is_c_term.
         if (
-            residue.resname in ("CYS", "CYX")
+            not is_modified
+            and residue.resname in ("CYS", "CYX")
             and anchor_atom == "SG"
             and partner_resname in ("CYS", "CYX")
         ):

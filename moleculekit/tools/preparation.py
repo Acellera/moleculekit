@@ -376,8 +376,9 @@ def _restore_trimmed_canonical_sidechains(mol, detect_specs):
 
 def _template_renamed_canonical_residues(mol, specs):
     """Rename + re-template every ChainResidueSpec whose
-    ``resname`` is a canonical AA and that has a
-    ``new_resname``. Mutates ``mol`` in place.
+    ``resname`` is a canonical AA (or a crosslinked known modified
+    residue such as MSE / MLZ) and that has a ``new_resname``. Mutates
+    ``mol`` in place.
 
     For renames TO a known PDB2PQR variant (CYX, LYN, HID, ...) the
     helper just renames; PDB2PQR's built-in template handles
@@ -399,11 +400,13 @@ def _template_renamed_canonical_residues(mol, specs):
         ChainResidueSpec, PROTEIN_RESNAMES,
     )
     from moleculekit.tools._anchor_variants import canonical_anchor_smiles
+    from moleculekit.residues import RESIDUE_SMILES, MODIFIED_PROTEIN_RESIDUE_NAMES
 
     for spec in specs:
         if not isinstance(spec, ChainResidueSpec):
             continue
-        if spec.resname not in PROTEIN_RESNAMES:
+        is_modified = spec.resname in MODIFIED_PROTEIN_RESIDUE_NAMES
+        if spec.resname not in PROTEIN_RESNAMES and not is_modified:
             continue
         if not spec.new_resname:
             continue
@@ -437,7 +440,20 @@ def _template_renamed_canonical_residues(mol, specs):
                 f"have populated this field."
             )
 
-        smiles = canonical_anchor_smiles(spec.resname, spec.anchor_atom)
+        if is_modified:
+            # A crosslinked known-modified residue is re-templated from its full
+            # RESIDUE_SMILES entry; templateResidueFromSmiles' valence math drops
+            # the H displaced by the crosslink (e.g. MLZ CM methyl -> methylene),
+            # the same way it handles the canonical-anchor case below.
+            smiles = RESIDUE_SMILES.get(spec.resname)
+            if smiles is None:
+                raise RuntimeError(
+                    f"Crosslinked modified residue {spec.resname} has no entry "
+                    f"in moleculekit.residues.RESIDUE_SMILES, so it cannot be "
+                    f"re-templated. Add its SMILES there."
+                )
+        else:
+            smiles = canonical_anchor_smiles(spec.resname, spec.anchor_atom)
 
         # res_mask was computed against the original resname and the
         # atoms still live at the same indices after the rename above,
