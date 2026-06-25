@@ -43,6 +43,7 @@ from moleculekit.residues import (
     PROTEIN_RESIDUE_NAMES,
     NUCLEIC_RESIDUE_NAMES,
     MODIFIED_PROTEIN_RESIDUE_NAMES,
+    MODIFIED_NUCLEIC_RESIDUE_NAMES,
     PROTEIN_RESIDUES,
     NUCLEIC_RESIDUES,
     WATER_RESIDUE_NAMES,
@@ -197,6 +198,7 @@ def _canonical_resnames():
     names = set(PROTEIN_RESIDUE_NAMES)
     names |= set(NUCLEIC_RESIDUE_NAMES)
     names |= set(MODIFIED_PROTEIN_RESIDUE_NAMES)
+    names |= set(MODIFIED_NUCLEIC_RESIDUE_NAMES)
     for rr in PROTEIN_RESIDUES + NUCLEIC_RESIDUES:
         names.update(rr.resname_variants)
     names |= WATER_RESIDUE_NAMES

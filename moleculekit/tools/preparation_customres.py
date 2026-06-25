@@ -6,6 +6,7 @@
 from moleculekit.molecule import Molecule
 from moleculekit import __share_dir
 from pdb2pqr.aa import Amino
+from pdb2pqr.na import Nucleic
 import numpy as np
 import os
 import logging
@@ -218,6 +219,41 @@ class CustomResidue(Amino):
         return "X"
 
 
+class CustomNucleicResidue(Nucleic):
+    """Custom nucleic-acid residue class - the ``na`` counterpart of
+    :class:`CustomResidue`. pdb2pqr resolves a residue to amino vs nucleic by
+    looking its name up in ``pdb2pqr.aa`` then ``pdb2pqr.na``; registering a
+    modified nucleotide (5MC, ...) here routes it through the nucleic path."""
+
+    def __init__(self, atoms, ref):
+        Nucleic.__init__(self, atoms, ref)
+        self.reference = ref
+
+    def letter_code(self):
+        return "X"
+
+    def set_state(self):
+        # Keep the deposited resname as the ff name - its PARSE radii come from
+        # the merged dat. Do NOT append the canonical 5'/3' or ribo/deoxy
+        # suffixes the built-in nucleotide classes use (there is no 5MC3/5MC5
+        # entry; tLeap assigns the real terminal form later from modrna08).
+        pass
+
+
+def _process_custom_nucleic_residue(mol: Molecule, resid: int = None):
+    """Prepare a modified-nucleotide reference residue for the pdb2pqr nucleic
+    Definition. Unlike :func:`_process_custom_residue` (amino-acid backbone
+    aligned onto alanine), a nucleotide reference cif already carries a
+    well-formed sugar-phosphate backbone and ideal coordinates, so this only
+    needs to give any unmatched hydrogens unique names."""
+    if resid is None:
+        resid = mol.resid[0]
+    hydr = mol.name == "X_H"
+    if hydr.any():
+        mol.name[hydr] = [f"H{i}" for i in range(10, int(hydr.sum()) + 10)]
+    return mol
+
+
 def _mol_to_xml_def(mol: Molecule, outfile: str):
     with open(outfile, "w") as f:
         f.write("<?xml version='1.0'?>\n")
@@ -317,9 +353,18 @@ def _get_custom_ff(user_ff=None):
             for line in lines:
                 fout.write(line)
 
-        # HACK: pdb2pqr currently requires each residue to have a unique class in pdb2pqr.aa module
+        # HACK: pdb2pqr requires each residue to have a unique class, looked up
+        # by name in pdb2pqr.aa (amino) then pdb2pqr.na (nucleic). Register each
+        # custom residue under the right module so it is resolved as the correct
+        # polymer type: modified nucleotides as Nucleic, everything else Amino.
+        import pdb2pqr.na
+        from moleculekit.residues import MODIFIED_NUCLEIC_RESIDUE_NAMES
+
         for resn in custom_resnames:
-            pdb2pqr.aa.__dict__[resn] = CustomResidue
+            if resn in MODIFIED_NUCLEIC_RESIDUE_NAMES:
+                pdb2pqr.na.__dict__[resn] = CustomNucleicResidue
+            else:
+                pdb2pqr.aa.__dict__[resn] = CustomResidue
 
         from pdb2pqr.io import get_definitions
         from pdb2pqr import forcefield

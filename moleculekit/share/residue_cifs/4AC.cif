@@ -1,0 +1,100 @@
+data_4AC
+#
+#
+_chem_comp.id                  4AC
+_chem_comp.type                NON-POLYMER
+_chem_comp.pdbx_formal_charge  0
+##
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+4AC  P       .  P  0  0.0   3.537  1.423  -0.000   3.537  1.423  -0.000  
+4AC  O1P     .  O  0  0.0   2.117  1.024   0.063   2.117  1.024   0.063  
+4AC  O2P     .  O  0  0.0   4.595  0.372  -0.093   4.595  0.372  -0.093  
+4AC  "O5'"   .  O  0  0.0   3.813  2.361   1.265   3.813  2.361   1.265  
+4AC  "C5'"   .  C  0  0.0   5.103  2.988   1.450   5.103  2.988   1.450  
+4AC  "H5'1"  .  H  0  0.0   5.786  2.210   1.721   5.786  2.210   1.721  
+4AC  "H5'2"  .  H  0  0.0   5.285  3.579   0.576   5.285  3.579   0.576  
+4AC  "C4'"   .  C  0  0.0   5.056  3.945   2.615   5.056  3.945   2.615  
+4AC  "O4'"   .  O  0  0.0   4.051  4.965   2.375   4.051  4.965   2.375  
+4AC  "C1'"   .  C  0  0.0   3.489  5.368   3.622   3.489  5.368   3.622  
+4AC  "C2'"   .  C  0  0.0   4.235  4.586   4.709   4.235  4.586   4.709  
+4AC  "O2'"   .  O  0  0.0   5.360  5.357   5.097   5.360  5.357   5.097  
+4AC  "HO'2"  .  H  0  0.0   6.165  4.902   4.839   6.165  4.902   4.839  
+4AC  "H2'"   .  H  0  0.0   3.702  4.365   5.610   3.702  4.365   5.610  
+4AC  N1      .  N  0  0.0   2.046  5.088   3.622   2.046  5.088   3.622  
+4AC  C2      .  C  0  0.0   1.180  6.192   3.622   1.180  6.192   3.622  
+4AC  O2      .  O  0  0.0   1.651  7.291   3.622   1.651  7.291   3.622  
+4AC  N3      .  N  0  0.0  -0.164  5.940   3.622  -0.164  5.940   3.622  
+4AC  C4      .  C  0  0.0  -0.609  4.733   3.622  -0.609  4.733   3.622  
+4AC  N4      .  N  0  0.0  -1.956  4.490   3.622  -1.956  4.490   3.622  
+4AC  1H4     .  H  0  0.0  -2.237  3.532   3.622  -2.237  3.532   3.622  
+4AC  C10     .  C  0  0.0  -3.070  5.333   3.622  -3.070  5.333   3.622  
+4AC  C11     .  C  0  0.0  -2.894  6.827   3.622  -2.894  6.827   3.622  
+4AC  H20     .  H  0  0.0  -2.337  7.151   4.490  -2.337  7.151   4.490  
+4AC  H21     .  H  0  0.0  -2.336  7.151   2.755  -2.336  7.151   2.755  
+4AC  H22     .  H  0  0.0  -3.883  7.261   3.622  -3.883  7.261   3.622  
+4AC  O30     .  O  0  0.0  -4.141  4.807   3.622  -4.141  4.807   3.622  
+4AC  C5      .  C  0  0.0   0.245  3.577   3.622   0.245  3.577   3.622  
+4AC  C6      .  C  0  0.0   1.563  3.830   3.622   1.563  3.830   3.622  
+4AC  H6      .  H  0  0.0   2.292  3.041   3.622   2.292  3.041   3.622  
+4AC  H5      .  H  0  0.0  -0.140  2.578   3.622  -0.140  2.578   3.622  
+4AC  "H1'"   .  H  0  0.0   3.597  6.418   3.799   3.597  6.418   3.799  
+4AC  "H4'"   .  H  0  0.0   6.063  4.299   2.687   6.063  4.299   2.687  
+4AC  "C3'"   .  C  0  0.0   4.621  3.335   3.934   4.621  3.335   3.934  
+4AC  "H3'"   .  H  0  0.0   3.832  2.613   3.877   3.832  2.613   3.877  
+4AC  "O3'"   .  O  0  0.0   5.706  2.628   4.528   5.706  2.628   4.528  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+4AC  P      O1P     SING  
+4AC  P      O2P     SING  
+4AC  P      "O5'"   SING  
+4AC  "O5'"  "C5'"   SING  
+4AC  "C5'"  "H5'1"  SING  
+4AC  "C5'"  "H5'2"  SING  
+4AC  "C5'"  "C4'"   SING  
+4AC  "C4'"  "O4'"   SING  
+4AC  "C4'"  "H4'"   SING  
+4AC  "C4'"  "C3'"   SING  
+4AC  "O4'"  "C1'"   SING  
+4AC  "C1'"  "C2'"   SING  
+4AC  "C1'"  N1      SING  
+4AC  "C1'"  "H1'"   SING  
+4AC  "C2'"  "O2'"   SING  
+4AC  "C2'"  "H2'"   SING  
+4AC  "C2'"  "C3'"   SING  
+4AC  "O2'"  "HO'2"  SING  
+4AC  N1     C2      SING  
+4AC  N1     C6      SING  
+4AC  C2     O2      SING  
+4AC  C2     N3      SING  
+4AC  N3     C4      SING  
+4AC  C4     N4      SING  
+4AC  C4     C5      SING  
+4AC  N4     1H4     SING  
+4AC  N4     C10     SING  
+4AC  C10    C11     SING  
+4AC  C10    O30     SING  
+4AC  C11    H20     SING  
+4AC  C11    H21     SING  
+4AC  C11    H22     SING  
+4AC  C5     C6      SING  
+4AC  C5     H5      SING  
+4AC  C6     H6      SING  
+4AC  "C3'"  "H3'"   SING  
+4AC  "C3'"  "O3'"   SING  
+##

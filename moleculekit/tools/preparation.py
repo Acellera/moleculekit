@@ -103,11 +103,15 @@ def _generate_nonstandard_residues_ff(
     from moleculekit.tools.preparation_customres import _get_custom_ff
     from moleculekit.tools.preparation_customres import (
         _process_custom_residue,
+        _process_custom_nucleic_residue,
         _mol_to_dat_def,
         _mol_to_xml_def,
     )
     from moleculekit.tools.nonstandard_residues import ChainResidueSpec
-    from moleculekit.residues import MODIFIED_PROTEIN_RESIDUE_NAMES
+    from moleculekit.residues import (
+        MODIFIED_PROTEIN_RESIDUE_NAMES,
+        MODIFIED_NUCLEIC_RESIDUE_NAMES,
+    )
     from moleculekit import __share_dir
 
     # Only chain-resident non-canonical amino acids need FF templating here.
@@ -138,9 +142,12 @@ def _generate_nonstandard_residues_ff(
     # later by the AMBER/OpenMM forcefield, so the cif is a sufficient source.
     cif_dir = os.path.join(__share_dir, "residue_cifs")
     present_resnames = {str(r) for r in np.unique(mol.resname)}
+    _modres_known = set(MODIFIED_PROTEIN_RESIDUE_NAMES) | set(
+        MODIFIED_NUCLEIC_RESIDUE_NAMES
+    )
     modres_from_cif = sorted(
         r
-        for r in (present_resnames & set(MODIFIED_PROTEIN_RESIDUE_NAMES))
+        for r in (present_resnames & _modres_known)
         if not forcefield.has_residue(r)
         and os.path.isfile(os.path.join(cif_dir, f"{r}.cif"))
     )
@@ -192,38 +199,51 @@ def _generate_nonstandard_residues_ff(
             cresmol = Molecule(os.path.join(cif_dir, f"{res}.cif"))
             cresmol.chain[:] = ""
             cresmol.segid[:] = ""
-            # The reference cif is the FREE amino acid (N-terminal amine +
-            # C-terminal carboxyl). Strip those terminal-variant atoms so the
-            # Definition is the MID-CHAIN form - otherwise PDB2PQR's heavy-atom
-            # repair adds a spurious OXT (and extra backbone-N hydrogens) to
-            # every internal copy, which tLeap then rejects ("Missing atom type
-            # ... OXT"). PDB2PQR re-adds OXT / terminal H via its CTERM / NTERM
-            # patches only for residues that are genuine termini.
+            # The reference cif is the FREE residue. Strip its terminal-variant
+            # atoms so the Definition is the MID-CHAIN linking form - otherwise
+            # PDB2PQR's heavy-atom repair adds spurious terminal atoms to every
+            # internal copy, which tLeap then rejects ("Missing atom type ...").
+            # PDB2PQR re-adds the terminal atoms via its CTERM / NTERM (protein)
+            # or 5'/3' (nucleic) patches only for residues that are genuine
+            # termini.
             drop = np.zeros(cresmol.numAtoms, dtype=bool)
-            if "OXT" in cresmol.name:
-                oxt = int(np.where(cresmol.name == "OXT")[0][0])
-                drop[oxt] = True
-                for n in cresmol.getNeighbors(oxt):
-                    if cresmol.element[n] == "H":
-                        drop[int(n)] = True
-            # Backbone-N hydrogens beyond the mid-chain count: a proline-type N
-            # (bonded to two heavy atoms) carries none mid-chain, every other
-            # residue exactly one (named "H"). Drop the standalone extras.
-            n_at = int(np.where(cresmol.name == "N")[0][0])
-            n_neigh = [int(x) for x in cresmol.getNeighbors(n_at)]
-            n_hs = [x for x in n_neigh if cresmol.element[x] == "H"]
-            n_heavy = sum(1 for x in n_neigh if cresmol.element[x] != "H")
-            if n_heavy >= 2:
-                keep_h = []  # proline-type: no backbone amide H
+            if res in MODIFIED_NUCLEIC_RESIDUE_NAMES:
+                # Nucleotide free residue: a 5'-phosphate carrying an extra
+                # free oxygen (O3P) + its protons, and a free 3'-OH proton.
+                # Mid-chain the 5'-phosphate links to the previous residue and
+                # the 3'-O3' to the next, so drop the free-end atoms.
+                for nm in ("O3P", "HO2P", "HO3P", "HO'3", "H3T", "H5T"):
+                    drop |= cresmol.name == nm
             else:
-                named_h = [h for h in n_hs if str(cresmol.name[h]) == "H"]
-                keep_h = named_h[:1] if named_h else n_hs[:1]
-            for h in n_hs:
-                if h not in keep_h:
-                    drop[h] = True
+                # Amino-acid free residue: N-terminal amine + C-terminal
+                # carboxyl. Strip OXT (+ its H) and the extra backbone-N
+                # hydrogens beyond the mid-chain count.
+                if "OXT" in cresmol.name:
+                    oxt = int(np.where(cresmol.name == "OXT")[0][0])
+                    drop[oxt] = True
+                    for n in cresmol.getNeighbors(oxt):
+                        if cresmol.element[n] == "H":
+                            drop[int(n)] = True
+                # A proline-type N (bonded to two heavy atoms) carries no amide
+                # H mid-chain; every other residue exactly one (named "H").
+                n_at = int(np.where(cresmol.name == "N")[0][0])
+                n_neigh = [int(x) for x in cresmol.getNeighbors(n_at)]
+                n_hs = [x for x in n_neigh if cresmol.element[x] == "H"]
+                n_heavy = sum(1 for x in n_neigh if cresmol.element[x] != "H")
+                if n_heavy >= 2:
+                    keep_h = []  # proline-type: no backbone amide H
+                else:
+                    named_h = [h for h in n_hs if str(cresmol.name[h]) == "H"]
+                    keep_h = named_h[:1] if named_h else n_hs[:1]
+                for h in n_hs:
+                    if h not in keep_h:
+                        drop[h] = True
             if drop.any():
                 cresmol.remove(drop, _logger=False)
-            cres = _process_custom_residue(cresmol)
+            if res in MODIFIED_NUCLEIC_RESIDUE_NAMES:
+                cres = _process_custom_nucleic_residue(cresmol)
+            else:
+                cres = _process_custom_residue(cresmol)
             cres.resname[:] = res
             _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
             _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
@@ -927,6 +947,21 @@ def _check_frozen_histidines(mol_in, _no_prot):
 
 
 def _prepare_nucleics(mol):
+    from moleculekit.residues import (
+        MODIFIED_NUCLEIC_RESIDUE_NAMES,
+        MODIFIED_NUCLEIC_ATOM_RENAMES,
+    )
+
+    # Normalise supported modified nucleotides (5MC, ...) to AMBER / modrna08
+    # atom naming. PDB2PQR applies the equivalent rename (OP1 -> O1P, ...) to
+    # the canonical nucleotides it recognises, but a modified nucleotide is
+    # unknown to it, so do it here so the residue matches both its reference
+    # cif (registered with PDB2PQR above) and the modrna08 unit tLeap builds.
+    for resn in set(mol.resname) & MODIFIED_NUCLEIC_RESIDUE_NAMES:
+        rmask = mol.resname == resn
+        for old, new in MODIFIED_NUCLEIC_ATOM_RENAMES.get(resn, {}).items():
+            mol.name[rmask & (mol.name == old)] = new
+
     resnames = ("T", "U", "G", "C", "A", "DG", "DC", "DA", "DT", "RU", "RG", "RC", "RA")
     # Renames residues to the names expected by PARSE. Fixes issues with 5' atoms.
     nucleic_sel = f"nucleic and resname {' '.join(resnames)}"

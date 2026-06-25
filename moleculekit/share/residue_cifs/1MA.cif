@@ -1,0 +1,103 @@
+data_1MA
+#
+#
+_chem_comp.id                  1MA
+_chem_comp.type                NON-POLYMER
+_chem_comp.pdbx_formal_charge  0
+##
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+1MA  P       .  P  0  0.0   3.537   1.423  -0.000   3.537   1.423  -0.000  
+1MA  O1P     .  O  0  0.0   2.444   2.412  -0.089   2.444   2.412  -0.089  
+1MA  O2P     .  O  0  0.0   4.951   1.867  -0.196   4.951   1.867  -0.196  
+1MA  "O5'"   .  O  0  0.0   3.187   0.249  -1.026   3.187   0.249  -1.026  
+1MA  "C5'"   .  C  0  0.0   4.029  -0.924  -1.120   4.029  -0.924  -1.120  
+1MA  "H5'1"  .  H  0  0.0   4.938  -0.611  -1.592   4.938  -0.611  -1.592  
+1MA  "H5'2"  .  H  0  0.0   4.056  -1.360  -0.143   4.056  -1.360  -0.143  
+1MA  "C4'"   .  C  0  0.0   3.400  -1.947  -2.032   3.400  -1.947  -2.032  
+1MA  "O4'"   .  O  0  0.0   2.094  -2.327  -1.521   2.094  -2.327  -1.521  
+1MA  "C1'"   .  C  0  0.0   1.240  -2.648  -2.616   1.240  -2.648  -2.616  
+1MA  "C2'"   .  C  0  0.0   2.089  -2.511  -3.885   2.089  -2.511  -3.885  
+1MA  "O2'"   .  O  0  0.0   2.692  -3.770  -4.135   2.692  -3.770  -4.135  
+1MA  "HO'2"  .  H  0  0.0   3.643  -3.697  -4.024   3.643  -3.697  -4.024  
+1MA  "H2'"   .  H  0  0.0   1.584  -2.239  -4.788   1.584  -2.239  -4.788  
+1MA  N9      .  N  0  0.0   0.084  -1.740  -2.616   0.084  -1.740  -2.616  
+1MA  C8      .  C  0  0.0   0.100  -0.367  -2.616   0.100  -0.367  -2.616  
+1MA  N7      .  N  0  0.0  -1.068   0.170  -2.616  -1.068   0.170  -2.616  
+1MA  C5      .  C  0  0.0  -1.917  -0.902  -2.616  -1.917  -0.902  -2.616  
+1MA  C6      .  C  0  0.0  -3.310  -0.958  -2.616  -3.310  -0.958  -2.616  
+1MA  N6      .  N  0  0.0  -4.065   0.125  -2.616  -4.065   0.125  -2.616  
+1MA  H61     .  H  0  0.0  -5.059   0.114  -2.616  -5.059   0.114  -2.616  
+1MA  H62     .  H  0  0.0  -3.609   1.014  -2.616  -3.609   1.014  -2.616  
+1MA  N1      .  N  0  0.0  -3.842  -2.208  -2.616  -3.842  -2.208  -2.616  
+1MA  C2      .  C  0  0.0  -3.031  -3.320  -2.616  -3.031  -3.320  -2.616  
+1MA  N3      .  N  0  0.0  -1.756  -3.316  -2.616  -1.756  -3.316  -2.616  
+1MA  C4      .  C  0  0.0  -1.214  -2.084  -2.616  -1.214  -2.084  -2.616  
+1MA  H2      .  H  0  0.0  -3.552  -4.255  -2.616  -3.552  -4.255  -2.616  
+1MA  C10     .  C  0  0.0  -5.303  -2.388  -2.616  -5.303  -2.388  -2.616  
+1MA  H20     .  H  0  0.0  -5.731  -1.946  -3.505  -5.731  -1.946  -3.505  
+1MA  H21     .  H  0  0.0  -5.524  -3.442  -2.616  -5.524  -3.442  -2.616  
+1MA  H22     .  H  0  0.0  -5.731  -1.946  -1.727  -5.731  -1.946  -1.727  
+1MA  H8      .  H  0  0.0   1.025   0.173  -2.616   1.025   0.173  -2.616  
+1MA  "H1'"   .  H  0  0.0   0.849  -3.642  -2.552   0.849  -3.642  -2.552  
+1MA  "H4'"   .  H  0  0.0   4.127  -2.732  -2.066   4.127  -2.732  -2.066  
+1MA  "C3'"   .  C  0  0.0   3.092  -1.459  -3.435   3.092  -1.459  -3.435  
+1MA  "H3'"   .  H  0  0.0   2.718  -0.458  -3.510   2.718  -0.458  -3.510  
+1MA  "O3'"   .  O  0  0.0   4.279  -1.454  -4.224   4.279  -1.454  -4.224  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+1MA  P      O1P     SING  
+1MA  P      O2P     SING  
+1MA  P      "O5'"   SING  
+1MA  "O5'"  "C5'"   SING  
+1MA  "C5'"  "H5'1"  SING  
+1MA  "C5'"  "H5'2"  SING  
+1MA  "C5'"  "C4'"   SING  
+1MA  "C4'"  "O4'"   SING  
+1MA  "C4'"  "H4'"   SING  
+1MA  "C4'"  "C3'"   SING  
+1MA  "O4'"  "C1'"   SING  
+1MA  "C1'"  "C2'"   SING  
+1MA  "C1'"  N9      SING  
+1MA  "C1'"  "H1'"   SING  
+1MA  "C2'"  "O2'"   SING  
+1MA  "C2'"  "H2'"   SING  
+1MA  "C2'"  "C3'"   SING  
+1MA  "O2'"  "HO'2"  SING  
+1MA  N9     C8      SING  
+1MA  N9     C4      SING  
+1MA  C8     N7      SING  
+1MA  C8     H8      SING  
+1MA  N7     C5      SING  
+1MA  C5     C6      SING  
+1MA  C5     C4      SING  
+1MA  C6     N6      SING  
+1MA  C6     N1      SING  
+1MA  N6     H61     SING  
+1MA  N6     H62     SING  
+1MA  N1     C2      SING  
+1MA  N1     C10     SING  
+1MA  C2     N3      SING  
+1MA  C2     H2      SING  
+1MA  N3     C4      SING  
+1MA  C10    H20     SING  
+1MA  C10    H21     SING  
+1MA  C10    H22     SING  
+1MA  "C3'"  "H3'"   SING  
+1MA  "C3'"  "O3'"   SING  
+##

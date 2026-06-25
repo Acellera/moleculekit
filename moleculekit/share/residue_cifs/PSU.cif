@@ -1,0 +1,88 @@
+data_PSU
+#
+#
+_chem_comp.id                  PSU
+_chem_comp.type                NON-POLYMER
+_chem_comp.pdbx_formal_charge  0
+##
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+PSU  P       .  P  0  0.0   3.537  1.423  -0.000   3.537  1.423  -0.000  
+PSU  O1P     .  O  0  0.0   2.063  1.499   0.037   2.063  1.499   0.037  
+PSU  O2P     .  O  0  0.0   4.201  0.126  -0.338   4.201  0.126  -0.338  
+PSU  "O5'"   .  O  0  0.0   4.067  1.955   1.411   4.067  1.955   1.411  
+PSU  "C5'"   .  C  0  0.0   5.484  2.082   1.666   5.484  2.082   1.666  
+PSU  "H5'1"  .  H  0  0.0   5.870  1.088   1.753   5.870  1.088   1.753  
+PSU  "H5'2"  .  H  0  0.0   5.871  2.742   0.917   5.871  2.742   0.917  
+PSU  "C4'"   .  C  0  0.0   5.718  2.754   2.994   5.718  2.754   2.994  
+PSU  "O4'"   .  O  0  0.0   5.102  4.071   2.996   5.102  4.071   2.996  
+PSU  "C1'"   .  C  0  0.0   4.668  4.380   4.319   4.668  4.380   4.319  
+PSU  "C2'"   .  C  0  0.0   5.091  3.201   5.203   5.091  3.201   5.203  
+PSU  "O2'"   .  O  0  0.0   6.394  3.477   5.690   6.394  3.477   5.690  
+PSU  "HO'2"  .  H  0  0.0   7.015  2.847   5.318   7.015  2.847   5.318  
+PSU  "H2'"   .  H  0  0.0   4.490  2.991   6.063   4.490  2.991   6.063  
+PSU  C5      .  C  0  0.0   3.143  4.595   4.319   3.143  4.595   4.319  
+PSU  C4      .  C  0  0.0   2.573  5.487   5.340   2.573  5.487   5.340  
+PSU  O4      .  O  0  0.0   3.210  6.061   6.173   3.210  6.061   6.173  
+PSU  N3      .  N  0  0.0   1.194  5.636   5.283   1.194  5.636   5.283  
+PSU  C2      .  C  0  0.0   0.325  5.054   4.397   0.325  5.054   4.397  
+PSU  O2      .  O  0  0.0  -0.855  5.236   4.418  -0.855  5.236   4.418  
+PSU  N1      .  N  0  0.0   0.942  4.242   3.486   0.942  4.242   3.486  
+PSU  C6      .  C  0  0.0   2.303  4.029   3.458   2.303  4.029   3.458  
+PSU  H6      .  H  0  0.0   2.637  3.366   2.683   2.637  3.366   2.683  
+PSU  HN1     .  H  0  0.0   0.342  3.802   2.826   0.342  3.802   2.826  
+PSU  HN3     .  H  0  0.0   0.783  6.236   5.966   0.783  6.236   5.966  
+PSU  "H1'"   .  H  0  0.0   5.105  5.283   4.693   5.105  5.283   4.693  
+PSU  "H4'"   .  H  0  0.0   6.783  2.744   3.096   6.783  2.744   3.096  
+PSU  "C3'"   .  C  0  0.0   5.073  2.071   4.185   5.073  2.071   4.185  
+PSU  "H3'"   .  H  0  0.0   4.095  1.668   4.019   4.095  1.668   4.019  
+PSU  "O3'"   .  O  0  0.0   5.854  0.949   4.589   5.854  0.949   4.589  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+PSU  P      O1P     SING  
+PSU  P      O2P     SING  
+PSU  P      "O5'"   SING  
+PSU  "O5'"  "C5'"   SING  
+PSU  "C5'"  "H5'1"  SING  
+PSU  "C5'"  "H5'2"  SING  
+PSU  "C5'"  "C4'"   SING  
+PSU  "C4'"  "O4'"   SING  
+PSU  "C4'"  "H4'"   SING  
+PSU  "C4'"  "C3'"   SING  
+PSU  "O4'"  "C1'"   SING  
+PSU  "C1'"  "C2'"   SING  
+PSU  "C1'"  C5      SING  
+PSU  "C1'"  "H1'"   SING  
+PSU  "C2'"  "O2'"   SING  
+PSU  "C2'"  "H2'"   SING  
+PSU  "C2'"  "C3'"   SING  
+PSU  "O2'"  "HO'2"  SING  
+PSU  C5     C4      SING  
+PSU  C5     C6      SING  
+PSU  C4     O4      SING  
+PSU  C4     N3      SING  
+PSU  N3     C2      SING  
+PSU  N3     HN3     SING  
+PSU  C2     O2      SING  
+PSU  C2     N1      SING  
+PSU  N1     C6      SING  
+PSU  N1     HN1     SING  
+PSU  C6     H6      SING  
+PSU  "C3'"  "H3'"   SING  
+PSU  "C3'"  "O3'"   SING  
+##

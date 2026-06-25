@@ -1,0 +1,103 @@
+data_2MG
+#
+#
+_chem_comp.id                  2MG
+_chem_comp.type                NON-POLYMER
+_chem_comp.pdbx_formal_charge  0
+##
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+2MG  P       .  P  0  0.0   3.537   1.423  -0.000   3.537   1.423  -0.000  
+2MG  O1P     .  O  0  0.0   3.459   2.893   0.104   3.459   2.893   0.104  
+2MG  O2P     .  O  0  0.0   2.305   0.602   0.205   2.305   0.602   0.205  
+2MG  "O5'"   .  O  0  0.0   4.684   0.945   1.006   4.684   0.945   1.006  
+2MG  "C5'"   .  C  0  0.0   5.066  -0.449   1.081   5.066  -0.449   1.081  
+2MG  "H5'1"  .  H  0  0.0   4.257  -0.962   1.559   4.257  -0.962   1.559  
+2MG  "H5'2"  .  H  0  0.0   5.373  -0.734   0.097   5.373  -0.734   0.097  
+2MG  "C4'"   .  C  0  0.0   6.270  -0.614   1.974   6.270  -0.614   1.974  
+2MG  "O4'"   .  O  0  0.0   7.379   0.168   1.454   7.379   0.168   1.454  
+2MG  "C1'"   .  C  0  0.0   8.182   0.618   2.543   8.182   0.618   2.543  
+2MG  "C2'"   .  C  0  0.0   7.559   0.032   3.815   7.559   0.032   3.815  
+2MG  "O2'"   .  O  0  0.0   8.161  -1.230   4.045   8.161  -1.230   4.045  
+2MG  "HO'2"  .  H  0  0.0   7.505  -1.922   3.936   7.505  -1.922   3.936  
+2MG  "H2'"   .  H  0  0.0   7.678   0.587   4.722   7.678   0.587   4.722  
+2MG  N9      .  N  0  0.0   8.205   2.088   2.557   8.205   2.088   2.557  
+2MG  C8      .  C  0  0.0   7.131   2.945   2.575   7.131   2.945   2.575  
+2MG  N7      .  N  0  0.0   7.464   4.181   2.584   7.464   4.181   2.584  
+2MG  C5      .  C  0  0.0   8.840   4.166   2.571   8.840   4.166   2.571  
+2MG  C6      .  C  0  0.0   9.792   5.240   2.564   9.792   5.240   2.564  
+2MG  O6      .  O  0  0.0   9.642   6.424   2.565   9.642   6.424   2.565  
+2MG  N1      .  N  0  0.0  11.105   4.712   2.548  11.105   4.712   2.548  
+2MG  C2      .  C  0  0.0  11.448   3.394   2.534  11.448   3.394   2.534  
+2MG  N2      .  N  0  0.0  12.775   3.125   2.484  12.775   3.125   2.484  
+2MG  1H2     .  H  0  0.0  13.390   3.849   2.776  13.390   3.849   2.776  
+2MG  C10     .  C  0  0.0  13.265   1.767   2.613  13.265   1.767   2.613  
+2MG  H20     .  H  0  0.0  14.337   1.785   2.475  14.337   1.785   2.475  
+2MG  H21     .  H  0  0.0  13.034   1.337   3.582  13.034   1.337   3.582  
+2MG  H22     .  H  0  0.0  12.823   1.146   1.849  12.823   1.146   1.849  
+2MG  N3      .  N  0  0.0  10.585   2.434   2.544  10.585   2.434   2.544  
+2MG  C4      .  C  0  0.0   9.303   2.878   2.554   9.303   2.878   2.554  
+2MG  H1      .  H  0  0.0  11.816   5.410   2.487  11.816   5.410   2.487  
+2MG  H8      .  H  0  0.0   6.128   2.571   2.582   6.128   2.571   2.582  
+2MG  "H1'"   .  H  0  0.0   9.200   0.297   2.462   9.200   0.297   2.462  
+2MG  "H4'"   .  H  0  0.0   6.422  -1.672   1.995   6.422  -1.672   1.995  
+2MG  "C3'"   .  C  0  0.0   6.104  -0.080   3.385   6.104  -0.080   3.385  
+2MG  "H3'"   .  H  0  0.0   5.563   0.839   3.476   5.563   0.839   3.476  
+2MG  "O3'"   .  O  0  0.0   5.363  -1.006   4.174   5.363  -1.006   4.174  
+##
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+2MG  P      O1P     SING  
+2MG  P      O2P     SING  
+2MG  P      "O5'"   SING  
+2MG  "O5'"  "C5'"   SING  
+2MG  "C5'"  "H5'1"  SING  
+2MG  "C5'"  "H5'2"  SING  
+2MG  "C5'"  "C4'"   SING  
+2MG  "C4'"  "O4'"   SING  
+2MG  "C4'"  "H4'"   SING  
+2MG  "C4'"  "C3'"   SING  
+2MG  "O4'"  "C1'"   SING  
+2MG  "C1'"  "C2'"   SING  
+2MG  "C1'"  N9      SING  
+2MG  "C1'"  "H1'"   SING  
+2MG  "C2'"  "O2'"   SING  
+2MG  "C2'"  "H2'"   SING  
+2MG  "C2'"  "C3'"   SING  
+2MG  "O2'"  "HO'2"  SING  
+2MG  N9     C8      SING  
+2MG  N9     C4      SING  
+2MG  C8     N7      SING  
+2MG  C8     H8      SING  
+2MG  N7     C5      SING  
+2MG  C5     C6      SING  
+2MG  C5     C4      SING  
+2MG  C6     O6      SING  
+2MG  C6     N1      SING  
+2MG  N1     C2      SING  
+2MG  N1     H1      SING  
+2MG  C2     N2      SING  
+2MG  C2     N3      SING  
+2MG  N2     1H2     SING  
+2MG  N2     C10     SING  
+2MG  C10    H20     SING  
+2MG  C10    H21     SING  
+2MG  C10    H22     SING  
+2MG  N3     C4      SING  
+2MG  "C3'"  "H3'"   SING  
+2MG  "C3'"  "O3'"   SING  
+##
