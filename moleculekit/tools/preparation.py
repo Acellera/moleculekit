@@ -464,16 +464,19 @@ def _template_renamed_canonical_residues(mol, specs):
                 f"have populated this field."
             )
 
-        if is_modified:
-            # A crosslinked known-modified residue is re-templated from its full
-            # RESIDUE_SMILES entry; templateResidueFromSmiles' valence math drops
-            # the H displaced by the crosslink (e.g. MLZ CM methyl -> methylene),
-            # the same way it handles the canonical-anchor case below.
+        if is_modified or spec.anchor_atom == "C":
+            # Re-template from the residue's full RESIDUE_SMILES entry (not an
+            # anchor variant) for two cases: a crosslinked known-modified residue
+            # (MSE, MLZ, ...), and a backbone-C acyl DONOR (the carbonyl end of an
+            # isopeptide, e.g. K48 diubiquitin Gly76.C -> Lys48.NZ - the "anchor"
+            # is the backbone C, so there is no sidechain variant). In both cases
+            # templateResidueFromSmiles' valence math drops the H displaced by the
+            # crosslink, the same way it handles the canonical sidechain anchors.
             smiles = RESIDUE_SMILES.get(spec.resname)
             if smiles is None:
                 raise RuntimeError(
-                    f"Crosslinked modified residue {spec.resname} has no entry "
-                    f"in moleculekit.residues.RESIDUE_SMILES, so it cannot be "
+                    f"Crosslinked residue {spec.resname} has no entry in "
+                    f"moleculekit.residues.RESIDUE_SMILES, so it cannot be "
                     f"re-templated. Add its SMILES there."
                 )
         else:
@@ -506,7 +509,6 @@ def _template_renamed_canonical_residues(mol, specs):
                 f"Complete the missing atoms or remove this residue before "
                 f"building. Underlying error: {e}"
             ) from e
-
 
 def _canonicalize_ncaa_h_names(mol, detect_specs):
     """Rename the amide H, alpha H, and carboxyl-OH H of each
@@ -823,6 +825,24 @@ def _detect_non_termini(mol, extra_bonds=()):
             ):
                 continue
             non_termini.add((kn, "N"))
+            non_termini.add((kc, "C"))
+        # Backbone carbonyl "C" bonded to a SIDE-CHAIN N (not the backbone "N")
+        # in another residue: an isopeptide whose acceptor is a side-chain amine
+        # (e.g. K48 diubiquitin Gly76.C -> Lys48.NZ). The check above misses it
+        # because the N is not named "N". Only the C-side residue is continued
+        # (its main-chain carboxyl is the amide); the acceptor's backbone
+        # terminus is unaffected by a bond on its side chain.
+        for c_at, n_at in ((a, b), (b, a)):
+            if name[c_at] != "C" or element[n_at] != "N" or name[n_at] == "N":
+                continue
+            kc, kn = reskey(c_at), reskey(n_at)
+            if kc == kn:
+                continue
+            if (
+                float(np.linalg.norm(coords[c_at] - coords[n_at]))
+                > _AMIDE_BOND_SANITY_DIST
+            ):
+                continue
             non_termini.add((kc, "C"))
     return non_termini
 

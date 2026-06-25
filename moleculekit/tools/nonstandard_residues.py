@@ -834,17 +834,11 @@ def detectNonStandardResidues(mol, guess_bonds=True):
     canonical_renames = {}  # r_idx -> new_resname
 
     for r_idx in range(n_res):
-        # A bond from this residue's backbone carbonyl "C" is an acyl-donor
-        # amide, not a sidechain anchor: it is the donor end of an isopeptide /
-        # C-terminal linkage to a side-chain-N acceptor (e.g. K48 diubiquitin
-        # Gly76.C -> Lys48.NZ). The donor's backbone C is amide-bonded like a
-        # mid-chain residue, so the donor is NOT renamed/re-templated (its C is
-        # already marked bonded above, so it is also not a free C-terminus); the
-        # side-chain-N acceptor on the other side is anchored normally below.
-        partners = [p for p in nonpep_partners[r_idx] if p[1] != "C"]
-        if not partners:
+        if not nonpep_partners[r_idx]:
             continue
-        anchor_partner = sorted(partners, key=lambda p: (p[0], p[1]))[0]
+        anchor_partner = sorted(
+            nonpep_partners[r_idx], key=lambda p: (p[0], p[1])
+        )[0]
         other_r, anchor_atom = anchor_partner
         anchor_atoms[r_idx] = anchor_atom
 
@@ -859,14 +853,26 @@ def detectNonStandardResidues(mol, guess_bonds=True):
         # no-need-to-parameterize sense, but they have no sidechain to crosslink
         # and never reach here.
         is_modified = residue.resname in MODIFIED_PROTEIN_RESIDUE_NAMES
+        # An anchor on the backbone carbonyl "C" is the acyl-DONOR end of an
+        # isopeptide / C-terminal linkage to a side-chain-N acceptor (e.g. K48
+        # diubiquitin Gly76.C -> Lys48.NZ). The "anchor" is the backbone
+        # carbonyl, not a sidechain, so it has no ANCHOR_TABLE entry - but the
+        # residue must still be renamed + clustered (templated from its own
+        # standard RESIDUE_SMILES) so the junction torsions are parameterized
+        # alongside the acceptor.
+        is_backbone_c_donor = anchor_atom == "C"
         if residue.resname not in PROTEIN_RESNAMES and not is_modified:
             continue
         partner_resname = residues[other_r].resname
 
-        # Validate the anchor against ANCHOR_TABLE. Modified residues are
-        # re-templated from their full RESIDUE_SMILES entry (not an anchor
-        # variant), so they need no ANCHOR_TABLE entry.
-        if not is_modified and lookup_anchor(residue.resname, anchor_atom) is None:
+        # Validate the anchor against ANCHOR_TABLE. Modified residues and
+        # backbone-C acyl donors are re-templated from their full RESIDUE_SMILES
+        # entry (not an anchor variant), so they need no ANCHOR_TABLE entry.
+        if (
+            not is_modified
+            and not is_backbone_c_donor
+            and lookup_anchor(residue.resname, anchor_atom) is None
+        ):
             if bonds_guessed:
                 cause = (
                     "The molecule had no bonds, so they were guessed from "
