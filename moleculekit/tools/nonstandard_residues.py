@@ -834,11 +834,17 @@ def detectNonStandardResidues(mol, guess_bonds=True):
     canonical_renames = {}  # r_idx -> new_resname
 
     for r_idx in range(n_res):
-        if not nonpep_partners[r_idx]:
+        # A bond from this residue's backbone carbonyl "C" is an acyl-donor
+        # amide, not a sidechain anchor: it is the donor end of an isopeptide /
+        # C-terminal linkage to a side-chain-N acceptor (e.g. K48 diubiquitin
+        # Gly76.C -> Lys48.NZ). The donor's backbone C is amide-bonded like a
+        # mid-chain residue, so the donor is NOT renamed/re-templated (its C is
+        # already marked bonded above, so it is also not a free C-terminus); the
+        # side-chain-N acceptor on the other side is anchored normally below.
+        partners = [p for p in nonpep_partners[r_idx] if p[1] != "C"]
+        if not partners:
             continue
-        anchor_partner = sorted(
-            nonpep_partners[r_idx], key=lambda p: (p[0], p[1])
-        )[0]
+        anchor_partner = sorted(partners, key=lambda p: (p[0], p[1]))[0]
         other_r, anchor_atom = anchor_partner
         anchor_atoms[r_idx] = anchor_atom
 
