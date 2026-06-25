@@ -135,11 +135,15 @@ def _generate_nonstandard_residues_ff(
     ncaa_not_in_ff = [r for r in spec_by_resname if not forcefield.has_residue(r)]
 
     # Force-field-supported modified residues (MSE, SEP, TPO, ... in the AMBER
-    # libraries but unknown to PDB2PQR) present in the structure: source their
-    # topology from the reference cif shipped in moleculekit so PDB2PQR can
+    # libraries but lacking a PDB2PQR topology) present in the structure: source
+    # their topology from the reference cif shipped in moleculekit so PDB2PQR can
     # protonate them and keep the chain/closure intact. PDB2PQR only needs the
     # topology (atom names/bonds/H build geometry); the MD charges are assigned
     # later by the AMBER/OpenMM forcefield, so the cif is a sufficient source.
+    # The gate is the topology Definition (``definition.map``), NOT the force
+    # field: some residues (e.g. CSS) carry PARSE radii yet have no topology
+    # Definition, so ``forcefield.has_residue`` is True while PDB2PQR still
+    # cannot build them - they need the cif just like the wholly-unknown ones.
     cif_dir = os.path.join(__share_dir, "residue_cifs")
     present_resnames = {str(r) for r in np.unique(mol.resname)}
     _modres_known = set(MODIFIED_PROTEIN_RESIDUE_NAMES) | set(
@@ -148,7 +152,7 @@ def _generate_nonstandard_residues_ff(
     modres_from_cif = sorted(
         r
         for r in (present_resnames & _modres_known)
-        if not forcefield.has_residue(r)
+        if r not in definition.map
         and os.path.isfile(os.path.join(cif_dir, f"{r}.cif"))
     )
 

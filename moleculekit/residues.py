@@ -144,6 +144,16 @@ MODIFIED_PROTEIN_RESIDUES = (
         single_letter="P",
         resname_variants=[],
     ),
+    _Residue(full_name="S-Hydroxycysteine", resname="CSO",
+             single_letter="C", resname_variants=[]),
+    _Residue(full_name="S-Mercaptocysteine", resname="CSS",
+             single_letter="C", resname_variants=[]),
+    _Residue(full_name="Pyroglutamic acid", resname="PCA",
+             single_letter="Q", resname_variants=[]),
+    _Residue(full_name="Dimethylarginine", resname="2MR",
+             single_letter="R", resname_variants=[]),
+    _Residue(full_name="Gamma-Carboxyglutamate", resname="CGU",
+             single_letter="E", resname_variants=[]),
 )
 NUCLEIC_RESIDUES = (
     _Residue(
@@ -296,6 +306,11 @@ RESIDUE_SMILES = {
     "TPO": "C[C@H]([C@@H](C(=O)O)N)OP(=O)(O)O",
     "PTR": "c1cc(ccc1C[C@@H](C(=O)O)N)OP(=O)(O)O",
     "HYP": "C1[C@H](CN[C@@H]1C(=O)O)O",
+    "CSO": "C([C@@H](C(=O)O)N)SO",
+    "CSS": "C([C@@H](C(=O)O)N)SS",
+    "PCA": "C1CC(=O)N[C@@H]1C(=O)O",
+    "2MR": "CN/C(=N/C)/NCCC[C@@H](C(=O)O)N",
+    "CGU": "C(C(C(=O)O)C(=O)O)[C@@H](C(=O)O)N",
     # Modified nucleotides (canonical = 5'-phosphate + free 3'-OH).
     "5MC": "CC1=CN(C(=O)N=C1N)[C@H]2[C@@H]([C@@H]([C@H](O2)COP(=O)(O)O)O)O",
     "PSU": "C1=C(C(=O)NC(=O)N1)[C@H]2[C@@H]([C@@H]([C@H](O2)COP(=O)(O)O)O)O",
