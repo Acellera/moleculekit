@@ -247,6 +247,7 @@ RESIDUE_SMILES = {
     "SEP": "C([C@@H](C(=O)O)N)OP(=O)(O)O",
     "TPO": "C[C@H]([C@@H](C(=O)O)N)OP(=O)(O)O",
     "PTR": "c1cc(ccc1C[C@@H](C(=O)O)N)OP(=O)(O)O",
+    "HYP": "C1[C@H](CN[C@@H]1C(=O)O)O",
     # RNA bases (canonical = 5'-phosphate + free 3'-OH)
     "G": "c1nc2c(n1[C@H]3[C@@H]([C@@H]([C@H](O3)COP(=O)(O)O)O)O)N=C(NC2=O)N",
     "G5": "c1nc2c(n1[C@H]3[C@@H]([C@@H]([C@H](O3)CO)O)O)N=C(NC2=O)N",
