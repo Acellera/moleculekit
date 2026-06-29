@@ -214,6 +214,15 @@ NUCLEIC_RESIDUE_NAMES = set(rr.resname for rr in NUCLEIC_RESIDUES)
 MODIFIED_PROTEIN_RESIDUE_NAMES = set(rr.resname for rr in MODIFIED_PROTEIN_RESIDUES)
 MODIFIED_NUCLEIC_RESIDUE_NAMES = set(rr.resname for rr in MODIFIED_NUCLEIC_RESIDUES)
 
+# Terminal capping groups. They carry no full backbone (an N-terminal acetyl
+# has no N/CA, a C-terminal amide only an N), so the backbone-atom tests miss
+# them, but they are covalently part of the chain they terminate. Split by which
+# terminus they cap. Consumed by autoSegment (a cap joins the chain it caps) and
+# by the AMBER builder (a terminus already carrying a cap is not re-capped).
+N_TERMINAL_CAP_RESIDUE_NAMES = ("ACE",)
+C_TERMINAL_CAP_RESIDUE_NAMES = ("NME", "NMA", "NHE", "NH2")
+CAP_RESIDUE_NAMES = N_TERMINAL_CAP_RESIDUE_NAMES + C_TERMINAL_CAP_RESIDUE_NAMES
+
 # PDB-v3 -> AMBER (modrna08) atom-name remap for each supported modified
 # nucleotide. The phosphate / sugar backbone normalisation (``OP1`` -> ``O1P``,
 # ...) is what PDB2PQR already applies to the canonical nucleotides it
