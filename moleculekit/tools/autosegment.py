@@ -27,6 +27,13 @@ with open(os.path.join(__share_dir, "atomselect", "atomselect.json")) as _f:
 # nucleic residues by any of these backbone link atoms (with ' / * variants).
 PROTEIN_BB = ("N", "CA", "C")
 NUCLEIC_LINK = ("P", "O3'", "O3*", "C3'", "C3*")
+# Terminal capping groups. They carry no full backbone (an acetyl N-cap has no
+# N/CA, an amide C-cap only an N), so they are not caught by the backbone-atom
+# test, but they are covalently part of the chain they terminate. Treating them
+# as polymer lets the geometric C-N linking fold them into their parent segment
+# instead of orphaning them (e.g. a deposited C-terminal amide NH2 would
+# otherwise split off and the chain's real C-terminus would get re-capped).
+CAP_RESIDUE_NAMES = ("ACE", "NME", "NMA", "NHE", "NH2")
 
 
 def _residue_atom_coord(mol, res_atom_idx, names):
@@ -75,6 +82,10 @@ def _classify_residues(mol, sel_mask):
             cats.append("water")
         elif resname in ion_names:
             cats.append("ion")
+        elif resname in CAP_RESIDUE_NAMES:
+            # A capping group joins the polymer traversal so the existing C-N
+            # geometric link attaches it to the residue it caps.
+            cats.append("protein")
         elif all(a in names for a in PROTEIN_BB):
             cats.append("protein")
         elif any(a in names for a in NUCLEIC_LINK):

@@ -198,7 +198,7 @@ def test_autoSegment_system_matrix():
         "5vbl": 5,   # isopeptide bond -> peptide stays one segment per chain
         "4tot": 15,
         "8qfz": 5,   # scaffolded / bicycle (chain A has a real 21A backbone gap)
-        "8qu4": 8,   # staple -> stays within chain
+        "8qu4": 6,   # stapled peptide (chain A) keeps its ACE + NH2 caps in-chain
         "1r1j": 7,   # covalent sugars -> own "other" segment(s)
         "2kdc": 3,   # membrane protein
         "1bl8": 6,   # ion channel
