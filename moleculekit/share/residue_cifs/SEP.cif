@@ -4,17 +4,17 @@ _chem_comp.id                                    SEP
 _chem_comp.name                                  PHOSPHOSERINE 
 _chem_comp.type                                  "L-PEPTIDE LINKING" 
 _chem_comp.pdbx_type                             ATOMP 
-_chem_comp.formula                               "C3 H8 N O6 P" 
+_chem_comp.formula                               "C3 H6 N O6 P" 
 _chem_comp.mon_nstd_parent_comp_id               SER 
 _chem_comp.pdbx_synonyms                         PHOSPHONOSERINE 
-_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_formal_charge                    -2 
 _chem_comp.pdbx_initial_date                     1999-07-08 
 _chem_comp.pdbx_modified_date                    2025-08-24 
 _chem_comp.pdbx_ambiguous_flag                   N 
 _chem_comp.pdbx_release_status                   REL 
 _chem_comp.pdbx_replaced_by                      ? 
 _chem_comp.pdbx_replaces                         ? 
-_chem_comp.formula_weight                        185.072 
+_chem_comp.formula_weight                        183.056 
 _chem_comp.one_letter_code                       S 
 _chem_comp.three_letter_code                     SEP 
 _chem_comp.pdbx_model_coordinates_details        ? 
@@ -57,16 +57,14 @@ SEP O    O    O 0 1 N N N Y N Y 14.373 45.871 -6.303 0.254  -1.038 3.354  O    S
 SEP OXT  OXT  O 0 1 N Y N Y N Y 13.281 45.410 -8.244 -1.389 0.439  3.377  OXT  SEP 7  
 SEP P    P    P 0 1 N N N N N N 9.607  45.328 -8.384 -0.135 -0.027 -2.050 P    SEP 8  
 SEP O1P  O1P  O 0 1 N N N N N N 9.500  46.086 -9.633 -1.601 0.172  -2.074 O1P  SEP 9  
-SEP O2P  O2P  O 0 1 N N N N N N 9.829  43.907 -8.669 0.520  0.649  -3.356 O2P  SEP 10 
-SEP O3P  O3P  O 0 1 N N N N N N 8.402  45.541 -7.535 0.191  -1.603 -2.041 O3P  SEP 11 
+SEP O2P  O2P  O -1 1 N N N N N N 9.829  43.907 -8.669 0.520  0.649  -3.356 O2P  SEP 10 
+SEP O3P  O3P  O -1 1 N N N N N N 8.402  45.541 -7.535 0.191  -1.603 -2.041 O3P  SEP 11 
 SEP H    H    H 0 1 N N N Y Y N 13.632 43.621 -4.921 2.237  0.796  0.895  H    SEP 12 
 SEP H2   2HN  H 0 1 N Y N Y Y N 12.001 43.575 -4.540 2.013  -0.574 1.727  H2   SEP 13 
 SEP HA   HA   H 0 1 N N N Y N N 12.213 43.656 -6.837 0.179  1.687  1.711  HA   SEP 14 
 SEP HB2  1HB  H 0 1 N N N N N N 10.214 44.753 -5.930 0.082  -1.051 0.367  HB2  SEP 15 
 SEP HB3  2HB  H 0 1 N N N N N N 11.026 46.170 -5.548 -1.218 0.163  0.344  HB3  SEP 16 
 SEP HXT  HXT  H 0 1 N Y N Y N Y 13.966 45.902 -8.680 -1.807 0.006  4.134  HXT  SEP 17 
-SEP HOP2 2HOP H 0 0 N N N N N N 9.054  43.617 -9.135 0.127  0.212  -4.124 HOP2 SEP 18 
-SEP HOP3 3HOP H 0 0 N N N N N N 7.627  45.251 -8.001 1.154  -1.689 -2.025 HOP3 SEP 19 
 # 
 loop_
 _chem_comp_bond.comp_id 
@@ -92,8 +90,6 @@ SEP OXT HXT  SING N N 13
 SEP P   O1P  DOUB N N 14 
 SEP P   O2P  SING N N 15 
 SEP P   O3P  SING N N 16 
-SEP O2P HOP2 SING N N 17 
-SEP O3P HOP3 SING N N 18 
 # 
 loop_
 _pdbx_chem_comp_descriptor.comp_id 

@@ -4,17 +4,17 @@ _chem_comp.id                                    TPO
 _chem_comp.name                                  PHOSPHOTHREONINE 
 _chem_comp.type                                  "L-PEPTIDE LINKING" 
 _chem_comp.pdbx_type                             ATOMP 
-_chem_comp.formula                               "C4 H10 N O6 P" 
+_chem_comp.formula                               "C4 H8 N O6 P" 
 _chem_comp.mon_nstd_parent_comp_id               THR 
 _chem_comp.pdbx_synonyms                         PHOSPHONOTHREONINE 
-_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_formal_charge                    -2 
 _chem_comp.pdbx_initial_date                     1999-07-08 
 _chem_comp.pdbx_modified_date                    2024-09-27 
 _chem_comp.pdbx_ambiguous_flag                   N 
 _chem_comp.pdbx_release_status                   REL 
 _chem_comp.pdbx_replaced_by                      ? 
 _chem_comp.pdbx_replaces                         ? 
-_chem_comp.formula_weight                        199.099 
+_chem_comp.formula_weight                        197.083 
 _chem_comp.one_letter_code                       T 
 _chem_comp.three_letter_code                     TPO 
 _chem_comp.pdbx_model_coordinates_details        ? 
@@ -55,8 +55,8 @@ TPO CG2  CG2  C 0 1 N N N N N N 21.837 5.045 -12.302 2.634  0.580  0.485  CG2  T
 TPO OG1  OG1  O 0 1 N N N N N N 20.898 4.716 -14.523 0.755  -0.645 -0.412 OG1  TPO 5  
 TPO P    P    P 0 1 N N N N N N 19.424 4.424 -14.993 -0.142 -0.039 -1.603 P    TPO 6  
 TPO O1P  O1P  O 0 1 N N N N N N 19.358 5.014 -16.321 0.644  0.968  -2.350 O1P  TPO 7  
-TPO O2P  O2P  O 0 1 N N N N N N 19.243 2.986 -14.834 -0.580 -1.224 -2.601 O2P  TPO 8  
-TPO O3P  O3P  O 0 1 N N N N N N 18.506 5.082 -14.021 -1.456 0.656  -0.985 O3P  TPO 9  
+TPO O2P  O2P  O -1 1 N N N N N N 19.243 2.986 -14.834 -0.580 -1.224 -2.601 O2P  TPO 8  
+TPO O3P  O3P  O -1 1 N N N N N N 18.506 5.082 -14.021 -1.456 0.656  -0.985 O3P  TPO 9  
 TPO C    C    C 0 1 N N N Y N Y 22.539 2.278 -12.384 -0.927 0.070  1.794  C    TPO 10 
 TPO O    O    O 0 1 N N N Y N Y 21.778 1.390 -12.005 -1.435 -1.012 1.626  O    TPO 11 
 TPO OXT  OXT  O 0 1 N Y N Y N Y 23.582 2.721 -11.720 -1.700 1.159  1.935  OXT  TPO 12 
@@ -67,8 +67,6 @@ TPO HB   HB   H 0 1 N N N N N N 20.410 3.593 -12.916 0.680  1.369  0.039  HB   T
 TPO HG21 1HG2 H 0 0 N N N N N N 21.094 5.844 -12.071 3.065  -0.339 0.881  HG21 TPO 17 
 TPO HG22 2HG2 H 0 0 N N N N N N 22.154 4.506 -11.378 3.018  0.758  -0.518 HG22 TPO 18 
 TPO HG23 3HG2 H 0 0 N N N N N N 22.821 5.477 -12.598 2.906  1.415  1.131  HG23 TPO 19 
-TPO HOP2 2HOP H 0 0 N N N N N N 18.353 2.809 -15.117 -1.114 -0.819 -3.298 HOP2 TPO 20 
-TPO HOP3 3HOP H 0 0 N N N N N N 17.616 4.905 -14.304 -1.938 -0.033 -0.509 HOP3 TPO 21 
 TPO HXT  HXT  H 0 1 N Y N Y N Y 23.722 2.264 -10.898 -2.662 1.076  1.902  HXT  TPO 22 
 # 
 loop_
@@ -95,8 +93,6 @@ TPO OG1 P    SING N N 13
 TPO P   O1P  DOUB N N 14 
 TPO P   O2P  SING N N 15 
 TPO P   O3P  SING N N 16 
-TPO O2P HOP2 SING N N 17 
-TPO O3P HOP3 SING N N 18 
 TPO C   O    DOUB N N 19 
 TPO C   OXT  SING N N 20 
 TPO OXT HXT  SING N N 21 

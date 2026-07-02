@@ -4,17 +4,17 @@ _chem_comp.id                                    PTR
 _chem_comp.name                                  O-PHOSPHOTYROSINE 
 _chem_comp.type                                  "L-PEPTIDE LINKING" 
 _chem_comp.pdbx_type                             ATOMP 
-_chem_comp.formula                               "C9 H12 N O6 P" 
+_chem_comp.formula                               "C9 H10 N O6 P" 
 _chem_comp.mon_nstd_parent_comp_id               TYR 
 _chem_comp.pdbx_synonyms                         PHOSPHONOTYROSINE 
-_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_formal_charge                    -2 
 _chem_comp.pdbx_initial_date                     1999-07-08 
 _chem_comp.pdbx_modified_date                    2026-01-30 
 _chem_comp.pdbx_ambiguous_flag                   N 
 _chem_comp.pdbx_release_status                   REL 
 _chem_comp.pdbx_replaced_by                      ? 
 _chem_comp.pdbx_replaces                         ? 
-_chem_comp.formula_weight                        261.168 
+_chem_comp.formula_weight                        259.152 
 _chem_comp.one_letter_code                       Y 
 _chem_comp.three_letter_code                     PTR 
 _chem_comp.pdbx_model_coordinates_details        ? 
@@ -63,8 +63,8 @@ PTR CZ   CZ   C 0 1 Y N N N N N 45.772 14.487 3.562  0.067  0.673  -1.474 CZ   P
 PTR OH   OH   O 0 1 N N N N N N 46.216 15.385 4.594  0.168  1.129  -2.750 OH   PTR 13 
 PTR P    P    P 0 1 N N N N N N 45.382 15.884 5.757  -0.065 -0.136 -3.717 P    PTR 14 
 PTR O1P  O1P  O 0 1 N N N N N N 44.096 16.422 5.355  -1.409 -0.705 -3.467 O1P  PTR 15 
-PTR O2P  O2P  O 0 1 N N N N N N 46.274 16.938 6.218  0.040  0.334  -5.253 O2P  PTR 16 
-PTR O3P  O3P  O 0 1 N N N N N N 45.279 14.830 6.778  1.053  -1.253 -3.419 O3P  PTR 17 
+PTR O2P  O2P  O -1 1 N N N N N N 46.274 16.938 6.218  0.040  0.334  -5.253 O2P  PTR 16 
+PTR O3P  O3P  O -1 1 N N N N N N 45.279 14.830 6.778  1.053  -1.253 -3.419 O3P  PTR 17 
 PTR H    H    H 0 1 N N N Y Y N 46.360 10.204 -0.256 1.963  0.235  3.473  H    PTR 18 
 PTR H2   HN2  H 0 1 N Y N Y Y N 46.972 11.785 -0.159 1.365  1.204  2.322  HN2  PTR 19 
 PTR HA   HA   H 0 1 N N N Y N N 44.360 10.939 -1.392 -0.793 1.164  3.339  HA   PTR 20 
@@ -75,8 +75,6 @@ PTR HD1  HD1  H 0 1 N N N N N N 46.374 11.302 2.435  1.966  -0.609 1.004  HD1  P
 PTR HD2  HD2  H 0 1 N N N N N N 43.515 14.204 1.015  -2.222 0.194  0.959  HD2  PTR 25 
 PTR HE1  HE1  H 0 1 N N N N N N 47.174 12.933 4.173  2.154  0.216  -1.306 HE1  PTR 26 
 PTR HE2  HE2  H 0 1 N N N N N N 44.298 15.851 2.751  -2.041 1.026  -1.349 HE2  PTR 27 
-PTR HO2P HO2P H 0 0 N N N N N N 45.751 17.250 6.947  -0.105 -0.451 -5.797 HO2P PTR 28 
-PTR HO3P HO3P H 0 0 N N N N N N 44.756 15.142 7.507  1.911  -0.843 -3.593 HO3P PTR 29 
 # 
 loop_
 _chem_comp_bond.comp_id 
@@ -113,8 +111,6 @@ PTR OH  P    SING N N 24
 PTR P   O1P  DOUB N N 25 
 PTR P   O2P  SING N N 26 
 PTR P   O3P  SING N N 27 
-PTR O2P HO2P SING N N 28 
-PTR O3P HO3P SING N N 29 
 # 
 loop_
 _pdbx_chem_comp_descriptor.comp_id 
