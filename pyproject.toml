@@ -116,5 +116,11 @@ manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
 # build-frontend = "build[uv]"
 
+[tool.cibuildwheel.linux]
+# The manylinux CPython compiles extensions with -g, so the .so files ship with
+# DWARF debug symbols that inflate the wheel ~2.5x (e.g. _ckdtree.so 8.8MB -> 0.8MB).
+# Strip them during the repair step.
+repair-wheel-command = "auditwheel repair --strip -w {dest_dir} {wheel}"
+
 # [tool.uv.sources]
 # acellera-pdb2pqr = { path = "../pdb2pqr", editable = true }
