@@ -25,21 +25,21 @@ def _filter_opm_pdb(lines, keep_dum=False):
 
 
 def generate_opm_sequences(opm_pdbs: list, outjson: str):
-    """Extract protein and nucleic sequences from OPM PDB files into a JSON file.
+    """Extract protein and nucleic sequences from OPM PDB files into an xz-compressed JSON file.
 
     Each input PDB is filtered of its DUM placeholder atoms, loaded as a
     Molecule, and split into protein and nucleic components. The per-chain
     sequences (dropping chains shorter than 5 residues or consisting only of
-    unknown ``X`` residues) are collected and written to a JSON file keyed by
-    the PDB file basename. This is used to build the searchable database
-    consumed by :func:`align_to_opm`.
+    unknown ``X`` residues) are collected and written to an xz-compressed JSON
+    file keyed by the PDB file basename. This is used to build the searchable
+    database consumed by :func:`align_to_opm`.
 
     Parameters
     ----------
     opm_pdbs : list of str
         Paths to the OPM PDB files to process.
     outjson : str
-        Path to the JSON file that the collected sequences are written to.
+        Path to the xz-compressed JSON file that the collected sequences are written to.
     """
     sequences = {}
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -85,7 +85,9 @@ def generate_opm_sequences(opm_pdbs: list, outjson: str):
                 logger.warning(f"Failed on file {ff} with error {e}")
                 continue
 
-    with open(outjson, "w") as f:
+    import lzma
+
+    with lzma.open(outjson, "wt") as f:
         json.dump(sequences, f, indent=4)
 
 
@@ -248,7 +250,9 @@ def align_to_opm(
     from moleculekit import __share_dir
     from moleculekit.align import molTMalign
 
-    with open(os.path.join(__share_dir, "opm_sequences.json"), "r") as f:
+    import lzma
+
+    with lzma.open(os.path.join(__share_dir, "opm_sequences.json.xz"), "rt") as f:
         sequences = json.load(f)
 
     if opmid is not None:
