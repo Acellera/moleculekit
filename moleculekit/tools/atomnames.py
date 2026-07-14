@@ -54,8 +54,6 @@ def canonicalizeAtomNames(
         :meth:`Molecule.atomselect <moleculekit.molecule.Molecule.atomselect>`).
         Only residues with at least one selected atom are considered; the rest
         are left untouched. Default is "all".
-    _logger : bool
-        If False, suppress the per-atom rename debug logging.
 
     Returns
     -------
