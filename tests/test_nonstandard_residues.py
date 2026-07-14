@@ -1516,3 +1516,30 @@ def test_geometric_interresidue_links_none():
         ("ALA", 2, "A", "C", "C", (7, 0, 0)), ("ALA", 2, "A", "O", "O", (7, -1, 0)),
     ]
     assert _links(_mol_from_atoms(atoms)) == set()
+
+
+def test_residues_requiring_template_lists_noncanonical_only():
+    """residuesRequiringTemplate returns the genuine ligands / NCAAs (which need
+    a supplied template) and drops canonical residues that were only renamed at
+    a covalent junction."""
+    from moleculekit.tools.nonstandard_residues import residuesRequiringTemplate
+
+    mol = Molecule(VBL_PDB)
+    assert residuesRequiringTemplate(mol) == [
+        "200",
+        "ALC",
+        "HRG",
+        "NLE",
+        "OIC",
+        "OLC",
+    ]
+
+
+def test_residues_requiring_template_excludes_canonical_junction_renames():
+    """A scaffold (LFI) needs a template; the CYS disulfide renames do not."""
+    from moleculekit.tools.nonstandard_residues import residuesRequiringTemplate
+
+    mol = Molecule(QFZ_B_CIF)
+    result = residuesRequiringTemplate(mol)
+    assert result == ["LFI"]
+    assert "CYS" not in result

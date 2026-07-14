@@ -951,3 +951,56 @@ def detectNonStandardResidues(mol, guess_bonds=True):
 
     _disambiguate_terminus_resnames(specs)
     return specs
+
+
+def requiresTemplate(spec):
+    """Whether a detected residue spec needs a user-supplied template.
+
+    True for genuinely non-standard residues (free ligands, non-canonical amino
+    acids, scaffolds), i.e. those needing a SMILES or CIF template to add bonds,
+    bond orders and hydrogens before parameterization. False for a canonical
+    residue the detector reports only because it was renamed at a covalent
+    junction (its resname stays canonical) and for force-field-shipped modified
+    residues.
+
+    Parameters
+    ----------
+    spec : ChainResidueSpec or ScaffoldSpec or CovalentLigandSpec or LigandSpec
+        A spec returned by :func:`detectNonStandardResidues`.
+
+    Returns
+    -------
+    bool
+        True if ``spec`` requires a supplied template.
+    """
+    return spec.resname not in _CANONICAL_RESNAMES
+
+
+def residuesRequiringTemplate(mol, guess_bonds=True):
+    """Return the resnames in ``mol`` that need a user-supplied template.
+
+    Runs :func:`detectNonStandardResidues` and keeps the residues that are
+    genuinely non-standard (free ligands, non-canonical amino acids and
+    scaffolds), i.e. the ones for which a SMILES or CIF template must be
+    supplied to add bonds, bond orders and hydrogens before they can be
+    parameterized. Canonical residues that the detector reports only because
+    they were renamed at a covalent junction (a disulfide ``CYS`` -> ``CYX``, a
+    glycosylated ``ASN``, ...) keep their canonical resname and are excluded,
+    since the force field already provides templates for them. Modified
+    residues the force field ships (``MSE``, ``SEP``, ...) are canonical here
+    too and are likewise excluded.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The molecule to inspect.
+    guess_bonds : bool
+        Passed through to :func:`detectNonStandardResidues`.
+
+    Returns
+    -------
+    resnames : list of str
+        The sorted, unique resnames that require a supplied template.
+    """
+    specs = detectNonStandardResidues(mol, guess_bonds=guess_bonds)
+    return sorted({s.resname for s in specs if requiresTemplate(s)})
