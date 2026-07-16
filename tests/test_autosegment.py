@@ -351,3 +351,29 @@ def test_autoSegment_5mat_internal_gaps():
     assert seg("C", 98) != seg("C", 104)
     # ...but residues on the same side of a gap stay together
     assert seg("A", 55) == seg("A", 98)
+
+
+def test_autoSegment_classifies_element_symbol_metal_ion():
+    # A standalone monatomic metal ion is named after its element symbol (FE,
+    # NI, ...) and may be absent from the VMD-mirroring ``ion_resnames`` list;
+    # it must still segment as an ion. A polyatomic residue whose code collides
+    # with an element symbol must not (single-atom guard).
+    import numpy as np
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import _classify_residues
+
+    mol = Molecule().empty(4)
+    mol.resname[:] = ["FE", "NI", "NI", "CA"]
+    mol.name[:] = ["FE", "NI1", "NI2", "CA"]
+    mol.element[:] = ["Fe", "Ni", "Ni", "Ca"]
+    mol.resid[:] = [1, 2, 2, 3]
+    mol.record[:] = "HETATM"
+    mol.coords = np.zeros((4, 3, 1), dtype=np.float32)
+
+    cats, residue_idx = _classify_residues(mol, mol.atomselect("all"))
+    cat_by_resname = {
+        str(mol.resname[idx[0]]): cat for cat, idx in zip(cats, residue_idx)
+    }
+    assert cat_by_resname["FE"] == "ion"  # element-symbol metal not in ion_resnames
+    assert cat_by_resname["CA"] == "ion"  # in ion_resnames (sanity)
+    assert cat_by_resname["NI"] != "ion"  # 2-atom residue excluded by single-atom guard

@@ -59,8 +59,17 @@ def _classify_residues(mol, sel_mask):
         Global atom indices for each residue, in the same order as ``cats``.
     """
     from moleculekit.residues import WATER_RESIDUE_NAMES, CAP_RESIDUE_NAMES
+    from moleculekit.periodictable import METAL_ELEMENTS
 
     ion_names = set(_sel["ion_resnames"])
+    # ``ion_resnames`` mirrors the VMD atomselect language and cannot be extended
+    # there. A standalone monatomic metal ion follows the PDB convention of
+    # naming the residue after its element symbol (FE, MN, NI, ...); recognize
+    # those here too so they segment as ions, matching how
+    # ``detectNonStandardResidues`` treats them. The single-atom guard keeps a
+    # polyatomic molecule whose code collides with an element symbol (e.g. CO,
+    # carbon monoxide) out of this branch.
+    metal_ion_names = {e.upper() for e in METAL_ELEMENTS}
 
     sel_idx = np.where(sel_mask)[0]
     _, residue_idx = mol.getResidues(sel=sel_mask, return_idx=True)
@@ -73,7 +82,7 @@ def _classify_residues(mol, sel_mask):
         names = set(mol.name[idx])
         if resname in WATER_RESIDUE_NAMES:
             cats.append("water")
-        elif resname in ion_names:
+        elif resname in ion_names or (resname in metal_ion_names and len(idx) == 1):
             cats.append("ion")
         elif resname in CAP_RESIDUE_NAMES:
             # A capping group joins the polymer traversal so the existing C-N
