@@ -1369,61 +1369,164 @@ def _restore_termini_bonds(mol):
         mol.bondtype = np.hstack([mol.bondtype, btype_arr])
 
 
-def _apply_terminal_formal_charges(mol, detect_specs):
-    """Set ``formalcharge`` on the terminal atoms PDB2PQR adds to
-    chain-resident spec residues.
+_AMINO_PKA = 9.0
+_CARBOXYL_PKA = 3.1
 
-    PDB2PQR's CTERM / NTERM patches add the terminal heavy atom or
-    extra hydrogens but always leave ``formalcharge`` at zero (PDB2PQR
-    discards formal charges entirely). After ``_restore_termini_bonds``
-    the bonds are back, so we can infer ionisation purely from the H
-    count on the backbone ``N`` and the terminal ``OXT``:
 
-      - 3 H on ``N``     -> NH3+ (charged NTERM patch)
-      - <3 H on ``N``    -> neutral NH2 (NEUTRAL-NTERM patch)
-      - 0 H on ``OXT``   -> COO-  (charged CTERM patch)
-      - >=1 H on ``OXT`` -> neutral COOH (NEUTRAL-CTERM patch)
+def _charge_nonstandard_termini(mol, detect_specs, pH):
+    """Enforce pH-appropriate backbone-terminus charge on chain-resident NCAAs.
 
-    Only applied to :class:`ChainResidueSpec` residues - those are the
-    ones we own and that downstream cluster parameterization sees.
-    PDB2PQR-driven protonation of plain canonical residues is left to
-    PDB2PQR.
+    PDB2PQR patches termini only on residues it classifies as ``aa.Amino``; an
+    NCAA carried by a custom Definition is a generic ``Residue`` and is skipped,
+    so it keeps its template's neutral terminus. This deterministically charges
+    a ``ChainResidueSpec`` terminus at the build pH: a C-terminus deprotonates to
+    ``COO-`` above the carboxyl pKa, an N-terminus protonates to ``R-NH3+`` below
+    the amino pKa. Canonical residues are untouched (PDB2PQR + tleap own them).
+
+    Parameters
+    ----------
+    mol : Molecule
+        The prepared molecule, mutated in place.
+    detect_specs : list
+        Specs from ``detectNonStandardResidues``.
+    pH : float
+        The build pH.
     """
-    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
-
-    def _count_h_neighbors(atom_idx):
-        return sum(
-            1 for nb in mol.getNeighbors(atom_idx) if mol.element[nb] == "H"
-        )
+    from moleculekit.tools.nonstandard_residues import (
+        ChainResidueSpec,
+        requiresTemplate,
+    )
 
     for spec in detect_specs:
         if not isinstance(spec, ChainResidueSpec):
             continue
         if not (spec.is_n_term or spec.is_c_term):
             continue
-        rid = spec.residue
-        current_resname = spec.new_resname or spec.resname
-        res_mask = (
-            (mol.resname == str(current_resname))
-            & (mol.segid == str(rid.segid))
-            & (mol.chain == str(rid.chain))
-            & (mol.resid == int(rid.resid))
-            & (mol.insertion == str(rid.insertion))
-        )
-        res_idx = np.where(res_mask)[0]
-        if len(res_idx) == 0:
+        if not requiresTemplate(spec):
+            # A canonical residue renamed only at a covalent junction (e.g. a
+            # disulfide CYS -> CYX) is an ``aa.Amino`` to PDB2PQR, which already
+            # applied its pH-dependent NTERM / CTERM patch. Only record the
+            # formal charge that implies (PDB2PQR discards formal charges); do
+            # not touch its atoms.
+            _stamp_terminal_formal_charge(mol, spec)
             continue
-        res_names = mol.name[res_idx]
+        # Genuine NCAA: PDB2PQR treats it as a generic residue and leaves its
+        # terminus neutral, so enforce the pH-appropriate protonation.
+        if spec.is_c_term and pH > _CARBOXYL_PKA:
+            _deprotonate_c_terminus(mol, spec)
+        if spec.is_n_term and pH < _AMINO_PKA:
+            _protonate_n_terminus(mol, spec)
 
-        if spec.is_n_term:
-            n_idx = res_idx[res_names == "N"]
-            if len(n_idx) == 1 and _count_h_neighbors(int(n_idx[0])) == 3:
-                mol.formalcharge[n_idx[0]] = 1
 
-        if spec.is_c_term:
-            oxt_idx = res_idx[res_names == "OXT"]
-            if len(oxt_idx) == 1 and _count_h_neighbors(int(oxt_idx[0])) == 0:
-                mol.formalcharge[oxt_idx[0]] = -1
+def _stamp_terminal_formal_charge(mol, spec):
+    """Record the formal charge implied by PDB2PQR's terminus patch on a
+    canonical residue renamed at a junction (e.g. a disulfide ``CYS`` -> ``CYX``):
+    3 H on the backbone ``N`` -> ``+1`` (NH3+), 0 H on the ``OXT`` -> ``-1``
+    (COO-). Atoms are left untouched - PDB2PQR already placed the protons; it
+    just discards the formal charge."""
+    from moleculekit.tools.nonstandard_residues import getResidueMask
+
+    res_idx = np.where(getResidueMask(mol, spec))[0]
+    if len(res_idx) == 0:
+        return
+    names = mol.name[res_idx]
+
+    def _hcount(atom_idx):
+        return sum(1 for nb in mol.getNeighbors(atom_idx) if mol.element[nb] == "H")
+
+    if spec.is_n_term:
+        n_idx = res_idx[names == "N"]
+        if len(n_idx) == 1 and _hcount(int(n_idx[0])) == 3:
+            mol.formalcharge[n_idx[0]] = 1
+    if spec.is_c_term:
+        oxt_idx = res_idx[names == "OXT"]
+        if len(oxt_idx) == 1 and _hcount(int(oxt_idx[0])) == 0:
+            mol.formalcharge[oxt_idx[0]] = -1
+
+
+def _deprotonate_c_terminus(mol, spec):
+    """Turn the residue's C-terminal ``OXT`` into a carboxylate: set
+    ``formalcharge = -1`` and remove any proton bonded to it."""
+    from moleculekit.tools.nonstandard_residues import getResidueMask
+
+    res_idx = np.where(getResidueMask(mol, spec))[0]
+    oxt_idx = res_idx[mol.name[res_idx] == "OXT"]
+    if len(oxt_idx) != 1:
+        return
+    oxt = int(oxt_idx[0])
+    mol.formalcharge[oxt] = -1  # survives the reindex of the H removal below
+    protons = [int(nb) for nb in mol.getNeighbors(oxt) if mol.element[nb] == "H"]
+    if protons:
+        remove = np.zeros(mol.numAtoms, dtype=bool)
+        remove[protons] = True
+        mol.remove(remove, _logger=False)
+
+
+def _protonate_n_terminus(mol, spec):
+    """Protonate the residue's backbone ``N`` to its ammonium form.
+
+    Strips every proton on ``N``, sets ``N.formalcharge = +1``, and re-adds the
+    protons with RDKit (``AddHs(addCoords=True, onlyOnAtoms=[n])``), which fills
+    the right count from valence + charge (3 for a primary amine, 2 for a
+    secondary / N-methyl / proline backbone) and places coordinates. New protons
+    are named ``H1``/``H2``/``H3`` and bonded to ``N``.
+    """
+    from moleculekit.rdkittools import molecule_to_rdkitmol, rdkitmol_to_molecule
+    from moleculekit.tools.nonstandard_residues import getResidueMask
+    from rdkit import Chem
+
+    res_idx = np.where(getResidueMask(mol, spec))[0]
+    n_arr = res_idx[mol.name[res_idx] == "N"]
+    if len(n_arr) != 1:
+        return
+
+    # Compute the added protons' coordinates on a residue copy (same frame).
+    res = mol.copy(sel=getResidueMask(mol, spec))
+    n_local = int(np.where(res.name == "N")[0][0])
+    old_local = [i for i in res.getNeighbors(n_local) if res.element[i] == "H"]
+    if old_local:
+        rm = np.zeros(res.numAtoms, dtype=bool)
+        rm[old_local] = True
+        res.remove(rm, _logger=False)
+    n_local = int(np.where(res.name == "N")[0][0])
+    res.formalcharge[n_local] = 1
+    rmol = molecule_to_rdkitmol(res, sanitize=True)
+    rmol = Chem.AddHs(rmol, addCoords=True, onlyOnAtoms=[n_local])
+    res2 = rdkitmol_to_molecule(rmol)
+    new_h = [i for i in res2.getNeighbors(n_local) if res2.element[i] == "H"]
+    new_coords = res2.coords[new_h, :, 0]  # (k, 3), in mol's coordinate frame
+
+    # Apply to the full mol: set +1, drop old protons on N, insert the new ones.
+    n_glob = int(res_idx[mol.name[res_idx] == "N"][0])
+    mol.formalcharge[n_glob] = 1
+    old_glob = [int(i) for i in mol.getNeighbors(n_glob) if mol.element[i] == "H"]
+    if old_glob:
+        rm = np.zeros(mol.numAtoms, dtype=bool)
+        rm[old_glob] = True
+        mol.remove(rm, _logger=False)
+
+    res_idx = np.where(getResidueMask(mol, spec))[0]
+    n_glob = int(res_idx[mol.name[res_idx] == "N"][0])
+    insert_at = int(res_idx.max()) + 1  # keep the residue's atoms contiguous
+
+    rid = spec.residue
+    hmol = Molecule().empty(len(new_h))
+    hmol.name[:] = [f"H{k + 1}" for k in range(len(new_h))]
+    hmol.element[:] = ["H"] * len(new_h)
+    hmol.resname[:] = str(spec.new_resname or spec.resname)
+    hmol.resid[:] = int(rid.resid)
+    hmol.chain[:] = str(rid.chain)
+    hmol.segid[:] = str(rid.segid)
+    hmol.insertion[:] = str(rid.insertion)
+    hmol.formalcharge[:] = 0
+    hmol.coords = np.array(new_coords, dtype=np.float32).reshape(-1, 3, 1)
+    mol.insert(hmol, insert_at)
+
+    # Re-find N (insert shifted indices) and bond the new protons to it.
+    res_idx = np.where(getResidueMask(mol, spec))[0]
+    n_glob = int(res_idx[mol.name[res_idx] == "N"][0])
+    for k in range(len(new_h)):
+        mol.addBond(n_glob, insert_at + k, btype="1")
 
 
 def _assert_specs_templated(mol, detect_specs):
@@ -2022,7 +2125,7 @@ def systemPrepare(
     # antechamber); the assert below catches that case.
     _restore_termini_bonds(mol_out)
     if detect_specs:
-        _apply_terminal_formal_charges(mol_out, detect_specs)
+        _charge_nonstandard_termini(mol_out, detect_specs, pH)
 
     if detect_specs:
         _assert_specs_bonded(mol_out, detect_specs)

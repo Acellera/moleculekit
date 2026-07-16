@@ -43,38 +43,13 @@ from moleculekit.tools.nonstandard_residues import (
     PerResidueSpec,
     ScaffoldSpec,
     requiresTemplate,
+    getResidueMask,
 )
 
 if TYPE_CHECKING:
     from rdkit.Chem import Mol, RWMol
 
 logger = logging.getLogger(__name__)
-
-
-def _spec_residue_mask(mol: Molecule, spec: PerResidueSpec) -> np.ndarray:
-    """Boolean mask selecting ``spec``'s residue in ``mol``.
-
-    Parameters
-    ----------
-    mol : Molecule
-        The molecule the spec was detected in.
-    spec : ChainResidueSpec or ScaffoldSpec or CovalentLigandSpec or LigandSpec
-        A residue spec from
-        :func:`moleculekit.tools.nonstandard_residues.detectNonStandardResidues`.
-
-    Returns
-    -------
-    mask : np.ndarray
-        Boolean mask, True on the atoms of ``spec``'s residue.
-    """
-    rid = spec.residue
-    return (
-        (mol.resname == spec.resname)
-        & (mol.segid == str(rid.segid))
-        & (mol.chain == str(rid.chain))
-        & (mol.resid == int(rid.resid))
-        & (mol.insertion == str(rid.insertion))
-    )
 
 
 def _inter_residue_crosslinks(
@@ -104,7 +79,7 @@ def _inter_residue_crosslinks(
     """
     from moleculekit.residues import WATER_RESIDUE_NAMES
 
-    in_res = _spec_residue_mask(mol, spec)
+    in_res = getResidueMask(mol, spec)
     # Metal-coordination bonds are stored explicitly as the "mc" bond type
     # (readers set it from LINK / struct_conn records, keyed on either endpoint
     # being a metal). Only trust it when the parsed bond types line up with the
@@ -345,7 +320,7 @@ def _capped_residue_rdkit(
 
     # Backbone (chain residues only), located by atom name as before.
     if isinstance(spec, ChainResidueSpec):
-        mask = _spec_residue_mask(mol, spec)
+        mask = getResidueMask(mol, spec)
 
         def _smi_of_named(name: str) -> int:
             g = np.where(mask & (mol.name == name))[0]
@@ -440,7 +415,7 @@ def _isolated_residue_rdkit(
             f"{spec.resname} ({spec.residue})."
         )
 
-    res = mol.copy(sel=_spec_residue_mask(mol, spec))
+    res = mol.copy(sel=getResidueMask(mol, spec))
     res.remove("element H", _logger=False)
 
     # Map the structure residue's heavy atoms onto the complete SMILES by
@@ -465,7 +440,7 @@ def _isolated_residue_rdkit(
     # are exactly mol's masked heavy atoms in ascending global order; that
     # order is preserved by molecule_to_rdkitmol, so res_rd's i-th atom is
     # the i-th heavy masked global atom.
-    res_sel_global = np.where(_spec_residue_mask(mol, spec))[0]
+    res_sel_global = np.where(getResidueMask(mol, spec))[0]
     heavy_global = [g for g in res_sel_global if str(mol.element[g]) != "H"]
     res_local_to_global = {i: int(g) for i, g in enumerate(heavy_global)}
     res_to_smi = {

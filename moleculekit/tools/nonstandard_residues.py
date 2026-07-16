@@ -976,6 +976,42 @@ def requiresTemplate(spec):
     return spec.resname not in _CANONICAL_RESNAMES
 
 
+def getResidueMask(mol, spec):
+    """Boolean mask over ``mol`` selecting the atoms of ``spec``'s residue.
+
+    Matches on the residue identity (segid, chain, resid, insertion) and its
+    resname, accepting either the original ``spec.resname`` or, when set, the
+    renamed ``spec.new_resname``. The same call therefore works whether ``mol``
+    is the structure the spec was detected in (its resname is ``spec.resname``)
+    or one that has already been through the detect-spec renames (its resname is
+    ``spec.new_resname``).
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The molecule the spec was detected in, before or after renaming.
+    spec : ChainResidueSpec or ScaffoldSpec or CovalentLigandSpec or LigandSpec
+        A spec returned by :func:`detectNonStandardResidues`.
+
+    Returns
+    -------
+    mask : numpy.ndarray
+        Boolean mask, True on the atoms of ``spec``'s residue.
+    """
+    rid = spec.residue
+    resnames = [str(spec.resname)]
+    new_resname = getattr(spec, "new_resname", None)
+    if new_resname:
+        resnames.append(str(new_resname))
+    return (
+        np.isin(mol.resname, resnames)
+        & (mol.segid == str(rid.segid))
+        & (mol.chain == str(rid.chain))
+        & (mol.resid == int(rid.resid))
+        & (mol.insertion == str(rid.insertion))
+    )
+
+
 def residuesRequiringTemplate(mol, guess_bonds=True):
     """Return the resnames in ``mol`` that need a user-supplied template.
 

@@ -7,12 +7,12 @@ from moleculekit.tools.nonstandard_residues import (
     CovalentLigandSpec,
     ScaffoldSpec,
     detectNonStandardResidues,
+    getResidueMask,
 )
 from moleculekit.tools.residue_titration import (
     _cap_residue_smiles,
     _inter_residue_crosslinks,
     _isolated_residue_rdkit,
-    _spec_residue_mask,
     _uncapped_residue_smiles,
 )
 
@@ -57,10 +57,10 @@ def _dal_mol():
     )
 
 
-def test_spec_residue_mask_selects_only_the_residue():
+def test_get_residue_mask_selects_only_the_residue():
     mol = _dal_mol()
     spec = _dal_spec(mol)
-    mask = _spec_residue_mask(mol, spec)
+    mask = getResidueMask(mol, spec)
     assert mask.dtype == bool
     assert mask.sum() == mol.numAtoms
     assert np.all(mask)

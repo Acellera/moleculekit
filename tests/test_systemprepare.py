@@ -1495,100 +1495,158 @@ def test_restore_formal_charges_drops_missing_atom():
     assert "N1" not in by_name
 
 
-def _build_terminus_mol(n_term_h_count, c_term_oxt_h_count):
-    """Build a single-residue protein-like mol with both N and OXT
-    backbone atoms, parametrised by how many hydrogens hang off each.
+def _build_terminus_mol(
+    n_term_h_count, c_term_oxt_h_count, n_methyl=False, resname="NCA"
+):
+    """Single-residue protein-like mol with N and OXT backbone atoms.
 
-    - ``n_term_h_count``: 3 = charged NH3+, 2 = neutral NH2.
+    - ``n_term_h_count``: protons on N (2 = neutral NH2, 3 = NH3+; for a
+      secondary amine pass ``n_methyl=True`` with 1 = neutral, 2 = charged).
     - ``c_term_oxt_h_count``: 0 = COO-, 1 = neutral COOH.
-    """
-    n_h = n_term_h_count
-    oxt_h = c_term_oxt_h_count
-    n_atoms = 4 + n_h + oxt_h  # N, CA, C, OXT + Hs on N and OXT
-    mol = Molecule().empty(n_atoms)
-    mol.coords = np.zeros((n_atoms, 3, 1), dtype=np.float32)
+    - ``n_methyl``: add a methyl carbon (CM) bonded to N (secondary amine).
+    - ``resname``: residue name. Defaults to the non-canonical ``"NCA"`` so the
+      residue takes the enforce path (``requiresTemplate`` True); pass a
+      canonical name (e.g. ``"CYX"``) to exercise the read-only stamp path.
 
-    names = ["N", "CA", "C", "OXT"]
-    elems = ["N", "C", "C", "O"]
-    bonds = [(0, 1), (1, 2), (2, 3)]  # N-CA, CA-C, C-OXT
-    next_idx = 4
-    for k in range(n_h):
+    Coordinates are real amino-acid-like geometry so RDKit AddHs(addCoords)
+    can place protons on N.
+    """
+    names = ["N", "CA", "C", "O", "OXT"]
+    elems = ["N", "C", "C", "O", "O"]
+    coords = [
+        (-1.0, 1.0, 0.0),  # N
+        (0.0, 0.0, 0.0),  # CA
+        (1.4, 0.6, -0.3),  # C
+        (1.5, 1.8, -0.4),  # O
+        (2.4, -0.2, -0.4),  # OXT
+    ]
+    bonds = [(0, 1), (1, 2), (2, 3), (2, 4)]
+    btype = ["1", "1", "2", "1"]  # C=O double bond
+    nxt = len(names)
+    if n_methyl:
+        names.append("CM")
+        elems.append("C")
+        coords.append((-1.8, 1.5, 1.1))
+        bonds.append((0, nxt))
+        btype.append("1")
+        nxt += 1
+    for k in range(n_term_h_count):
         names.append(["H", "H2", "H3"][k])
         elems.append("H")
-        bonds.append((0, next_idx))  # N-H
-        next_idx += 1
-    for _ in range(oxt_h):
+        coords.append((-1.5 - 0.2 * k, 1.6 + 0.2 * k, -0.2 * k))
+        bonds.append((0, nxt))
+        btype.append("1")
+        nxt += 1
+    for _ in range(c_term_oxt_h_count):
         names.append("HO")
         elems.append("H")
-        bonds.append((3, next_idx))  # OXT-H
-        next_idx += 1
+        coords.append((3.2, 0.3, -0.5))
+        bonds.append((4, nxt))
+        btype.append("1")
+        nxt += 1
 
+    n = len(names)
+    mol = Molecule().empty(n)
     mol.name[:] = names
     mol.element[:] = elems
-    mol.resname[:] = ["GLY"] * n_atoms
-    mol.resid[:] = [1] * n_atoms
-    mol.chain[:] = ["A"] * n_atoms
-    mol.segid[:] = ["P"] * n_atoms
-    mol.insertion[:] = [""] * n_atoms
-    mol.formalcharge[:] = 0  # PDB2PQR zeroes these on output
+    mol.resname[:] = [resname] * n
+    mol.resid[:] = [1] * n
+    mol.chain[:] = ["A"] * n
+    mol.segid[:] = ["P"] * n
+    mol.insertion[:] = [""] * n
+    mol.formalcharge[:] = 0
+    mol.coords = np.array(coords, dtype=np.float32).reshape(-1, 3, 1)
     mol.bonds = np.array(bonds, dtype=np.uint32)
-    mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
+    mol.bondtype = np.array(btype, dtype=object)
     return mol
 
 
-def test_apply_terminal_formal_charges_charged_nterm_charged_cterm():
-    """3 H on backbone N -> NH3+ (formalcharge +1). 0 H on OXT -> COO-
-    (formalcharge -1). These are PDB2PQR's default CTERM / NTERM
-    patches at pH 7."""
-    from moleculekit.tools.preparation import _apply_terminal_formal_charges
+def _cterm_spec():
     from moleculekit.tools.nonstandard_residues import ChainResidueSpec
     from moleculekit.molecule import UniqueResidueID
 
-    mol = _build_terminus_mol(n_term_h_count=3, c_term_oxt_h_count=0)
-    spec = ChainResidueSpec(
-        resname="GLY",
+    return ChainResidueSpec(
+        resname="NCA",
         residue=UniqueResidueID(
-            resname="GLY", chain="A", resid=1, insertion="", segid="P"
+            resname="NCA", chain="A", resid=1, insertion="", segid="P"
         ),
-        is_n_term=True,
         is_c_term=True,
     )
-    _apply_terminal_formal_charges(mol, detect_specs=[spec])
-
-    by_name = {str(n): int(c) for n, c in zip(mol.name, mol.formalcharge)}
-    assert by_name["N"] == 1, "3 H on N must give NH3+ (+1)"
-    assert by_name["OXT"] == -1, "0 H on OXT must give COO- (-1)"
 
 
-def test_apply_terminal_formal_charges_neutral_termini():
-    """The NEUTRAL-NTERM / NEUTRAL-CTERM patches leave fewer Hs on N (2)
-    and add an H to OXT, both of which the helper must read as neutral
-    and leave formalcharge at 0."""
-    from moleculekit.tools.preparation import _apply_terminal_formal_charges
-    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
-    from moleculekit.molecule import UniqueResidueID
+def test_charge_nonstandard_termini_cterm_deprotonates():
+    from moleculekit.tools.preparation import _charge_nonstandard_termini
 
     mol = _build_terminus_mol(n_term_h_count=2, c_term_oxt_h_count=1)
-    spec = ChainResidueSpec(
-        resname="GLY",
+    _charge_nonstandard_termini(mol, detect_specs=[_cterm_spec()], pH=7.4)
+    oxt = int(np.where(mol.name == "OXT")[0][0])
+    assert int(mol.formalcharge[oxt]) == -1
+    assert sum(1 for nb in mol.getNeighbors(oxt) if mol.element[nb] == "H") == 0
+
+
+def test_charge_nonstandard_termini_cterm_ph_gated():
+    from moleculekit.tools.preparation import _charge_nonstandard_termini
+
+    mol = _build_terminus_mol(n_term_h_count=2, c_term_oxt_h_count=1)
+    _charge_nonstandard_termini(mol, detect_specs=[_cterm_spec()], pH=1.0)
+    oxt = int(np.where(mol.name == "OXT")[0][0])
+    assert int(mol.formalcharge[oxt]) == 0
+    assert sum(1 for nb in mol.getNeighbors(oxt) if mol.element[nb] == "H") == 1
+
+
+def _nterm_spec():
+    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
+    from moleculekit.molecule import UniqueResidueID
+
+    return ChainResidueSpec(
+        resname="NCA",
         residue=UniqueResidueID(
-            resname="GLY", chain="A", resid=1, insertion="", segid="P"
+            resname="NCA", chain="A", resid=1, insertion="", segid="P"
         ),
         is_n_term=True,
-        is_c_term=True,
     )
-    _apply_terminal_formal_charges(mol, detect_specs=[spec])
-
-    by_name = {str(n): int(c) for n, c in zip(mol.name, mol.formalcharge)}
-    assert by_name["N"] == 0, "2 H on N is neutral NH2 - no charge"
-    assert by_name["OXT"] == 0, "1 H on OXT is neutral COOH - no charge"
 
 
-def test_apply_terminal_formal_charges_skips_non_chain_spec():
+def _n_h_names(mol):
+    n = int(np.where(mol.name == "N")[0][0])
+    return sorted(str(mol.name[nb]) for nb in mol.getNeighbors(n) if mol.element[nb] == "H")
+
+
+def test_charge_nonstandard_termini_nterm_primary():
+    from moleculekit.tools.preparation import _charge_nonstandard_termini
+
+    mol = _build_terminus_mol(n_term_h_count=2, c_term_oxt_h_count=1)
+    _charge_nonstandard_termini(mol, detect_specs=[_nterm_spec()], pH=7.4)
+    n = int(np.where(mol.name == "N")[0][0])
+    assert int(mol.formalcharge[n]) == 1
+    assert _n_h_names(mol) == ["H1", "H2", "H3"]
+
+
+def test_charge_nonstandard_termini_nterm_secondary():
+    from moleculekit.tools.preparation import _charge_nonstandard_termini
+
+    mol = _build_terminus_mol(n_term_h_count=1, c_term_oxt_h_count=1, n_methyl=True)
+    _charge_nonstandard_termini(mol, detect_specs=[_nterm_spec()], pH=7.4)
+    n = int(np.where(mol.name == "N")[0][0])
+    assert int(mol.formalcharge[n]) == 1
+    assert _n_h_names(mol) == ["H1", "H2"]  # secondary amine -> 2 protons
+
+
+def test_charge_nonstandard_termini_nterm_ph_gated():
+    from moleculekit.tools.preparation import _charge_nonstandard_termini
+
+    mol = _build_terminus_mol(n_term_h_count=2, c_term_oxt_h_count=1)
+    _charge_nonstandard_termini(mol, detect_specs=[_nterm_spec()], pH=12.0)
+    n = int(np.where(mol.name == "N")[0][0])
+    assert int(mol.formalcharge[n]) == 0
+    assert len(_n_h_names(mol)) == 2  # untouched neutral NH2
+
+
+def test_charge_nonstandard_termini_skips_non_chain_spec():
     """Only :class:`ChainResidueSpec` entries are touched. A
     :class:`LigandSpec` (a free ligand) must be ignored even if it
     happens to have backbone-named atoms."""
-    from moleculekit.tools.preparation import _apply_terminal_formal_charges
+    from moleculekit.tools.preparation import _charge_nonstandard_termini
     from moleculekit.tools.nonstandard_residues import LigandSpec
     from moleculekit.molecule import UniqueResidueID
 
@@ -1599,17 +1657,17 @@ def test_apply_terminal_formal_charges_skips_non_chain_spec():
             resname="GLY", chain="A", resid=1, insertion="", segid="P"
         ),
     )
-    _apply_terminal_formal_charges(mol, detect_specs=[spec])
+    _charge_nonstandard_termini(mol, detect_specs=[spec], pH=7.4)
 
     by_name = {str(n): int(c) for n, c in zip(mol.name, mol.formalcharge)}
     assert by_name["N"] == 0, "LigandSpec must be skipped, N untouched"
     assert by_name["OXT"] == 0, "LigandSpec must be skipped, OXT untouched"
 
 
-def test_apply_terminal_formal_charges_skips_midchain_spec():
+def test_charge_nonstandard_termini_skips_midchain_spec():
     """A ChainResidueSpec without either terminus flag (mid-chain NCAA)
     must be left alone - terminal patches don't apply to it."""
-    from moleculekit.tools.preparation import _apply_terminal_formal_charges
+    from moleculekit.tools.preparation import _charge_nonstandard_termini
     from moleculekit.tools.nonstandard_residues import ChainResidueSpec
     from moleculekit.molecule import UniqueResidueID
 
@@ -1622,37 +1680,70 @@ def test_apply_terminal_formal_charges_skips_midchain_spec():
         is_n_term=False,
         is_c_term=False,
     )
-    _apply_terminal_formal_charges(mol, detect_specs=[spec])
+    _charge_nonstandard_termini(mol, detect_specs=[spec], pH=7.4)
 
     by_name = {str(n): int(c) for n, c in zip(mol.name, mol.formalcharge)}
     assert by_name["N"] == 0, "mid-chain spec must not get NTERM treatment"
     assert by_name["OXT"] == 0, "mid-chain spec must not get CTERM treatment"
 
 
-def test_apply_terminal_formal_charges_uses_new_resname():
-    """When a spec has been renamed (``new_resname`` set, e.g. CYS->CYX
-    or LIG->XX1 for a custom anchor), the helper must match on the
-    *renamed* resname - because that's what's in ``mol.resname`` after
-    ``_apply_detect_spec_renames``."""
-    from moleculekit.tools.preparation import _apply_terminal_formal_charges
+def test_charge_nonstandard_termini_uses_new_resname():
+    """A canonical residue renamed at a junction (CYS->CYX) keeps its
+    canonical ``resname`` (so ``requiresTemplate`` is False and it takes the
+    read-only stamp path), while ``mol.resname`` already holds the ``new_resname``
+    (``CYX``). The helper must (a) match on the *renamed* resname and (b) only
+    record the charge PDB2PQR's CTERM patch already implies (0 H on OXT -> -1),
+    without touching atoms."""
+    from moleculekit.tools.preparation import _charge_nonstandard_termini
     from moleculekit.tools.nonstandard_residues import ChainResidueSpec
     from moleculekit.molecule import UniqueResidueID
 
-    mol = _build_terminus_mol(n_term_h_count=3, c_term_oxt_h_count=0)
-    # Mimic _apply_detect_spec_renames having renamed the residue:
-    mol.resname[:] = "CYX"
+    # PDB2PQR already deprotonated the CYX C-terminus (0 H on OXT).
+    mol = _build_terminus_mol(n_term_h_count=2, c_term_oxt_h_count=0, resname="CYX")
+    n_atoms_before = mol.numAtoms
 
     spec = ChainResidueSpec(
-        resname="CYS",  # original
+        resname="CYS",  # original canonical name
         residue=UniqueResidueID(
             resname="CYS", chain="A", resid=1, insertion="", segid="P"
         ),
         new_resname="CYX",  # current resname in mol
-        is_n_term=True,
         is_c_term=True,
     )
-    _apply_terminal_formal_charges(mol, detect_specs=[spec])
+    _charge_nonstandard_termini(mol, detect_specs=[spec], pH=7.4)
 
     by_name = {str(n): int(c) for n, c in zip(mol.name, mol.formalcharge)}
-    assert by_name["N"] == 1, "must match by new_resname; expected NH3+"
     assert by_name["OXT"] == -1, "must match by new_resname; expected COO-"
+    assert mol.numAtoms == n_atoms_before, "canonical rename must not add/remove atoms"
+
+
+def test_charge_nonstandard_termini_canonical_nterm_no_surgery():
+    """Regression: a canonical N-terminal residue renamed at a junction (a
+    disulfide CYS->CYX, as in 5VBL chain B) is already protonated by PDB2PQR
+    (``aa.Amino`` NTERM patch). The helper must only stamp its formal charge,
+    NOT strip-and-re-add its protons via RDKit - doing so would add spurious
+    atoms (and mangle the disulfide SG). So the N keeps its original protons and
+    their PDB2PQR names, and no atom is added or removed."""
+    from moleculekit.tools.preparation import _charge_nonstandard_termini
+    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
+    from moleculekit.molecule import UniqueResidueID
+
+    # PDB2PQR left the N-terminus as NH3+ (3 protons named H/H2/H3).
+    mol = _build_terminus_mol(n_term_h_count=3, c_term_oxt_h_count=1, resname="CYX")
+    n_atoms_before = mol.numAtoms
+
+    spec = ChainResidueSpec(
+        resname="CYS",
+        residue=UniqueResidueID(
+            resname="CYS", chain="A", resid=1, insertion="", segid="P"
+        ),
+        new_resname="CYX",
+        is_n_term=True,
+    )
+    _charge_nonstandard_termini(mol, detect_specs=[spec], pH=7.4)
+
+    n = int(np.where(mol.name == "N")[0][0])
+    assert int(mol.formalcharge[n]) == 1, "stamped +1 from the existing 3 protons"
+    assert mol.numAtoms == n_atoms_before, "no atoms added/removed (no RDKit surgery)"
+    # Protons keep PDB2PQR's names - NOT re-added as H1/H2/H3.
+    assert _n_h_names(mol) == ["H", "H2", "H3"]
