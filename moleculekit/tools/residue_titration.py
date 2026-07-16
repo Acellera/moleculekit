@@ -628,8 +628,6 @@ def capNonstandardResiduesForTitration(
     smiles : dict or None
         Optional ``{resname: smiles}`` overrides; resnames absent here are
         fetched from RCSB by their CCD code.
-    _logger : bool
-        Emit a warning when a residue cannot be capped and is titrated whole.
 
     Returns
     -------
