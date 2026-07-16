@@ -139,25 +139,43 @@ class Dihedral:
         selatoms = mol.atomselect(sel)
         from moleculekit.util import ensurelist
 
+        # Index every selected atom by its (name, resid, insertion, chain,
+        # segid) identity once, so resolving each dihedral atom is an O(1)
+        # lookup instead of five full-length array comparisons per atom. The
+        # old per-atom scan was O(atoms x dihedrals) and dominated the runtime
+        # on large systems (e.g. detectCisPeptideBonds over a whole protein).
+        name, resid = mol.name, mol.resid
+        insertion, chain, segid = mol.insertion, mol.chain, mol.segid
+        lookup = {}
+        for i in np.where(selatoms)[0]:
+            key = (
+                str(name[i]),
+                int(resid[i]),
+                str(insertion[i]),
+                str(chain[i]),
+                str(segid[i]),
+            )
+            lookup.setdefault(key, []).append(i)
+
         indexes = []
         for dih in ensurelist(dihedrals):
             idx = []
             for a in dih.atoms:
-                atomsel = (
-                    (mol.name == a["name"])
-                    & (mol.resid == a["resid"])
-                    & (mol.insertion == a["insertion"])
-                    & (mol.chain == a["chain"])
-                    & (mol.segid == a["segid"])
+                key = (
+                    str(a["name"]),
+                    int(a["resid"]),
+                    str(a["insertion"]),
+                    str(a["chain"]),
+                    str(a["segid"]),
                 )
-                atomsel = atomsel & selatoms
-                if np.sum(atomsel) != 1:
+                matches = lookup.get(key, ())
+                if len(matches) != 1:
                     raise RuntimeError(
                         "Expected one atom from atomselection {}. Got {} instead.".format(
-                            a, np.sum(atomsel)
+                            a, len(matches)
                         )
                     )
-                idx.append(np.where(atomsel)[0][0])
+                idx.append(matches[0])
             indexes.append(idx)
         return indexes
 
