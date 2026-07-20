@@ -1066,3 +1066,286 @@ def test_cyclosporin_1m63_roundtrip_yields_midchain_templates(cyclosporin_1m63):
         assert Chem.CanonSmiles(templates[resname]) == Chem.CanonSmiles(expected), (
             f"{resname}: got {templates[resname]!r}, expected {expected!r}"
         )
+
+
+def _leaving_group_amine_crosslink_mol():
+    """A residue ``ACL`` whose crosslink carbon is fully substituted in its base
+    SMILES (a tert-butanol-like carbon bearing a hydroxyl) and is covalently
+    bonded to a partner nitrogen. Models a condensation crosslink (e.g. an
+    N-glycosidic bond) where the residue's -OH is the leaving group displaced by
+    the C-N bond: the free-form SMILES still carries the -OH, the deposited
+    structure does not. Capping such an atom used to over-valence it (the -OH
+    plus the added cap) and fall back to titrating the residue whole.
+    """
+    names = ["CX", "CA", "CB", "CC", "NP"]
+    elements = ["C", "C", "C", "C", "N"]
+    resnames = ["ACL", "ACL", "ACL", "ACL", "PNR"]
+    resids = [1, 1, 1, 1, 2]
+    coords = [
+        (0.0, 0.0, 0.0),  # CX (crosslink carbon)
+        (0.87, 0.87, 0.87),  # CA
+        (0.87, -0.87, -0.87),  # CB
+        (-0.87, 0.87, -0.87),  # CC
+        (-0.87, -0.87, 0.87),  # NP (partner nitrogen)
+    ]
+    mol = Molecule().empty(len(names))
+    mol.name[:] = names
+    mol.element[:] = elements
+    mol.resname[:] = resnames
+    mol.resid[:] = resids
+    mol.chain[:] = "A"
+    mol.segid[:] = "A"
+    mol.record[:] = "HETATM"
+    mol.coords = np.array(coords, dtype=np.float32).reshape(-1, 3, 1)
+    mol.bonds = np.array([(0, 1), (0, 2), (0, 3), (0, 4)], dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * 4, dtype=object)
+    return mol
+
+
+def test_condensation_crosslink_to_nitrogen_caps_as_amide():
+    # A crosslink carbon carrying a hydroxyl leaving group in its base SMILES,
+    # bonded to a partner N (an N-glycosidic-style condensation bond), must cap
+    # to an amide: the -OH is stripped and the severed C-N junction is
+    # acetylated, so no free amine and no free hydroxyl remain and the residue
+    # is not silently titrated whole.
+    mol = _leaving_group_amine_crosslink_mol()
+    rid = UniqueResidueID.fromMolecule(mol, idx=0)
+    spec = CovalentLigandSpec(resname="ACL", residue=rid)
+    capped = _cap_residue_smiles(mol, spec, "OC(C)(C)C")
+    m = Chem.MolFromSmiles(capped)
+    assert m is not None
+    assert m.HasSubstructMatch(Chem.MolFromSmarts("[NX3][CX3]=O"))  # amide junction
+    assert not m.HasSubstructMatch(
+        Chem.MolFromSmarts("[NX3;H1,H2;!$(NC=O)]")
+    )  # no free primary/secondary amine
+    assert not m.HasSubstructMatch(Chem.MolFromSmarts("[OX2H]"))  # -OH leaving group gone
+
+
+def _phosphoester_crosslink_mol():
+    """A residue ``POX`` whose sidechain oxygen is covalently bonded to a
+    partner phosphorus, as in a phosphodiester backbone. The oxygen has an open
+    valence (it loses only a hydrogen, no heavy leaving group), so no stripping
+    is needed; the cap must reflect the real partner (a phosphate), not a plain
+    methyl ether.
+    """
+    names = ["C1", "C2", "O3", "P"]
+    elements = ["C", "C", "O", "P"]
+    resnames = ["POX", "POX", "POX", "PHO"]
+    resids = [1, 1, 1, 2]
+    coords = [
+        (0.0, 0.0, 0.0),  # C1
+        (1.5, 0.0, 0.0),  # C2
+        (2.4, 1.2, 0.0),  # O3 (crosslink oxygen)
+        (3.9, 1.5, 0.0),  # P (partner phosphorus)
+    ]
+    mol = Molecule().empty(len(names))
+    mol.name[:] = names
+    mol.element[:] = elements
+    mol.resname[:] = resnames
+    mol.resid[:] = resids
+    mol.chain[:] = "A"
+    mol.segid[:] = "A"
+    mol.record[:] = "HETATM"
+    mol.coords = np.array(coords, dtype=np.float32).reshape(-1, 3, 1)
+    mol.bonds = np.array([(0, 1), (1, 2), (2, 3)], dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * 3, dtype=object)
+    return mol
+
+
+def test_phosphoester_crosslink_caps_as_phosphate():
+    # A sidechain oxygen bonded to a partner phosphorus (a phosphodiester
+    # crosslink) must cap as a phosphate reflecting the real partner element,
+    # not the plain methyl ether the element-agnostic heuristic would produce.
+    mol = _phosphoester_crosslink_mol()
+    rid = UniqueResidueID.fromMolecule(mol, idx=0)
+    spec = CovalentLigandSpec(resname="POX", residue=rid)
+    capped = _cap_residue_smiles(mol, spec, "CCO")
+    m = Chem.MolFromSmiles(capped)
+    assert m is not None
+    assert any(a.GetSymbol() == "P" for a in m.GetAtoms())  # partner P reflected
+    assert m.HasSubstructMatch(Chem.MolFromSmarts("[#6][OX2]P(=O)"))  # O-P phosphate
+
+
+def _ether_crosslink_mol():
+    """A residue ``ETX`` whose sp3 carbon is bonded to a partner oxygen (an
+    ether crosslink). The carbon has an open valence, so nothing is stripped;
+    the partner oxygen must give a hydroxyl, not the element-agnostic methyl."""
+    names = ["C1", "C2", "OP"]
+    elements = ["C", "C", "O"]
+    resnames = ["ETX", "ETX", "OXR"]
+    resids = [1, 1, 2]
+    coords = [(0.0, 0.0, 0.0), (1.5, 0.0, 0.0), (2.4, 1.2, 0.0)]
+    mol = Molecule().empty(len(names))
+    mol.name[:] = names
+    mol.element[:] = elements
+    mol.resname[:] = resnames
+    mol.resid[:] = resids
+    mol.chain[:] = "A"
+    mol.segid[:] = "A"
+    mol.record[:] = "HETATM"
+    mol.coords = np.array(coords, dtype=np.float32).reshape(-1, 3, 1)
+    mol.bonds = np.array([(0, 1), (1, 2)], dtype=np.uint32)
+    mol.bondtype = np.array(["1", "1"], dtype=object)
+    return mol
+
+
+def test_oxygen_crosslink_caps_as_hydroxyl():
+    # A carbon bonded to a partner oxygen (an ether crosslink) caps to a
+    # hydroxyl reflecting the real partner element, not the plain methyl the
+    # element-agnostic heuristic would add.
+    mol = _ether_crosslink_mol()
+    rid = UniqueResidueID.fromMolecule(mol, idx=0)
+    spec = CovalentLigandSpec(resname="ETX", residue=rid)
+    capped = _cap_residue_smiles(mol, spec, "CC")
+    m = Chem.MolFromSmiles(capped)
+    assert m is not None
+    assert m.HasSubstructMatch(Chem.MolFromSmarts("[CX4][OX2H]"))  # hydroxyl, not methyl
+
+
+def _ester_crosslink_mol():
+    """A residue ``EST`` whose sidechain carbonyl carbon is bonded to a partner
+    oxygen (an ester crosslink). Its free-acid base SMILES carries the hydroxyl
+    that ester formation displaced; capping must not leave a titratable free
+    carboxylic acid on the severed carbonyl."""
+    names = ["CM", "CO", "OD", "OX"]
+    elements = ["C", "C", "O", "O"]
+    resnames = ["EST", "EST", "EST", "ALX"]
+    resids = [1, 1, 1, 2]
+    coords = [
+        (0.0, 0.0, 0.0),  # CM (methyl)
+        (1.5, 0.0, 0.0),  # CO (carbonyl carbon)
+        (2.1, 1.0, 0.0),  # OD (carbonyl oxygen)
+        (2.1, -1.2, 0.0),  # OX (partner ester oxygen)
+    ]
+    mol = Molecule().empty(len(names))
+    mol.name[:] = names
+    mol.element[:] = elements
+    mol.resname[:] = resnames
+    mol.resid[:] = resids
+    mol.chain[:] = "A"
+    mol.segid[:] = "A"
+    mol.record[:] = "HETATM"
+    mol.coords = np.array(coords, dtype=np.float32).reshape(-1, 3, 1)
+    mol.bonds = np.array([(0, 1), (1, 2), (1, 3)], dtype=np.uint32)
+    mol.bondtype = np.array(["1", "2", "1"], dtype=object)
+    return mol
+
+
+def test_ester_crosslink_does_not_leave_free_acid():
+    # A carbonyl carbon bonded to a partner oxygen (an ester crosslink) must not
+    # cap to a free carboxylic acid: a hydroxyl on the carbonyl would be a
+    # titratable acid, so this junction stays non-titratable (a methyl ketone).
+    mol = _ester_crosslink_mol()
+    rid = UniqueResidueID.fromMolecule(mol, idx=0)
+    spec = CovalentLigandSpec(resname="EST", residue=rid)
+    capped = _cap_residue_smiles(mol, spec, "CC(=O)O")
+    m = Chem.MolFromSmiles(capped)
+    assert m is not None
+    assert not m.HasSubstructMatch(
+        Chem.MolFromSmarts("[CX3](=O)[OX2H1,OX1-]")
+    )  # no free carboxylic acid / carboxylate
+
+
+def _stereo_leaving_group_crosslink_mol():
+    """A residue ``STG`` whose crosslink carbon is a stereocentre carrying a
+    hydroxyl leaving group in its base SMILES (a butan-2-ol-like carbon) and is
+    bonded to a partner nitrogen. The stereocentre's explicit hydrogen (from the
+    ``[C@@H]`` notation) is frozen, so after the leaving group and the cap are
+    stripped the residue-skeleton anchor must still relocate the atom inside the
+    capped molecule despite its now-inconsistent hydrogen count.
+    """
+    names = ["C1", "C2", "C3", "C4", "NP"]
+    elements = ["C", "C", "C", "C", "N"]
+    resnames = ["STG", "STG", "STG", "STG", "PNR"]
+    resids = [1, 1, 1, 1, 2]
+    coords = [
+        (0.0, 0.0, 0.0),  # C1 (methyl)
+        (1.5, 0.0, 0.0),  # C2 (stereocentre crosslink carbon)
+        (2.2, 1.3, 0.0),  # C3
+        (3.7, 1.3, 0.0),  # C4
+        (1.5, -1.4, 0.0),  # NP (partner nitrogen)
+    ]
+    mol = Molecule().empty(len(names))
+    mol.name[:] = names
+    mol.element[:] = elements
+    mol.resname[:] = resnames
+    mol.resid[:] = resids
+    mol.chain[:] = "A"
+    mol.segid[:] = "A"
+    mol.record[:] = "HETATM"
+    mol.coords = np.array(coords, dtype=np.float32).reshape(-1, 3, 1)
+    mol.bonds = np.array([(0, 1), (1, 2), (2, 3), (1, 4)], dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * 4, dtype=object)
+    return mol
+
+
+def test_stereocenter_crosslink_roundtrips_to_template():
+    # cap -> (echo) -> strip must succeed even when the crosslink atom is a
+    # stereocentre whose leaving group was stripped: the residue-skeleton anchor
+    # gains a hydrogen the capped molecule does not have, so the strip step must
+    # match on connectivity, not exact hydrogen count.
+    from moleculekit.tools import residue_titration as rt
+
+    mol = _stereo_leaving_group_crosslink_mol()
+    rid = UniqueResidueID.fromMolecule(mol, idx=0)
+    spec = CovalentLigandSpec(resname="STG", residue=rid)
+    base = "O[C@@H](C)CC"
+    capped = rt.capNonstandardResiduesForTitration(
+        mol, [spec], smiles={"STG": base}, _logger=False
+    )
+    templates = rt.templatesFromTitration(mol, [spec], dict(capped), smiles={"STG": base})
+    assert Chem.MolFromSmiles(templates["STG"]) is not None
+
+
+def _own_phosphate_crosslink_mol():
+    """A residue ``PHP`` whose own phosphate phosphorus is the crosslink atom
+    (its phosphate bonds out to a partner oxygen, as an internal nucleotide's
+    5'-phosphate bonds to the previous residue's O3'). The phosphorus is already
+    a complete phosphate in the base SMILES, so its outgoing bond is represented
+    by an -OH that must survive the cap -> strip round-trip intact, not collapse
+    to a spurious P-H."""
+    names = ["C", "OE", "P", "OD", "ON", "OX"]
+    elements = ["C", "O", "P", "O", "O", "O"]
+    resnames = ["PHP", "PHP", "PHP", "PHP", "PHP", "OXP"]
+    resids = [1, 1, 1, 1, 1, 2]
+    coords = [
+        (0.0, 0.0, 0.0),  # C (methyl)
+        (1.4, 0.0, 0.0),  # OE (ester oxygen)
+        (2.9, 0.5, 0.0),  # P
+        (3.5, 1.9, 0.0),  # OD (=O)
+        (4.3, -0.3, 0.0),  # ON (non-bridging O)
+        (2.3, -1.0, 0.0),  # OX (partner oxygen)
+    ]
+    mol = Molecule().empty(len(names))
+    mol.name[:] = names
+    mol.element[:] = elements
+    mol.resname[:] = resnames
+    mol.resid[:] = resids
+    mol.chain[:] = "A"
+    mol.segid[:] = "A"
+    mol.record[:] = "HETATM"
+    mol.coords = np.array(coords, dtype=np.float32).reshape(-1, 3, 1)
+    mol.bonds = np.array([(0, 1), (1, 2), (2, 3), (2, 4), (2, 5)], dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * 5, dtype=object)
+    return mol
+
+
+def test_own_phosphate_crosslink_template_stays_phosphate():
+    # When the crosslink atom is the residue's own (already-complete) phosphate
+    # phosphorus bonded to a partner oxygen, the cap -> strip round-trip must
+    # yield a proper phosphate, not an H-phosphonate: RDKit must not be left to
+    # fill an under-coordinated phosphorus with a spurious hydrogen.
+    from moleculekit.tools import residue_titration as rt
+
+    mol = _own_phosphate_crosslink_mol()
+    rid = UniqueResidueID.fromMolecule(mol, idx=0)
+    spec = CovalentLigandSpec(resname="PHP", residue=rid)
+    base = "COP(=O)(O)O"
+    capped = rt.capNonstandardResiduesForTitration(
+        mol, [spec], smiles={"PHP": base}, _logger=False
+    )
+    templates = rt.templatesFromTitration(mol, [spec], dict(capped), smiles={"PHP": base})
+    m = Chem.MolFromSmiles(templates["PHP"])
+    assert m is not None
+    p = next(a for a in m.GetAtoms() if a.GetSymbol() == "P")
+    assert p.GetTotalNumHs() == 0  # a phosphate, not an H-phosphonate

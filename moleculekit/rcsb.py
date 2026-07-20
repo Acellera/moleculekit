@@ -8,6 +8,8 @@ import urllib.error
 import json
 import logging
 
+from moleculekit.util import _get_pdb_entity_sequences
+
 logger = logging.getLogger(__name__)
 
 
@@ -296,3 +298,143 @@ def rcsbFetchLigandSmiles(
             f"RCSB returned no SMILES descriptor for component '{code}' from program '{program}'"
         )
     return smiles
+
+
+def rcsbSequenceSearch(
+    sequence: str, identity_cutoff: float = 0.9, rows: int = 10
+) -> list:
+    """Search the RCSB hosted sequence-similarity service for a protein sequence.
+
+    Parameters
+    ----------
+    sequence : str
+        The one-letter protein query sequence.
+    identity_cutoff : float
+        Minimum sequence identity (0-1) for a hit to be returned.
+    rows : int
+        Maximum number of hits to return.
+
+    Returns
+    -------
+    hits : list of dict
+        ``{"polymer_entity_id": str, "identity": float, "score": float}``,
+        ordered best-first.
+    """
+    import urllib.parse
+
+    query = {
+        "query": {
+            "type": "terminal",
+            "service": "sequence",
+            "parameters": {
+                "evalue_cutoff": 1,
+                "identity_cutoff": identity_cutoff,
+                "sequence_type": "protein",
+                "value": sequence,
+            },
+        },
+        "request_options": {
+            "scoring_strategy": "sequence",
+            "paginate": {"start": 0, "rows": rows},
+        },
+        "return_type": "polymer_entity",
+    }
+    url = "https://search.rcsb.org/rcsbsearch/v2/query?json=" + urllib.parse.quote(
+        json.dumps(query)
+    )
+    with urllib.request.urlopen(url, timeout=45) as resp:
+        data = json.loads(resp.read())
+
+    hits = []
+    for r in data.get("result_set", []):
+        identity = None
+        try:
+            identity = r["services"][0]["nodes"][0]["match_context"][0][
+                "sequence_identity"
+            ]
+        except (KeyError, IndexError):
+            identity = None
+        hits.append(
+            {
+                "polymer_entity_id": r["identifier"],
+                "identity": identity,
+                "score": r.get("score"),
+            }
+        )
+    return hits
+
+
+def _entity_sequences_for_pdbid(pdbid):
+    """Map each auth chain of a PDB entry to its full deposited (canonical)
+    sequence via the RCSB GraphQL API. Returns ``{chain: sequence}``."""
+    import urllib.parse
+
+    q = (
+        '{entries(entry_ids:["%s"]){polymer_entities{'
+        "entity_poly{pdbx_seq_one_letter_code_can} "
+        "rcsb_polymer_entity_container_identifiers{auth_asym_ids}}}}" % pdbid.upper()
+    )
+    url = "https://data.rcsb.org/graphql?query=" + urllib.parse.quote(q)
+    with urllib.request.urlopen(url, timeout=45) as resp:
+        data = json.loads(resp.read())
+    out = {}
+    entries = data["data"]["entries"] or []
+    for ent in (entries[0]["polymer_entities"] if entries else []) or []:
+        seq = ent["entity_poly"]["pdbx_seq_one_letter_code_can"]
+        for ch in ent["rcsb_polymer_entity_container_identifiers"]["auth_asym_ids"]:
+            out[ch] = seq
+    return out
+
+
+def resolveFullSequences(mol, pdbid=None):
+    """Resolve the full target sequence of each protein chain in ``mol``.
+
+    When ``pdbid`` is given, the exact deposited entity sequence is used
+    (``source="pdb_entity"``, ``identity=1.0``). Otherwise each chain's observed
+    sequence is run through :func:`rcsbSequenceSearch` and the best hit's full
+    entity sequence is used (``source="sequence_search"``).
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The (possibly gapped) structure.
+    pdbid : str or None
+        The 4-letter RCSB PDB id, if known.
+
+    Returns
+    -------
+    resolved : dict
+        ``{chain: {"sequence": str, "source": str, "identity": float}}`` for each
+        protein chain for which a full sequence could be found.
+    """
+    observed = mol.getSequence(dict_key="chain", sel="protein", _logger=False)
+    resolved = {}
+
+    entity_seqs = _entity_sequences_for_pdbid(pdbid) if pdbid else {}
+    for chain, obs in observed.items():
+        if not obs:
+            continue
+        if chain in entity_seqs:
+            resolved[chain] = {
+                "sequence": entity_seqs[chain],
+                "source": "pdb_entity",
+                "identity": 1.0,
+            }
+            continue
+        hits = rcsbSequenceSearch(obs.replace("X", ""))
+        if not hits:
+            continue
+        best = hits[0]
+        ent_map = _get_pdb_entity_sequences([best["polymer_entity_id"]])
+        full = next(iter(ent_map.values()), None)
+        if full is None:
+            continue
+        # _get_pdb_entity_sequences renders modified residues as "?"; map them to
+        # "X" (unknown) so the downstream BLOSUM62 aligner accepts the sequence.
+        full = full.replace("?", "X")
+        resolved[chain] = {
+            "sequence": full,
+            "source": "sequence_search",
+            "identity": best["identity"],
+        }
+    return resolved

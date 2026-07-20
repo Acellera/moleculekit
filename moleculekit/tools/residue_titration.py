@@ -10,15 +10,23 @@ formats.
 Each residue is built from its full base SMILES (an RCSB ligand descriptor or
 a caller override), so it carries the complete chemistry even when the
 deposited structure has a trimmed sidechain. Every *outgoing* inter-residue
-bond is then neutral-capped, so the pKa tool sees a chemically sane molecule
-and titrates only the groups that are genuinely free:
+bond is then capped with an inert stand-in for its real partner, so the pKa
+tool sees a chemically sane molecule that titrates the residue's own groups in
+a faithful environment. Most caps are neutral (an amide, a methyl); a
+phosphodiester partner is kept as a phosphate, so an internal nucleotide
+carries the real, charged backbone environment a terminal one would not:
 
 - a backbone peptide bond gets an amide cap - acetyl on the ``N`` side,
   N-methyl on the carbonyl ``C`` side (the ACE / NME that keep a mid-chain
   backbone neutral);
 - a sidechain / scaffold crosslink gets an inert cap chosen to keep the
-  junction atom non-titratable (acetyl on a nitrogen, N-methyl on an amide
-  carbonyl carbon, methyl otherwise);
+  junction atom non-titratable: acetyl on a severed nitrogen, N-methyl on an
+  amide carbonyl carbon, and for any other junction a cap reflecting the real
+  partner element (a nitrogen partner gives an amide, an oxygen partner a
+  hydroxyl, a phosphorus partner a phosphate, everything else a methyl). When a
+  condensation crosslink (glycosidic, phosphoester, ...) left the junction atom
+  fully valent in the free-form SMILES, the displaced leaving group (the
+  base-SMILES atom absent from the deposited residue) is stripped first;
 - a genuine free terminus or free-ligand end is left uncapped, so the pKa tool
   assigns its charge (a real C-terminus deprotonates, an N-terminus protonates).
 
@@ -213,6 +221,159 @@ def _attach_methyl(rw, atom_idx: int) -> list[int]:
     return [ch3]
 
 
+def _attach_amine_amide(rw, atom_idx: int) -> list[int]:
+    """Bond a nitrogen onto RDKit atom ``atom_idx`` and acetylate it.
+
+    The inert cap for a severed crosslink whose partner is a nitrogen (an
+    N-glycosidic bond, an isopeptide seen from the carbon side): the junction
+    becomes an amide (``-NH-C(=O)CH3``) rather than a free amine, so a
+    downstream pKa tool sees a non-titratable nitrogen, not an ionizable one.
+
+    Parameters
+    ----------
+    rw : rdkit.Chem.RWMol
+        Editable molecule, mutated in place.
+    atom_idx : int
+        Index of the atom to cap.
+
+    Returns
+    -------
+    cap_atoms : list of int
+        The added nitrogen and the three acetyl atoms.
+    """
+    from rdkit import Chem
+
+    n = rw.AddAtom(Chem.Atom(7))
+    rw.AddBond(atom_idx, n, Chem.BondType.SINGLE)
+    return [n] + _attach_ace_cap(rw, n)
+
+
+def _attach_hydroxyl(rw, atom_idx: int) -> list[int]:
+    """Bond a hydroxyl oxygen (-OH) onto RDKit atom ``atom_idx``.
+
+    The inert cap for a severed crosslink whose partner is an oxygen: a
+    phosphate becomes a terminal ``-OH`` (leaving the phosphate itself
+    correctly ionizable), a carbon becomes a non-titratable alcohol.
+
+    Parameters
+    ----------
+    rw : rdkit.Chem.RWMol
+        Editable molecule, mutated in place.
+    atom_idx : int
+        Index of the atom to cap.
+
+    Returns
+    -------
+    cap_atoms : list of int
+        The single added oxygen index.
+    """
+    from rdkit import Chem
+
+    o = rw.AddAtom(Chem.Atom(8))
+    rw.AddBond(atom_idx, o, Chem.BondType.SINGLE)
+    return [o]
+
+
+def _attach_phosphate(rw, atom_idx: int) -> list[int]:
+    """Bond a phosphate (``-P(=O)(OH)OH``) onto RDKit atom ``atom_idx``.
+
+    The inert cap for a severed crosslink whose partner is a phosphorus (a
+    phosphodiester / phosphoester backbone): the junction becomes a phosphate
+    reflecting the real partner element, rather than a methyl that would
+    mislabel a phosphorus bond as a carbon one.
+
+    Parameters
+    ----------
+    rw : rdkit.Chem.RWMol
+        Editable molecule, mutated in place.
+    atom_idx : int
+        Index of the atom to cap.
+
+    Returns
+    -------
+    cap_atoms : list of int
+        The added phosphorus and its three oxygens.
+    """
+    from rdkit import Chem
+
+    p = rw.AddAtom(Chem.Atom(15))
+    od = rw.AddAtom(Chem.Atom(8))
+    o1 = rw.AddAtom(Chem.Atom(8))
+    o2 = rw.AddAtom(Chem.Atom(8))
+    rw.AddBond(atom_idx, p, Chem.BondType.SINGLE)
+    rw.AddBond(p, od, Chem.BondType.DOUBLE)
+    rw.AddBond(p, o1, Chem.BondType.SINGLE)
+    rw.AddBond(p, o2, Chem.BondType.SINGLE)
+    return [p, od, o1, o2]
+
+
+def _saturated_leaving_atom(rw, smi_local: int, mapped: set) -> "int | None":
+    """Index of the leaving-group atom to strip from ``smi_local``, or None.
+
+    A condensation crosslink (glycosidic, phosphoester, ...) forms by displacing
+    a leaving group from the crosslink atom, but the residue is built from its
+    free-form base SMILES, which still carries that group - often leaving the
+    atom fully valent, so attaching an inert cap would exceed its valence. When
+    one more bond would over-valence the atom, the leaving group is identified
+    from the structure: it is the terminal, single-bonded neighbour that is
+    absent from the deposited residue (its SMILES atom index is not in
+    ``mapped``, the structure-to-SMILES atom map). Its index is returned so the
+    caller can remove it before capping.
+
+    Returns None when the atom still has a free valence (the crosslink displaced
+    only a hydrogen, e.g. a serine ``OG``) or when no such leaving atom is found
+    (the over-valence is then surfaced upstream as the uncappable fallback).
+
+    Parameters
+    ----------
+    rw : rdkit.Chem.RWMol
+        The residue built from its base SMILES.
+    smi_local : int
+        Index in ``rw`` of the in-residue crosslink atom.
+    mapped : set of int
+        The ``rw`` atom indices that a structure residue atom maps onto (the
+        values of ``_isolated_residue_rdkit``'s ``res_to_smi``).
+
+    Returns
+    -------
+    leaving : int or None
+        Index in ``rw`` of the leaving-group atom to strip, or None.
+    """
+    from rdkit import Chem
+
+    pt = Chem.GetPeriodicTable()
+    atom = rw.GetAtomWithIdx(smi_local)
+    explicit_valence = (
+        sum(b.GetBondTypeAsDouble() for b in atom.GetBonds())
+        + atom.GetNumExplicitHs()
+    )
+    if explicit_valence + 1 <= max(pt.GetValenceList(atom.GetAtomicNum())):
+        return None
+    for nb in atom.GetNeighbors():
+        bond = rw.GetBondBetweenAtoms(smi_local, nb.GetIdx())
+        if (
+            nb.GetIdx() not in mapped
+            and nb.GetDegree() == 1
+            and bond.GetBondType() == Chem.BondType.SINGLE
+        ):
+            return nb.GetIdx()
+    return None
+
+
+def _is_carbonyl_carbon(rw, atom_idx: int) -> bool:
+    """Whether RDKit atom ``atom_idx`` in ``rw`` is a carbon double-bonded to an
+    oxygen (a carbonyl carbon). Read off the base-SMILES-derived molecule, whose
+    bond orders are definitive (structure inputs may lack them)."""
+    from rdkit import Chem
+
+    atom = rw.GetAtomWithIdx(atom_idx)
+    return atom.GetSymbol() == "C" and any(
+        b.GetBondType() == Chem.BondType.DOUBLE
+        and b.GetOtherAtom(atom).GetSymbol() == "O"
+        for b in atom.GetBonds()
+    )
+
+
 def _classify_junction(
     mol: Molecule, local_idx: int, partner_idx: int, rw, smi_local_idx: int
 ) -> str:
@@ -243,17 +404,9 @@ def _classify_junction(
     kind : str
         ``"amide_n"``, ``"amide_c"`` or ``"other"``.
     """
-    from rdkit import Chem
-
     if str(mol.element[local_idx]) == "N":
         return "amide_n"
-    atom = rw.GetAtomWithIdx(smi_local_idx)
-    is_carbonyl = atom.GetSymbol() == "C" and any(
-        b.GetBondType() == Chem.BondType.DOUBLE
-        and b.GetOtherAtom(atom).GetSymbol() == "O"
-        for b in atom.GetBonds()
-    )
-    if is_carbonyl and str(mol.element[partner_idx]) == "N":
+    if _is_carbonyl_carbon(rw, smi_local_idx) and str(mol.element[partner_idx]) == "N":
         return "amide_c"
     return "other"
 
@@ -278,7 +431,10 @@ def _capped_residue_rdkit(
       link, isopeptide, ...) is inert-capped too, so a residue whose sidechain
       is covalently tied up (e.g. a Cys-like ``SG`` in a thioether) is never
       offered to a downstream pKa tool as if that group were still free (a
-      free thiol, a free amine, ...).
+      free thiol, a free amine, ...). The cap reflects the real partner element
+      (see :func:`_attach_amine_amide` / :func:`_attach_hydroxyl` /
+      :func:`_attach_phosphate`), and a condensation crosslink's displaced
+      leaving group is stripped first (see :func:`_saturated_leaving_atom`).
 
     Shared first stage behind :func:`_cap_residue_smiles` (which keeps the
     caps) and :func:`_uncapped_residue_smiles` (which strips them to recover
@@ -316,7 +472,34 @@ def _capped_residue_rdkit(
         titrating the residue uncapped.
     """
     rw, res_to_smi = _isolated_residue_rdkit(mol, spec, base_smiles)
-    cap_atoms: list[int] = []
+    rw.UpdatePropertyCache(strict=False)
+    mapped = set(res_to_smi.values())
+
+    def _tag(cap_idxs: list[int]) -> None:
+        # Cap atoms are marked with a property rather than tracked by index, so
+        # they survive the leaving-group removals below (which shift indices).
+        for i in cap_idxs:
+            rw.GetAtomWithIdx(i).SetBoolProp("_cap", True)
+
+    # Plan every crosslink on the pristine molecule (kind, partner element, and
+    # any leaving group to strip) before mutating it, so those lookups read
+    # unshifted indices and valences.
+    plan = []
+    for local_g, partner_g in _inter_residue_crosslinks(mol, spec):
+        if local_g not in res_to_smi:
+            raise ValueError(
+                f"Residue {spec.resname} ({spec.residue}) crosslink atom "
+                f"{str(mol.name[local_g])!r} could not be mapped onto its "
+                "SMILES; cannot cap it."
+            )
+        smi_local = res_to_smi[local_g]
+        kind = _classify_junction(mol, local_g, partner_g, rw, smi_local)
+        leaving = (
+            _saturated_leaving_atom(rw, smi_local, mapped)
+            if kind == "other"
+            else None
+        )
+        plan.append((smi_local, kind, str(mol.element[partner_g]), leaving))
 
     # Backbone (chain residues only), located by atom name as before.
     if isinstance(spec, ChainResidueSpec):
@@ -332,28 +515,56 @@ def _capped_residue_rdkit(
             return res_to_smi[int(g[0])]
 
         if not spec.is_n_term:
-            cap_atoms += _attach_ace_cap(rw, _smi_of_named("N"))
+            _tag(_attach_ace_cap(rw, _smi_of_named("N")))
         if not spec.is_c_term:
-            cap_atoms += _attach_nme_cap(rw, _smi_of_named("C"))
+            _tag(_attach_nme_cap(rw, _smi_of_named("C")))
 
-    # Non-peptide crosslinks (every spec type): inert-cap each one so no
-    # severed sidechain looks like a free titratable group.
-    for local_g, partner_g in _inter_residue_crosslinks(mol, spec):
-        if local_g not in res_to_smi:
-            raise ValueError(
-                f"Residue {spec.resname} ({spec.residue}) crosslink atom "
-                f"{str(mol.name[local_g])!r} could not be mapped onto its "
-                "SMILES; cannot cap it."
-            )
-        smi_local = res_to_smi[local_g]
-        kind = _classify_junction(mol, local_g, partner_g, rw, smi_local)
+    # Non-peptide crosslinks (every spec type): inert-cap each one so no severed
+    # sidechain looks like a free titratable group. A severed nitrogen becomes
+    # an amide and an amide carbonyl carbon an N-methyl amide (as before); any
+    # other junction is capped to reflect the real partner element - a
+    # nitrogen-linked carbon (glycosidic) to an amide, an oxygen partner to a
+    # hydroxyl, a phosphorus partner to a phosphate, everything else to a
+    # methyl. When a condensation crosslink left the atom fully valent in the
+    # free-form SMILES, the displaced leaving group is stripped first.
+    leaving_atoms = []
+    for smi_local, kind, partner_el, leaving in plan:
         if kind == "amide_n":
-            cap_atoms += _attach_ace_cap(rw, smi_local)
+            _tag(_attach_ace_cap(rw, smi_local))
         elif kind == "amide_c":
-            cap_atoms += _attach_nme_cap(rw, smi_local)
+            _tag(_attach_nme_cap(rw, smi_local))
         else:
-            cap_atoms += _attach_methyl(rw, smi_local)
+            if (
+                partner_el == "O"
+                and leaving is not None
+                and not _is_carbonyl_carbon(rw, smi_local)
+            ):
+                # The crosslink atom is already a complete group in the base
+                # SMILES (e.g. a phosphate whose phosphorus is at valence 5)
+                # carrying an -OH at the linkage position. That -OH already
+                # represents the outgoing O-bond, so leave it untouched:
+                # stripping and recapping it would drop an oxygen the template
+                # strip cannot restore, leaving RDKit to fill the open valence
+                # with a spurious hydrogen (an H-phosphonate instead of a
+                # phosphate).
+                continue
+            if leaving is not None:
+                leaving_atoms.append(leaving)
+            if partner_el == "N":
+                _tag(_attach_amine_amide(rw, smi_local))
+            elif partner_el == "O" and not _is_carbonyl_carbon(rw, smi_local):
+                # A hydroxyl keeps a phosphate ionizable and an sp3 carbon a
+                # neutral alcohol, but on a carbonyl carbon it would be a
+                # titratable free acid; that case falls through to a methyl.
+                _tag(_attach_hydroxyl(rw, smi_local))
+            elif partner_el == "P":
+                _tag(_attach_phosphate(rw, smi_local))
+            else:
+                _tag(_attach_methyl(rw, smi_local))
 
+    for idx in sorted(set(leaving_atoms), reverse=True):
+        rw.RemoveAtom(idx)
+    cap_atoms = [a.GetIdx() for a in rw.GetAtoms() if a.HasProp("_cap")]
     return rw, cap_atoms
 
 
@@ -668,6 +879,13 @@ def _relaxed_query(smiles: str) -> "Mol":
     deprotonated carboxylate ``C(=O)-O^-``, which RDKit can represent with a
     different bond order on the two C-O bonds).
 
+    Hydrogen counts are made generic too. Stripping a crosslink atom's leaving
+    group and cap (see :func:`_uncapped_residue_smiles`) leaves that atom with a
+    different hydrogen count in the anchor than it has in the capped molecule
+    (its cap bond is gone), and a stereocentre's explicit ``[C@H]`` hydrogen is
+    frozen rather than re-derived from the reduced valence; matching on hydrogen
+    count would then fail to relocate the atom.
+
     Parameters
     ----------
     smiles : str
@@ -683,6 +901,14 @@ def _relaxed_query(smiles: str) -> "Mol":
     from rdkit.Chem import rdmolops
 
     q = Chem.MolFromSmiles(smiles)
+    # Drop baked-in hydrogen counts (from valence or from stereo ``[C@H]``) and
+    # the radical electrons an under-valent stripped atom parses with, so
+    # neither constrains the match; connectivity and element still do.
+    for atom in q.GetAtoms():
+        atom.SetNoImplicit(False)
+        atom.SetNumExplicitHs(0)
+        atom.SetNumRadicalElectrons(0)
+    Chem.SanitizeMol(q)
     params = rdmolops.AdjustQueryParameters.NoAdjustments()
     params.makeBondsGeneric = True
     return rdmolops.AdjustQueryProperties(q, params)
