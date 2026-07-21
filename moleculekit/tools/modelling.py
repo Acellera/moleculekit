@@ -3,7 +3,10 @@ from moleculekit.util import find_executable
 from subprocess import run
 import numpy as np
 import tempfile
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 CODE = """
 from ost import io
@@ -84,6 +87,148 @@ def _align_full_to_observed(full_seq, observed_seq):
     aligner.extend_gap_score = -1.0
     aln = aligner.align(full_seq, observed_seq)[0]
     return str(aln[0]), str(aln[1])
+
+
+def _sequence_identity(aln_full, aln_obs):
+    """Fraction of the observed residues (non-gap in ``aln_obs``) that align to an
+    identical residue in ``aln_full``. 1.0 when the observed sequence is an exact
+    sub-sequence of the full sequence."""
+    matches = observed = 0
+    for cf, co in zip(aln_full, aln_obs):
+        if co == "-":
+            continue
+        observed += 1
+        if cf == co:
+            matches += 1
+    return matches / observed if observed else 0.0
+
+
+def _resolve_donor_label(donor, dseqs, label):
+    """Map a ``chain_map`` donor label to an actual donor protein chain id: the
+    chain id itself when present, else the chain id of the protein atoms whose
+    segid equals the label (aceboltz writes its query chain id in the segid
+    column). Returns None when the label matches neither."""
+    if label in dseqs:
+        return label
+    protein = donor.atomselect("protein")
+    match = protein & (donor.segid == label)
+    if match.any():
+        chains = np.unique(donor.chain[match])
+        if len(chains) == 1:
+            return str(chains[0])
+    return None
+
+
+def _pair_donor_chains(orig, donor, chain_map=None, min_identity=0.95):
+    """Pair each original protein chain with the best-matching donor protein chain
+    by sequence identity. Returns ``(pairing, unpaired)`` where ``pairing`` maps
+    ``{original_chain: donor_chain}`` and ``unpaired`` lists original chains with no
+    donor chain at >= ``min_identity``. ``chain_map``, if given, pins
+    ``{donor_label: original_chain}`` entries (the donor label resolved against
+    donor chain ids, then segids); auto-pairing fills in the rest."""
+    oseqs, _ = orig.getSequence(
+        dict_key="chain", return_idx=True, sel="protein", _logger=False
+    )
+    dseqs, _ = donor.getSequence(
+        dict_key="chain", return_idx=True, sel="protein", _logger=False
+    )
+
+    pinned = {}
+    for donor_label, orig_chain in (chain_map or {}).items():
+        dchain = _resolve_donor_label(donor, dseqs, donor_label)
+        if dchain is None:
+            raise RuntimeError(
+                f"chain_map pins donor '{donor_label}' -> original '{orig_chain}', "
+                "but no donor chain has that chain id or segid."
+            )
+        pinned[orig_chain] = dchain
+
+    pairing, unpaired = {}, []
+    for ochain, oseq in oseqs.items():
+        if ochain in pinned:
+            pairing[ochain] = pinned[ochain]
+            continue
+        best, best_id = None, 0.0
+        for dchain, dseq in dseqs.items():
+            aln_full, aln_obs = _align_full_to_observed(dseq, oseq)
+            idn = _sequence_identity(aln_full, aln_obs)
+            if idn > best_id:
+                best, best_id = dchain, idn
+        if best is not None and best_id >= min_identity:
+            pairing[ochain] = best
+        else:
+            unpaired.append(ochain)
+    return pairing, unpaired
+
+
+_ANCHOR_BB = ("N", "CA", "C")
+
+
+def _fit_donor_to_orig(donor_pts, orig_pts):
+    """Rigid (Kabsch) fit mapping donor points onto original points. Returns
+    ``(fit, rmsd)`` where ``fit = (U, dc, oc)`` is applied with :func:`_apply_fit`
+    and ``rmsd`` is the residual (Angstrom) after the optimal rotation. A large
+    ``rmsd`` means the two point sets do not correspond as a rigid body - e.g. the
+    donor's flanking residues were aligned to the wrong original residues."""
+    from moleculekit.align import _pp_measure_fit
+
+    donor_pts = np.asarray(donor_pts, dtype=np.float64)
+    orig_pts = np.asarray(orig_pts, dtype=np.float64)
+    dc = donor_pts.mean(axis=0)
+    oc = orig_pts.mean(axis=0)
+    U, rmsd = _pp_measure_fit(donor_pts - dc, orig_pts - oc)
+    return (U, dc, oc), float(rmsd)
+
+
+def _apply_fit(coords, fit):
+    """Apply a ``(U, dc, oc)`` transform from :func:`_fit_donor_to_orig` to an
+    ``(N, 3)`` coordinate array."""
+    U, dc, oc = fit
+    return (np.asarray(coords, dtype=np.float64) - dc) @ U.T + oc
+
+
+def _anchor_pairs(slot, donor):
+    """Return ``(orig_xyz, donor_xyz)`` lists of matched backbone-atom coordinates
+    for one co-observed slot: each of N/CA/C present in BOTH the original residue
+    (``slot["frag"]``) and its aligned donor residue (``slot["pred_atoms"]``)."""
+    of = slot["frag"]
+    datoms = slot["pred_atoms"]
+    dnames = donor.name[datoms]
+    dcoords = donor.coords[datoms, :, 0]
+    orig_xyz, donor_xyz = [], []
+    for nm in _ANCHOR_BB:
+        oi = np.where(of.name == nm)[0]
+        di = np.where(dnames == nm)[0]
+        if len(oi) and len(di):
+            orig_xyz.append(of.coords[oi[0], :, 0])
+            donor_xyz.append(dcoords[di[0]])
+    return orig_xyz, donor_xyz
+
+
+def _slot_orig_bb(slot, name):
+    """Coordinate of backbone atom ``name`` from a slot's ORIGINAL residue frag,
+    or None when absent."""
+    f = slot["frag"]
+    a = np.where(f.name == name)[0]
+    return f.coords[a[0], :, 0] if len(a) else None
+
+
+def _slot_donor_bb(slot, name, donor, fit):
+    """Coordinate of backbone atom ``name`` from a slot's DONOR residue, moved by
+    ``fit`` (i.e. where the atom lands when placed). For a NEW slot the frag IS the
+    (untransformed) donor residue; for a co-observed slot the donor coordinates are
+    at ``pred_atoms``. Returns None when the atom / donor counterpart is absent."""
+    if slot["new"]:
+        f = slot["frag"]
+        a = np.where(f.name == name)[0]
+        return _apply_fit(f.coords[a[0], :, 0], fit) if len(a) else None
+    datoms = slot.get("pred_atoms")
+    if datoms is None:
+        return None
+    k = np.where(donor.name[datoms] == name)[0]
+    if not len(k):
+        return None
+    return _apply_fit(donor.coords[datoms[k[0]], :, 0], fit)
 
 
 def model_gaps(
@@ -417,13 +562,77 @@ def _number_new_residues(slots):
         i = j
 
 
-def _graft_run_flanks(slots, pred, k):
-    """Replace the coordinates of the ``k`` original residues flanking each run of
-    newly inserted residues with the modeller's version of the same residue, keeping
-    the original numbering, so the backbone stays continuous across the junction."""
-    if k <= 0:
-        return
+def _superpose_and_graft_runs(
+    slots, donor, graft_flanks, anchor_width=4, max_anchor_rmsd=2.0, junction_tol=1.6,
+):
+    """Place each run of newly inserted (donor) residues into the original's frame,
+    or SKIP it if it cannot be attached with a physical junction. Returns the slot
+    list with skipped runs' new residues removed (the caller assembles from it).
+
+    For each run the donor is locally superposed onto the co-observed residues
+    flanking the run; the run's frags are transformed into place and, where needed,
+    flank residues are grafted from the transformed donor to keep the graft->kept
+    peptide junction continuous.
+
+    Grafting is per-side and minimal. Each closed side starts with NO graft and is
+    extended outward one residue at a time - up to ``graft_flanks`` residues - only
+    while its graft->kept junction is still stretched (> ``junction_tol`` Angstrom).
+    A side whose new residue already joins the kept backbone cleanly grafts nothing,
+    so a well-matching flank is never overwritten with donor coordinates; a side
+    that diverges (e.g. a different crystal at a flexible loop) walks the seam out
+    to a residue where the two structures locally superpose. ``graft_flanks`` is
+    thus the MAXIMUM flank depth per side (default 1).
+
+    If a closed side's junction still cannot be closed within ``graft_flanks``, the
+    run is SKIPPED: its residues are not inserted, the gap is left as-is, and a
+    warning names the loop and advises re-running ``spliceMissingResidues`` on the
+    result with a larger ``graft_flanks`` (which retries only the still-missing gaps
+    - a deeper graft trades a continuous junction for possible sidechain clashes to
+    relax downstream). ``graft_flanks=0`` disables grafting and skipping entirely:
+    every run is inserted in the original's frame as-is (used to test numbering /
+    when the caller will relax junctions itself). A run with no kept flank at all (a
+    whole modelled chain) has no junction to satisfy and is kept as-is.
+
+    Warns when an accepted run's anchor fit residual exceeds ``max_anchor_rmsd``
+    (Angstrom): the donor's flanking residues do not superpose rigidly, meaning the
+    local alignment paired them with the wrong residues (mis-aligned / wrong donor)."""
     n = len(slots)
+
+    def _fit(dl, dr, i, j):
+        left = slots[max(0, i - dl - anchor_width): max(0, i - dl)]
+        right = slots[j + dr: j + dr + anchor_width]
+        anchor = [s for s in left + right
+                  if not s["new"] and s.get("pred_atoms") is not None]
+        op, dp = [], []
+        for s in anchor:
+            a, b = _anchor_pairs(s, donor)
+            op += a
+            dp += b
+        if len(op) < 3:
+            # too few local anchors (very short chain or adjacent gaps): widen to a
+            # whole-chain fit over every co-observed residue.
+            op, dp = [], []
+            for s in slots:
+                if not s["new"] and s.get("pred_atoms") is not None:
+                    a, b = _anchor_pairs(s, donor)
+                    op += a
+                    dp += b
+        if len(op) < 3:
+            return None
+        return _fit_donor_to_orig(dp, op)
+
+    def _junction(kept_slot, graft_slot, kept_atom, graft_atom, fit):
+        kc = _slot_orig_bb(kept_slot, kept_atom)
+        gc = _slot_donor_bb(graft_slot, graft_atom, donor, fit)
+        if kc is None or gc is None:
+            return None
+        return float(np.linalg.norm(kc - gc))
+
+    def _chain_label(idx):
+        f = slots[idx]["frag"]
+        return str(f.chain[0]) if f.numAtoms else "?"
+
+    skip = set()
     i = 0
     while i < n:
         if not slots[i]["new"]:
@@ -432,39 +641,147 @@ def _graft_run_flanks(slots, pred, k):
         j = i
         while j < n and slots[j]["new"]:
             j += 1
-        for s in slots[max(0, i - k) : i] + slots[j : j + k]:
+
+        left_closed, right_closed = i > 0, j < n
+        if not (left_closed or right_closed):
+            # a whole modelled chain: no kept residue to anchor to, no junction to
+            # satisfy. Keep the donor coordinates as-is.
+            i = j
+            continue
+
+        if graft_flanks <= 0:
+            # insert-all: place the run in the original's frame (fit on the immediate
+            # flanks) but graft no flanks and never skip on a bad junction.
+            fitres = _fit(0, 0, i, j)
+            if fitres is not None:
+                fit, _ = fitres
+                for s in slots[i:j]:
+                    s["frag"].coords[:, :, 0] = _apply_fit(s["frag"].coords[:, :, 0], fit)
+            i = j
+            continue
+
+        # Grow each closed side's graft from 0 outward, only as far as needed to
+        # close its graft->kept junction (never past graft_flanks). The seam runs
+        # between the outermost donor-sourced residue (the first new residue when a
+        # side has grafted nothing yet) and the adjacent kept residue.
+        dl = dr = 0
+        fitres = _fit(dl, dr, i, j)
+        for _ in range(n):
+            if fitres is None:
+                break
+            fit, _ = fitres
+            grew = False
+            # N-side seam: C(kept i-dl-1) -> N(outermost donor residue i-dl).
+            if left_closed and dl < graft_flanks and i - dl - 1 >= 1:
+                jd = _junction(slots[i - dl - 1], slots[i - dl], "C", "N", fit)
+                cand = slots[i - dl - 1]
+                if (jd is not None and jd > junction_tol
+                        and not cand["new"] and cand.get("pred_atoms") is not None):
+                    dl += 1
+                    grew = True
+            # C-side seam: C(outermost donor j+dr-1) -> N(kept j+dr).
+            if right_closed and dr < graft_flanks and j + dr < n - 1:
+                jd = _junction(slots[j + dr], slots[j + dr - 1], "N", "C", fit)
+                cand = slots[j + dr]
+                if (jd is not None and jd > junction_tol
+                        and not cand["new"] and cand.get("pred_atoms") is not None):
+                    dr += 1
+                    grew = True
+            if not grew:
+                break
+            fitres = _fit(dl, dr, i, j)
+
+        # Decide whether the run's closed-side junction(s) are acceptable.
+        bad = fitres is None
+        if fitres is not None:
+            fit, rmsd = fitres
+            if left_closed and i - dl - 1 >= 0:
+                jd = _junction(slots[i - dl - 1], slots[i - dl], "C", "N", fit)
+                bad = bad or (jd is None or jd > junction_tol)
+            if right_closed and j + dr < n:
+                jd = _junction(slots[j + dr], slots[j + dr - 1], "N", "C", fit)
+                bad = bad or (jd is None or jd > junction_tol)
+
+        if bad:
+            after = slots[i - 1].get("resid") if left_closed else None
+            ch = _chain_label(i - 1) if left_closed else _chain_label(j)
+            logger.warning(
+                f"Skipping {j - i} modelled residue(s) in chain {ch}"
+                + (f" after resid {after}" if after is not None else " (N-terminus)")
+                + f": the donor could not be attached with a physical backbone "
+                f"junction within graft_flanks={graft_flanks}. Re-run "
+                "spliceMissingResidues on the result with a larger graft_flanks to "
+                "graft deeper and retry the remaining gaps (a deeper graft may "
+                "introduce sidechain clashes to relax downstream)."
+            )
+            skip.update(range(i, j))
+            i = j
+            continue
+
+        assert fitres is not None  # guaranteed: bad would be True above otherwise
+        fit, rmsd = fitres
+        if rmsd > max_anchor_rmsd:
+            near = slots[i - 1].get("resid") if left_closed else slots[j].get("resid")
+            logger.warning(
+                f"Poor superposition of a modelled run (backbone anchor RMSD "
+                f"{rmsd:.1f} A"
+                + (f" near resid {near}" if near is not None else "")
+                + "): the donor's flanking residues do not align rigidly to the "
+                "original. The inserted segment's placement may be unreliable - "
+                "check that the donor is the same protein and correctly aligned."
+            )
+        for s in slots[i:j]:
+            s["frag"].coords[:, :, 0] = _apply_fit(s["frag"].coords[:, :, 0], fit)
+        graft = slots[max(0, i - dl): i] + slots[j: j + dr]
+        for s in graft:
             if not s["new"] and s.get("pred_atoms") is not None:
-                s["frag"] = pred.copy(sel=s["pred_atoms"])
+                frag = donor.copy(sel=s["pred_atoms"])
+                frag.coords[:, :, 0] = _apply_fit(frag.coords[:, :, 0], fit)
+                s["frag"] = frag
         i = j
 
+    return [s for k, s in enumerate(slots) if k not in skip]
 
-def spliceModelledResidues(mol, predicted, chain_map, graft_flanks=1):
-    """Insert only the newly modelled residues from ``predicted`` into ``mol``.
+
+def spliceMissingResidues(mol, donor, chain_map=None, graft_flanks=1, min_identity=0.95):
+    """Insert only the newly added residues from ``donor`` into ``mol``.
 
     All original atoms (protein + ligands/metals/cofactors) are kept at their
     deposited coordinates AND with their deposited residue numbering, except the
     ``graft_flanks`` residues on each side of a filled gap (see below). Each modelled
     chain is rebuilt as its original residues plus the residues present in
-    ``predicted`` but absent from the original; each inserted residue is numbered to
+    ``donor`` but absent from the original; each inserted residue is numbered to
     fall between its flanking original residues, using the natural integer gap where
     there is room and insertion codes otherwise.
+
+    Each original protein chain is paired with the best-matching donor protein
+    chain by sequence identity (labels are ignored), so donor chain/segid
+    relabelling (e.g. aceboltz's ``model.pdb``) does not need a ``chain_map``.
 
     Parameters
     ----------
     mol : :class:`Molecule <moleculekit.molecule.Molecule>`
         The original (gapped) structure.
-    predicted : :class:`Molecule <moleculekit.molecule.Molecule>`
-        The modelled structure (aceboltz ``model.pdb`` or, in tests, the full
-        structure).
-    chain_map : dict
-        ``{predicted_chain: original_chain}``.
+    donor : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The structure supplying the missing residues (a different crystal form,
+        a higher-resolution entry, or an aceboltz ``model.pdb``).
+    chain_map : dict, optional
+        ``{donor_label: original_chain}`` overrides for chains that auto-pairing
+        would get wrong or leave unpaired; the donor label is resolved against
+        donor chain ids, then segids. Auto-pairing fills in every chain not
+        pinned here. Default ``None`` (pure auto-pairing).
+    min_identity : float
+        Minimum sequence identity (fraction of the original chain's observed
+        residues that match the donor) required to auto-pair an original chain
+        to a donor chain. Original chains with no donor chain meeting this
+        threshold are left unmodelled and reported via a warning.
     graft_flanks : int
         Number of original residues on each side of an inserted run to also take
-        from ``predicted`` (default 1). A loop modeller rebuilds the backbone of the
+        from ``donor`` (default 1). A loop modeller rebuilds the backbone of the
         residues immediately flanking a gap so the new segment closes; keeping the
         original flanking residue instead would leave a stretched junction peptide
         bond, which downstream preparation reads as a chain break and caps. Grafting
-        the flanking residues from ``predicted`` (keeping their original numbering)
+        the flanking residues from ``donor`` (keeping their original numbering)
         restores a continuous backbone. Set to 0 to keep every original residue
         exactly.
 
@@ -476,14 +793,21 @@ def spliceModelledResidues(mol, predicted, chain_map, graft_flanks=1):
         Boolean mask over ``spliced`` marking the inserted atoms.
     """
     MARK = -987654  # temporary beta marker to recover inserted atoms after rebuild
-    orig = mol.copy()
-    pred = predicted.copy()
+    # Read-only aliases: neither is mutated in place (all mutation happens on
+    # `result` and on the per-residue `.copy(sel=...)` frags), so there is no need
+    # to copy the (possibly large) inputs. Do not start mutating them in place -
+    # the caller's `mol` / `donor` must stay pristine.
+    orig = mol
+    pred = donor
 
-    # Only the PROTEIN atoms of a modelled chain are rebuilt below; every other
-    # atom (other chains, plus ligands/metals/cofactors/waters that share a chain
-    # id with a modelled protein - the common PDB arrangement) is carried over
-    # untouched at its deposited coordinates.
-    modelled_orig_chains = list(set(chain_map.values()))
+    pairing, unpaired = _pair_donor_chains(orig, pred, chain_map, min_identity)
+    for ochain in unpaired:
+        logger.warning(
+            f"No donor chain matched original chain '{ochain}' at >= {min_identity} "
+            "sequence identity; leaving that chain unmodelled."
+        )
+
+    modelled_orig_chains = list(pairing.keys())
     keep_mask = np.logical_not(
         np.isin(orig.chain, modelled_orig_chains) & orig.atomselect("protein")
     )
@@ -492,42 +816,22 @@ def spliceModelledResidues(mol, predicted, chain_map, graft_flanks=1):
     # `result` may now be empty (single all-protein modelled chain); `_concat`
     # handles the first append by starting from the rebuilt chain when empty.
 
-    for pred_chain, orig_chain in chain_map.items():
+    for orig_chain, donor_chain in pairing.items():
         oseq, oidx = orig.getSequence(
             dict_key="chain",
             return_idx=True,
             sel=f"chain '{orig_chain}' and protein",
             _logger=False,
         )
-        # The chain_map key is the predicted chain label from
-        # prepareGapModellingInput (the FASTA record index "0","1",...). aceboltz's
-        # model.pdb carries that label in the SEGID column, not chainID: gapmodel's
-        # minimize() round-trips through OpenMM's PDB writer, which relabels the
-        # chainID column by index (0->A, 1->B, ...) and preserves the real chain id
-        # in segid. Resolve the predicted residues by segid first, then fall back to
-        # chain for models that keep the label in the chain column (hand-built
-        # inputs / the synthetic test molecules).
         pseq, pidx = pred.getSequence(
-            dict_key="segid",
+            dict_key="chain",
             return_idx=True,
-            sel=f"segid '{pred_chain}' and protein",
+            sel=f"chain '{donor_chain}' and protein",
             _logger=False,
         )
-        if pred_chain not in pseq:
-            pseq, pidx = pred.getSequence(
-                dict_key="chain",
-                return_idx=True,
-                sel=f"chain '{pred_chain}' and protein",
-                _logger=False,
-            )
-        if orig_chain not in oseq or pred_chain not in pseq:
-            raise RuntimeError(
-                f"Could not align predicted chain '{pred_chain}' to original chain "
-                f"'{orig_chain}': one of them has no protein sequence."
-            )
         o = oseq[orig_chain]
-        p = pseq[pred_chain]
-        aln_p, aln_o = _align_full_to_observed(p, o)  # predicted is the "full" side
+        p = pseq[donor_chain]
+        aln_p, aln_o = _align_full_to_observed(p, o)  # predicted (donor) is the "full" side
 
         segid = str(orig.segid[oidx[orig_chain][0][0]])
 
@@ -546,20 +850,21 @@ def spliceModelledResidues(mol, predicted, chain_map, graft_flanks=1):
                         "new": False,
                         "resid": int(orig.resid[atoms[0]]),
                         "insertion": str(orig.insertion[atoms[0]]),
-                        "pred_atoms": pidx[pred_chain][pi] if cp != "-" else None,
+                        "pred_atoms": pidx[donor_chain][pi] if cp != "-" else None,
                     }
                 )
                 oi += 1
                 if cp != "-":
                     pi += 1
             elif cp != "-":  # new residue from predicted
-                slots.append({"frag": pred.copy(sel=pidx[pred_chain][pi]), "new": True})
+                slots.append({"frag": pred.copy(sel=pidx[donor_chain][pi]), "new": True})
                 pi += 1
 
         # Take the residues flanking each inserted run from the model too, so the
         # junction backbone is continuous (the modeller moved those flanks to close
         # the gap; keeping the original ones leaves a stretched, cappable bond).
-        _graft_run_flanks(slots, pred, graft_flanks)
+        # Place/graft each run, or drop runs that cannot be attached cleanly.
+        slots = _superpose_and_graft_runs(slots, pred, graft_flanks)
 
         # Number the new residues, preserving the originals, then stamp and append.
         _number_new_residues(slots)
@@ -581,7 +886,7 @@ def spliceModelledResidues(mol, predicted, chain_map, graft_flanks=1):
     return result, new_mask
 
 
-def detectModelledClashes(mol, new_mask, cutoff=2.0, targets="not protein"):
+def detectSplicedClashes(mol, new_mask, cutoff=2.0, targets="not protein"):
     """Report steric overlaps between the newly modelled residues and other atoms.
 
     aceboltz models from the protein template alone, so a modelled loop can be
