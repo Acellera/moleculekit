@@ -468,7 +468,61 @@ def _apply_template_mapping(
                 if delta:
                     atom.SetFormalCharge(atom.GetFormalCharge() - delta)
 
+        # Boundary atoms are protonated with only their intra-residue neighbours
+        # present, so AddHs(addCoords) has no idea where the external
+        # (cross-residue) partner sits and places their H into that direction -
+        # e.g. a stapled CE's H pointing straight at the partner CE. Add a
+        # temporary carbon "context" atom at each external partner's real
+        # position, bonded to the boundary atom, so AddHs places the H in the
+        # remaining tetrahedral/sp2 directions; strip the context atoms again
+        # afterwards (the real cross-residue bond is restored on ``mol`` below).
+        from rdkit.Geometry import Point3D
+
+        _str_to_bondtype = {
+            "1": Chem.BondType.SINGLE,
+            "2": Chem.BondType.DOUBLE,
+            "3": Chem.BondType.TRIPLE,
+            "ar": Chem.BondType.AROMATIC,
+            "mc": Chem.BondType.DATIVE,
+        }
+        n_before = rmol.GetNumAtoms()
+        rwm = Chem.RWMol(rmol)
+        context = []  # (context_atom_idx, external_global_idx)
+        for local_idx, ext_global_idx, bt in cross_bonds:
+            if local_idx not in rmol_to_smi or local_idx >= n_before:
+                continue
+            catom = Chem.Atom(6)  # carbon placeholder; only its position matters
+            catom.SetNoImplicit(True)
+            cidx = rwm.AddAtom(catom)
+            rwm.AddBond(
+                local_idx, cidx, _str_to_bondtype.get(bt, Chem.BondType.SINGLE)
+            )
+            context.append((cidx, ext_global_idx))
+
+        if context:
+            # AddAtom does not grow the existing conformer, so rebuild it to
+            # cover the context atoms before AddHs reads coordinates.
+            src_conf = rwm.GetConformer()
+            new_conf = Chem.Conformer(rwm.GetNumAtoms())
+            new_conf.Set3D(True)
+            for i in range(n_before):
+                new_conf.SetAtomPosition(i, src_conf.GetAtomPosition(i))
+            for cidx, ext_global_idx in context:
+                x, y, z = (float(v) for v in mol.coords[ext_global_idx, :, 0])
+                new_conf.SetAtomPosition(cidx, Point3D(x, y, z))
+            rwm.RemoveAllConformers()
+            rwm.AddConformer(new_conf, assignId=True)
+            rwm.UpdatePropertyCache(strict=False)
+        rmol = rwm.GetMol()
+
         rmol = Chem.AddHs(rmol, addCoords=True, onlyOnAtoms=onlyOnAtoms)
+
+        if context:
+            rw = Chem.RWMol(rmol)
+            for cidx, _ in sorted(context, reverse=True):
+                rw.RemoveAtom(cidx)
+            rmol = rw.GetMol()
+
         Chem.Kekulize(rmol)  # Sanitization ruins kekulization
 
     new_residue = Molecule.fromRDKitMol(rmol)
