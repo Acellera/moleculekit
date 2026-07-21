@@ -251,6 +251,157 @@ def _iterate_residues(mol: Molecule):
         yield prev_idx, curr_idx, next_idx, is_terminal, n_terminal, c_terminal
 
 
+def _place_carboxylate_oxygen(
+    mol: Molecule, c_idx: int, ca_idx: int, o_idx: int, bond_length: float = 1.25
+) -> Molecule:
+    """Build the second carboxyl oxygen (``OXT``) for a free C-terminal carbonyl.
+
+    The atom is placed in the CA-C-O plane, opposite the average of the C->CA
+    and C->O directions (idealised sp2 geometry).
+
+    Parameters
+    ----------
+    mol : moleculekit.molecule.Molecule
+        The molecule containing the carbonyl carbon.
+    c_idx : int
+        Index of the backbone carbonyl carbon.
+    ca_idx : int
+        Index of the CA atom bonded to the carbonyl carbon.
+    o_idx : int
+        Index of the existing carbonyl oxygen.
+    bond_length : float
+        C-OXT bond length in Angstrom.
+
+    Returns
+    -------
+    oxt : moleculekit.molecule.Molecule
+        A single-atom molecule for the new ``OXT``, inheriting the residue
+        identity and carrying a ``-1`` formal charge (deprotonated carboxylate).
+    """
+    center = mol.coords[c_idx, :, 0]
+    u_ca = mol.coords[ca_idx, :, 0] - center
+    u_ca = u_ca / np.linalg.norm(u_ca)
+    u_o = mol.coords[o_idx, :, 0] - center
+    u_o = u_o / np.linalg.norm(u_o)
+    direction = -(u_ca + u_o)
+    direction = direction / np.linalg.norm(direction)
+
+    oxt = mol.copy(sel=o_idx)
+    oxt.name[:] = "OXT"
+    oxt.element[:] = "O"
+    oxt.coords[:, :, 0] = center + direction * bond_length
+    if oxt.formalcharge is not None:
+        oxt.formalcharge[:] = -1
+    return oxt
+
+
+def _complete_free_cterm_carboxyls(mol: Molecule) -> int:
+    """Add the missing second carboxyl oxygen (``OXT``) to free C-terminal
+    carboxyls that a generic backbone template left under-coordinated.
+
+    Targets *non-canonical* residues only: a generic SMILES backbone template
+    can represent the backbone carbonyl as a single-oxygen aldehyde, which
+    leaves a free alpha-carboxyl as a 3-coordinate carbon (e.g. microcystin's
+    D-glutamate / D-methyl-aspartate, whose alpha-carboxyls are free branches).
+    Canonical protein residues are left to PDB2PQR, which handles their termini
+    and whose chain-gap awareness this bond-based check does not replicate.
+
+    A residue is completed when its backbone carbonyl ``C`` is bonded to a
+    single oxygen, no nitrogen (i.e. no peptide bond out) and no second oxygen
+    (no ``OXT``). Only a *neutral* gap is completed: a non-zero formal charge on
+    the carbonyl carbon or its oxygen signals an intentional state (a templated
+    carbanion, or a pre-formed ``[O-]`` carboxylate) and is left untouched. Any
+    aldehyde hydrogen the template placed on the carbon is removed. The molecule
+    must carry bonds; a bond-less molecule is skipped.
+
+    Parameters
+    ----------
+    mol : moleculekit.molecule.Molecule
+        The molecule to complete in place.
+
+    Returns
+    -------
+    n_completed : int
+        The number of carboxyl groups completed.
+    """
+    from moleculekit.residues import PROTEIN_RESIDUE_NAMES
+
+    if mol.bonds is None or len(mol.bonds) == 0:
+        return 0
+
+    _, res_idx = mol.getResidues(return_idx=True)
+    to_add = []  # (residue-key, OXT atom)
+    h_remove = []
+    for curr_idx in res_idx:
+        if str(mol.resname[curr_idx[0]]) in PROTEIN_RESIDUE_NAMES:
+            continue  # canonical residues (incl. their termini) are PDB2PQR's job
+        names = set(mol.name[curr_idx])
+        if not {"N", "CA", "C", "O"} <= names:
+            continue
+        c_idx = int(curr_idx[mol.name[curr_idx] == "C"][0])
+        ca_idx = int(curr_idx[mol.name[curr_idx] == "CA"][0])
+        neigh = mol.getNeighbors(c_idx)
+        if any(str(mol.element[j]) == "N" for j in neigh):
+            continue  # peptide-bonded carbonyl -> already complete
+        oxygens = [j for j in neigh if str(mol.element[j]) == "O"]
+        if len(oxygens) != 1:
+            continue  # not a lone carbonyl (0 = none, >=2 = already a carboxyl)
+        o_idx = oxygens[0]
+        # Intent guard: only complete a genuinely neutral (accidental) gap. A
+        # formal charge means the user templated the state deliberately.
+        fc = mol.formalcharge
+        if fc is not None and (
+            int(round(float(fc[c_idx]))) != 0 or int(round(float(fc[o_idx]))) != 0
+        ):
+            continue
+        key = (
+            int(mol.resid[c_idx]),
+            str(mol.insertion[c_idx]),
+            str(mol.chain[c_idx]),
+            str(mol.segid[c_idx]),
+        )
+        to_add.append((key, _place_carboxylate_oxygen(mol, c_idx, ca_idx, o_idx)))
+        h_remove.extend(j for j in neigh if str(mol.element[j]) == "H")
+
+    if not to_add:
+        return 0
+
+    # Drop the template's aldehyde H (if any) before inserting, so the carbonyl
+    # carbon ends up with the three carboxyl substituents (CA, =O, -OXT).
+    if h_remove:
+        mask = np.zeros(mol.numAtoms, dtype=bool)
+        mask[h_remove] = True
+        mol.remove(np.where(mask)[0], _logger=False)
+
+    for (resid, ins, ch, seg), oxt in to_add:
+        res_mask = (
+            (mol.resid == resid)
+            & (mol.insertion == ins)
+            & (mol.chain == ch)
+            & (mol.segid == seg)
+        )
+        o_sel = np.where(res_mask & (mol.name == "O"))[0]
+        insert_at = int(o_sel[0]) + 1 if len(o_sel) else mol.numAtoms
+        mol.insert(oxt, insert_at)
+        # Bond the new OXT to the residue's carbonyl C (indices are valid in the
+        # post-insert molecule). Downstream builders won't regenerate this bond.
+        res_mask = (
+            (mol.resid == resid)
+            & (mol.insertion == ins)
+            & (mol.chain == ch)
+            & (mol.segid == seg)
+        )
+        c_sel = np.where(res_mask & (mol.name == "C"))[0]
+        oxt_sel = np.where(res_mask & (mol.name == "OXT"))[0]
+        if len(c_sel) and len(oxt_sel):
+            mol.addBond(int(c_sel[0]), int(oxt_sel[0]), "1")
+
+    logger.info(
+        f"Completed {len(to_add)} free C-terminal carboxyl group(s) by adding OXT"
+    )
+    return len(to_add)
+
+
 def check_backbone(
     mol: Molecule,
     remove_broken_terminals: bool = True,

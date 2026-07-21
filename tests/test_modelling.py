@@ -119,6 +119,27 @@ def test_splice_tight_gap_uses_insertion_codes():
     assert set(spliced.resname[new_mask]) == {"HIS", "ILE"}
 
 
+def test_splice_grafts_flanking_residue_from_model():
+    # a loop modeller moves the residues flanking a gap to close the loop. graft_flanks=1
+    # must adopt the model's flank (keeping the original numbering) so the junction stays
+    # continuous; graft_flanks=0 keeps the original coordinates.
+    gapped = _chain_mol(["ALA", "GLY", "SER"], [1, 2, 5])
+    predicted = _chain_mol(["ALA", "GLY", "HIS", "ILE", "SER"], [1, 2, 3, 4, 5])
+    # displace the model's -1 flank (GLY, resid 2) by 10 A so it differs from the crystal
+    predicted.coords[predicted.resid == 2, 0, 0] += 10.0
+
+    def flank_x(m, resid):
+        return float(m.coords[(m.resid == resid) & (m.name == "CA"), 0, 0][0])
+
+    sp1, new1 = spliceModelledResidues(gapped, predicted, {"A": "A"}, graft_flanks=1)
+    # the flank keeps its original number (2), is NOT marked new, but took the model coords
+    assert not new1[sp1.resid == 2].any()
+    assert abs(flank_x(sp1, 2) - flank_x(predicted, 2)) < 1e-4
+
+    sp0, _ = spliceModelledResidues(gapped, predicted, {"A": "A"}, graft_flanks=0)
+    assert abs(flank_x(sp0, 2) - flank_x(gapped, 2)) < 1e-4  # original coords kept
+
+
 def test_splice_c_terminal_tail_numbers_upward():
     # observed ALA-GLY (1,2); full ALA-GLY-HIS-ILE adds a C-terminal tail.
     predicted = _chain_mol(["ALA", "GLY", "HIS", "ILE"], [1, 2, 3, 4])
@@ -248,11 +269,8 @@ def test_prepare_gap_modelling_input_raises_on_unlocatable_gap(tmp_path):
 # `1m17_gapped.pdb.gz` is the deposited crystal (protein chain A 672-995 with the
 # 965-976 loop `LPSPTDSNFYRA` missing, plus erlotinib and 20 crystallographic
 # waters, all on chain A). `1m17_full_sequence.txt` is the full deposited sequence.
-#
-# The splice round-trip needs a gap-filling prediction (`model.pdb`) whose loop is
-# BUILT into this gap - the 964->977 anchors are only ~7 A apart, so a loop lifted
-# rigidly from another model (AlphaFold, a homolog) cannot close it. Drop a real
-# aceboltz `gapmodel` output in as `1m17_model.pdb.gz` and remove the skip below.
+# `1m17_model.pdb.gz` is a real aceboltz `gapmodel` output (chain A, the full
+# construct: N-His-tag `GSHMAS`, the observed sequence with the loop, C-tail `QQG`).
 
 
 def _full_sequence():
@@ -278,31 +296,37 @@ def test_1m17_real_case_detects_gaps():
     assert {g["missing_seq"] for g in terminal} == {"GSHMAS", "QQG"}
 
 
-@pytest.mark.skipif(
-    not os.path.exists(
-        os.path.join(curr_dir, "test_modelling", "1m17_model.pdb.gz")
-    ),
-    reason="needs a real aceboltz gapmodel model.pdb (a rigid loop graft cannot "
-    "close this ~7A gap); drop 1m17_model.pdb.gz in to enable",
-)
 def test_1m17_real_case_splice_preserves_ligand_and_waters():
     gapped = Molecule(os.path.join(curr_dir, "test_modelling", "1m17_gapped.pdb.gz"))
     model = Molecule(os.path.join(curr_dir, "test_modelling", "1m17_model.pdb.gz"))
 
-    n_prot_res_before = len(np.unique(gapped.resid[gapped.atomselect("protein")]))
     assert int((gapped.resname == "AQ4").sum()) == 29   # erlotinib
     assert int(gapped.atomselect("water").sum()) == 20  # crystallographic waters
 
-    # aceboltz remaps the single template chain to "0"
-    spliced, new_mask = spliceModelledResidues(gapped, model, {"0": "A"})
+    spliced, new_mask = spliceModelledResidues(gapped, model, {"A": "A"})
 
-    # the 12-residue loop is inserted with the ORIGINAL author numbering 965-976
+    # the internal loop is inserted with the ORIGINAL author numbering 965-976
     new_ca = new_mask & (spliced.name == "CA")
-    assert [int(x) for x in spliced.resid[new_ca]] == list(range(965, 977))
-    assert list(spliced.resname[new_ca]) == [
+    loop = [(int(r), str(n)) for r, n in zip(spliced.resid[new_ca], spliced.resname[new_ca])
+            if 965 <= int(r) <= 976]
+    assert [r for r, _ in loop] == list(range(965, 977))
+    assert [n for _, n in loop] == [
         "LEU", "PRO", "SER", "PRO", "THR", "ASP",
         "SER", "ASN", "PHE", "TYR", "ARG", "ALA",
     ]  # LPSPTDSNFYRA
+
+    # the loop is covalently continuous with the flanking protein: the junction
+    # peptide bonds are real (~1.33 A), NOT the stretched bonds that get capped as a
+    # chain break. graft_flanks=1 takes the remodelled 964/977 flanks from the model.
+    prot = spliced.atomselect("protein")
+
+    def cn(r1, r2):
+        c = spliced.coords[(spliced.resid == r1) & (spliced.name == "C") & prot, :, 0]
+        n = spliced.coords[(spliced.resid == r2) & (spliced.name == "N") & prot, :, 0]
+        return float(np.linalg.norm(c[0] - n[0]))
+
+    assert cn(964, 965) < 1.6   # N-junction of the loop
+    assert cn(976, 977) < 1.6   # C-junction of the loop
 
     # erlotinib and every crystallographic water survive untouched, unmarked
     assert int((spliced.resname == "AQ4").sum()) == 29
@@ -310,9 +334,9 @@ def test_1m17_real_case_splice_preserves_ligand_and_waters():
     assert not new_mask[spliced.resname == "AQ4"].any()
     assert not new_mask[spliced.atomselect("water")].any()
 
-    # protein grew by exactly the 12 modelled residues
-    n_prot_res_after = len(np.unique(spliced.resid[spliced.atomselect("protein")]))
-    assert n_prot_res_after == n_prot_res_before + 12
+    # newly inserted residues carry the protein's own chain and segid
+    assert set(spliced.chain[new_mask]) == set(spliced.chain[prot & ~new_mask])
+    assert set(spliced.segid[new_mask]) == set(spliced.segid[prot & ~new_mask])
 
     # a correctly modelled loop must not clash with the bound drug (water clashes,
     # if any, would be reported for the caller to drop those waters)

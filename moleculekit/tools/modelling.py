@@ -417,15 +417,37 @@ def _number_new_residues(slots):
         i = j
 
 
-def spliceModelledResidues(mol, predicted, chain_map):
+def _graft_run_flanks(slots, pred, k):
+    """Replace the coordinates of the ``k`` original residues flanking each run of
+    newly inserted residues with the modeller's version of the same residue, keeping
+    the original numbering, so the backbone stays continuous across the junction."""
+    if k <= 0:
+        return
+    n = len(slots)
+    i = 0
+    while i < n:
+        if not slots[i]["new"]:
+            i += 1
+            continue
+        j = i
+        while j < n and slots[j]["new"]:
+            j += 1
+        for s in slots[max(0, i - k) : i] + slots[j : j + k]:
+            if not s["new"] and s.get("pred_atoms") is not None:
+                s["frag"] = pred.copy(sel=s["pred_atoms"])
+        i = j
+
+
+def spliceModelledResidues(mol, predicted, chain_map, graft_flanks=1):
     """Insert only the newly modelled residues from ``predicted`` into ``mol``.
 
-    All original atoms (protein + ligands/metals/cofactors) are kept exactly, at
-    their deposited coordinates AND with their deposited residue numbering. Each
-    modelled chain is rebuilt as its original residues (verbatim) plus the residues
-    present in ``predicted`` but absent from the original; each inserted residue is
-    numbered to fall between its flanking original residues, using the natural
-    integer gap where there is room and insertion codes otherwise.
+    All original atoms (protein + ligands/metals/cofactors) are kept at their
+    deposited coordinates AND with their deposited residue numbering, except the
+    ``graft_flanks`` residues on each side of a filled gap (see below). Each modelled
+    chain is rebuilt as its original residues plus the residues present in
+    ``predicted`` but absent from the original; each inserted residue is numbered to
+    fall between its flanking original residues, using the natural integer gap where
+    there is room and insertion codes otherwise.
 
     Parameters
     ----------
@@ -436,6 +458,15 @@ def spliceModelledResidues(mol, predicted, chain_map):
         structure).
     chain_map : dict
         ``{predicted_chain: original_chain}``.
+    graft_flanks : int
+        Number of original residues on each side of an inserted run to also take
+        from ``predicted`` (default 1). A loop modeller rebuilds the backbone of the
+        residues immediately flanking a gap so the new segment closes; keeping the
+        original flanking residue instead would leave a stretched junction peptide
+        bond, which downstream preparation reads as a chain break and caps. Grafting
+        the flanking residues from ``predicted`` (keeping their original numbering)
+        restores a continuous backbone. Set to 0 to keep every original residue
+        exactly.
 
     Returns
     -------
@@ -485,8 +516,10 @@ def spliceModelledResidues(mol, predicted, chain_map):
 
         segid = str(orig.segid[oidx[orig_chain][0][0]])
 
-        # Walk the alignment into ordered residue slots, tagging the new residues
-        # and remembering each original residue's deposited (resid, insertion).
+        # Walk the alignment into ordered residue slots, tagging the new residues and
+        # remembering each original residue's deposited (resid, insertion) plus, when
+        # it aligns to a predicted residue, that predicted residue's atoms (so a
+        # remodelled flank can be grafted below).
         slots = []
         pi = oi = 0
         for cp, co in zip(aln_p, aln_o):
@@ -498,6 +531,7 @@ def spliceModelledResidues(mol, predicted, chain_map):
                         "new": False,
                         "resid": int(orig.resid[atoms[0]]),
                         "insertion": str(orig.insertion[atoms[0]]),
+                        "pred_atoms": pidx[pred_chain][pi] if cp != "-" else None,
                     }
                 )
                 oi += 1
@@ -506,6 +540,11 @@ def spliceModelledResidues(mol, predicted, chain_map):
             elif cp != "-":  # new residue from predicted
                 slots.append({"frag": pred.copy(sel=pidx[pred_chain][pi]), "new": True})
                 pi += 1
+
+        # Take the residues flanking each inserted run from the model too, so the
+        # junction backbone is continuous (the modeller moved those flanks to close
+        # the gap; keeping the original ones leaves a stretched, cappable bond).
+        _graft_run_flanks(slots, pred, graft_flanks)
 
         # Number the new residues, preserving the originals, then stamp and append.
         _number_new_residues(slots)

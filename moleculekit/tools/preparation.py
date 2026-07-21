@@ -9,7 +9,7 @@ import numpy as np
 import os
 import itertools
 from moleculekit.molecule import Molecule, UniqueResidueID
-from moleculekit.tools.backbone import check_backbone
+from moleculekit.tools.backbone import check_backbone, _complete_free_cterm_carboxyls
 from moleculekit.util import sequenceID
 
 logger = logging.getLogger(__name__)
@@ -2124,6 +2124,14 @@ def systemPrepare(
     # cluster parameterization (orphan atoms type as ``DU`` in
     # antechamber); the assert below catches that case.
     _restore_termini_bonds(mol_out)
+    # Complete any free C-terminal carboxyl a generic backbone template left
+    # under-coordinated (adds the missing OXT + its C-OXT bond). Runs here,
+    # after the PDB2PQR roundtrip, rather than in check_backbone: PDB2PQR treats
+    # these residues as amino acids and rebuilds their hydrogens/geometry, so
+    # altering the atom set beforehand makes its rebuild choke; doing it now
+    # sidesteps PDB2PQR for the added atom. Only neutral, under-coordinated
+    # carboxyls are completed; a templated formal charge is left untouched.
+    _complete_free_cterm_carboxyls(mol_out)
     if detect_specs:
         _charge_nonstandard_termini(mol_out, detect_specs, pH)
 
