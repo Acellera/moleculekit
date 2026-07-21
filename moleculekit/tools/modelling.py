@@ -499,12 +499,27 @@ def spliceModelledResidues(mol, predicted, chain_map, graft_flanks=1):
             sel=f"chain '{orig_chain}' and protein",
             _logger=False,
         )
+        # The chain_map key is the predicted chain label from
+        # prepareGapModellingInput (the FASTA record index "0","1",...). aceboltz's
+        # model.pdb carries that label in the SEGID column, not chainID: gapmodel's
+        # minimize() round-trips through OpenMM's PDB writer, which relabels the
+        # chainID column by index (0->A, 1->B, ...) and preserves the real chain id
+        # in segid. Resolve the predicted residues by segid first, then fall back to
+        # chain for models that keep the label in the chain column (hand-built
+        # inputs / the synthetic test molecules).
         pseq, pidx = pred.getSequence(
-            dict_key="chain",
+            dict_key="segid",
             return_idx=True,
-            sel=f"chain '{pred_chain}' and protein",
+            sel=f"segid '{pred_chain}' and protein",
             _logger=False,
         )
+        if pred_chain not in pseq:
+            pseq, pidx = pred.getSequence(
+                dict_key="chain",
+                return_idx=True,
+                sel=f"chain '{pred_chain}' and protein",
+                _logger=False,
+            )
         if orig_chain not in oseq or pred_chain not in pseq:
             raise RuntimeError(
                 f"Could not align predicted chain '{pred_chain}' to original chain "

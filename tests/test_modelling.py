@@ -342,3 +342,35 @@ def test_1m17_real_case_splice_preserves_ligand_and_waters():
     # if any, would be reported for the caller to drop those waters)
     clashes = detectModelledClashes(spliced, new_mask)
     assert not any(c["target_resname"] == "AQ4" for c in clashes)
+
+
+def test_1m17_splice_accepts_workflow_chain_map(tmp_path):
+    # Regression: the splice must accept the chain_map that
+    # prepareGapModellingInput actually produces. Its keys are FASTA record
+    # indices ("0","1",...), not chain letters, so chain_map is {"0": "A"} here.
+    # aceboltz's model.pdb carries that index in the SEGID column (its minimize()
+    # step round-trips through OpenMM's PDB writer, which relabels the chainID
+    # column by index -> "A" and preserves the real chain id in segid). Resolving
+    # the predicted residues by chain alone therefore looked up chain "0", found
+    # nothing, and raised "no protein sequence"; the predicted chain must be
+    # matched by segid (falling back to chain).
+    gapped = Molecule(os.path.join(curr_dir, "test_modelling", "1m17_gapped.pdb.gz"))
+    model = Molecule(os.path.join(curr_dir, "test_modelling", "1m17_model.pdb.gz"))
+    sequences = {"A": _full_sequence()}
+
+    gaps, _ = detectSequenceGaps(gapped, sequences)
+    _, _, chain_map = prepareGapModellingInput(gapped, sequences, gaps, str(tmp_path))
+    # the workflow keys the predicted chain by its FASTA index, and the model
+    # file carries that same index in segid (with chain relabeled to "A").
+    assert chain_map == {"0": "A"}
+    assert set(model.segid) == {"0"}
+    assert set(model.chain) == {"A"}
+
+    # must not raise, and must fill all three gaps: GSHMAS (6) + the 965-976 loop
+    # LPSPTDSNFYRA (12) + QQG (3) = 21 residues.
+    spliced, new_mask = spliceModelledResidues(gapped, model, chain_map)
+    new_ca = new_mask & (spliced.name == "CA")
+    assert int(new_ca.sum()) == 21
+    # ligand and crystallographic waters survive the splice untouched
+    assert int((spliced.resname == "AQ4").sum()) == 29
+    assert int(spliced.atomselect("water").sum()) == 20
