@@ -295,6 +295,23 @@ def test_mmcif_ligand():
     assert mol.numFrames == 1
 
 
+def test_mmcif_ccp4_monomer_library():
+    # CCP4/Refmac monomer-library dictionary (e.g. from acedrg/grade): multiple
+    # data blocks (data_comp_list + data_comp_XXX), coordinates under
+    # _chem_comp_atom.x/.y/.z and bond orders under _chem_comp_bond.type.
+    mol = Molecule(os.path.join(curr_dir, "test_readers", "ATP.cif"))
+    assert mol.numAtoms == 43, mol.numAtoms
+    assert mol.numFrames == 1, mol.numFrames
+    assert mol.bonds.shape[0] == 45, mol.bonds.shape[0]
+    assert set(mol.resname) == {"ATP"}, set(mol.resname)
+    # Coordinates must actually be populated (not all-zero from a missed field).
+    assert not np.allclose(mol.coords, 0), "coordinates were not read"
+    # Elements parsed from _chem_comp_atom.type_symbol.
+    assert sorted(set(mol.element)) == ["C", "H", "N", "O", "P"], set(mol.element)
+    # Bond orders normalized from the SINGLE/DOUBLE _chem_comp_bond.type values.
+    assert set(mol.bondtype) == {"1", "2"}, set(mol.bondtype)
+
+
 def test_multiple_file_fileloc():
     mol = Molecule(
         os.path.join(curr_dir, "test_readers", "multi-traj", "structure.pdb")

@@ -2244,20 +2244,32 @@ def CIFread(
     }
     bondtype_mapping = {
         "SING": "1",
+        "SINGLE": "1",
         "DOUB": "2",
+        "DOUBLE": "2",
         "TRIP": "3",
+        "TRIPLE": "3",
         "QUAD": "4",
         "AROM": "ar",
+        "AROMATIC": "ar",
     }
 
     topo = Topology()
 
-    if len(myDataList) > 1:
+    # Some CIF dialects (e.g. CCP4/Refmac monomer-library dictionaries produced by
+    # acedrg/grade) split their content across several data blocks, prefixing the
+    # atom-bearing block (data_comp_XXX) with a metadata-only block (data_comp_list).
+    # Select the block that actually holds atoms rather than blindly taking the first.
+    atom_blocks = [
+        d
+        for d in myDataList
+        if "atom_site" in d.getObjNameList() or "chem_comp_atom" in d.getObjNameList()
+    ]
+    if len(atom_blocks) > 1:
         logger.warning(
-            "Multiple Data objects in mmCIF. Please report this issue to the moleculekit issue tracker"
+            "Multiple data blocks with atom data found in mmCIF. Using the first one."
         )
-
-    dataObj = myDataList[0]
+    dataObj = atom_blocks[0] if atom_blocks else myDataList[0]
 
     def fixDefault(val, dtype):
         if val in ("?", "."):
@@ -2302,12 +2314,16 @@ def CIFread(
     chem_comp_bond = {}
     if "chem_comp_bond" in dataObj.getObjNameList():
         bond_site = dataObj.getObj("chem_comp_bond")
+        # The PDB CCD dialect names the bond-order column value_order; the CCP4/Refmac
+        # monomer-library dialect names it type (with SINGLE/DOUBLE/... values).
+        bond_attrs = bond_site.getAttributeList()
+        order_field = "value_order" if "value_order" in bond_attrs else "type"
         for i in range(bond_site.getRowCount()):
             row = bond_site.getRow(i)
             resname = row[bond_site.getAttributeIndex("comp_id")]
             name1 = row[bond_site.getAttributeIndex("atom_id_1")]
             name2 = row[bond_site.getAttributeIndex("atom_id_2")]
-            bondtype = row[bond_site.getAttributeIndex("value_order")]
+            bondtype = row[bond_site.getAttributeIndex(order_field)]
             if resname not in chem_comp_bond:
                 chem_comp_bond[resname] = {}
             if name1 not in chem_comp_bond[resname]:
@@ -2516,6 +2532,15 @@ def CIFread(
                         row[atom_site.getAttributeIndex("pdbx_model_Cartn_z_ideal")],
                         float,
                     ),
+                ]
+            )
+        elif "x" in attrs:
+            # CCP4/Refmac monomer-library dialect stores coordinates as plain x/y/z.
+            coords.append(
+                [
+                    fixDefault(row[atom_site.getAttributeIndex("x")], float),
+                    fixDefault(row[atom_site.getAttributeIndex("y")], float),
+                    fixDefault(row[atom_site.getAttributeIndex("z")], float),
                 ]
             )
 

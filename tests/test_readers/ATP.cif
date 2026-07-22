@@ -1,0 +1,301 @@
+#
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ATP     ATP      "ADENOSINE-5'-TRIPHOSPHATE"     NON-POLYMER     43     31     .     
+#
+data_comp_ATP
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ATP     PG      P       P       0       44.662      45.077      58.117      
+ATP     O1G     O       O       0       43.261      45.625      58.004      
+ATP     O2G     O       OP      -1      45.679      45.923      57.392      
+ATP     O3G     O       OP      -1      45.059      44.781      59.542      
+ATP     PB      P       P       0       44.268      43.226      55.860      
+ATP     O1B     O       O       0       44.078      41.746      55.818      
+ATP     O2B     O       OP      -1      43.182      44.124      55.365      
+ATP     O3B     O       O2      0       44.645      43.653      57.356      
+ATP     PA      P       P       0       46.020      43.596      53.536      
+ATP     O1A     O       O       0       47.423      44.087      53.400      
+ATP     O2A     O       OP      -1      44.948      44.301      52.771      
+ATP     O3A     O       O2      0       45.624      43.591      55.090      
+ATP     "O5'"   O       O2      0       45.968      42.029      53.199      
+ATP     "C5'"   C       CH2     0       46.946      41.148      53.808      
+ATP     "C4'"   C       CH1     0       46.681      39.728      53.369      
+ATP     "O4'"   O       O2      0       46.924      39.620      51.943      
+ATP     "C3'"   C       CH1     0       47.567      38.650      54.004      
+ATP     "O3'"   O       OH1     0       46.881      37.406      54.075      
+ATP     "C2'"   C       CH1     0       48.756      38.611      53.041      
+ATP     "O2'"   O       OH1     0       49.451      37.383      53.067      
+ATP     "C1'"   C       CH1     0       48.066      38.829      51.697      
+ATP     N9      N       NT      0       48.916      39.514      50.718      
+ATP     C8      C       CR15    0       48.960      40.860      50.413      
+ATP     N7      N       NRD5    0       49.847      41.139      49.485      
+ATP     C5      C       CR56    0       50.421      39.915      49.166      
+ATP     C6      C       CR6     0       51.429      39.540      48.250      
+ATP     N6      N       NH2     0       52.063      40.400      47.457      
+ATP     N1      N       NRD6    0       51.760      38.223      48.186      
+ATP     C2      C       CR16    0       51.117      37.359      48.990      
+ATP     N3      N       NRD6    0       50.158      37.599      49.885      
+ATP     C4      C       CR56    0       49.852      38.909      49.924      
+ATP     "H5'1"  H       H       0       46.885      41.207      54.794      
+ATP     "H5'2"  H       H       0       47.858      41.415      53.533      
+ATP     "H4'"   H       H       0       45.738      39.523      53.548      
+ATP     "H3'"   H       H       0       47.862      38.933      54.908      
+ATP     "HO3'"  H       H       0       47.400      36.827      54.416      
+ATP     "H2'"   H       H       0       49.382      39.360      53.233      
+ATP     "HO2'"  H       H       0       50.094      37.416      52.513      
+ATP     "H1'"   H       H       0       47.793      37.957      51.333      
+ATP     H8      H       H       0       48.417      41.517      50.815      
+ATP     HN61    H       H       0       52.825      40.173      47.086      
+ATP     HN62    H       H       0       51.716      41.193      47.308      
+ATP     H2      H       H       0       51.382      36.456      48.909      
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.aromatic
+_chem_comp_bond.value_dist_nucleus
+_chem_comp_bond.value_dist_nucleus_esd
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ATP          PG         O1G      DOUBLE       n     1.509  0.0200     1.509  0.0200
+ATP          PG         O2G      SINGLE       n     1.509  0.0200     1.509  0.0200
+ATP          PG         O3G      SINGLE       n     1.509  0.0200     1.509  0.0200
+ATP          PG         O3B      SINGLE       n     1.614  0.0178     1.614  0.0178
+ATP          PB         O1B      DOUBLE       n     1.493  0.0157     1.493  0.0157
+ATP          PB         O2B      SINGLE       n     1.493  0.0157     1.493  0.0157
+ATP          PB         O3B      SINGLE       n     1.601  0.0114     1.601  0.0114
+ATP          PB         O3A      SINGLE       n     1.601  0.0114     1.601  0.0114
+ATP          PA         O1A      DOUBLE       n     1.493  0.0122     1.493  0.0122
+ATP          PA         O2A      SINGLE       n     1.493  0.0122     1.493  0.0122
+ATP          PA         O3A      SINGLE       n     1.604  0.0133     1.604  0.0133
+ATP          PA       "O5'"      SINGLE       n     1.604  0.0133     1.604  0.0133
+ATP       "O5'"       "C5'"      SINGLE       n     1.450  0.0166     1.450  0.0166
+ATP       "C5'"       "C4'"      SINGLE       n     1.509  0.0100     1.509  0.0100
+ATP       "C4'"       "O4'"      SINGLE       n     1.451  0.0100     1.451  0.0100
+ATP       "C4'"       "C3'"      SINGLE       n     1.535  0.0100     1.535  0.0100
+ATP       "O4'"       "C1'"      SINGLE       n     1.409  0.0100     1.409  0.0100
+ATP       "C3'"       "O3'"      SINGLE       n     1.422  0.0100     1.422  0.0100
+ATP       "C3'"       "C2'"      SINGLE       n     1.531  0.0100     1.531  0.0100
+ATP       "C2'"       "O2'"      SINGLE       n     1.411  0.0100     1.411  0.0100
+ATP       "C2'"       "C1'"      SINGLE       n     1.525  0.0100     1.525  0.0100
+ATP       "C1'"          N9      SINGLE       n     1.458  0.0200     1.458  0.0200
+ATP          N9          C8      SINGLE       y     1.372  0.0200     1.372  0.0200
+ATP          N9          C4      SINGLE       y     1.372  0.0100     1.372  0.0100
+ATP          C8          N7      DOUBLE       y     1.310  0.0100     1.310  0.0100
+ATP          N7          C5      SINGLE       y     1.388  0.0100     1.388  0.0100
+ATP          C5          C6      SINGLE       y     1.408  0.0100     1.408  0.0100
+ATP          C5          C4      DOUBLE       y     1.381  0.0100     1.381  0.0100
+ATP          C6          N6      SINGLE       n     1.330  0.0100     1.330  0.0100
+ATP          C6          N1      DOUBLE       y     1.354  0.0100     1.354  0.0100
+ATP          N1          C2      SINGLE       y     1.339  0.0100     1.339  0.0100
+ATP          C2          N3      DOUBLE       y     1.330  0.0100     1.330  0.0100
+ATP          N3          C4      SINGLE       y     1.343  0.0100     1.343  0.0100
+ATP       "C5'"      "H5'1"      SINGLE       n     1.089  0.0100     0.989  0.0200
+ATP       "C5'"      "H5'2"      SINGLE       n     1.089  0.0100     0.989  0.0200
+ATP       "C4'"       "H4'"      SINGLE       n     1.089  0.0100     0.981  0.0200
+ATP       "C3'"       "H3'"      SINGLE       n     1.089  0.0100     0.992  0.0200
+ATP       "O3'"      "HO3'"      SINGLE       n     0.970  0.0120     0.849  0.0200
+ATP       "C2'"       "H2'"      SINGLE       n     1.089  0.0100     0.994  0.0200
+ATP       "O2'"      "HO2'"      SINGLE       n     0.970  0.0120     0.849  0.0200
+ATP       "C1'"       "H1'"      SINGLE       n     1.089  0.0100     0.984  0.0200
+ATP          C8          H8      SINGLE       n     1.082  0.0130     0.942  0.0170
+ATP          N6        HN61      SINGLE       n     1.016  0.0100     0.877  0.0200
+ATP          N6        HN62      SINGLE       n     1.016  0.0100     0.877  0.0200
+ATP          C2          H2      SINGLE       n     1.082  0.0130     0.945  0.0200
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ATP         O1G          PG         O2G     112.716    1.50
+ATP         O1G          PG         O3G     112.716    1.50
+ATP         O1G          PG         O3B     105.965    2.38
+ATP         O2G          PG         O3G     112.716    1.50
+ATP         O2G          PG         O3B     105.965    2.38
+ATP         O3G          PG         O3B     105.965    2.38
+ATP         O1B          PB         O2B     119.630    1.50
+ATP         O1B          PB         O3B     108.678    2.29
+ATP         O1B          PB         O3A     108.678    2.29
+ATP         O2B          PB         O3B     108.678    2.29
+ATP         O2B          PB         O3A     108.678    2.29
+ATP         O3B          PB         O3A     100.890    2.10
+ATP          PG         O3B          PB     132.584    3.00
+ATP         O1A          PA         O2A     118.411    2.35
+ATP         O1A          PA         O3A     108.816    2.14
+ATP         O1A          PA       "O5'"     109.410    1.50
+ATP         O2A          PA         O3A     108.816    2.14
+ATP         O2A          PA       "O5'"     109.410    1.50
+ATP         O3A          PA       "O5'"     101.065    1.97
+ATP          PB         O3A          PA     132.542    3.00
+ATP          PA       "O5'"       "C5'"     118.553    2.41
+ATP       "O5'"       "C5'"       "C4'"     109.342    1.50
+ATP       "O5'"       "C5'"      "H5'1"     109.845    1.50
+ATP       "O5'"       "C5'"      "H5'2"     109.845    1.50
+ATP       "C4'"       "C5'"      "H5'1"     109.624    1.50
+ATP       "C4'"       "C5'"      "H5'2"     109.624    1.50
+ATP      "H5'1"       "C5'"      "H5'2"     108.472    1.50
+ATP       "C5'"       "C4'"       "O4'"     109.123    1.50
+ATP       "C5'"       "C4'"       "C3'"     116.008    1.52
+ATP       "C5'"       "C4'"       "H4'"     108.268    1.50
+ATP       "O4'"       "C4'"       "C3'"     105.388    1.50
+ATP       "O4'"       "C4'"       "H4'"     108.947    1.50
+ATP       "C3'"       "C4'"       "H4'"     109.363    1.86
+ATP       "C4'"       "O4'"       "C1'"     109.903    1.50
+ATP       "C4'"       "C3'"       "O3'"     111.281    2.46
+ATP       "C4'"       "C3'"       "C2'"     102.602    1.50
+ATP       "C4'"       "C3'"       "H3'"     110.452    2.54
+ATP       "O3'"       "C3'"       "C2'"     111.581    2.83
+ATP       "O3'"       "C3'"       "H3'"     110.380    1.67
+ATP       "C2'"       "C3'"       "H3'"     110.504    1.75
+ATP       "C3'"       "O3'"      "HO3'"     108.744    3.00
+ATP       "C3'"       "C2'"       "O2'"     112.782    2.45
+ATP       "C3'"       "C2'"       "C1'"     101.239    1.50
+ATP       "C3'"       "C2'"       "H2'"     110.596    1.51
+ATP       "O2'"       "C2'"       "C1'"     111.715    2.69
+ATP       "O2'"       "C2'"       "H2'"     110.448    1.97
+ATP       "C1'"       "C2'"       "H2'"     110.636    1.70
+ATP       "C2'"       "O2'"      "HO2'"     109.103    2.13
+ATP       "O4'"       "C1'"       "C2'"     106.047    1.50
+ATP       "O4'"       "C1'"          N9     108.167    1.51
+ATP       "O4'"       "C1'"       "H1'"     109.807    1.50
+ATP       "C2'"       "C1'"          N9     113.752    2.20
+ATP       "C2'"       "C1'"       "H1'"     109.015    1.50
+ATP          N9       "C1'"       "H1'"     109.246    1.50
+ATP       "C1'"          N9          C8     126.078    2.46
+ATP       "C1'"          N9          C4     125.158    1.54
+ATP          C8          N9          C4     107.594    1.50
+ATP          N9          C8          N7     112.130    1.94
+ATP          N9          C8          H8     124.701    2.19
+ATP          N7          C8          H8     123.170    1.50
+ATP          C8          N7          C5     103.927    1.50
+ATP          N7          C5          C6     132.145    1.50
+ATP          N7          C5          C4     110.588    1.50
+ATP          C6          C5          C4     117.267    1.50
+ATP          C5          C6          N6     123.792    1.50
+ATP          C5          C6          N1     117.409    1.50
+ATP          N6          C6          N1     118.799    1.50
+ATP          C6          N6        HN61     119.723    1.50
+ATP          C6          N6        HN62     119.723    1.50
+ATP        HN61          N6        HN62     120.554    1.88
+ATP          C6          N1          C2     118.521    1.50
+ATP          N1          C2          N3     129.332    1.50
+ATP          N1          C2          H2     115.313    1.50
+ATP          N3          C2          H2     115.355    1.50
+ATP          C2          N3          C4     110.982    1.50
+ATP          N9          C4          C5     107.666    1.69
+ATP          N9          C4          N3     125.845    1.50
+ATP          C5          C4          N3     126.489    1.50
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+ATP            sp3_sp3_27          PB         O3B          PG         O1G      60.000    10.0     3
+ATP            sp3_sp3_40       "C4'"       "C5'"       "O5'"          PA     180.000    10.0     3
+ATP            sp3_sp3_43       "O4'"       "C4'"       "C5'"       "O5'"     180.000    10.0     3
+ATP             sp3_sp3_2       "C5'"       "C4'"       "O4'"       "C1'"     -60.000    10.0     3
+ATP            sp3_sp3_56       "O3'"       "C3'"       "C4'"       "C5'"     180.000    10.0     3
+ATP             sp3_sp3_4       "C2'"       "C1'"       "O4'"       "C4'"     -60.000    10.0     3
+ATP            sp3_sp3_61       "C4'"       "C3'"       "O3'"      "HO3'"     180.000    10.0     3
+ATP            sp3_sp3_20       "O2'"       "C2'"       "C3'"       "O3'"     -60.000    10.0     3
+ATP            sp3_sp3_64       "C3'"       "C2'"       "O2'"      "HO2'"     180.000    10.0     3
+ATP             sp3_sp3_8       "O4'"       "C1'"       "C2'"       "O2'"     180.000    10.0     3
+ATP             sp2_sp3_1          C8          N9       "C1'"       "O4'"     150.000    10.0     6
+ATP              const_14          N7          C8          N9       "C1'"     180.000    10.0     2
+ATP              const_26          C5          C4          N9       "C1'"     180.000    10.0     2
+ATP              const_17          N9          C8          N7          C5       0.000    10.0     2
+ATP              const_20          C6          C5          N7          C8     180.000    10.0     2
+ATP       const_sp2_sp2_4          N7          C5          C6          N6       0.000     5.0     2
+ATP              const_21          N9          C4          C5          N7       0.000    10.0     2
+ATP             sp2_sp2_1          C5          C6          N6        HN61     180.000     5.0     2
+ATP       const_sp2_sp2_6          N6          C6          N1          C2     180.000     5.0     2
+ATP       const_sp2_sp2_7          N3          C2          N1          C6       0.000     5.0     2
+ATP       const_sp2_sp2_9          N1          C2          N3          C4       0.000     5.0     2
+ATP              const_12          N9          C4          N3          C2     180.000    10.0     2
+ATP            sp3_sp3_33          PA         O3A          PB         O1B      60.000    10.0     3
+ATP            sp3_sp3_30          PG         O3B          PB         O1B      60.000    10.0     3
+ATP            sp3_sp3_36          PB         O3A          PA         O1A      60.000    10.0     3
+ATP            sp3_sp3_39       "C5'"       "O5'"          PA         O1A      60.000    10.0     3
+loop_
+_chem_comp_chir.comp_id
+_chem_comp_chir.id
+_chem_comp_chir.atom_id_centre
+_chem_comp_chir.atom_id_1
+_chem_comp_chir.atom_id_2
+_chem_comp_chir.atom_id_3
+_chem_comp_chir.volume_sign
+ATP    chir_1    PG    O3B    O2G    O3G    both
+ATP    chir_2    PB    O3A    O3B    O2B    both
+ATP    chir_3    PA    O3A    "O5'"    O2A    both
+ATP    chir_4    "C4'"    "O4'"    "C3'"    "C5'"    negative
+ATP    chir_5    "C3'"    "O3'"    "C4'"    "C2'"    positive
+ATP    chir_6    "C2'"    "O2'"    "C1'"    "C3'"    negative
+ATP    chir_7    "C1'"    "O4'"    N9    "C2'"    negative
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+ATP    plan-1       "C1'"   0.020
+ATP    plan-1          C2   0.020
+ATP    plan-1          C4   0.020
+ATP    plan-1          C5   0.020
+ATP    plan-1          C6   0.020
+ATP    plan-1          C8   0.020
+ATP    plan-1          H2   0.020
+ATP    plan-1          H8   0.020
+ATP    plan-1          N1   0.020
+ATP    plan-1          N3   0.020
+ATP    plan-1          N6   0.020
+ATP    plan-1          N7   0.020
+ATP    plan-1          N9   0.020
+ATP    plan-2          C6   0.020
+ATP    plan-2        HN61   0.020
+ATP    plan-2        HN62   0.020
+ATP    plan-2          N6   0.020
+loop_
+_pdbx_chem_comp_descriptor.comp_id
+_pdbx_chem_comp_descriptor.type
+_pdbx_chem_comp_descriptor.program
+_pdbx_chem_comp_descriptor.program_version
+_pdbx_chem_comp_descriptor.descriptor
+ATP           SMILES              ACDLabs 10.04                                                                                                                                                 O=P(O)(O)OP(=O)(O)OP(=O)(O)OCC3OC(n2cnc1c(ncnc12)N)C(O)C3O
+ATP SMILES_CANONICAL               CACTVS 3.341                                                                                                                      Nc1ncnc2n(cnc12)[C@@H]3O[C@H](CO[P@](O)(=O)O[P@@](O)(=O)O[P](O)(O)=O)[C@@H](O)[C@H]3O
+ATP           SMILES               CACTVS 3.341                                                                                                                               Nc1ncnc2n(cnc12)[CH]3O[CH](CO[P](O)(=O)O[P](O)(=O)O[P](O)(O)=O)[CH](O)[CH]3O
+ATP SMILES_CANONICAL "OpenEye OEToolkits" 1.5.0                                                                                                                  c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CO[P@@](=O)(O)O[P@](=O)(O)OP(=O)(O)O)O)O)N
+ATP           SMILES "OpenEye OEToolkits" 1.5.0                                                                                                                                           c1nc(c2c(n1)n(cn2)C3C(C(C(O3)COP(=O)(O)OP(=O)(O)OP(=O)(O)O)O)O)N
+ATP            InChI                InChI  1.03 InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1
+ATP         InChIKey                InChI  1.03                                                                                                                                                                                ZKHQWZAMYRWXGA-KQYNXXCUSA-N
+loop_
+_pdbx_chem_comp_description_generator.comp_id
+_pdbx_chem_comp_description_generator.program_name
+_pdbx_chem_comp_description_generator.program_version
+_pdbx_chem_comp_description_generator.descriptor
+ATP acedrg               243         "dictionary generator"                  
+ATP acedrg_database      11          "data source"                           
+ATP rdkit                2017.03.2   "Chemoinformatics tool"
+ATP refmac5              5.8.0238    "optimization tool"                     
