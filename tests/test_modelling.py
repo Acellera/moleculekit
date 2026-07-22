@@ -89,6 +89,18 @@ def test_pair_donor_chains_override_resolves_segid():
     assert pairing == {"A": "A"}
 
 
+def test_pair_donor_chains_warns_on_unknown_override_target(caplog):
+    # chain_map targets original chain "Z", which the structure does not have: the
+    # override is silently unusable, so it must warn (and auto-pairing still runs).
+    orig = _chain_mol(["ALA", "GLY", "SER"], [1, 2, 5], chain="A", segid="P")
+    donor = _chain_mol(["ALA", "GLY", "HIS", "ILE", "SER"], [1, 2, 3, 4, 5],
+                       chain="A", segid="0")
+    with caplog.at_level("WARNING"):
+        pairing, unpaired = _pair_donor_chains(orig, donor, chain_map={"0": "Z"})
+    assert any("no such protein chain" in r.message for r in caplog.records)
+    assert pairing == {"A": "A"}   # real chain A still auto-pairs by sequence
+
+
 def test_detect_sequence_gaps_internal():
     # observed ALA GLY SER (resid 1,2,5) missing 2 residues (resid 3,4) -> internal gap
     m = _chain_mol(["ALA", "GLY", "SER"], [1, 2, 5])

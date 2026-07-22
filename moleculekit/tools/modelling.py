@@ -143,6 +143,16 @@ def _pair_donor_chains(orig, donor, chain_map=None, min_identity=0.95):
             )
         pinned[orig_chain] = dchain
 
+    # A chain_map whose original-chain target names no actual protein chain is a
+    # typo: it is never consulted below, so warn rather than let it vanish silently.
+    for orig_chain in pinned:
+        if orig_chain not in oseqs:
+            logger.warning(
+                f"chain_map pins a donor to original chain '{orig_chain}', but the "
+                "structure has no such protein chain; the override is ignored. "
+                f"Original protein chains are {sorted(oseqs)}."
+            )
+
     pairing, unpaired = {}, []
     for ochain, oseq in oseqs.items():
         if ochain in pinned:
