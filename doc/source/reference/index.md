@@ -118,6 +118,7 @@ moleculekit.tools.mutate
 moleculekit.tools.modelling
 moleculekit.tools.autosegment
 moleculekit.tools.backbone
+moleculekit.tools.atomnames
 moleculekit.tools.atomtyper
 moleculekit.tools.detect
 moleculekit.tools.docking

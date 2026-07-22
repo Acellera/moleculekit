@@ -142,5 +142,6 @@ The full pipeline — segment, mutate, prepare — is now complete.
 
 ## Next
 
+- [Filling missing loops from a homologous structure](05-filling-missing-loops.md)
 - [System-preparation pipeline](../../explanation/system-preparation-pipeline.md)
 - Back to the [system-prep index](index.md)

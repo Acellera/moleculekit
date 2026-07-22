@@ -53,6 +53,17 @@ print(specs)
 ```
 
 ```{code-cell} python
+from moleculekit.tools.nonstandard_residues import requiresTemplate
+
+# Which of the detected specs actually need a user-supplied template:
+[(s.resname, requiresTemplate(s)) for s in specs]
+```
+
+{py:func}`~moleculekit.tools.nonstandard_residues.requiresTemplate` tells you, per spec, whether you must supply a template;
+{py:func}`~moleculekit.tools.nonstandard_residues.residuesRequiringTemplate` (used in the [next tutorial](03-custom-residues-from-smiles.md))
+is the whole-molecule shortcut.
+
+```{code-cell} python
 :tags: [remove-input]
 show3d(mol)
 ```

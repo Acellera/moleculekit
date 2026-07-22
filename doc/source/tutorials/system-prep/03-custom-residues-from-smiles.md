@@ -54,6 +54,17 @@ sorted(set(s.resname for s in specs))
 
 Rather than eyeballing every residue name, {py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues` walks the bond graph and returns a spec for each residue that needs special handling. Here it flags the five non-canonical amino acids (`HRG`, `ALC`, `OIC`, `NLE`, `200`), a free `OLC` residue, and the two canonical residues (`GLU`, `LYS`) that form the isopeptide cyclization bond.
 
+Rather than filtering the spec list yourself, you can ask directly which resnames still need a template:
+
+```{code-cell} python
+from moleculekit.tools.nonstandard_residues import residuesRequiringTemplate
+
+# The resnames you must supply a SMILES/Molecule template for before systemPrepare:
+residuesRequiringTemplate(mol)
+```
+
+{py:func}`~moleculekit.tools.nonstandard_residues.residuesRequiringTemplate` is the direct way to ask which residue names still need a template from you; it returns only the residues `systemPrepare` cannot handle on its own, so anything it omits (canonical crosslink partners, and modified residues the force field already knows) needs no action. Here it flags the same five NCAAs found above, plus the free `OLC` lipid; the isopeptide partners `GLU` and `LYS` are correctly left out because `systemPrepare` handles that crosslink natively.
+
 `OLC` is monoolein — a monoacylglycerol lipid from lipidic-cubic-phase crystallization, not part of the system we want to model. Drop it from both the structure and the spec list before going further:
 
 ```{code-cell} python
@@ -98,14 +109,14 @@ The per-resname atom counts after templating — each NCAA now carries heavy ato
 
 ### Alternative: template from a reference Molecule
 
-If you already have the residue as a small reference structure that carries correct connectivity (for example an RCSB chemical-component CIF for the ligand), you can template from that {py:class}`~moleculekit.molecule.Molecule` instead of writing a SMILES string, using {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromMolecule`:
+If you already have the residue as a small reference structure that carries correct connectivity (for example an RCSB chemical-component CIF for the ligand), you can template from that {py:class}`~moleculekit.molecule.Molecule` instead of writing a SMILES string, using {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromMolecule`. The reference can come from any file format {py:class}`~moleculekit.molecule.Molecule` can read (SDF, mol2, CIF/PDBx, ...), as long as it carries formal charges and bond orders. Here we use the RCSB component CIF; an SDF exported from a cheminformatics tool works the same way:
 
 ```python
 ref = Molecule("HRG.cif")   # reference carrying correct bonds, bond orders, and formal charges
 mol.templateResidueFromMolecule("resname HRG", ref, addHs=True)
 ```
 
-The reference is matched to the residue by **atom name** (not by MCS, as with SMILES), so the two must share the same set of heavy-atom names and the reference's heavy-atom names must be unique. The bond orders and formal charges are copied straight from the reference: they must therefore already be correct in the template Molecule, because `templateResidueFromMolecule` transfers them verbatim and does not re-derive them. Everything else (`addHs`, `guessBonds`, automatic cross-residue bond handling, and per-copy templating) works exactly as in the SMILES variant.
+When the reference's heavy-atom names are unique and match the residue's, the reference is matched **by atom name** and its bond orders and formal charges are copied straight over. This is the unambiguous case for an RCSB component CIF, whose atom names already equal the deposited residue's. When the names do not match (for example a reference read from an SDF, whose atom names are only element symbols), the reference is matched by element and connectivity instead, as the SMILES variant does. Either way the bond orders and formal charges are taken verbatim from the reference, so they must already be correct in it: `templateResidueFromMolecule` transfers them and does not re-derive them. Everything else (`addHs`, `guessBonds`, automatic cross-residue bond handling, and per-copy templating) works exactly as in the SMILES variant.
 
 ## Step 4 — Run systemPrepare
 
@@ -127,7 +138,7 @@ The five NCAAs all survive the preparation pipeline with their full heavy-atom t
 - It removes any hydrogens already on the matched residue and re-adds them from the SMILES (`addHs=True`), so the hydrogen pattern is deterministic — no manual pre-stripping needed.
 - One SMILES per residue type; the templater handles every copy automatically and trims terminal atoms (OXT, terminal NH) for mid-chain residues.
 - Cross-residue covalent bonds — peptide bonds, glycosidic bonds, isopeptide bonds — are detected automatically; the boundary atom's H count is corrected so it is not over-protonated.
-- {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromMolecule` is the same operation with a reference {py:class}`~moleculekit.molecule.Molecule` (e.g. a CIF) as the template instead of a SMILES string. It matches by atom name rather than MCS and copies the reference's bond orders and formal charges verbatim, so those must already be correct in the reference.
+- {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromMolecule` is the same operation with a reference {py:class}`~moleculekit.molecule.Molecule` (e.g. a CIF) as the template instead of a SMILES string. It matches by atom name when the reference's names are unique and match the residue (ideal for a CIF), and falls back to element-and-connectivity matching otherwise (so an SDF works too); either way it copies the reference's bond orders and formal charges verbatim, so those must already be correct in the reference.
 
 ## Next
 
