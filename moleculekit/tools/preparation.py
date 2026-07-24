@@ -34,6 +34,97 @@ def _warn_if_contains_DUM(mol):
         )
 
 
+def _backfill_blank_chains(mol):
+    """Fill empty ``mol.chain`` entries from ``mol.segid`` in place so residue
+    identity is stable across the PDB2PQR round-trip.
+
+    PDB2PQR groups residues by chain id alone and relabels a blank chain to a
+    fresh letter, which changes a residue's identity and breaks the post-prep
+    lookup in :func:`_create_table`. Assigning the chains here, before PDB2PQR
+    sees the structure, keeps them fixed.
+
+    For each segid carrying a blank-chain atom: if that segid already has
+    exactly one chain on its other atoms, reuse it; if it has none, mint the
+    next unused chain letter (ordered ``A-Z a-z 0-9``, skipping letters already
+    present) for the whole segid group. Solvent is never forced to have a
+    chain: solvent that has a segid is still filled, segid-less solvent is left
+    blank (PDB2PQR preserves a blank chain for water). A non-solvent atom with a
+    blank chain and either an empty segid or a segid spanning more than one
+    chain cannot be resolved and raises.
+    """
+    import string
+
+    blank = mol.chain == ""
+    if not blank.any():
+        return
+
+    water = mol.atomselect("water")
+    used = {str(c) for c in np.unique(mol.chain) if str(c) != ""}
+    alphabet = list(
+        string.ascii_uppercase + string.ascii_lowercase + string.digits
+    )
+
+    def _next_free_chain():
+        for c in alphabet:
+            if c not in used:
+                used.add(c)
+                return c
+        raise RuntimeError(
+            "systemPrepare: ran out of chain identifiers while assigning chains "
+            "to residues with an empty chain field. Reduce the number of "
+            "segments before preparation."
+        )
+
+    # Distinct segids that carry a blank-chain atom, in first-appearance order,
+    # so the minted letters are deterministic.
+    seen_segids = []
+    for i in np.where(blank)[0]:
+        s = str(mol.segid[i])
+        if s not in seen_segids:
+            seen_segids.append(s)
+
+    ambiguous = np.zeros(mol.numAtoms, dtype=bool)
+    for s in seen_segids:
+        seg_mask = mol.segid == s
+        blank_seg = blank & seg_mask
+        if s == "":
+            ambiguous |= blank_seg  # solvent filtered out below
+            continue
+        existing = {
+            str(c)
+            for c in np.unique(mol.chain[seg_mask & ~blank])
+            if str(c) != ""
+        }
+        if len(existing) == 1:
+            mol.chain[blank_seg] = existing.pop()
+        elif len(existing) == 0:
+            mol.chain[blank_seg] = _next_free_chain()
+        else:
+            ambiguous |= blank_seg  # segid spans more than one chain
+    ambiguous &= ~water  # never force the user to assign a chain to water
+
+    if ambiguous.any():
+        residues = []
+        seen = set()
+        for j in np.where(ambiguous)[0]:
+            key = (
+                str(mol.resname[j]),
+                int(mol.resid[j]),
+                str(mol.insertion[j]),
+                str(mol.segid[j]),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            residues.append(f"{key[0]}:{key[1]}{key[2]} (segid {key[3]!r})")
+        raise RuntimeError(
+            "systemPrepare: the following residues have an empty chain and no "
+            "segid to derive one from, so a chain cannot be assigned "
+            "automatically. Assign a chain or segid to them before "
+            "preparation: " + ", ".join(residues)
+        )
+
+
 def _check_chain_and_segid(mol, verbose):
     import string
 
@@ -54,6 +145,14 @@ def _check_chain_and_segid(mol, verbose):
             list(string.digits + string.ascii_uppercase + string.ascii_lowercase)
         )
         mol.chain[:] = chain_alphabet[sequenceID(mol.segid)]
+
+    # Partial case: some atoms carry a chain, others do not. PDB2PQR would
+    # relabel the blank ones to fresh letters, changing their identity and
+    # breaking the post-prep residue lookup in _create_table. Fill the blanks
+    # deterministically from segid before PDB2PQR sees them.
+    if np.any(emptychains) and np.any(~emptychains):
+        mol = mol.copy()
+        _backfill_blank_chains(mol)
 
     if np.any(~emptysegids) and np.any(~emptychains):
         chainseq = sequenceID(mol.chain)

@@ -1747,3 +1747,95 @@ def test_charge_nonstandard_termini_canonical_nterm_no_surgery():
     assert mol.numAtoms == n_atoms_before, "no atoms added/removed (no RDKit surgery)"
     # Protons keep PDB2PQR's names - NOT re-added as H1/H2/H3.
     assert _n_h_names(mol) == ["H", "H2", "H3"]
+
+
+from moleculekit.tools.preparation import _backfill_blank_chains, _check_chain_and_segid
+
+
+def _mk_chain_mol(resnames, chains, segids):
+    """Build a minimal Molecule (one atom per residue) for chain-backfill tests."""
+    n = len(resnames)
+    mol = Molecule().empty(n)
+    mol.record[:] = "ATOM"
+    mol.name[:] = ["X"] * n
+    mol.resname[:] = resnames
+    mol.resid[:] = list(range(1, n + 1))
+    mol.chain[:] = chains
+    mol.segid[:] = segids
+    mol.element[:] = ["C"] * n
+    mol.coords = np.zeros((n, 3, 1), dtype=np.float32)
+    return mol
+
+
+def test_backfill_mints_new_letter_for_blank_segid_group():
+    mol = _mk_chain_mol(["ALA", "POPC"], ["A", ""], ["P", "MEMB"])
+    _backfill_blank_chains(mol)
+    assert list(mol.chain) == ["A", "B"]
+
+
+def test_backfill_reuses_existing_chain_of_segid():
+    mol = _mk_chain_mol(["ALA", "ALA"], ["A", ""], ["S", "S"])
+    _backfill_blank_chains(mol)
+    assert list(mol.chain) == ["A", "A"]
+
+
+def test_backfill_skips_used_letters_across_segids():
+    mol = _mk_chain_mol(
+        ["ALA", "POPC", "ALA", "NA"], ["A", "", "B", ""], ["P", "MEMB", "Q", "ION"]
+    )
+    _backfill_blank_chains(mol)
+    assert list(mol.chain) == ["A", "C", "B", "D"]
+
+
+def test_backfill_water_with_segid_filled_segidless_water_left_blank():
+    mol = _mk_chain_mol(["ALA", "HOH", "HOH"], ["A", "", ""], ["P", "W1", ""])
+    _backfill_blank_chains(mol)
+    assert list(mol.chain) == ["A", "B", ""]
+
+
+def test_backfill_errors_on_nonwater_blank_chain_and_segid():
+    mol = _mk_chain_mol(["ALA", "LIG"], ["A", ""], ["P", ""])
+    with pytest.raises(RuntimeError, match="LIG"):
+        _backfill_blank_chains(mol)
+
+
+def test_backfill_errors_on_segid_spanning_multiple_chains():
+    mol = _mk_chain_mol(["ALA", "ALA", "LIG"], ["A", "B", ""], ["S", "S", "S"])
+    with pytest.raises(RuntimeError, match="LIG"):
+        _backfill_blank_chains(mol)
+
+
+def test_check_chain_backfills_partial_and_preserves_input():
+    mol = _mk_chain_mol(["ALA", "POPC"], ["A", ""], ["P", "MEMB"])
+    out = _check_chain_and_segid(mol, verbose=False)
+    assert list(out.chain) == ["A", "B"]
+    # input is not mutated (a copy is returned)
+    assert list(mol.chain) == ["A", ""]
+
+
+def test_check_chain_all_empty_still_raises():
+    mol = _mk_chain_mol(["ALA", "LIG"], ["", ""], ["", ""])
+    with pytest.raises(RuntimeError, match="No chains or segments"):
+        _check_chain_and_segid(mol, verbose=False)
+
+
+def test_check_chain_fully_chained_unchanged():
+    mol = _mk_chain_mol(["ALA", "POPC"], ["A", "B"], ["P", "MEMB"])
+    out = _check_chain_and_segid(mol, verbose=False)
+    assert list(out.chain) == ["A", "B"]
+
+
+def test_backfill_blank_chain_lipid_end_to_end():
+    # Regression: a protein (chain A) plus a lipid that arrives with a blank
+    # chain and segid MEMB used to crash in _create_table because PDB2PQR
+    # relabelled the blank chain. It must now complete, with the lipid kept.
+    mol = Molecule(os.path.join(curr_dir, "test_systemprepare", "dialanine_popc_memb.pdb"))
+    assert (mol.chain[mol.resname == "POPC"] == "").all()  # precondition
+
+    pmol, _specs, df = systemPrepare(mol, return_details=True, verbose=False)
+
+    lip = df[df.resname == "POPC"]
+    assert len(lip) == 1
+    assert (lip.chain != "").all()  # lipid got a real chain, not left blank
+    # lipid atoms survive (renamed POP by the 3-char PDB round-trip)
+    assert int((pmol.resname == "POP").sum()) == int((mol.resname == "POPC").sum())
