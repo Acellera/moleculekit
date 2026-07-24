@@ -58,7 +58,11 @@ def _classify_residues(mol, sel_mask):
     residue_idx : list of np.ndarray
         Global atom indices for each residue, in the same order as ``cats``.
     """
-    from moleculekit.residues import WATER_RESIDUE_NAMES, CAP_RESIDUE_NAMES
+    from moleculekit.residues import (
+        WATER_RESIDUE_NAMES,
+        CAP_RESIDUE_NAMES,
+        LIPID_RESIDUE_NAMES,
+    )
     from moleculekit.periodictable import METAL_ELEMENTS
 
     ion_names = set(_sel["ion_resnames"])
@@ -84,6 +88,11 @@ def _classify_residues(mol, sel_mask):
             cats.append("water")
         elif resname in ion_names or (resname in metal_ion_names and len(idx) == 1):
             cats.append("ion")
+        elif resname in LIPID_RESIDUE_NAMES:
+            # Membrane lipids are individual molecules; collapse them into one
+            # segment (like water/ions) instead of one-per-molecule, so a bilayer
+            # of hundreds of lipids does not exhaust the chain-letter alphabet.
+            cats.append("lipid")
         elif resname in CAP_RESIDUE_NAMES:
             # A capping group joins the polymer traversal so the existing C-N
             # geometric link attaches it to the residue it caps.
@@ -221,8 +230,9 @@ def autoSegment(
     deleted from a sequence with an intact backbone stay in one segment, and the
     whole-system bond graph is never built.
 
-    Water residues collapse to a single segment, ions to a single segment, and
-    remaining ("other") molecules are split by bonded connected components.
+    Water residues collapse to a single segment, ions to a single segment, lipids
+    to a single segment, and remaining ("other") molecules are split by bonded
+    connected components.
 
     Parameters
     ----------
@@ -312,9 +322,9 @@ def autoSegment(
         seg_of_res[i] = seg_idx
         prev_i = i
 
-    # --- 2. Water: one segment; ions: one segment ---
+    # --- 2. Water: one segment; ions: one segment; lipids: one segment ---
     ion_seg = -1
-    for bucket in ("water", "ion"):
+    for bucket in ("water", "ion", "lipid"):
         members = [i for i, c in enumerate(cats) if c == bucket]
         if members:
             seg_idx += 1
