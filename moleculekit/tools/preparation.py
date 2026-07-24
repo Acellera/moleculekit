@@ -703,6 +703,45 @@ def _apply_patches_force_prot(biomolecule, force_protonation):
             biomolecule.apply_patch(force_protonation[key], res)
 
 
+def _stamp_pdblist_identity(pdblist, mol):
+    """Overwrite the identity and naming fields of PDB2PQR's parsed
+    ATOM/HETATM records with the true values from ``mol``.
+
+    ``systemPrepare`` hands the structure to PDB2PQR through an intermediate
+    PDB file, and the fixed-column text loses information on both ends:
+    PDB2PQR's parser truncates a 4-character resname to 3 (POPC to POP), and
+    moleculekit's writer truncates a resid over 9999 to its last 4 digits.
+    Both are repaired here by stamping the source ``mol`` values onto the
+    records before PDB2PQR builds its biomolecule. PDB2PQR's ``read_pdb``
+    keeps ATOM/HETATM records in file order, which equals ``mol`` atom order,
+    so the i-th record is the i-th atom.
+
+    PDB2PQR's own PROPKA serialization still writes res_seq in a 4-column
+    field, so a titratable protein residue with resid over 9999 may not
+    receive its PROPKA pKa. Lipids and waters are unaffected (not titrated by
+    that path).
+
+    Mutates the records in place.
+    """
+    from pdb2pqr import pdb
+
+    atom_records = [r for r in pdblist if isinstance(r, (pdb.ATOM, pdb.HETATM))]
+    if len(atom_records) != mol.numAtoms:
+        raise RuntimeError(
+            f"systemPrepare: PDB2PQR parsed {len(atom_records)} atom records "
+            f"but the molecule has {mol.numAtoms} atoms. Cannot map records to "
+            "atoms to preserve resnames and resids."
+        )
+    for i, rec in enumerate(atom_records):
+        rec.res_name = str(mol.resname[i])
+        rec.res_seq = int(mol.resid[i])
+        rec.name = str(mol.name[i])
+        rec.chain_id = str(mol.chain[i])
+        rec.ins_code = str(mol.insertion[i])
+        rec.seg_id = str(mol.segid[i])
+        rec.element = str(mol.element[i])
+
+
 def _pdb2pqr(
     pdb_file,
     definition,
@@ -722,6 +761,7 @@ def _pdb2pqr(
     no_titr=None,
     non_termini=None,
     propka_args=None,
+    src_mol=None,
 ):
     from pdb2pqr.io import get_molecule
     from pdb2pqr import forcefield, hydrogens
@@ -746,6 +786,12 @@ def _pdb2pqr(
         opt = False
 
     pdblist, _ = get_molecule(pdb_file)
+    # Restore identity/naming fields the fixed-column PDB round-trip mangled
+    # (4-char resnames truncated on read, resid > 9999 truncated on write)
+    # before PDB2PQR builds its biomolecule. Runs before drop_water so the
+    # record count still matches src_mol.
+    if src_mol is not None:
+        _stamp_pdblist_identity(pdblist, src_mol)
     if drop_water:
         pdblist = drop_water_func(pdblist)
 
@@ -2192,6 +2238,7 @@ def systemPrepare(
             non_termini=_non_termini,
             definition=definition,
             forcefield_=forcefield,
+            src_mol=mol_in,
         )
         mol_out = _biomolecule_to_molecule(biomolecule)
 

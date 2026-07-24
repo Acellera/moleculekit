@@ -1837,5 +1837,89 @@ def test_backfill_blank_chain_lipid_end_to_end():
     lip = df[df.resname == "POPC"]
     assert len(lip) == 1
     assert (lip.chain != "").all()  # lipid got a real chain, not left blank
-    # lipid atoms survive (renamed POP by the 3-char PDB round-trip)
-    assert int((pmol.resname == "POP").sum()) == int((mol.resname == "POPC").sum())
+    # lipid atoms survive as POPC (no longer truncated to POP by the fixed-
+    # column PDB round-trip, now that _stamp_pdblist_identity restores it)
+    assert int((pmol.resname == "POPC").sum()) == int((mol.resname == "POPC").sum())
+
+
+def test_stamp_pdblist_identity_overwrites_fields(tmp_path):
+    from pdb2pqr.io import get_molecule
+    from pdb2pqr import pdb as pqr_pdb
+    from moleculekit.tools.preparation import _stamp_pdblist_identity
+
+    # A structure PDB2PQR can parse: 3-char resname, small resid.
+    src = Molecule().empty(2)
+    src.record[:] = "ATOM"
+    src.name[:] = ["N", "CA"]
+    src.resname[:] = "POP"
+    src.resid[:] = [1, 2]
+    src.chain[:] = "A"
+    src.segid[:] = "L"
+    src.element[:] = ["N", "C"]
+    src.coords = np.zeros((2, 3, 1), dtype=np.float32)
+    p = str(tmp_path / "in.pdb")
+    src.write(p)
+    pdblist, _ = get_molecule(p)
+
+    # Stamp with the true values: 4-char resname and resid > 9999.
+    true = src.copy()
+    true.resname[:] = "POPC"
+    true.resid[:] = [10001, 10002]
+    _stamp_pdblist_identity(pdblist, true)
+
+    recs = [r for r in pdblist if isinstance(r, (pqr_pdb.ATOM, pqr_pdb.HETATM))]
+    assert [r.res_name for r in recs] == ["POPC", "POPC"]
+    assert [r.res_seq for r in recs] == [10001, 10002]
+    assert [r.chain_id for r in recs] == ["A", "A"]
+
+
+def test_stamp_pdblist_identity_count_mismatch_raises(tmp_path):
+    from pdb2pqr.io import get_molecule
+    from moleculekit.tools.preparation import _stamp_pdblist_identity
+
+    src = Molecule().empty(2)
+    src.record[:] = "ATOM"
+    src.name[:] = ["N", "CA"]
+    src.resname[:] = "ALA"
+    src.resid[:] = [1, 1]
+    src.chain[:] = "A"
+    src.segid[:] = "P"
+    src.element[:] = ["N", "C"]
+    src.coords = np.zeros((2, 3, 1), dtype=np.float32)
+    p = str(tmp_path / "in.pdb")
+    src.write(p)
+    pdblist, _ = get_molecule(p)
+
+    wrong = Molecule().empty(3)  # different atom count
+    wrong.resname[:] = "ALA"
+    wrong.resid[:] = 1
+    wrong.element[:] = "C"
+    wrong.coords = np.zeros((3, 3, 1), dtype=np.float32)
+    with pytest.raises(RuntimeError, match="Cannot map records"):
+        _stamp_pdblist_identity(pdblist, wrong)
+
+
+def test_lossless_handoff_preserves_4char_resname_and_large_resid():
+    # Regression: a 4-char lipid resname (POPC) and a resid > 9999 used to be
+    # lost to the intermediate PDB round-trip (POPC -> POP; 10001 -> 1),
+    # crashing _create_table with "Unable to find residue POPC 10001 ...".
+    mol = Molecule(
+        os.path.join(curr_dir, "test_systemprepare", "dialanine_popc_memb.pdb")
+    )
+    lip = mol.resname == "POPC"
+    assert int(lip.sum()) == 134  # fixture precondition
+    mol.chain[lip] = "B"      # give it a chain (isolate from chain-backfill)
+    mol.resid[lip] = 10001    # large resid, set in memory (not yet truncated)
+
+    pmol, _specs, df = systemPrepare(mol, return_details=True, verbose=False)
+
+    # 4-char resname survives end to end (would be POP without the fix)
+    assert int((pmol.resname == "POPC").sum()) == 134
+    assert not np.any(pmol.resname == "POP")
+    # large resid survives end to end (would be mangled to 1 without the fix)
+    assert set(pmol.resid[pmol.resname == "POPC"].tolist()) == {10001}
+    # details-table row for the lipid
+    lrow = df[df.resname == "POPC"]
+    assert len(lrow) == 1
+    assert lrow.protonation.iloc[0] == "POPC"
+    assert int(lrow.resid.iloc[0]) == 10001
