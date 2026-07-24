@@ -1842,6 +1842,39 @@ def test_backfill_blank_chain_lipid_end_to_end():
     assert int((pmol.resname == "POPC").sum()) == int((mol.resname == "POPC").sum())
 
 
+def test_lipid_bonds_preserved_through_preparation():
+    # PDB2PQR strips the bonds of pass-through residues. Unlike protein/nucleic
+    # residues (whose connectivity a builder regenerates from templates), a lipid's
+    # bonds cannot be rebuilt by the OpenMM builder from its whole-residue template,
+    # so systemPrepare must preserve the lipids' intra-residue bonds across the
+    # round-trip (_capture_bonds marks lipids for capture; _restore_bonds re-adds
+    # them by segid+resid+name, tolerating the chain PDB2PQR reassigns).
+    mol = Molecule(
+        os.path.join(curr_dir, "test_systemprepare", "dialanine_popc_memb.pdb")
+    )
+
+    def intra_popc_bonds(m):
+        if m.bonds is None or len(m.bonds) == 0:
+            return 0
+        idx = set(np.where(m.resname == "POPC")[0].tolist())
+        return sum(1 for a, b in m.bonds if int(a) in idx and int(b) in idx)
+
+    n_in = intra_popc_bonds(mol)
+    assert n_in == 133  # fixture precondition: one POPC, 134 atoms, 133 intra bonds
+
+    pmol, _specs, _df = systemPrepare(mol, return_details=True, verbose=False)
+
+    # Every intra-lipid bond survives.
+    assert intra_popc_bonds(pmol) == n_in
+    # And no spurious lipid<->non-lipid bonds were introduced (a distance-based
+    # re-guess on a packed bilayer would create these; a name-based restore must not).
+    lip_idx = set(np.where(pmol.resname == "POPC")[0].tolist())
+    crossing = sum(
+        1 for a, b in pmol.bonds if (int(a) in lip_idx) ^ (int(b) in lip_idx)
+    )
+    assert crossing == 0
+
+
 def test_stamp_pdblist_identity_overwrites_fields(tmp_path):
     from pdb2pqr.io import get_molecule
     from pdb2pqr import pdb as pqr_pdb

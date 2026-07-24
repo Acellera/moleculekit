@@ -1328,6 +1328,7 @@ def _capture_bonds(mol, detect_specs):
     """
     from moleculekit.molecule import UniqueAtomID
     from moleculekit.tools.nonstandard_residues import _CANONICAL_RESNAMES
+    from moleculekit.residues import LIPID_RESIDUE_NAMES
 
     if mol.bonds is None or len(mol.bonds) == 0:
         return []
@@ -1346,6 +1347,14 @@ def _capture_bonds(mol, detect_specs):
     # ``_template_renamed_canonical_residues`` may have already mutated
     # ``mol.resname`` while leaving ``spec.residue.resname`` untouched.
     needs_capture = ~np.isin(mol.resname, list(_CANONICAL_RESNAMES))
+    # Membrane lipids are canonical (so detectNonStandardResidues skips them), but
+    # PDB2PQR does not know their connectivity and strips it. Unlike protein/nucleic
+    # residues, a downstream OpenMM build cannot regenerate a non-standard residue's
+    # bonds from its templates (only tLeap can, via leaprc.lipid21), so their
+    # intra-residue bonds must survive the roundtrip. Preserve them here. Scoped to
+    # lipids for now to keep the blast radius small; other pass-through residues
+    # (unknown HETATMs) still rely on the builder rebuilding their bonds.
+    needs_capture |= np.isin(mol.resname, list(LIPID_RESIDUE_NAMES))
     if detect_specs:
         for spec in detect_specs:
             r = spec.residue
