@@ -714,7 +714,10 @@ def _stamp_pdblist_identity(pdblist, mol):
     Both are repaired here by stamping the source ``mol`` values onto the
     records before PDB2PQR builds its biomolecule. PDB2PQR's ``read_pdb``
     keeps ATOM/HETATM records in file order, which equals ``mol`` atom order,
-    so the i-th record is the i-th atom.
+    so the i-th record is the i-th atom. That positional mapping is verified
+    per atom by comparing coordinates (which round-trip through the PDB
+    unchanged): a mismatch means the records were reordered and stamping is
+    refused rather than silently assigning fields to the wrong atoms.
 
     PDB2PQR's own PROPKA serialization still writes res_seq in a 4-column
     field, so a titratable protein residue with resid over 9999 may not
@@ -733,6 +736,22 @@ def _stamp_pdblist_identity(pdblist, mol):
             "atoms to preserve resnames and resids."
         )
     for i, rec in enumerate(atom_records):
+        # Verify the record still sits at atom i before stamping. Coordinates
+        # are written at 3 decimals, so 1e-2 A clears the rounding by ~20x and
+        # is far below any interatomic spacing: a reorder or offset trips this,
+        # an in-order record never does.
+        cx, cy, cz = (float(v) for v in mol.coords[i, :, 0])
+        if (
+            abs(rec.x - cx) > 1e-2
+            or abs(rec.y - cy) > 1e-2
+            or abs(rec.z - cz) > 1e-2
+        ):
+            raise RuntimeError(
+                f"systemPrepare: PDB2PQR record {i} does not positionally "
+                f"match molecule atom {i} (coordinates differ); the "
+                "record/atom order assumption is violated. Refusing to stamp "
+                "to avoid corrupting the structure."
+            )
         rec.res_name = str(mol.resname[i])
         rec.res_seq = int(mol.resid[i])
         rec.name = str(mol.name[i])

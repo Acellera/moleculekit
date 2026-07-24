@@ -1923,3 +1923,34 @@ def test_lossless_handoff_preserves_4char_resname_and_large_resid():
     assert len(lrow) == 1
     assert lrow.protonation.iloc[0] == "POPC"
     assert int(lrow.resid.iloc[0]) == 10001
+
+
+def test_stamp_pdblist_identity_detects_reordering(tmp_path):
+    from pdb2pqr.io import get_molecule
+    from pdb2pqr import pdb as pqr_pdb
+    from moleculekit.tools.preparation import _stamp_pdblist_identity
+
+    # Two atoms at clearly distinct positions.
+    src = Molecule().empty(2)
+    src.record[:] = "ATOM"
+    src.name[:] = ["N", "CA"]
+    src.resname[:] = "ALA"
+    src.resid[:] = [1, 1]
+    src.chain[:] = "A"
+    src.segid[:] = "P"
+    src.element[:] = ["N", "C"]
+    src.coords = np.zeros((2, 3, 1), dtype=np.float32)
+    src.coords[0, :, 0] = [0.0, 0.0, 0.0]
+    src.coords[1, :, 0] = [5.0, 0.0, 0.0]
+    p = str(tmp_path / "in.pdb")
+    src.write(p)
+    pdblist, _ = get_molecule(p)
+
+    # Simulate the reader shuffling atoms: swap the two records' x coordinate
+    # so record i no longer sits at atom i. Stamping must refuse rather than
+    # mis-assign resnames/resids to the wrong atoms.
+    recs = [r for r in pdblist if isinstance(r, (pqr_pdb.ATOM, pqr_pdb.HETATM))]
+    recs[0].x, recs[1].x = recs[1].x, recs[0].x
+
+    with pytest.raises(RuntimeError, match="order"):
+        _stamp_pdblist_identity(pdblist, src)
