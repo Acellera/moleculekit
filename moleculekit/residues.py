@@ -8,6 +8,24 @@ with open(_sel, "r") as f:
     _sel = json.load(f)
 WATER_RESIDUE_NAMES = set(_sel["water_resnames"])
 
+# Membrane lipid resnames the AMBER lipid force field (leaprc.lipid21) parameterizes
+# at build time -- i.e. the compositions supported by the membrane builder. These are
+# recognized so callers can treat them as builder-handled rather than non-standard
+# residues needing user-driven parameterization (see detectNonStandardResidues).
+LIPID_RESIDUE_NAMES = frozenset(
+    {
+        "CHL1",
+        "DAPA", "DAPC", "DAPE", "DAPG", "DAPS",
+        "DLPA", "DLPC", "DLPE", "DLPG", "DLPS",
+        "DMPA", "DMPC", "DMPE", "DMPG", "DMPS",
+        "DOPA", "DOPC", "DOPE", "DOPG", "DOPS",
+        "DPPA", "DPPC", "DPPE", "DPPG", "DPPS",
+        "DSPA", "DSPC", "DSPE", "DSPG", "DSPS",
+        "POPA", "POPC", "POPE", "POPG", "POPS",
+        "SDPA", "SDPC", "SDPE", "SDPG", "SDPS",
+    }
+)
+
 _Residue = namedtuple(
     "Residue", ["full_name", "resname", "single_letter", "resname_variants"]
 )

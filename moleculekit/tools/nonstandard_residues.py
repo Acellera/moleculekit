@@ -47,6 +47,7 @@ from moleculekit.residues import (
     PROTEIN_RESIDUES,
     NUCLEIC_RESIDUES,
     WATER_RESIDUE_NAMES,
+    LIPID_RESIDUE_NAMES,
 )
 from moleculekit.tools._anchor_variants import lookup_anchor
 from moleculekit.periodictable import METAL_ELEMENTS
@@ -203,6 +204,9 @@ def _canonical_resnames():
         names.update(rr.resname_variants)
     names |= WATER_RESIDUE_NAMES
     names |= _ION_RESNAMES
+    # Membrane lipids are parameterized by the AMBER lipid force field at build
+    # time, so they need no user-driven parameterization -- skip them like ions.
+    names |= LIPID_RESIDUE_NAMES
     # Free monatomic metal ions (resname == element symbol, e.g. FE, NI) need
     # no parameterization any more than the ions already in _ION_RESNAMES;
     # without this they would fall through to a LigandSpec and antechamber
