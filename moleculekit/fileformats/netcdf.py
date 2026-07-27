@@ -46,7 +46,6 @@ from numpy import frombuffer, dtype, empty, array, asarray
 from numpy import little_endian as LITTLE_ENDIAN
 from functools import reduce
 
-
 IS_PYPY = python_implementation() == "PyPy"
 
 ABSENT = b"\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -64,8 +63,8 @@ FILL_BYTE = b"\x81"
 FILL_CHAR = b"\x00"
 FILL_SHORT = b"\x80\x01"
 FILL_INT = b"\x80\x00\x00\x01"
-FILL_FLOAT = b"\x7C\xF0\x00\x00"
-FILL_DOUBLE = b"\x47\x9E\x00\x00\x00\x00\x00\x00"
+FILL_FLOAT = b"\x7c\xf0\x00\x00"
+FILL_DOUBLE = b"\x47\x9e\x00\x00\x00\x00\x00\x00"
 
 TYPEMAP = {
     NC_BYTE: ("b", 1),

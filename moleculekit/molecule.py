@@ -262,7 +262,9 @@ class Molecule(object):
         "time": (0,),
     }
 
-    def __init__(self, filename: str | list | None = None, name: str | None = None, **kwargs):
+    def __init__(
+        self, filename: str | list | None = None, name: str | None = None, **kwargs
+    ):
         for field in self._dtypes:
             self.__dict__[field] = np.empty(
                 self._dims[field], dtype=self._dtypes[field]
@@ -1316,7 +1318,12 @@ class Molecule(object):
         """
         self.translateBy(vector, sel)
 
-    def rotateBy(self, M: np.ndarray, center: list | tuple | np.ndarray = (0, 0, 0), sel: str | np.ndarray = "all"):
+    def rotateBy(
+        self,
+        M: np.ndarray,
+        center: list | tuple | np.ndarray = (0, 0, 0),
+        sel: str | np.ndarray = "all",
+    ):
         """Rotate a selection of atoms by a given rotation matrix around a center
 
         Parameters
@@ -1370,7 +1377,13 @@ class Molecule(object):
 
         return dihedralAngle(self.coords[atom_quad, :, self.frame])
 
-    def setDihedral(self, atom_quad: list, radians: float, bonds: np.ndarray | None = None, guessBonds: bool = False):
+    def setDihedral(
+        self,
+        atom_quad: list,
+        radians: float,
+        bonds: np.ndarray | None = None,
+        guessBonds: bool = False,
+    ):
         """Sets the angle of a dihedral.
 
         Parameters
@@ -1416,7 +1429,9 @@ class Molecule(object):
         M = rotationMatrix(rotax, radians - rads)
         self.rotateBy(M, center=self.coords[atom_quad[1], :, self.frame], sel=right)
 
-    def center(self, loc: list | tuple | np.ndarray = (0, 0, 0), sel: str | np.ndarray = "all") -> np.ndarray:
+    def center(
+        self, loc: list | tuple | np.ndarray = (0, 0, 0), sel: str | np.ndarray = "all"
+    ) -> np.ndarray:
         """Moves the geometric center of the Molecule to a given location
 
         Parameters

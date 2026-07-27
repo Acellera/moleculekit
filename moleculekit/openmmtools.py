@@ -92,7 +92,9 @@ def _add_bonded_forces(system, mol, mobile_atom_indices, positions_nm):
         logger.debug(f"Added {angle_force.getNumAngles()} harmonic angle restraints")
 
 
-def minimize_soft_potential(mol: "Molecule", mobile_atom_indices: set | list, max_iterations: int = 200) -> bool:
+def minimize_soft_potential(
+    mol: "Molecule", mobile_atom_indices: set | list, max_iterations: int = 200
+) -> bool:
     """Run a soft-potential energy minimization on selected atoms.
 
     All other atoms are frozen (mass = 0).  Uses a soft repulsive

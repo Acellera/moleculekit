@@ -51,7 +51,12 @@ class MetricSecondaryStructure(Projection):
     in the topology.
     """
 
-    def __init__(self, sel: str | np.ndarray = "protein", simplified: bool = True, integer: bool = True):
+    def __init__(
+        self,
+        sel: str | np.ndarray = "protein",
+        simplified: bool = True,
+        integer: bool = True,
+    ):
         super().__init__()
 
         self.sel = sel

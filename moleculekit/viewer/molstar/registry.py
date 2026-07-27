@@ -15,9 +15,19 @@ if TYPE_CHECKING:
 
 
 _TOPO_FIELDS = (
-    "element", "name", "resname", "resid", "chain", "segid",
-    "insertion", "altloc", "record", "atomtype", "serial",
-    "bondtype", "formalcharge",
+    "element",
+    "name",
+    "resname",
+    "resid",
+    "chain",
+    "segid",
+    "insertion",
+    "altloc",
+    "record",
+    "atomtype",
+    "serial",
+    "bondtype",
+    "formalcharge",
 )
 
 
@@ -94,7 +104,7 @@ class Slot:
     """
 
     uuid: str
-    mol_ref: Any   # a Molecule (live, mutable reference held by the user)
+    mol_ref: Any  # a Molecule (live, mutable reference held by the user)
     snapshot: Any  # a Molecule (mol.copy() snapshot for diffing)
     topo_hash: str
     label: str

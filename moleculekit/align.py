@@ -23,7 +23,7 @@ def _pp_measure_fit(P, Q):
     """
     covariance = np.dot(P.T, Q)
 
-    (V, S, W) = np.linalg.svd(covariance)
+    V, S, W = np.linalg.svd(covariance)
     W = W.T
 
     E0 = np.sum(P * P) + np.sum(Q * Q)
@@ -310,9 +310,7 @@ def molTMalign(
         mapping, mol_chains = result
         ref_indices = _reorder_ref_atoms(ref, refsel, mapping, mol_chains)
         # Build reordered ref sequence from per-chain sequences in mol's chain order
-        ref_seq_by_chain = ref.getSequence(
-            dict_key="chain", sel=refsel, _logger=False
-        )
+        ref_seq_by_chain = ref.getSequence(dict_key="chain", sel=refsel, _logger=False)
         seqy = "".join(
             ref_seq_by_chain[mapping[mc]] for mc in mol_chains if mc in mapping
         )

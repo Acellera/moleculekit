@@ -259,9 +259,7 @@ def _try_strip_unmatched_terminals(
                     # ether O whose other side is alkyl, since stripping
                     # a non-terminal atom would disconnect the rest of
                     # the SMILES on next-pass MCS.
-                    sib_heavy = [
-                        n for n in sib.GetNeighbors() if n.GetSymbol() != "H"
-                    ]
+                    sib_heavy = [n for n in sib.GetNeighbors() if n.GetSymbol() != "H"]
                     if len(sib_heavy) != 1:
                         continue
                     sibling_oh_idx = sib.GetIdx()
@@ -283,11 +281,7 @@ def _try_strip_unmatched_terminals(
             continue
 
         # Signal B: carboxyl -OH on a non-terminal amino acid.
-        if (
-            atom.GetSymbol() == "O"
-            and neighbor.GetSymbol() == "C"
-            and no_oxt
-        ):
+        if atom.GetSymbol() == "O" and neighbor.GetSymbol() == "C" and no_oxt:
             has_double_o = any(
                 b.GetOtherAtom(neighbor).GetSymbol() == "O"
                 and b.GetBondType() == Chem.BondType.DOUBLE
@@ -313,7 +307,17 @@ def _try_strip_unmatched_terminals(
         return None
 
 
-_BONDTYPE_ORDER = {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "ar": 1, "un": 1, "mc": 1}
+_BONDTYPE_ORDER = {
+    "1": 1,
+    "2": 2,
+    "3": 3,
+    "4": 4,
+    "5": 5,
+    "6": 6,
+    "ar": 1,
+    "un": 1,
+    "mc": 1,
+}
 
 
 def _detect_interresidue_bonds(mol, selidx):
@@ -494,9 +498,7 @@ def _apply_template_mapping(
             catom = Chem.Atom(6)  # carbon placeholder; only its position matters
             catom.SetNoImplicit(True)
             cidx = rwm.AddAtom(catom)
-            rwm.AddBond(
-                local_idx, cidx, _str_to_bondtype.get(bt, Chem.BondType.SINGLE)
-            )
+            rwm.AddBond(local_idx, cidx, _str_to_bondtype.get(bt, Chem.BondType.SINGLE))
             context.append((cidx, ext_global_idx))
 
         if context:
@@ -638,9 +640,7 @@ def template_residue_from_smiles(
 
     selidx = mol.atomselect(sel, indexes=True)
     if len(selidx) == 0:
-        raise RuntimeError(
-            f"Selection {sel!r} matched no atoms; nothing to template."
-        )
+        raise RuntimeError(f"Selection {sel!r} matched no atoms; nothing to template.")
 
     # Selections that span multiple residues (e.g. ``resname MLE`` when
     # the same resname appears at three different resids, or three

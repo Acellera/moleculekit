@@ -141,7 +141,9 @@ def getChemblLigandByDrugName(drugname: str, returnSmile: bool = False):
     return sm
 
 
-def getChemblSimilarLigandsBySmile(smi: str, threshold: int = 85, returnSmiles: bool = False):
+def getChemblSimilarLigandsBySmile(
+    smi: str, threshold: int = 85, returnSmiles: bool = False
+):
     """
     Returns a SmallMolLib object of the ligands having a similarity with a smile of at least the specified
     threshold.. This molecules are retrieve from Chembl. It is possible to return also the list smiles.

@@ -222,7 +222,12 @@ class MolFactory(object):
 
     @staticmethod
     def construct(
-        topos, trajs, filename, frame, validateElements: bool = True, uniqueBonds: bool = False
+        topos,
+        trajs,
+        filename,
+        frame,
+        validateElements: bool = True,
+        uniqueBonds: bool = False,
     ):
         from moleculekit.molecule import Molecule
 
@@ -600,7 +605,13 @@ def GJFread(filename, frame=None, topoloc=None):
     return MolFactory.construct(topo, traj, filename, frame)
 
 
-def MOL2read(filename, frame=None, topoloc=None, singlemol: bool = True, validateElements: bool = True):
+def MOL2read(
+    filename,
+    frame=None,
+    topoloc=None,
+    singlemol: bool = True,
+    validateElements: bool = True,
+):
     from moleculekit.periodictable import periodictable
 
     topologies = []  # Allow reading of multi-mol MOL2 files
@@ -1140,12 +1151,32 @@ def PDBread(
     57              AChar          iCode2          Insertion code.
     """
     linkcolspecs = [
-        (12, 16), (16, 17), (17, 20), (21, 22), (22, 26), (26, 27),
-        (42, 46), (46, 47), (47, 50), (51, 52), (52, 56), (56, 57),
+        (12, 16),
+        (16, 17),
+        (17, 20),
+        (21, 22),
+        (22, 26),
+        (26, 27),
+        (42, 46),
+        (46, 47),
+        (47, 50),
+        (51, 52),
+        (52, 56),
+        (56, 57),
     ]
     linknames = (
-        "name1", "altloc1", "resname1", "chain1", "resid1", "insertion1",
-        "name2", "altloc2", "resname2", "chain2", "resid2", "insertion2",
+        "name1",
+        "altloc1",
+        "resname1",
+        "chain1",
+        "resid1",
+        "insertion1",
+        "name2",
+        "altloc2",
+        "resname2",
+        "chain2",
+        "resid2",
+        "insertion2",
     )
 
     """
@@ -1428,11 +1459,7 @@ def PDBread(
             # MolFactory normalizes it to "Ca"); compare case-insensitively.
             el_a = topo.element[a].strip().capitalize()
             el_b = topo.element[b].strip().capitalize()
-            bt = (
-                "mc"
-                if el_a in METAL_ELEMENTS or el_b in METAL_ELEMENTS
-                else "un"
-            )
+            bt = "mc" if el_a in METAL_ELEMENTS or el_b in METAL_ELEMENTS else "un"
             k = (min(a, b), max(a, b))
             if k in existing_lookup:
                 if bt == "mc":
@@ -2351,7 +2378,11 @@ def CIFread(
             row = struct_conn_site.getRow(i)
             conn_type_id = row[struct_conn_site.getAttributeIndex("conn_type_id")]
             is_metalc = conn_type_id == "metalc"
-            if covalentonly and not is_metalc and conn_type_id not in covalent_conn_types:
+            if (
+                covalentonly
+                and not is_metalc
+                and conn_type_id not in covalent_conn_types
+            ):
                 # Skip hydrog, disulf, saltbr, mismat (disulfides are recovered
                 # by distance-based bond guessing / systemPrepare's CYS->CYX rename).
                 continue

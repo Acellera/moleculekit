@@ -344,8 +344,7 @@ def _saturated_leaving_atom(rw, smi_local: int, mapped: set) -> "int | None":
     pt = Chem.GetPeriodicTable()
     atom = rw.GetAtomWithIdx(smi_local)
     explicit_valence = (
-        sum(b.GetBondTypeAsDouble() for b in atom.GetBonds())
-        + atom.GetNumExplicitHs()
+        sum(b.GetBondTypeAsDouble() for b in atom.GetBonds()) + atom.GetNumExplicitHs()
     )
     if explicit_valence + 1 <= max(pt.GetValenceList(atom.GetAtomicNum())):
         return None
@@ -495,9 +494,7 @@ def _capped_residue_rdkit(
         smi_local = res_to_smi[local_g]
         kind = _classify_junction(mol, local_g, partner_g, rw, smi_local)
         leaving = (
-            _saturated_leaving_atom(rw, smi_local, mapped)
-            if kind == "other"
-            else None
+            _saturated_leaving_atom(rw, smi_local, mapped) if kind == "other" else None
         )
         plan.append((smi_local, kind, str(mol.element[partner_g]), leaving))
 

@@ -141,7 +141,10 @@ def blast_search_opm(query: str, sequences: dict) -> list:
 
 
 def get_opm_pdb(
-    pdbid: str, keep: bool = False, keepaltloc: str = "A", validateElements: bool = False
+    pdbid: str,
+    keep: bool = False,
+    keepaltloc: str = "A",
+    validateElements: bool = False,
 ):
     """Download a membrane system from the OPM.
 

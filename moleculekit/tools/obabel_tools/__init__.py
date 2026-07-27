@@ -51,7 +51,9 @@ def getOpenBabelProperties(mol):
     return atoms
 
 
-def openbabelConvert(input_file: str, input_format: str, output_format: str, extra_args: tuple = ()):
+def openbabelConvert(
+    input_file: str, input_format: str, output_format: str, extra_args: tuple = ()
+):
     """
     Converts the file from the input format to the output format specified. It uses the openbabel features
 

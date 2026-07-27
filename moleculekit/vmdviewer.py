@@ -56,7 +56,9 @@ class VMD:
         ``--dispdev`` argument (e.g. ``'win'`` or ``'text'``).
     """
 
-    def __init__(self, vmd: str | None = None, host: str | None = None, dispdev: str = "win"):
+    def __init__(
+        self, vmd: str | None = None, host: str | None = None, dispdev: str = "win"
+    ):
         self.done = False
         vmd = getVMDpath(vmd=vmd)
 

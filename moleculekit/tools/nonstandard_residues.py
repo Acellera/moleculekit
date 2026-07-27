@@ -154,7 +154,6 @@ class LigandSpec:
     residue: UniqueResidueID
 
 
-
 PerResidueSpec = Union[
     ChainResidueSpec,
     ScaffoldSpec,
@@ -263,7 +262,9 @@ _JUNCTION_BOND_MAX_DIST = AMIDE_LINK_DIST
 _PHOSPHO_DONOR_NAMES = ("O3'", "O3*", "C3'", "C3*")
 
 
-def geometric_interresidue_links(mol, atoms_a, atoms_b, frame=None, amide_dist=None, phosphodiester_dist=None):
+def geometric_interresidue_links(
+    mol, atoms_a, atoms_b, frame=None, amide_dist=None, phosphodiester_dist=None
+):
     """Return the geometric inter-residue covalent links between two residues as a
     list of ``(idx_a, idx_b, kind)`` tuples, where ``idx_a`` is an atom of
     ``atoms_a``, ``idx_b`` an atom of ``atoms_b``, and ``kind`` is one of:
@@ -414,10 +415,7 @@ def infer_nonstandard_junction_bonds(mol, max_dist=_JUNCTION_BOND_MAX_DIST):
         prev, curr = residues[i], residues[i + 1]
         if prev.chain != curr.chain:
             continue
-        if (
-            prev.resname in _CANONICAL_RESNAMES
-            and curr.resname in _CANONICAL_RESNAMES
-        ):
+        if prev.resname in _CANONICAL_RESNAMES and curr.resname in _CANONICAL_RESNAMES:
             continue
         prev_idx = [int(a) for a in atom_idxs[i]]
         curr_idx = [int(a) for a in atom_idxs[i + 1]]
@@ -716,7 +714,9 @@ def detectNonStandardResidues(mol, guess_bonds=True):
     # residue we also track whether it has a peptide bond on its N side
     # and / or its C side, which feeds the chain-residency check and
     # the is_n_term / is_c_term flags on ChainResidueSpec.
-    nonpep_partners = [set() for _ in range(n_res)]  # res -> {(other_res, this_atom_name)}
+    nonpep_partners = [
+        set() for _ in range(n_res)
+    ]  # res -> {(other_res, this_atom_name)}
     peptide_attached_n = [False] * n_res
     peptide_attached_c = [False] * n_res
     has_peptide_bond = [False] * n_res
@@ -840,9 +840,7 @@ def detectNonStandardResidues(mol, guess_bonds=True):
     for r_idx in range(n_res):
         if not nonpep_partners[r_idx]:
             continue
-        anchor_partner = sorted(
-            nonpep_partners[r_idx], key=lambda p: (p[0], p[1])
-        )[0]
+        anchor_partner = sorted(nonpep_partners[r_idx], key=lambda p: (p[0], p[1]))[0]
         other_r, anchor_atom = anchor_partner
         anchor_atoms[r_idx] = anchor_atom
 

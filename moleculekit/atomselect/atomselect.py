@@ -272,7 +272,12 @@ def traverse_ast(mol, analysis, node):
 
 
 def atomselect(
-    mol: "Molecule", selection: str, bonds: np.ndarray, _debug: bool = False, _analysis=None, _return_ast=False
+    mol: "Molecule",
+    selection: str,
+    bonds: np.ndarray,
+    _debug: bool = False,
+    _analysis=None,
+    _return_ast=False,
 ):
     """Select atoms of a molecule using an atom selection language.
 

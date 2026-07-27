@@ -173,7 +173,9 @@ def isLigandDocked(prot: "Molecule", lig: "Molecule", threshold: float = 10) -> 
     return dist < threshold
 
 
-def areLigandsDocked(prot_file, sdf_file, threshold: float = 10, max_check: int | None = None):
+def areLigandsDocked(
+    prot_file, sdf_file, threshold: float = 10, max_check: int | None = None
+):
     """Check whether all ligands in an SDF file are docked to a protein.
 
     Each ligand in ``sdf_file`` is tested against the protein with

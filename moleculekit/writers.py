@@ -1203,9 +1203,7 @@ def CIFwrite(
                 # keep coordinates as native floats. The fp_precision
                 # truncation only matters for the text CIF output below.
                 data.append(
-                    float(coord)
-                    if return_data
-                    else f"{coord:.{fp_precision}f}"
+                    float(coord) if return_data else f"{coord:.{fp_precision}f}"
                 )
             elif mapping[at] == "frame":
                 data.append(1)

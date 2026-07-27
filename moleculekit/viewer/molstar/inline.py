@@ -109,11 +109,11 @@ def coords_to_dcd_bytes(mol: "Molecule") -> bytes:
     nframes = int(coords.shape[2])
 
     icntrl = [0] * 20
-    icntrl[0] = nframes   # NSET
-    icntrl[1] = 0         # ISTART
-    icntrl[2] = 1         # NSAVC
-    icntrl[3] = nframes   # NSTEP
-    icntrl[19] = 24       # CHARMM format marker
+    icntrl[0] = nframes  # NSET
+    icntrl[1] = 0  # ISTART
+    icntrl[2] = 1  # NSAVC
+    icntrl[3] = nframes  # NSTEP
+    icntrl[19] = 24  # CHARMM format marker
 
     buf = bytearray()
     # header record (4-byte 'CORD' + 20 int32 = 84 bytes)
@@ -158,8 +158,9 @@ class MolstarInlineView:
     ``payload`` dict (multi-frame trajectory path); exactly one is used.
     """
 
-    def __init__(self, *, height: int, mvsj: str | None = None,
-                 payload: dict | None = None):
+    def __init__(
+        self, *, height: int, mvsj: str | None = None, payload: dict | None = None
+    ):
         """Create an inline viewer.
 
         Parameters

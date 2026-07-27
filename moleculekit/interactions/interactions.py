@@ -116,7 +116,9 @@ def get_receptor_props(mol: "Molecule"):
     return props
 
 
-def get_donors_acceptors(mol: "Molecule", exclude_water: bool = True, exclude_backbone: bool = False):
+def get_donors_acceptors(
+    mol: "Molecule", exclude_water: bool = True, exclude_backbone: bool = False
+):
     if not isProteinProtonated(mol):
         raise RuntimeError(
             "The protein seems to not be protonated. You must provide a protonated system for H-bonds to be detected."

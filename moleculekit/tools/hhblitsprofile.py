@@ -14,7 +14,9 @@ except ImportError:
     print("Pandas is not installed. Please install it with `conda install pandas`")
 
 
-def getSequenceProfile(sequence: str, hhblits: str, hhblitsdb: str, ncpu: int = 6, niter: int = 4):
+def getSequenceProfile(
+    sequence: str, hhblits: str, hhblitsdb: str, ncpu: int = 6, niter: int = 4
+):
     """Calculates the sequence profile of a protein sequence using HHBlits
 
     File description and unit conversions taken from section 6 https://hpc.nih.gov/apps/hhsuite-userguide.pdf

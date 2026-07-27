@@ -23,9 +23,7 @@ def _reorder_residue_atoms(mol, resid):
     # Reorder atoms. AMBER order is: N H CA HA [sidechain] C O
     # the H atom will get added later. HA2 / HA3 cover the glycine-like CH2
     # alpha carbon (e.g. GLY, sarcosine).
-    first_bbatoms = [
-        _get_idx(mol, x, resid) for x in ["N", "CA", "HA", "HA2", "HA3"]
-    ]
+    first_bbatoms = [_get_idx(mol, x, resid) for x in ["N", "CA", "HA", "HA2", "HA3"]]
     first_bbatoms = [x for x in first_bbatoms if x is not None]
     last_bbatoms = [_get_idx(mol, x, resid) for x in ["C", "O"]]
     last_bbatoms = [x for x in last_bbatoms if x is not None]
@@ -263,13 +261,11 @@ def _mol_to_xml_def(mol: Molecule, outfile: str):
 
         for i in range(mol.numAtoms):
             f.write("    <atom>")
-            f.write(
-                f"""
+            f.write(f"""
       <name>{mol.name[i]}</name>
       <x>{mol.coords[i, 0, 0]:.3f}</x>
       <y>{mol.coords[i, 1, 0]:.3f}</y>
-      <z>{mol.coords[i, 2, 0]:.3f}</z>\n"""
-            )
+      <z>{mol.coords[i, 2, 0]:.3f}</z>\n""")
             atombonds = mol.bonds[np.any(mol.bonds == i, axis=1), :].flatten()
             for b in sorted(atombonds):
                 if b == i:

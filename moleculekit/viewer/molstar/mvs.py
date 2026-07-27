@@ -20,14 +20,57 @@ BALL_AND_STICK_SIZE_FACTOR = 0.6
 MIN_CARTOON_RESIDUES = 6
 _BALL_AND_STICK_SELECTORS = ("ligand", "ion", "water", "branched")
 
-STANDARD_POLYMER_RESNAMES = frozenset({
-    "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
-    "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL",
-    "HID", "HIE", "HIP", "HSD", "HSE", "HSP", "CYX", "CYM", "ASH", "GLH",
-    "LYN", "ARN", "TYM",
-    "A", "U", "G", "C", "T", "DA", "DT", "DG", "DC", "DU", "RA", "RU",
-    "RG", "RC",
-})
+STANDARD_POLYMER_RESNAMES = frozenset(
+    {
+        "ALA",
+        "ARG",
+        "ASN",
+        "ASP",
+        "CYS",
+        "GLN",
+        "GLU",
+        "GLY",
+        "HIS",
+        "ILE",
+        "LEU",
+        "LYS",
+        "MET",
+        "PHE",
+        "PRO",
+        "SER",
+        "THR",
+        "TRP",
+        "TYR",
+        "VAL",
+        "HID",
+        "HIE",
+        "HIP",
+        "HSD",
+        "HSE",
+        "HSP",
+        "CYX",
+        "CYM",
+        "ASH",
+        "GLH",
+        "LYN",
+        "ARN",
+        "TYM",
+        "A",
+        "U",
+        "G",
+        "C",
+        "T",
+        "DA",
+        "DT",
+        "DG",
+        "DC",
+        "DU",
+        "RA",
+        "RU",
+        "RG",
+        "RC",
+    }
+)
 
 
 def _import_mvs():
@@ -133,16 +176,14 @@ def build_mvs(
         builder.download(url=structure_url).parse(format="bcif").model_structure()
     )
     if _count_standard_polymer_residues(mol) >= MIN_CARTOON_RESIDUES:
-        structure.component(selector="polymer").representation(
-            type="cartoon"
-        ).color(custom={"molstar_color_theme_name": "secondary-structure"})
+        structure.component(selector="polymer").representation(type="cartoon").color(
+            custom={"molstar_color_theme_name": "secondary-structure"}
+        )
         for selector in _BALL_AND_STICK_SELECTORS:
             structure.component(selector=selector).representation(
                 type="ball_and_stick", size_factor=BALL_AND_STICK_SIZE_FACTOR
             ).color(custom={"molstar_color_theme_name": "element-symbol"})
-        other_resnames = sorted(
-            set(mol.resname.tolist()) - STANDARD_POLYMER_RESNAMES
-        )
+        other_resnames = sorted(set(mol.resname.tolist()) - STANDARD_POLYMER_RESNAMES)
         if other_resnames:
             extra = [ComponentExpression(label_comp_id=rn) for rn in other_resnames]
             structure.component(selector=extra).representation(

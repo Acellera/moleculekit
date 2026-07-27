@@ -175,8 +175,11 @@ def _polymer_linked(
                 if float(np.linalg.norm(c3 - p)) <= nucleic_fallback_cutoff:
                     return True
         return _has_deposited_backbone_bond(
-            mol, prev_idx, curr_idx,
-            prev_names=("O3'", "O3*", "C3'", "C3*"), curr_names=("P",),
+            mol,
+            prev_idx,
+            curr_idx,
+            prev_names=("O3'", "O3*", "C3'", "C3*"),
+            curr_names=("P",),
         )
 
     return False
@@ -469,6 +472,4 @@ def autoSegment2(
             "autoSegment2 is deprecated; forwarding to autoSegment. "
             "Update your code to call autoSegment directly."
         )
-    return autoSegment(
-        mol, sel=sel, basename=basename, fields=fields, _logger=_logger
-    )
+    return autoSegment(mol, sel=sel, basename=basename, fields=fields, _logger=_logger)

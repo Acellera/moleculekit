@@ -53,9 +53,7 @@ class VMDGraphicObject(object):
             foreach i $htmd_graphics({0:d}) {{ graphics $htmd_tmp delete $i }}
             unset htmd_graphics({0:d})
             unset htmd_graphics_mol({0:d})
-        """.format(
-            n
-        )
+        """.format(n)
         vmd.send(cmd)
         self.valid = False
 
@@ -82,7 +80,9 @@ class VMDGraphicObject(object):
 
 
 class VMDConvexHull(VMDGraphicObject):
-    def __init__(self, mol: "Molecule", style: str = "", preamble: str = "", solid: bool = False):
+    def __init__(
+        self, mol: "Molecule", style: str = "", preamble: str = "", solid: bool = False
+    ):
         """Display the convex hull of the given molecule.
 
         For preamble and color, see http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node129.html
@@ -299,7 +299,14 @@ class VMDText(VMDGraphicObject):
 
 class VMDIsosurface(VMDGraphicObject):
     def __init__(
-        self, arr: np.ndarray, vecMin: np.ndarray, vecRes: np.ndarray, color: int = 8, isovalue: float = 0.5, name: str | None = None, draw: str = "solid"
+        self,
+        arr: np.ndarray,
+        vecMin: np.ndarray,
+        vecRes: np.ndarray,
+        color: int = 8,
+        isovalue: float = 0.5,
+        name: str | None = None,
+        draw: str = "solid",
     ):
         """Displays an isosurface in VMD
 

@@ -50,7 +50,15 @@ class Dihedral:
     >>> d = Dihedral(atom1, atom2, atom3, atom4)
     """
 
-    def __init__(self, atom1: dict, atom2: dict, atom3: dict, atom4: dict, dihedraltype: str | None = None, check_valid: bool = True):
+    def __init__(
+        self,
+        atom1: dict,
+        atom2: dict,
+        atom3: dict,
+        atom4: dict,
+        dihedraltype: str | None = None,
+        check_valid: bool = True,
+    ):
         if check_valid:
             valid_keys = ("name", "resid", "segid", "insertion", "chain")
             default_values = {
@@ -111,7 +119,9 @@ class Dihedral:
         return descr
 
     @staticmethod
-    def dihedralsToIndexes(mol: "Molecule", dihedrals: list, sel: str | np.ndarray = "all"):
+    def dihedralsToIndexes(
+        mol: "Molecule", dihedrals: list, sel: str | np.ndarray = "all"
+    ):
         """Converts dihedral objects to atom indexes of a given Molecule
 
         Parameters

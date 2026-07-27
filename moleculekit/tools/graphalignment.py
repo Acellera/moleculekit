@@ -51,7 +51,11 @@ def createProductGraph(G, H, tolerance: float, fields):
 
 
 def compareGraphs(
-    G, H, fields: tuple = ("element",), tolerance: float = 0.5, returnmatching: bool = False
+    G,
+    H,
+    fields: tuple = ("element",),
+    tolerance: float = 0.5,
+    returnmatching: bool = False,
 ):
     """Computes a similarity score between two molecular graphs.
 

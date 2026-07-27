@@ -170,9 +170,17 @@ class Representations:
             "index": "residue-id",
         }
         hexcolors = {
-            0: "#0000ff", 1: "#ff0000", 2: "#333333", 3: "#ff6600",
-            4: "#ffff00", 5: "#4c4d00", 6: "#b2b2cc", 7: "#33cc33",
-            8: "#ffffff", 9: "#ff3399", 10: "#33ccff",
+            0: "#0000ff",
+            1: "#ff0000",
+            2: "#333333",
+            3: "#ff6600",
+            4: "#ffff00",
+            5: "#4c4d00",
+            6: "#b2b2cc",
+            7: "#33cc33",
+            8: "#ffffff",
+            9: "#ff3399",
+            10: "#33ccff",
         }
         indices = [int(i) for i in self._mol.atomselect(rep.sel, indexes=True)]
         if not indices:

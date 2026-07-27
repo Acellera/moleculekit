@@ -11,9 +11,21 @@ if TYPE_CHECKING:
     from moleculekit.molecule import Molecule
 
 _ATOM_FIELDS = (
-    "altloc", "atomtype", "beta", "chain", "charge", "element",
-    "formalcharge", "insertion", "name", "occupancy", "record",
-    "resid", "resname", "segid", "serial",
+    "altloc",
+    "atomtype",
+    "beta",
+    "chain",
+    "charge",
+    "element",
+    "formalcharge",
+    "insertion",
+    "name",
+    "occupancy",
+    "record",
+    "resid",
+    "resname",
+    "segid",
+    "serial",
 )
 
 

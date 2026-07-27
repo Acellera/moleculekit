@@ -11,7 +11,6 @@ from moleculekit.smallmol.smallmol import SmallMol
 import gzip
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -89,7 +88,14 @@ def smiReader(file, removeHs: bool, fixHs: bool, isgzip: bool = False, _logger=T
     return mols
 
 
-def sdfReader(file, removeHs: bool, fixHs: bool, sanitize: bool, isgzip: bool = False, _logger=True):
+def sdfReader(
+    file,
+    removeHs: bool,
+    fixHs: bool,
+    sanitize: bool,
+    isgzip: bool = False,
+    _logger=True,
+):
     from tqdm import tqdm
     from moleculekit.util import tempname
 
@@ -298,7 +304,10 @@ class SmallMolLib(object):
         f.close()
 
     def appendSmallLib(
-        self, smallLib: "SmallMolLib", strictField: bool = False, strictDirection: int = 1
+        self,
+        smallLib: "SmallMolLib",
+        strictField: bool = False,
+        strictDirection: int = 1,
     ):
         """
         Merge two moleculekit.smallmol.smallmol.SmallMolLib objects
@@ -317,7 +326,10 @@ class SmallMolLib(object):
         self._mols += smallLib._mols
 
     def appendSmallMol(
-        self, smallmolecule: "SmallMol", strictField: bool = False, strictDirection: int = 0
+        self,
+        smallmolecule: "SmallMol",
+        strictField: bool = False,
+        strictDirection: int = 0,
     ):
         """
         Adds a new moleculekit.smallmol.smallmol.SmallMol object in the current SmallMolLib object
@@ -357,7 +369,9 @@ class SmallMolLib(object):
             "molecules are {} ".format(_oldNumMols, ids, self.numMols)
         )
 
-    def toDataFrame(self, fields: list | None = None, molAsImage: bool = True, sketch: bool = True):
+    def toDataFrame(
+        self, fields: list | None = None, molAsImage: bool = True, sketch: bool = True
+    ):
         """
         Returns a pandas.DataFrame of the SmallMolLib object.
 

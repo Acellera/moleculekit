@@ -60,9 +60,7 @@ def _backfill_blank_chains(mol):
 
     water = mol.atomselect("water")
     used = {str(c) for c in np.unique(mol.chain) if str(c) != ""}
-    alphabet = list(
-        string.ascii_uppercase + string.ascii_lowercase + string.digits
-    )
+    alphabet = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
 
     def _next_free_chain():
         for c in alphabet:
@@ -91,9 +89,7 @@ def _backfill_blank_chains(mol):
             ambiguous |= blank_seg  # solvent filtered out below
             continue
         existing = {
-            str(c)
-            for c in np.unique(mol.chain[seg_mask & ~blank])
-            if str(c) != ""
+            str(c) for c in np.unique(mol.chain[seg_mask & ~blank]) if str(c) != ""
         }
         if len(existing) == 1:
             mol.chain[blank_seg] = existing.pop()
@@ -251,8 +247,7 @@ def _generate_nonstandard_residues_ff(
     modres_from_cif = sorted(
         r
         for r in (present_resnames & _modres_known)
-        if r not in definition.map
-        and os.path.isfile(os.path.join(cif_dir, f"{r}.cif"))
+        if r not in definition.map and os.path.isfile(os.path.join(cif_dir, f"{r}.cif"))
     )
 
     if not ncaa_not_in_ff and not modres_from_cif:
@@ -403,8 +398,16 @@ def _detect_nonpeptidic_bonds(mol):
 # SMILES re-template is needed (PDB2PQR's hydrogen logic places the right
 # atoms for the variant).
 _PDB2PQR_KNOWN_VARIANTS = {
-    "CYX", "CYM", "LYN", "HID", "HIE", "HIP",
-    "TYM", "ASH", "GLH", "AR0",
+    "CYX",
+    "CYM",
+    "LYN",
+    "HID",
+    "HIE",
+    "HIP",
+    "TYM",
+    "ASH",
+    "GLH",
+    "AR0",
 }
 
 
@@ -446,9 +449,7 @@ def _restore_trimmed_canonical_sidechains(mol, detect_specs):
     if detect_specs:
         for spec in detect_specs:
             r = spec.residue
-            spec_keys.add(
-                (str(r.segid), str(r.chain), int(r.resid), str(r.insertion))
-            )
+            spec_keys.add((str(r.segid), str(r.chain), int(r.resid), str(r.insertion)))
 
     # First pass: scan residues and record the IDs of the trimmed ones.
     # Per-iteration we rebuild the boolean mask from these IDs because
@@ -520,7 +521,8 @@ def _template_renamed_canonical_residues(mol, specs):
     ``rdkittools.py:265-269``).
     """
     from moleculekit.tools.nonstandard_residues import (
-        ChainResidueSpec, PROTEIN_RESNAMES,
+        ChainResidueSpec,
+        PROTEIN_RESNAMES,
     )
     from moleculekit.tools._anchor_variants import canonical_anchor_smiles
     from moleculekit.residues import RESIDUE_SMILES, MODIFIED_PROTEIN_RESIDUE_NAMES
@@ -585,9 +587,7 @@ def _template_renamed_canonical_residues(mol, specs):
         # atoms still live at the same indices after the rename above,
         # so it's still the correct selection here.
         try:
-            mol.templateResidueFromSmiles(
-                res_mask, smiles, addHs=True, guessBonds=True
-            )
+            mol.templateResidueFromSmiles(res_mask, smiles, addHs=True, guessBonds=True)
         except RuntimeError as e:
             # The standard template has heavy atoms the residue lacks, with no
             # covalent bond to explain their absence - almost always an
@@ -608,6 +608,7 @@ def _template_renamed_canonical_residues(mol, specs):
                 f"Complete the missing atoms or remove this residue before "
                 f"building. Underlying error: {e}"
             ) from e
+
 
 def _canonicalize_ncaa_h_names(mol, detect_specs):
     """Rename the amide H, alpha H, and carboxyl-OH H of each
@@ -741,11 +742,7 @@ def _stamp_pdblist_identity(pdblist, mol):
         # is far below any interatomic spacing: a reorder or offset trips this,
         # an in-order record never does.
         cx, cy, cz = (float(v) for v in mol.coords[i, :, 0])
-        if (
-            abs(rec.x - cx) > 1e-2
-            or abs(rec.y - cy) > 1e-2
-            or abs(rec.z - cz) > 1e-2
-        ):
+        if abs(rec.x - cx) > 1e-2 or abs(rec.y - cy) > 1e-2 or abs(rec.z - cz) > 1e-2:
             raise RuntimeError(
                 f"systemPrepare: PDB2PQR record {i} does not positionally "
                 f"match molecule atom {i} (coordinates differ); the "
@@ -1133,7 +1130,6 @@ def _check_frozen_histidines(mol_in, _no_prot):
         )
 
 
-
 def _prepare_nucleics(mol):
     from moleculekit.residues import (
         MODIFIED_NUCLEIC_RESIDUE_NAMES,
@@ -1382,9 +1378,7 @@ def _capture_bonds(mol, detect_specs):
         if {na, nb} == {"C", "N"}:
             c_at, n_at = (a, b) if na == "C" else (b, a)
             return int(resseq[n_at]) == int(resseq[c_at]) + 1
-        if (na in ("O3'", "O3*") and nb == "P") or (
-            nb in ("O3'", "O3*") and na == "P"
-        ):
+        if (na in ("O3'", "O3*") and nb == "P") or (nb in ("O3'", "O3*") and na == "P"):
             o3_at, p_at = (a, b) if na in ("O3'", "O3*") else (b, a)
             return int(resseq[p_at]) == int(resseq[o3_at]) + 1
         return False
@@ -1722,7 +1716,8 @@ def _assert_specs_templated(mol, detect_specs):
     ``_template_renamed_canonical_residues`` and so are skipped here.
     """
     from moleculekit.tools.nonstandard_residues import (
-        ChainResidueSpec, PROTEIN_RESNAMES,
+        ChainResidueSpec,
+        PROTEIN_RESNAMES,
     )
 
     if mol.bonds is None or len(mol.bonds) == 0:
@@ -1750,9 +1745,7 @@ def _assert_specs_templated(mol, detect_specs):
         has_h = bool((mol.element[idxs] == "H").any())
         all_bonded = all(int(i) in bonded for i in idxs)
         if not has_h or not all_bonded:
-            bad.append(
-                f"{spec.resname}{rid.resid}{rid.insertion}:{rid.chain}"
-            )
+            bad.append(f"{spec.resname}{rid.resid}{rid.insertion}:{rid.chain}")
     if bad:
         raise RuntimeError(
             f"systemPrepare: chain-resident non-canonical residue(s) "
@@ -1798,10 +1791,7 @@ def _assert_specs_bonded(mol, detect_specs):
         # PDB2PQR-known variants (CYX/LYN/HID/...) are handled by ff14SB
         # natively; their orphan atoms here don't reach cluster
         # parameterization and are harmless.
-        if (
-            spec.new_resname
-            and str(spec.new_resname) in _PDB2PQR_KNOWN_VARIANTS
-        ):
+        if spec.new_resname and str(spec.new_resname) in _PDB2PQR_KNOWN_VARIANTS:
             continue
         rid = spec.residue
         current_resname = spec.new_resname or spec.resname
@@ -2106,6 +2096,7 @@ def systemPrepare(
         from moleculekit.tools.nonstandard_residues import (
             detectNonStandardResidues,
         )
+
         detect_specs = detectNonStandardResidues(mol_in, guess_bonds=guess_bonds)
 
     # Restore canonical residues whose entire sidechain is missing

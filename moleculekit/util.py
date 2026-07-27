@@ -765,7 +765,9 @@ def string_to_tempfile(content: str, ext: str):
     return f.name
 
 
-def opm(pdbid: str, keep: bool = False, keepaltloc: str = "A", validateElements: bool = True):
+def opm(
+    pdbid: str, keep: bool = False, keepaltloc: str = "A", validateElements: bool = True
+):
     from moleculekit.opm import get_opm_pdb
 
     logger.warning(

@@ -164,10 +164,15 @@ def _start(open_browser: bool) -> ServerState:
     monitor_thread.start()
 
     state = ServerState(
-        port=port, session=session, httpd=httpd,
-        server_thread=server_thread, monitor_thread=monitor_thread,
-        registry=registry, subscribers=subscribers,
-        subscribers_lock=subscribers_lock, stop_event=stop_event,
+        port=port,
+        session=session,
+        httpd=httpd,
+        server_thread=server_thread,
+        monitor_thread=monitor_thread,
+        registry=registry,
+        subscribers=subscribers,
+        subscribers_lock=subscribers_lock,
+        stop_event=stop_event,
         handler_threads=handler_threads,
     )
 
@@ -250,7 +255,13 @@ def _broadcast_to(subscribers, subscribers_lock, event: dict) -> None:
 
 
 def _make_handler_class(
-    *, session, registry, subscribers, subscribers_lock, stop_event, handler_threads,
+    *,
+    session,
+    registry,
+    subscribers,
+    subscribers_lock,
+    stop_event,
+    handler_threads,
 ):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format, *args):
@@ -273,10 +284,11 @@ def _make_handler_class(
         def do_POST(self):
             parsed = urlparse(self.path)
             if parsed.path.startswith("/unregister/"):
-                uid = parsed.path[len("/unregister/"):]
+                uid = parsed.path[len("/unregister/") :]
                 registry.remove(uid)
                 _broadcast_to(
-                    subscribers, subscribers_lock,
+                    subscribers,
+                    subscribers_lock,
                     {"type": "remove", "slot": uid},
                 )
                 self.send_response(204)
@@ -369,12 +381,12 @@ def _make_handler_class(
 def _guess_mime(suffix: str) -> str:
     return {
         ".html": "text/html; charset=utf-8",
-        ".js":   "application/javascript",
-        ".mjs":  "application/javascript",
-        ".css":  "text/css",
-        ".svg":  "image/svg+xml",
-        ".png":  "image/png",
-        ".jpg":  "image/jpeg",
+        ".js": "application/javascript",
+        ".mjs": "application/javascript",
+        ".css": "text/css",
+        ".svg": "image/svg+xml",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
         ".woff": "font/woff",
         ".woff2": "font/woff2",
         ".json": "application/json",
@@ -382,6 +394,7 @@ def _guess_mime(suffix: str) -> str:
 
 
 # --- test helpers ---------------------------------------------------------
+
 
 def start_for_tests(open_browser: bool = False) -> ServerState:
     global _state

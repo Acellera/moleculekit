@@ -359,15 +359,12 @@ def _apply_chi_angles(tmpl, resname, chi_values):
         axis_atoms = chi_def["axis"]
         pivot = tmpl.coords[name_to_idx[axis_atoms[1]], :, frame].astype(np.float64)
         axis_vec = (
-            tmpl.coords[name_to_idx[axis_atoms[0]], :, frame].astype(np.float64)
-            - pivot
+            tmpl.coords[name_to_idx[axis_atoms[0]], :, frame].astype(np.float64) - pivot
         )
         R = rotationMatrix(axis_vec, delta)
 
         pivot_order_idx = order.index(axis_atoms[1])
-        to_rotate = [
-            a for a in order[pivot_order_idx + 1 :] if a in name_to_idx
-        ]
+        to_rotate = [a for a in order[pivot_order_idx + 1 :] if a in name_to_idx]
         if not to_rotate:
             continue
         tmpl.rotateBy(R, center=pivot, sel=np.isin(tmpl.name, to_rotate))
@@ -436,10 +433,14 @@ def _compute_phi_psi(mol, res_idx):
 
     def _neighbor_idx(target_name, prev):
         resid_offset = -1 if prev else 1
-        mask = chain_mask & (mol.name == target_name) & (mol.resid == resid + resid_offset)
+        mask = (
+            chain_mask & (mol.name == target_name) & (mol.resid == resid + resid_offset)
+        )
         if insertion != "":
             ins_cmp = mol.insertion < insertion if prev else mol.insertion > insertion
-            ins_mask = chain_mask & (mol.name == target_name) & (mol.resid == resid) & ins_cmp
+            ins_mask = (
+                chain_mask & (mol.name == target_name) & (mol.resid == resid) & ins_cmp
+            )
             if ins_mask.any():
                 mask = ins_mask
         idx = np.where(mask)[0]
@@ -815,9 +816,7 @@ def mutate_residue(
 
     # Match the parent molecule's frame count (CIF templates have 1 frame)
     if sc_tmpl.numFrames != mol.numFrames:
-        new_coords = np.zeros(
-            (sc_tmpl.numAtoms, 3, mol.numFrames), dtype=np.float32
-        )
+        new_coords = np.zeros((sc_tmpl.numAtoms, 3, mol.numFrames), dtype=np.float32)
         new_coords[:, :, frame] = sc_tmpl.coords[:, :, 0]
         sc_tmpl.coords = new_coords
 

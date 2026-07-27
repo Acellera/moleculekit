@@ -28,7 +28,12 @@ _order = (
 
 
 def viewVoxelFeatures(
-    features: np.ndarray, centers: np.ndarray, nvoxels: np.ndarray, voxelsize: np.ndarray | None = None, draw: str = "wireframe", featurenames: list = _order
+    features: np.ndarray,
+    centers: np.ndarray,
+    nvoxels: np.ndarray,
+    voxelsize: np.ndarray | None = None,
+    draw: str = "wireframe",
+    featurenames: list = _order,
 ):
     """Visualize in VMD the voxel features produced by getVoxelDescriptors.
 
@@ -190,7 +195,11 @@ def getChannels(
 
 
 def getCenters(
-    mol: "Molecule | None" = None, buffer: float = 0, boxsize: list | None = None, center: list | None = None, voxelsize: float = 1
+    mol: "Molecule | None" = None,
+    buffer: float = 0,
+    boxsize: list | None = None,
+    center: list | None = None,
+    voxelsize: float = 1,
 ):
     """Get a set of centers for voxelization.
 

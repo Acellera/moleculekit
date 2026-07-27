@@ -369,7 +369,9 @@ def detectSequenceGaps(mol, sequences):
     skipped_ncaa_chains : list of str
         Protein chains skipped because they contain non-canonical residues.
     """
-    obsseq, obsidx = mol.getSequence(dict_key="chain", return_idx=True, sel="protein", _logger=False)
+    obsseq, obsidx = mol.getSequence(
+        dict_key="chain", return_idx=True, sel="protein", _logger=False
+    )
     gaps = []
     skipped = []
     for chain, obs in obsseq.items():
@@ -573,7 +575,12 @@ def _number_new_residues(slots):
 
 
 def _superpose_and_graft_runs(
-    slots, donor, graft_flanks, anchor_width=4, max_anchor_rmsd=2.0, junction_tol=1.6,
+    slots,
+    donor,
+    graft_flanks,
+    anchor_width=4,
+    max_anchor_rmsd=2.0,
+    junction_tol=1.6,
 ):
     """Place each run of newly inserted (donor) residues into the original's frame,
     or SKIP it if it cannot be attached with a physical junction. Returns the slot
@@ -609,10 +616,11 @@ def _superpose_and_graft_runs(
     n = len(slots)
 
     def _fit(dl, dr, i, j):
-        left = slots[max(0, i - dl - anchor_width): max(0, i - dl)]
-        right = slots[j + dr: j + dr + anchor_width]
-        anchor = [s for s in left + right
-                  if not s["new"] and s.get("pred_atoms") is not None]
+        left = slots[max(0, i - dl - anchor_width) : max(0, i - dl)]
+        right = slots[j + dr : j + dr + anchor_width]
+        anchor = [
+            s for s in left + right if not s["new"] and s.get("pred_atoms") is not None
+        ]
         op, dp = [], []
         for s in anchor:
             a, b = _anchor_pairs(s, donor)
@@ -666,7 +674,9 @@ def _superpose_and_graft_runs(
             if fitres is not None:
                 fit, _ = fitres
                 for s in slots[i:j]:
-                    s["frag"].coords[:, :, 0] = _apply_fit(s["frag"].coords[:, :, 0], fit)
+                    s["frag"].coords[:, :, 0] = _apply_fit(
+                        s["frag"].coords[:, :, 0], fit
+                    )
             i = j
             continue
 
@@ -685,16 +695,24 @@ def _superpose_and_graft_runs(
             if left_closed and dl < graft_flanks and i - dl - 1 >= 1:
                 jd = _junction(slots[i - dl - 1], slots[i - dl], "C", "N", fit)
                 cand = slots[i - dl - 1]
-                if (jd is not None and jd > junction_tol
-                        and not cand["new"] and cand.get("pred_atoms") is not None):
+                if (
+                    jd is not None
+                    and jd > junction_tol
+                    and not cand["new"]
+                    and cand.get("pred_atoms") is not None
+                ):
                     dl += 1
                     grew = True
             # C-side seam: C(outermost donor j+dr-1) -> N(kept j+dr).
             if right_closed and dr < graft_flanks and j + dr < n - 1:
                 jd = _junction(slots[j + dr], slots[j + dr - 1], "N", "C", fit)
                 cand = slots[j + dr]
-                if (jd is not None and jd > junction_tol
-                        and not cand["new"] and cand.get("pred_atoms") is not None):
+                if (
+                    jd is not None
+                    and jd > junction_tol
+                    and not cand["new"]
+                    and cand.get("pred_atoms") is not None
+                ):
                     dr += 1
                     grew = True
             if not grew:
@@ -742,7 +760,7 @@ def _superpose_and_graft_runs(
             )
         for s in slots[i:j]:
             s["frag"].coords[:, :, 0] = _apply_fit(s["frag"].coords[:, :, 0], fit)
-        graft = slots[max(0, i - dl): i] + slots[j: j + dr]
+        graft = slots[max(0, i - dl) : i] + slots[j : j + dr]
         for s in graft:
             if not s["new"] and s.get("pred_atoms") is not None:
                 frag = donor.copy(sel=s["pred_atoms"])
@@ -753,7 +771,9 @@ def _superpose_and_graft_runs(
     return [s for k, s in enumerate(slots) if k not in skip]
 
 
-def spliceMissingResidues(mol, donor, chain_map=None, graft_flanks=1, min_identity=0.95):
+def spliceMissingResidues(
+    mol, donor, chain_map=None, graft_flanks=1, min_identity=0.95
+):
     """Insert only the newly added residues from ``donor`` into ``mol``.
 
     All original atoms (protein + ligands/metals/cofactors) are kept at their
@@ -841,7 +861,9 @@ def spliceMissingResidues(mol, donor, chain_map=None, graft_flanks=1, min_identi
         )
         o = oseq[orig_chain]
         p = pseq[donor_chain]
-        aln_p, aln_o = _align_full_to_observed(p, o)  # predicted (donor) is the "full" side
+        aln_p, aln_o = _align_full_to_observed(
+            p, o
+        )  # predicted (donor) is the "full" side
 
         segid = str(orig.segid[oidx[orig_chain][0][0]])
 
@@ -867,7 +889,9 @@ def spliceMissingResidues(mol, donor, chain_map=None, graft_flanks=1, min_identi
                 if cp != "-":
                     pi += 1
             elif cp != "-":  # new residue from predicted
-                slots.append({"frag": pred.copy(sel=pidx[donor_chain][pi]), "new": True})
+                slots.append(
+                    {"frag": pred.copy(sel=pidx[donor_chain][pi]), "new": True}
+                )
                 pi += 1
 
         # Take the residues flanking each inserted run from the model too, so the
@@ -939,7 +963,12 @@ def detectSplicedClashes(mol, new_mask, cutoff=2.0, targets="not protein"):
         for tj in tlist:
             na, ta = new_idx[ni], tgt_idx[tj]
             d = float(np.linalg.norm(mol.coords[na, :, 0] - mol.coords[ta, :, 0]))
-            key = (int(mol.resid[na]), str(mol.chain[na]), int(mol.resid[ta]), str(mol.segid[ta]))
+            key = (
+                int(mol.resid[na]),
+                str(mol.chain[na]),
+                int(mol.resid[ta]),
+                str(mol.segid[ta]),
+            )
             if key not in seen or d < seen[key]["min_distance"]:
                 seen[key] = {
                     "new_chain": str(mol.chain[na]),
