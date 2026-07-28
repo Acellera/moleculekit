@@ -476,8 +476,12 @@ class MolFactory(object):
                 mol.boxangles = mol.boxangles[:, np.newaxis]
 
         # mol.fileloc = traj.fileloc
-        mol.step = np.hstack(traj.step).astype(Molecule._dtypes["step"])
-        mol.time = np.hstack(traj.time).astype(Molecule._dtypes["time"])
+        # A topology can carry a box without any frames (AMBER prmtop), leaving
+        # nothing to stack. _emptyTraj already set these to empty arrays.
+        if len(traj.step):
+            mol.step = np.hstack(traj.step).astype(Molecule._dtypes["step"])
+        if len(traj.time):
+            mol.time = np.hstack(traj.time).astype(Molecule._dtypes["time"])
 
         if ext in _TRAJECTORY_READERS and frame is None and len(traj.coords):
             # Writing hidden index file containing number of frames in trajectory file
@@ -1552,6 +1556,7 @@ def PRMTOPread(filename, frame=None, topoloc=None, validateElements: bool = Fals
         bondsidx = []
         angleidx = []
         dihedidx = []
+        boxinfo = []
         section = None
         for line in f:
             if line.startswith("%FLAG POINTERS"):
@@ -1648,6 +1653,13 @@ def PRMTOPread(filename, frame=None, topoloc=None, validateElements: bool = Fals
                     for i in range(0, len(line), fieldlen)
                     if len(line[i : i + fieldlen].strip()) != 0
                 ]
+            elif section == "box":
+                fieldlen = 16
+                boxinfo += [
+                    float(line[i : i + fieldlen].strip())
+                    for i in range(0, len(line), fieldlen)
+                    if len(line[i : i + fieldlen].strip()) != 0
+                ]
             elif section == "amberatomtype":
                 fieldlen = 4
                 topo.atomtype += [
@@ -1701,8 +1713,34 @@ def PRMTOPread(filename, frame=None, topoloc=None, validateElements: bool = Fals
 
     # Elements from masses
     topo.element, topo.virtualsite = elements_from_masses(topo.masses)
+
+    # BOX_DIMENSIONS is written only when IFBOX > 0 and holds OLDBETA followed
+    # by the three cell lengths. The format docs describe OLDBETA loosely as the
+    # angle between the XY and YZ planes, but it applies to all three cell
+    # angles: IFBOX=1 stores 90, IFBOX=2 (truncated octahedron) stores
+    # 109.4712, and AMBER rejects an IFBOX=2 topology whose angles are not all
+    # that value. Reading it as a single monoclinic angle would give a
+    # truncated octahedron the wrong volume.
+    # This is the build-time box; a coordinate file read on top of the topology
+    # overrides it with the box of that frame.
+    traj = None
+    if len(boxinfo):
+        beta, a, b, c = boxinfo
+        topo.crystalinfo = {
+            "a": a,
+            "b": b,
+            "c": c,
+            "alpha": beta,
+            "beta": beta,
+            "gamma": beta,
+        }
+        traj = Trajectory(
+            box=np.array([a, b, c]).reshape(3, 1),
+            boxangles=np.full((3, 1), beta),
+        )
+
     return MolFactory.construct(
-        topo, None, filename, frame, validateElements=validateElements
+        topo, traj, filename, frame, validateElements=validateElements
     )
 
 

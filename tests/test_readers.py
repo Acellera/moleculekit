@@ -38,6 +38,52 @@ def test_prmtop():
     _ = Molecule(os.path.join(testfolder, "structure.prmtop"))
 
 
+@pytest.mark.parametrize(
+    "relpath,lengths,angle",
+    [
+        # IFBOX=1, rectangular: three distinct lengths, OLDBETA is 90
+        (
+            ("test_readers", "1N09", "structure.prmtop"),
+            [40.7596, 35.7066, 35.5116],
+            90.0,
+        ),
+        # IFBOX=2, truncated octahedron: OLDBETA is the 109.4712 cell angle
+        (("test_molecule", "a1e.prmtop"), [28.0111209] * 3, 109.471219),
+    ],
+)
+def test_prmtop_box_dimensions(relpath, lengths, angle):
+    """BOX_DIMENSIONS holds OLDBETA followed by the three cell lengths. AMBER
+    stores only that one angle, which applies to all three cell angles."""
+    mol = Molecule(os.path.join(curr_dir, *relpath))
+    assert mol.box.shape == (3, 1), f"box shape is {mol.box.shape}"
+    assert np.allclose(mol.box[:, 0], lengths), f"box is {mol.box[:, 0]}"
+    assert mol.boxangles.shape == (3, 1), f"boxangles shape is {mol.boxangles.shape}"
+    assert np.allclose(mol.boxangles[:, 0], [angle] * 3), (
+        f"boxangles are {mol.boxangles[:, 0]}"
+    )
+
+
+def test_prmtop_without_box_dimensions():
+    """IFBOX=0 topologies carry no BOX_DIMENSIONS flag, so no box is read."""
+    mol = Molecule(os.path.join(curr_dir, "test_readers", "3AM6", "structure.prmtop"))
+    assert not mol.box.any(), f"box is {mol.box}"
+    assert not mol.boxangles.any(), f"boxangles are {mol.boxangles}"
+
+
+def test_prmtop_box_overridden_by_trajectory():
+    """The BOX_DIMENSIONS box is the build-time one. Reading coordinates on top
+    must replace it with that trajectory's per-frame boxes."""
+    testfolder = os.path.join(curr_dir, "test_readers", "1N09")
+    mol = Molecule(os.path.join(testfolder, "structure.prmtop"))
+    assert np.allclose(mol.box[:, 0], [40.7596, 35.7066, 35.5116])
+
+    mol.read(os.path.join(testfolder, "output.dcd"))
+    assert mol.box.shape == (3, mol.numFrames), f"box shape is {mol.box.shape}"
+    assert not np.allclose(mol.box[:, 0], [40.7596, 35.7066, 35.5116]), (
+        "trajectory read kept the stale prmtop box"
+    )
+
+
 def test_crd():
     testfolder = os.path.join(curr_dir, "test_readers", "3AM6")
     _ = Molecule(os.path.join(testfolder, "structure.crd"))
