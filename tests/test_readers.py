@@ -862,6 +862,48 @@ def test_pdb_link_metal_coordination_mc(pdbid, expected):
     assert n_mc == expected, f"{pdbid}: expected {expected} mc bonds, got {n_mc}"
 
 
+@pytest.mark.parametrize("fname", ["5vq2.bcif.gz", "5vq2.pdb"])
+def test_symmetry_mate_conn_not_bonded(fname):
+    """A connectivity record whose two partners carry different symmetry
+    operators describes a contact to a crystallographic image, not a bond
+    between the deposited atoms. 5VQ2 covale1 links A/GLN25 NE2 (1_555) to
+    B/GLN25 NE2 (6_445); as deposited those atoms are ~41 A apart."""
+    mol = Molecule(os.path.join(curr_dir, "pdb", fname))
+    sel = (mol.resname == "GLN") & (mol.resid == 25) & (mol.name == "NE2")
+    ne2 = sel.nonzero()[0]
+    assert len(ne2) == 2, f"expected 2 GLN25 NE2 atoms, got {len(ne2)}"
+    a, b = ne2
+    dist = np.linalg.norm(mol.coords[a, :, 0] - mol.coords[b, :, 0])
+    assert dist > 30, f"fixture changed: GLN25 NE2 pair is only {dist:.2f} A apart"
+    pairs = {(min(i, j), max(i, j)) for i, j in mol.bonds.tolist()}
+    assert (min(a, b), max(a, b)) not in pairs, (
+        f"bonded two atoms {dist:.1f} A apart from a symmetry-mate record"
+    )
+
+
+@pytest.mark.parametrize("fname", ["5vq2.bcif.gz", "5vq2.pdb"])
+def test_identity_symmetry_conn_still_bonded(fname):
+    """Skipping symmetry-mate records must not drop the same file's 1_555
+    records: 5VQ2 has 8 metal-coordination rows (2x MG, 4 partners each)."""
+    mol = Molecule(os.path.join(curr_dir, "pdb", fname))
+    n_mc = int((mol.bondtype == "mc").sum())
+    assert n_mc == 8, f"expected 8 mc bonds, got {n_mc}"
+
+
+def test_duplicate_symmetry_mate_conn_keeps_real_bond():
+    """2HBB records ZN 104 - HOH 112 twice: once 1_555/1_555 (2.75 A, real)
+    and once 1_555/8_555 (2.22 A, to a symmetry image). Dropping the latter
+    must leave the former intact."""
+    mol = Molecule(os.path.join(curr_dir, "pdb", "2hbb.pdb"))
+    zn = ((mol.resname == "ZN") & (mol.resid == 104)).nonzero()[0]
+    hoh = ((mol.resname == "HOH") & (mol.resid == 112)).nonzero()[0]
+    assert len(zn) == 1 and len(hoh) == 1
+    pairs = {(min(i, j), max(i, j)) for i, j in mol.bonds.tolist()}
+    assert (min(zn[0], hoh[0]), max(zn[0], hoh[0])) in pairs
+    n_mc = int((mol.bondtype == "mc").sum())
+    assert n_mc == 11, f"expected 11 mc bonds, got {n_mc}"
+
+
 def test_bcif_mc_round_trip():
     """Writing a Molecule with 'mc' bonds to bcif/CIF and re-reading must
     preserve the 'mc' bondtype (via struct_conn conn_type_id=metalc)."""

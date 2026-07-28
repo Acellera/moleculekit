@@ -998,6 +998,28 @@ def pdbGuessElementByName(elements, names, onlymissing: bool = True):
     return noelem, newelements[noelem]
 
 
+# Spellings of the identity symmetry operator: mmCIF "1_555", PDB "1555", and
+# the absent/unknown forms. Files written by moleculekit omit the symmetry
+# columns entirely, which also means identity.
+_IDENTITY_SYMOP = frozenset(("", "?", ".", "1_555", "1555"))
+
+
+def _symop_key(value):
+    """Normalize a symmetry operator token for comparing two bond partners.
+
+    Connectivity records (mmCIF ``_struct_conn``, PDB ``LINK``) give a symmetry
+    operator per partner. When the two operators differ the record describes a
+    contact between an atom and a crystallographic image of another atom, so it
+    is not a bond between the deposited coordinates and must not become one.
+    Operators applied equally to both partners preserve the interatomic
+    distance, so those records are kept.
+    """
+    if value is None:
+        return "1_555"
+    value = str(value).strip()
+    return "1_555" if value in _IDENTITY_SYMOP else value
+
+
 def PDBread(
     filename,
     mode: str = "pdb",
@@ -1149,6 +1171,8 @@ def PDBread(
     52              Character      chainID2        Chain identifier.
     53 - 56         Integer        resSeq2         Residue sequence number.
     57              AChar          iCode2          Insertion code.
+    60 - 65         SymOP          sym1            Symmetry operator atom 1.
+    67 - 72         SymOP          sym2            Symmetry operator atom 2.
     """
     linkcolspecs = [
         (12, 16),
@@ -1163,6 +1187,8 @@ def PDBread(
         (51, 52),
         (52, 56),
         (56, 57),
+        (59, 65),
+        (66, 72),
     ]
     linknames = (
         "name1",
@@ -1177,6 +1203,8 @@ def PDBread(
         "chain2",
         "resid2",
         "insertion2",
+        "sym1",
+        "sym2",
     )
 
     """
@@ -1442,6 +1470,10 @@ def PDBread(
         bondtypes = ["un"] * (len(topo.bonds) if len(topo.bonds) else 0)
         new_bonds = []
         for lk in parsedlinks:
+            if _symop_key(lk["sym1"]) != _symop_key(lk["sym2"]):
+                # Contact to a crystallographic image, not a bond between the
+                # deposited atoms (which can be many Angstrom apart).
+                continue
             ins1 = "" if lk["insertion1"] in (".", "?") else lk["insertion1"]
             ins2 = "" if lk["insertion2"] in (".", "?") else lk["insertion2"]
             try:
@@ -2374,6 +2406,10 @@ def CIFread(
     all_struct_conn_atoms = []
     if "struct_conn" in dataObj.getObjNameList():
         struct_conn_site = dataObj.getObj("struct_conn")
+        # Optional columns; getAttributeIndex returns -1 when absent, in which
+        # case the operator is the identity one.
+        sym1_idx = struct_conn_site.getAttributeIndex("ptnr1_symmetry")
+        sym2_idx = struct_conn_site.getAttributeIndex("ptnr2_symmetry")
         for i in range(struct_conn_site.getRowCount()):
             row = struct_conn_site.getRow(i)
             conn_type_id = row[struct_conn_site.getAttributeIndex("conn_type_id")]
@@ -2385,6 +2421,12 @@ def CIFread(
             ):
                 # Skip hydrog, disulf, saltbr, mismat (disulfides are recovered
                 # by distance-based bond guessing / systemPrepare's CYS->CYX rename).
+                continue
+            sym1 = _symop_key(row[sym1_idx]) if sym1_idx >= 0 else "1_555"
+            sym2 = _symop_key(row[sym2_idx]) if sym2_idx >= 0 else "1_555"
+            if sym1 != sym2:
+                # Contact to a crystallographic image, not a bond between the
+                # deposited atoms (which can be many Angstrom apart).
                 continue
             chain1 = fixDefault(
                 row[struct_conn_site.getAttributeIndex("ptnr1_auth_asym_id")], str
