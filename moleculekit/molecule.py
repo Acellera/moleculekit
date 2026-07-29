@@ -1865,9 +1865,20 @@ class Molecule(object):
         # would leave box one frame ahead of coords after the concatenation.
         if append and self.numFrames != 0:
             for field in Molecule._traj_fields:
-                trajinfo[field].append(self.__dict__[field])
+                if field == "fileloc":
+                    trajinfo[field] += self.__dict__[field]
+                else:
+                    trajinfo[field].append(self.__dict__[field])
 
         for mol in newmols:
+            if append and mol.numFrames == 0:
+                raise RuntimeError(
+                    f"Cannot append {mol.fileloc[0][0]} to the molecule as it "
+                    "contains no coordinate frames. Its box and time information "
+                    "would end up ahead of the coordinates. Read it without "
+                    "append to apply it to the existing frames instead."
+                )
+
             for field in Molecule._traj_fields:
                 if field == "coords" and mol._numAtomsTraj == 0:
                     continue

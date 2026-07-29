@@ -33,6 +33,27 @@ def test_trajReadingAppending():
     assert ref.coords.shape == (4507, 3, 600)
 
 
+def test_trajAppendingFileloc():
+    """Appending must extend fileloc with one [file, frame] pair per frame, not
+    nest the pairs it already had into a single entry."""
+    ref = Molecule(os.path.join(curr_dir, "test_molecule", "3ptb_filtered.pdb"))
+    ref.read(os.path.join(curr_dir, "test_molecule", "3ptb_traj.xtc"), append=True)
+    assert len(ref.fileloc) == ref.numFrames, f"fileloc has {len(ref.fileloc)} entries"
+    for loc in ref.fileloc:
+        assert len(loc) == 2 and isinstance(loc[0], str), f"malformed fileloc {loc}"
+
+
+def test_appendingFileWithoutFrames():
+    """A file carrying a box but no coordinates cannot extend a trajectory.
+    Appending one used to leave box, boxangles, step and time a frame ahead of
+    coords, which breaks every consumer that pairs a box with a frame."""
+    ref = Molecule(os.path.join(curr_dir, "test_molecule", "3ptb_filtered.pdb"))
+    ref.read(os.path.join(curr_dir, "test_molecule", "3ptb_traj.xtc"))
+
+    with pytest.raises(RuntimeError):
+        ref.read(os.path.join(curr_dir, "test_readers", "test1.xsc"), append=True)
+
+
 def test_guessBonds():
     # Checking bonds
     ref = TRAJMOL.copy()
