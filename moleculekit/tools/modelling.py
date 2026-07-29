@@ -514,9 +514,17 @@ def prepareGapModellingInput(mol, sequences, gaps, outdir):
     return fasta_path, template_path, chain_map
 
 
-def _insertion_letter(m):
-    """Return the insertion code for the ``m``-th (0-based) inserted residue."""
-    return chr(ord("A") + m)
+def _insertion_letters(after_code, upper_code):
+    """Insertion codes available for residues inserted between two residues that share
+    a resid.
+
+    Codes start strictly after ``after_code`` (the preceding residue's own code, ``""``
+    when it has none) and stop strictly before ``upper_code``, which is ``None`` when
+    the following residue has a higher resid and therefore imposes no bound.
+    """
+    start = ord("A") if after_code == "" else ord(after_code) + 1
+    stop = ord("Z") + 1 if upper_code is None else ord(upper_code)
+    return [chr(c) for c in range(start, stop)]
 
 
 def _number_new_run(run, before, after):
@@ -526,21 +534,29 @@ def _number_new_run(run, before, after):
     Uses the natural integer gap between the flanking residues when there is room,
     otherwise insertion codes anchored on the preceding residue. Terminal runs count
     outward from the single flanking residue.
+
+    Returns the number of resids by which every residue after this run must be shifted
+    to make the numbering fit, which is 0 for all of the above.
     """
     k = len(run)
     if before is not None and after is not None:
         a, ai, b = before["resid"], before["insertion"], after["resid"]
-        if ai == "" and (b - a - 1) >= k:  # room for plain integers a+1 .. a+k
+        if (b - a - 1) >= k:  # room for plain integers a+1 .. a+k
             for m, s in enumerate(run):
                 s["resid"], s["insertion"] = a + 1 + m, ""
-        else:  # no integer room: insertion codes anchored on `before`
-            if k > 26:
-                raise RuntimeError(
-                    f"Cannot number {k} inserted residues between resid {a} and "
-                    f"{b} with insertion codes (max 26)."
-                )
+            return 0
+        # no integer room: insertion codes anchored on `before`, continuing after its
+        # own code and stopping before `after`'s when the two share a resid.
+        letters = _insertion_letters(ai, after["insertion"] if b == a else None)
+        if k > len(letters):
+            # too long for insertion codes: open integer room by shifting everything
+            # after this run up. `room` is negative when the flanks share a resid.
+            room = b - a - 1
             for m, s in enumerate(run):
-                s["resid"], s["insertion"] = a, _insertion_letter(m)
+                s["resid"], s["insertion"] = a + 1 + m, ""
+            return k - room
+        for m, s in enumerate(run):
+            s["resid"], s["insertion"] = a, letters[m]
     elif before is not None:  # C-terminal tail: count up from the last residue
         a = before["resid"]
         for m, s in enumerate(run):
@@ -552,11 +568,43 @@ def _number_new_run(run, before, after):
     else:  # whole chain is new (no original residues): number from 1
         for m, s in enumerate(run):
             s["resid"], s["insertion"] = m + 1, ""
+    return 0
 
 
-def _number_new_residues(slots):
+def _warn_renumbered(slots, deposited, chain):
+    """Warn once about the original residues whose deposited numbering was changed to
+    make room for an inserted run, collapsing equally-shifted neighbours into ranges."""
+    moved = [
+        (d, s["resid"])
+        for s, d in zip(slots, deposited)
+        if d is not None and s["resid"] != d
+    ]
+    if not moved:
+        return
+    ranges = []
+    for dep, new in moved:
+        shift = new - dep
+        if ranges and ranges[-1][2] == shift and ranges[-1][1] == dep - 1:
+            ranges[-1][1] = dep
+        else:
+            ranges.append([dep, dep, shift])
+    parts = ", ".join(
+        f"{a} -> {a + s} (+{s})" if a == b else f"{a}-{b} -> {a + s}-{b + s} (+{s})"
+        for a, b, s in ranges
+    )
+    logger.warning(
+        f"Chain '{chain}': {len(moved)} original residue(s) renumbered to make room "
+        f"for inserted run(s) too long for insertion codes: {parts}. Every other "
+        "original residue keeps its deposited numbering."
+    )
+
+
+def _number_new_residues(slots, chain):
     """Fill in ``resid``/``insertion`` for the newly inserted residues in ``slots``,
-    preserving the original residues' deposited numbering."""
+    preserving the original residues' deposited numbering. A run too long for both the
+    integer gap and insertion codes shifts the following original residues up to make
+    room, which is reported with a warning."""
+    deposited = [None if s["new"] else s["resid"] for s in slots]
     n = len(slots)
     i = 0
     while i < n:
@@ -566,12 +614,67 @@ def _number_new_residues(slots):
         j = i
         while j < n and slots[j]["new"]:
             j += 1
-        _number_new_run(
+        shift = _number_new_run(
             slots[i:j],
             slots[i - 1] if i > 0 else None,
             slots[j] if j < n else None,
         )
+        if shift:
+            # only the originals: following new slots are numbered later, from their
+            # already-shifted flanks.
+            for s in slots[j:]:
+                if not s["new"]:
+                    s["resid"] += shift
         i = j
+    _warn_renumbered(slots, deposited, chain)
+
+
+def _resolve_nonprotein_collisions(result, chain, slots):
+    """Move this chain's non-protein residues (ligands, metals, waters) off any
+    ``(resid, insertion)`` that the chain's numbered protein residues now occupy.
+
+    The non-protein atoms of a modelled chain are split off before numbering, so they do
+    not move with a shift and a protein residue can land on one. Collisions are keyed on
+    ``(chain, resid, insertion)`` ignoring segid, because that is the triple written to
+    PDB and used by downstream preparation; a same-chain, different-segid duplicate is
+    still ambiguous. Each colliding residue is moved above the chain's highest resid,
+    keeping the relative order of the moved residues.
+    """
+    mask = result.chain == chain
+    if not mask.any():
+        return
+    idx = np.where(mask)[0]
+    resids = result.resid[idx].tolist()
+    insertions = result.insertion[idx].tolist()
+    segids = result.segid[idx].tolist()
+
+    taken = {(s["resid"], s["insertion"]) for s in slots}
+    # dict.fromkeys keeps file order, so moved residues keep their relative order
+    colliding = list(
+        dict.fromkeys(
+            key for key in zip(resids, insertions, segids) if (key[0], key[1]) in taken
+        )
+    )
+    if not colliding:
+        return
+
+    nextid = max(max(s["resid"] for s in slots), max(resids)) + 1
+    moves = []
+    for resid, insertion, segid in colliding:
+        sel = idx[
+            (result.resid[idx] == resid)
+            & (result.insertion[idx] == insertion)
+            & (result.segid[idx] == segid)
+        ]
+        moves.append(f"{result.resname[sel[0]]} {resid}{insertion} -> {nextid}")
+        result.resid[sel] = nextid
+        result.insertion[sel] = ""
+        nextid += 1
+    logger.warning(
+        f"Chain '{chain}': the inserted residues' numbering collided with "
+        f"{len(moves)} non-protein residue(s) of the same chain, which were moved "
+        f"above the chain's last residue: {', '.join(moves)}."
+    )
 
 
 def _superpose_and_graft_runs(
@@ -782,7 +885,10 @@ def spliceMissingResidues(
     chain is rebuilt as its original residues plus the residues present in
     ``donor`` but absent from the original; each inserted residue is numbered to
     fall between its flanking original residues, using the natural integer gap where
-    there is room and insertion codes otherwise.
+    there is room and insertion codes otherwise. A run too long for both (more residues
+    than the free insertion codes can number) instead shifts the following residues of
+    that chain up to open integer room, reported with a warning; residues before the
+    run and all other chains keep their deposited numbering.
 
     Each original protein chain is paired with the best-matching donor protein
     chain by sequence identity (labels are ignored), so donor chain/segid
@@ -901,7 +1007,8 @@ def spliceMissingResidues(
         slots = _superpose_and_graft_runs(slots, pred, graft_flanks)
 
         # Number the new residues, preserving the originals, then stamp and append.
-        _number_new_residues(slots)
+        _number_new_residues(slots, orig_chain)
+        _resolve_nonprotein_collisions(result, orig_chain, slots)
         new_chain = None
         for s in slots:
             frag = s["frag"]

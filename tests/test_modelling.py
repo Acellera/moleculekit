@@ -36,7 +36,7 @@ def test_align_full_to_observed_marks_internal_gap():
     assert ao == "ACDE--HIK"
 
 
-def _chain_mol(resnames, resids, chain="A", segid="P"):
+def _chain_mol(resnames, resids, chain="A", segid="P", insertions=None):
     # moleculekit's "protein" atomselect needs a full N-CA-C-O backbone with
     # guessed bonds (a lone CA per residue is not recognized as protein).
     names = ["N", "CA", "C", "O"] * len(resnames)
@@ -44,6 +44,8 @@ def _chain_mol(resnames, resids, chain="A", segid="P"):
     m.name[:] = names
     m.resname[:] = np.repeat(list(resnames), 4)
     m.resid[:] = np.repeat(list(resids), 4)
+    if insertions is not None:
+        m.insertion[:] = np.repeat(list(insertions), 4)
     m.chain[:] = chain
     m.segid[:] = segid
     m.record[:] = "ATOM"
@@ -178,6 +180,146 @@ def test_splice_tight_gap_uses_insertion_codes():
     assert list(spliced.resid[ca]) == [1, 2, 2, 2, 3]        # anchored on resid 2
     assert list(spliced.insertion[ca]) == ["", "", "A", "B", ""]
     assert set(spliced.resname[new_mask]) == {"HIS", "ILE"}
+
+
+def test_splice_uses_integer_room_after_insertion_coded_flank():
+    # the residue before the gap carries an insertion code (2A) but there IS integer
+    # room (3,4,5) before the next observed residue at 6, so the integers are used.
+    predicted = _chain_mol(
+        ["ALA", "GLY", "GLY", "HIS", "ILE", "SER"], [1, 2, 3, 4, 5, 6]
+    )
+    gapped = _chain_mol(
+        ["ALA", "GLY", "GLY", "SER"], [1, 2, 2, 6], insertions=["", "", "A", ""]
+    )
+    spliced, new_mask = spliceMissingResidues(
+        gapped, predicted, {"A": "A"}, graft_flanks=0
+    )
+
+    ca = (spliced.name == "CA") & (spliced.chain == "A")
+    assert list(spliced.resname[ca]) == ["ALA", "GLY", "GLY", "HIS", "ILE", "SER"]
+    assert list(spliced.resid[ca]) == [1, 2, 2, 3, 4, 6]
+    assert list(spliced.insertion[ca]) == ["", "", "A", "", "", ""]
+    assert set(spliced.resname[new_mask]) == {"HIS", "ILE"}
+
+
+def test_splice_insertion_codes_continue_after_coded_flank():
+    # no integer room after 2A (the next observed residue is 3), so insertion codes
+    # are used - and they must continue at B, not restart at A and duplicate 2A.
+    predicted = _chain_mol(
+        ["ALA", "GLY", "GLY", "HIS", "ILE", "SER"], [1, 2, 3, 4, 5, 6]
+    )
+    gapped = _chain_mol(
+        ["ALA", "GLY", "GLY", "SER"], [1, 2, 2, 3], insertions=["", "", "A", ""]
+    )
+    spliced, new_mask = spliceMissingResidues(
+        gapped, predicted, {"A": "A"}, graft_flanks=0
+    )
+
+    ca = (spliced.name == "CA") & (spliced.chain == "A")
+    assert list(spliced.resname[ca]) == ["ALA", "GLY", "GLY", "HIS", "ILE", "SER"]
+    assert list(spliced.resid[ca]) == [1, 2, 2, 2, 2, 3]
+    assert list(spliced.insertion[ca]) == ["", "", "A", "B", "C", ""]
+    assert set(spliced.resname[new_mask]) == {"HIS", "ILE"}
+
+
+def _long_loop_donor():
+    # 30 missing residues between GLY and SER: more than the 26 insertion codes.
+    loop = ["HIS", "ILE"] * 15
+    return _chain_mol(["ALA", "GLY"] + loop + ["SER"], list(range(1, 34)))
+
+
+def test_splice_overflowing_run_shifts_following_residues():
+    # observed 1,2,3 leaves no integer room and 30 residues do not fit in insertion
+    # codes, so the residues following the run shift up to open integer room.
+    gapped = _chain_mol(["ALA", "GLY", "SER"], [1, 2, 3])
+    spliced, new_mask = spliceMissingResidues(
+        gapped, _long_loop_donor(), {"A": "A"}, graft_flanks=0
+    )
+
+    ca = (spliced.name == "CA") & (spliced.chain == "A")
+    # run numbered 3..32 as plain integers; the trailing SER moved 3 -> 33
+    assert list(spliced.resid[ca]) == [1, 2] + list(range(3, 33)) + [33]
+    assert set(spliced.insertion[ca]) == {""}  # integers only, no insertion codes
+    assert sorted(np.unique(spliced.resid[new_mask])) == list(range(3, 33))
+
+
+def test_splice_shift_warns_naming_the_renumbered_residues(caplog):
+    gapped = _chain_mol(["ALA", "GLY", "SER"], [1, 2, 3])
+    with caplog.at_level("WARNING"):
+        spliceMissingResidues(gapped, _long_loop_donor(), {"A": "A"}, graft_flanks=0)
+    # the one moved original (SER 3 -> 33) is named with its deposited number
+    assert any(
+        "renumbered" in r.message and "3 -> 33 (+30)" in r.message
+        for r in caplog.records
+    )
+
+
+def test_splice_two_overflowing_runs_accumulate_shifts():
+    # two 30-residue runs in one chain: the second run's shift stacks on the first.
+    loop = ["HIS", "ILE"] * 15
+    predicted = _chain_mol(
+        ["ALA", "GLY"] + loop + ["TRP"] + loop + ["SER"], list(range(1, 65))
+    )
+    gapped = _chain_mol(["ALA", "GLY", "TRP", "SER"], [1, 2, 3, 4])
+    spliced, _ = spliceMissingResidues(gapped, predicted, {"A": "A"}, graft_flanks=0)
+
+    ca = (spliced.name == "CA") & (spliced.chain == "A")
+    # run 1 -> 3..32 moves TRP 3->33 and SER 4->34; run 2 -> 34..63 moves SER again
+    assert list(spliced.resid[ca]) == (
+        [1, 2] + list(range(3, 33)) + [33] + list(range(34, 64)) + [64]
+    )
+    assert set(spliced.insertion[ca]) == {""}
+
+
+def test_splice_shift_preserves_room_of_later_gap():
+    # a shifted chain must not hand extra room to a later gap: the 2-residue gap that
+    # follows the shifted run still has zero integer room, so it still uses codes.
+    # The TRP block between the two gaps is 3 residues wide so the aligner cannot
+    # merge them by mismatching a lone anchor residue.
+    loop = ["HIS", "ILE"] * 15
+    predicted = _chain_mol(
+        ["ALA"] + loop + ["TRP", "TRP", "TRP", "PHE", "PHE", "SER"],
+        list(range(1, 38)),
+    )
+    gapped = _chain_mol(["ALA", "TRP", "TRP", "TRP", "SER"], [1, 2, 3, 4, 5])
+    spliced, _ = spliceMissingResidues(gapped, predicted, {"A": "A"}, graft_flanks=0)
+
+    ca = (spliced.name == "CA") & (spliced.chain == "A")
+    # run 1 -> 2..31 moves TRP 2,3,4 -> 32,33,34 and SER 5 -> 35; the 2-residue run
+    # then still has zero room between 34 and 35, so it gets 34A, 34B
+    assert list(spliced.resid[ca]) == (
+        [1] + list(range(2, 32)) + [32, 33, 34, 34, 34, 35]
+    )
+    assert list(spliced.insertion[ca])[-4:] == ["", "A", "B", ""]
+
+
+def test_splice_shift_moves_colliding_same_chain_ligand():
+    # a metal sharing the protein's chain sits exactly where the shifted numbering
+    # lands (resid 33), so it is moved above the chain maximum instead of duplicating.
+    gapped = _chain_mol(["ALA", "GLY", "SER"], [1, 2, 3])
+    zn = Molecule().empty(1)
+    zn.name[:] = ["ZN"]
+    zn.resname[:] = ["ZN"]
+    zn.resid[:] = [33]
+    zn.chain[:] = "A"
+    zn.segid[:] = "I"
+    zn.record[:] = "HETATM"
+    zn.element[:] = ["Zn"]
+    zn.coords = np.array([50.0, 0.0, 0.0], dtype=np.float32).reshape(1, 3, 1)
+    gapped.append(zn)
+
+    spliced, new_mask = spliceMissingResidues(
+        gapped, _long_loop_donor(), {"A": "A"}, graft_flanks=0
+    )
+
+    zn_sel = spliced.resname == "ZN"
+    assert zn_sel.sum() == 1
+    assert not bool(new_mask[zn_sel][0])
+    assert float(spliced.coords[zn_sel][0, 0, 0]) == 50.0  # coordinates untouched
+    assert int(spliced.resid[zn_sel][0]) == 34  # chain max was 33, so it goes to 34
+    # the protein numbering is what it would have been without the ligand
+    ca = (spliced.name == "CA") & (spliced.chain == "A")
+    assert list(spliced.resid[ca]) == [1, 2] + list(range(3, 33)) + [33]
 
 
 def test_splice_numbering_fills_integer_gap():
