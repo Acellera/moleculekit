@@ -660,6 +660,7 @@ def template_residue_from_smiles(
         )
     )
     if len(keys) > 1:
+        per_copy_atoms = {}
         for resid, insertion, chain, segid in keys:
             mask = (
                 (mol.resid == resid)
@@ -676,6 +677,61 @@ def template_residue_from_smiles(
                 onlyOnAtoms=onlyOnAtoms,
                 guessBonds=guessBonds,
                 _logger=_logger,
+            )
+            # Templating mutated mol (removed the matched atoms and inserted a
+            # re-protonated copy), so re-select this residue by its identity to
+            # record what it ended up looking like.
+            post = (
+                (mol.resid == resid)
+                & (mol.insertion == insertion)
+                & (mol.chain == chain)
+                & (mol.segid == segid)
+            )
+            per_copy_atoms[(chain, resid, insertion, segid)] = tuple(
+                sorted(mol.name[post].tolist())
+            )
+        # All copies were templated from the same SMILES, so they must end up
+        # with the same atoms. They can only diverge when a copy carries a
+        # cross-residue bond the others don't (e.g. a metal coordination or a
+        # covalent modification), which strips a different set of boundary
+        # hydrogens. Downstream parameterization builds a single force-field
+        # template per resname, so divergent copies silently produce a template
+        # that fits one copy and fails the other (e.g. a missing atom type for
+        # an extra hydrogen). Fail loudly here instead.
+        if len(set(per_copy_atoms.values())) > 1:
+            resname = str(mol.resname[selidx][0])
+            # Atoms shared by every copy; anything else is what makes them differ.
+            shared = set.intersection(*(set(a) for a in per_copy_atoms.values()))
+            lines = []
+            for (chain, resid, insertion, segid), atoms in per_copy_atoms.items():
+                loc = f"chain {chain} resid {resid}{insertion.strip()}"
+                if segid not in ("", " "):
+                    loc += f" segid {segid}"
+                extra = sorted(set(atoms) - shared)
+                diff = f" (extra atoms: {', '.join(extra)})" if extra else ""
+                lines.append(f"  {loc}: {len(atoms)} atoms{diff}")
+            # Point at a concrete fix: keep the most common signature under the
+            # original resname and rename a divergent copy to a fresh one.
+            groups = {}
+            for key, atoms in per_copy_atoms.items():
+                groups.setdefault(atoms, []).append(key)
+            minority = min(groups.values(), key=len)
+            chain, resid, insertion, segid = minority[0]
+            new_resname = (resname[:2] + "X")[:4]
+            example = (
+                f'e.g. mol.set("resname", "{new_resname}", '
+                f'"resname {resname} and chain {chain} and resid {resid}") '
+                "before calling templateResidueFromSmiles"
+            )
+            raise RuntimeError(
+                f"Residue '{resname}' was templated from the same SMILES but its "
+                "copies ended up with different atoms, so they cannot share a "
+                "single force-field template:\n" + "\n".join(lines) + "\n"
+                "This usually means the copies have different cross-residue bonds "
+                "(e.g. a metal coordination or covalent link present on one copy "
+                "but not another), which strips a different set of hydrogens. "
+                "Give the chemically distinct copies different resnames so each is "
+                f"templated and parameterized on its own ({example})."
             )
         return
     if not np.all(np.diff(selidx) == 1):
