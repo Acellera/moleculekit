@@ -1860,7 +1860,10 @@ class Molecule(object):
 
         trajinfo = defaultdict(list)
 
-        if append and self._numAtomsTraj != 0:
+        # numFrames, not _numAtomsTraj: a topology can carry a box without any
+        # coordinate frames (AMBER prmtop), and keeping its single box frame here
+        # would leave box one frame ahead of coords after the concatenation.
+        if append and self.numFrames != 0:
             for field in Molecule._traj_fields:
                 trajinfo[field].append(self.__dict__[field])
 

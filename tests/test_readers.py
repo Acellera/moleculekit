@@ -84,6 +84,25 @@ def test_prmtop_box_overridden_by_trajectory():
     )
 
 
+def test_prmtop_box_overridden_by_appended_trajectory():
+    """A topology carries no coordinate frames, so appending a trajectory to it
+    must override the build-time box instead of stacking the trajectory boxes
+    on top of it and leaving box one frame ahead of coords."""
+    testfolder = os.path.join(curr_dir, "test_readers", "1N09")
+    mol = Molecule(os.path.join(testfolder, "structure.prmtop"))
+    assert mol.numFrames == 0, f"numFrames is {mol.numFrames}"
+
+    mol.read(os.path.join(testfolder, "output.dcd"), append=True)
+    assert mol.box.shape == (3, mol.numFrames), f"box shape is {mol.box.shape}"
+    assert mol.boxangles.shape == (3, mol.numFrames), (
+        f"boxangles shape is {mol.boxangles.shape}"
+    )
+    assert len(mol.fileloc) == mol.numFrames, f"fileloc is {mol.fileloc}"
+    assert not np.allclose(mol.box[:, 0], [40.7596, 35.7066, 35.5116]), (
+        "appended trajectory read kept the stale prmtop box"
+    )
+
+
 def test_crd():
     testfolder = os.path.join(curr_dir, "test_readers", "3AM6")
     _ = Molecule(os.path.join(testfolder, "structure.crd"))
