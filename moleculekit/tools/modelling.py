@@ -53,7 +53,48 @@ final_model = mhandle.model
 io.SavePDB(final_model, "model.pdb")"""
 
 
-def _align_full_to_observed(full_seq, observed_seq):
+# Charged for a gap in the observed sequence at a position where the deposited
+# backbone is covalently continuous, so no residue can be missing there. Far above
+# any gap-open/mismatch trade the aligner could otherwise profit from (tens of
+# points), yet finite: a full sequence that genuinely contains residues the backbone
+# never had (an engineered internal deletion, or a break that went undetected) still
+# aligns on sequence evidence instead of being forced into a nonsense frame shift.
+_NO_BREAK_GAP_PENALTY = -1000.0
+
+
+def _observed_backbone_breaks(mol, atom_idx, tol=2.0):
+    """Observed-sequence positions where residues can be missing.
+
+    Returns the set of observed-residue indices ``k`` that are not peptide-bonded to
+    residue ``k-1``, i.e. where the deposited backbone is broken: their C-N distance
+    exceeds ``tol`` Angstrom, or one of the two atoms is absent so continuity cannot
+    be established. Anywhere else the chain is covalently continuous, which is proof
+    that no residue is missing there.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The structure the observed sequence was read from.
+    atom_idx : list of numpy.ndarray
+        One atom-index array per observed residue of a single chain, in sequence
+        order, as returned by ``Molecule.getSequence(return_idx=True)``.
+    tol : float
+        Maximum C-N distance (Angstrom) still counted as a peptide bond.
+    """
+    breaks = set()
+    for k in range(1, len(atom_idx)):
+        prev, cur = atom_idx[k - 1], atom_idx[k]
+        c = prev[mol.name[prev] == "C"]
+        n = cur[mol.name[cur] == "N"]
+        if not len(c) or not len(n):
+            breaks.add(k)
+            continue
+        if np.linalg.norm(mol.coords[c[0], :, 0] - mol.coords[n[0], :, 0]) > tol:
+            breaks.add(k)
+    return breaks
+
+
+def _align_full_to_observed(full_seq, observed_seq, breaks=None):
     """Global BLOSUM62 alignment of the full sequence (reference) against the
     observed sequence. Returns ``(aligned_full, aligned_observed)``; the observed
     side carries ``-`` at positions missing from the structure.
@@ -64,6 +105,18 @@ def _align_full_to_observed(full_seq, observed_seq):
         The complete one-letter target sequence.
     observed_seq : str
         The one-letter sequence actually present in the structure.
+    breaks : set of int, optional
+        Observed-sequence positions where the deposited backbone is discontinuous,
+        from :func:`_observed_backbone_breaks`. Residues can only be missing where
+        the backbone is broken, so the observed side opens a gap only at one of these
+        positions or past a terminus, and which of them a missing run belongs to is
+        then settled by sequence identity. Passing ``None`` lets the alignment place
+        its gaps wherever the sequence alone prefers, which for a structure with two
+        nearby holes is routinely wrong: one merged gap saves a gap-open penalty
+        (-11) and therefore outscores the two real ones as soon as the residues in
+        between can slide onto same-or-similar reference residues, silently pairing
+        observed residues with the wrong reference residues and placing the missing
+        run where the backbone was never broken.
 
     Returns
     -------
@@ -85,6 +138,29 @@ def _align_full_to_observed(full_seq, observed_seq):
     aligner.substitution_matrix = substitution_matrices.load("BLOSUM62")
     aligner.open_gap_score = -11.0
     aligner.extend_gap_score = -1.0
+    if breaks is not None:
+        nobs = len(observed_seq)
+
+        def _observed_gap_score(index, length):
+            # `index` counts the observed residues to the left of the gap. A gap is
+            # free wherever residues legitimately CAN be missing, i.e. at a backbone
+            # break or past either terminus: the total number of missing residues is
+            # fixed by the two sequence lengths, so charging for them only decides
+            # which hole they are shovelled into, and the usual -11 decides that by
+            # gap bookkeeping (fewest gaps) instead of by sequence identity.
+            if index == 0 or index == nobs or index in breaks:
+                return 0.0
+            return _NO_BREAK_GAP_PENALTY
+
+        # biopython >= 1.85 renamed query_gap_score (gaps in the observed sequence)
+        # to deletion_score. Probe the class, since reading the property on the
+        # instance raises once open/extend scores differ.
+        attr = (
+            "deletion_score"
+            if hasattr(type(aligner), "deletion_score")
+            else "query_gap_score"
+        )
+        setattr(aligner, attr, _observed_gap_score)
     aln = aligner.align(full_seq, observed_seq)[0]
     return str(aln[0]), str(aln[1])
 
@@ -126,7 +202,7 @@ def _pair_donor_chains(orig, donor, chain_map=None, min_identity=0.95):
     donor chain at >= ``min_identity``. ``chain_map``, if given, pins
     ``{donor_label: original_chain}`` entries (the donor label resolved against
     donor chain ids, then segids); auto-pairing fills in the rest."""
-    oseqs, _ = orig.getSequence(
+    oseqs, oidx = orig.getSequence(
         dict_key="chain", return_idx=True, sel="protein", _logger=False
     )
     dseqs, _ = donor.getSequence(
@@ -159,8 +235,9 @@ def _pair_donor_chains(orig, donor, chain_map=None, min_identity=0.95):
             pairing[ochain] = pinned[ochain]
             continue
         best, best_id = None, 0.0
+        breaks = _observed_backbone_breaks(orig, oidx[ochain])
         for dchain, dseq in dseqs.items():
-            aln_full, aln_obs = _align_full_to_observed(dseq, oseq)
+            aln_full, aln_obs = _align_full_to_observed(dseq, oseq, breaks=breaks)
             idn = _sequence_identity(aln_full, aln_obs)
             if idn > best_id:
                 best, best_id = dchain, idn
@@ -311,9 +388,12 @@ def model_gaps(
         mol_seg = mol.copy(sel=f"segid {segid}")
         mol_seg.write(pdbfile)
 
-        molseq = mol.getSequence(dict_key="segid")[segid]
+        molseqs, molidx = mol.getSequence(dict_key="segid", return_idx=True)
+        molseq = molseqs[segid]
 
-        _, aligned_observed = _align_full_to_observed(sequence, molseq)
+        _, aligned_observed = _align_full_to_observed(
+            sequence, molseq, breaks=_observed_backbone_breaks(mol, molidx[segid])
+        )
 
         fastafile = os.path.join(tmpdir, "input.fasta")
         with open(fastafile, "w") as f:
@@ -382,7 +462,9 @@ def detectSequenceGaps(mol, sequences):
             continue
         # observed resids, one per observed residue (order matches obsseq)
         resids = [int(mol.resid[atoms[0]]) for atoms in obsidx[chain]]
-        aligned_full, aligned_obs = _align_full_to_observed(sequences[chain], obs)
+        aligned_full, aligned_obs = _align_full_to_observed(
+            sequences[chain], obs, breaks=_observed_backbone_breaks(mol, obsidx[chain])
+        )
 
         oi = 0  # pointer into observed residues
         run = ""  # current run of missing residues
@@ -474,7 +556,9 @@ def prepareGapModellingInput(mol, sequences, gaps, outdir):
         chain_map[str(i)] = chain
         resids = [int(mol.resid[a[0]]) for a in obsidx[chain]]
         aligned_full, aligned_obs = _align_full_to_observed(
-            sequences[chain], obsseq[chain]
+            sequences[chain],
+            obsseq[chain],
+            breaks=_observed_backbone_breaks(mol, obsidx[chain]),
         )
         desired = []
         oi = 0
@@ -754,6 +838,20 @@ def _superpose_and_graft_runs(
         return str(f.chain[0]) if f.numAtoms else "?"
 
     skip = set()
+    placed = set()
+
+    def _in_orig_frame(k):
+        """Whether slot ``k``'s frag coordinates live in the original's frame, i.e.
+        whether they can be measured against. A kept residue always does (deposited,
+        or grafted donor coordinates already transformed). A NEW residue only does
+        once its own run has been placed: runs are walked left to right, so a new
+        slot belonging to a later run still holds raw donor coordinates, and one
+        belonging to a skipped run keeps them for good. Measuring a junction against
+        those compares coordinate frames rather than atoms, which for a donor sitting
+        far from the original reads as a huge distance and skips a perfectly
+        attachable run."""
+        return not slots[k]["new"] or k in placed
+
     i = 0
     while i < n:
         if not slots[i]["new"]:
@@ -822,14 +920,18 @@ def _superpose_and_graft_runs(
                 break
             fitres = _fit(dl, dr, i, j)
 
-        # Decide whether the run's closed-side junction(s) are acceptable.
+        # Decide whether the run's closed-side junction(s) are acceptable. A side
+        # whose seam residue is a not-yet-placed new residue has no junction to
+        # satisfy here: the graft ran out to the neighbouring run, so that seam is
+        # donor-to-donor and gets validated when the neighbouring run is walked (its
+        # own seam residue is the kept flank this run just grafted).
         bad = fitres is None
         if fitres is not None:
             fit, rmsd = fitres
-            if left_closed and i - dl - 1 >= 0:
+            if left_closed and i - dl - 1 >= 0 and _in_orig_frame(i - dl - 1):
                 jd = _junction(slots[i - dl - 1], slots[i - dl], "C", "N", fit)
                 bad = bad or (jd is None or jd > junction_tol)
-            if right_closed and j + dr < n:
+            if right_closed and j + dr < n and _in_orig_frame(j + dr):
                 jd = _junction(slots[j + dr], slots[j + dr - 1], "N", "C", fit)
                 bad = bad or (jd is None or jd > junction_tol)
 
@@ -863,6 +965,7 @@ def _superpose_and_graft_runs(
             )
         for s in slots[i:j]:
             s["frag"].coords[:, :, 0] = _apply_fit(s["frag"].coords[:, :, 0], fit)
+        placed.update(range(i, j))
         graft = slots[max(0, i - dl) : i] + slots[j : j + dr]
         for s in graft:
             if not s["new"] and s.get("pred_atoms") is not None:
@@ -893,6 +996,12 @@ def spliceMissingResidues(
     Each original protein chain is paired with the best-matching donor protein
     chain by sequence identity (labels are ignored), so donor chain/segid
     relabelling (e.g. aceboltz's ``model.pdb``) does not need a ``chain_map``.
+
+    Where the missing residues go is read off the original's backbone: a run is only
+    inserted where the deposited chain is actually broken, never where it is
+    covalently continuous. Two holes a few residues apart (common once incomplete
+    residues have been dropped) would otherwise be merged into one by the sequence
+    alignment, which pairs the residues between them with the wrong donor residues.
 
     Parameters
     ----------
@@ -967,9 +1076,11 @@ def spliceMissingResidues(
         )
         o = oseq[orig_chain]
         p = pseq[donor_chain]
+        # predicted (donor) is the "full" side; the original's backbone breaks are
+        # the only places its residues can be missing from
         aln_p, aln_o = _align_full_to_observed(
-            p, o
-        )  # predicted (donor) is the "full" side
+            p, o, breaks=_observed_backbone_breaks(orig, oidx[orig_chain])
+        )
 
         segid = str(orig.segid[oidx[orig_chain][0][0]])
 

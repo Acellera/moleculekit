@@ -57,6 +57,155 @@ def _chain_mol(resnames, resids, chain="A", segid="P", insertions=None):
     return m
 
 
+def _bonded_chain_mol(resnames, resids, chain="A", segid="P", shift=None):
+    """Like :func:`_chain_mol` but with realistic peptide-bond geometry: residues
+    whose resids are consecutive come out bonded (C-N ~1.33 A) while a resid jump
+    leaves a genuine backbone break. ``_chain_mol``'s backbone is stretched between
+    every residue, so it cannot distinguish "residues are missing here" from "the
+    backbone is continuous here" - which is exactly what gap placement depends on.
+
+    The residues are threaded along a smooth curve whose two frequencies are
+    incommensurate, so no shift of the chain along it superposes back onto itself
+    (a straight or helical backbone would, letting a mis-paired alignment fit with a
+    deceptively low RMSD)."""
+    t = np.linspace(0, 100, 100001)
+    curve = np.stack([t, 3.0 * np.sin(0.7 * t), 2.0 * np.cos(0.31 * t)], axis=1)
+    arc = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(curve, axis=0), axis=1))])
+
+    def at(s):
+        return np.stack([np.interp(s, arc, curve[:, k]) for k in range(3)])
+
+    # N-CA 1.45, CA-C 1.52, C-N(next) 1.33 -> 4.30 A of backbone per residue, so a
+    # resid jump of k leaves k-1 residues' worth of unbridged backbone behind
+    coords, names = [], []
+    s = 0.0
+    for k, resid in enumerate(resids):
+        if k:
+            s += 4.30 * (resid - resids[k - 1])
+        n, ca, c = at(s), at(s + 1.45), at(s + 2.97)
+        tangent = at(s + 2.98) - at(s + 2.96)
+        tangent /= np.linalg.norm(tangent)
+        perp = np.cross(tangent, [0.0, 0.0, 1.0])
+        o = c + 1.23 * perp / np.linalg.norm(perp)
+        coords += [n, ca, c, o]
+        names += ["N", "CA", "C", "O"]
+
+    m = Molecule().empty(len(names))
+    m.name[:] = names
+    m.resname[:] = np.repeat(list(resnames), 4)
+    m.resid[:] = np.repeat(list(resids), 4)
+    m.chain[:] = chain
+    m.segid[:] = segid
+    m.record[:] = "ATOM"
+    m.element[:] = [n[0] for n in names]
+    m.coords = np.array(coords, dtype=np.float32).reshape(len(names), 3, 1)
+    if shift is not None:
+        for resid, vec in shift.items():
+            m.coords[m.resid == resid, :, 0] += np.array(vec, dtype=np.float32)
+    m.guessBonds()
+    return m
+
+
+# A chain whose missing residues sit in TWO nearby holes. BLOSUM62's -11 gap-open
+# makes one merged gap cheaper than two real ones, so a pure-sequence alignment
+# slides the observed PRO/ALA onto the wrong donor residues:
+#     donor     K K K P P P A E W W W
+#     observed  K K K P - - - A W W W   <- one gap, ALA paired with GLU
+# while the deposited backbone is only broken after resid 3 and resid 7:
+#     observed  K K K - - P A - W W W   <- two gaps, every residue paired correctly
+_MERGE_FULL_SEQ = "KKKPPPAEWWW"
+_MERGE_FULL_RESNAMES = ["LYS", "LYS", "LYS", "PRO", "PRO", "PRO",
+                        "ALA", "GLU", "TRP", "TRP", "TRP"]
+_MERGE_OBS_RESNAMES = ["LYS", "LYS", "LYS", "PRO", "ALA", "TRP", "TRP", "TRP"]
+_MERGE_OBS_RESIDS = [1, 2, 3, 6, 7, 9, 10, 11]
+
+
+def test_bonded_chain_mol_has_real_bonds_and_real_breaks():
+    # the fixture itself must hold up: bonded where resids are consecutive, broken
+    # where they jump, otherwise the gap-placement tests below prove nothing
+    m = _bonded_chain_mol(_MERGE_OBS_RESNAMES, _MERGE_OBS_RESIDS)
+    _, idx = m.getSequence(dict_key="chain", return_idx=True, sel="protein")
+
+    def cn(k):
+        c = idx["A"][k][m.name[idx["A"][k]] == "C"][0]
+        n = idx["A"][k + 1][m.name[idx["A"][k + 1]] == "N"][0]
+        return float(np.linalg.norm(m.coords[c, :, 0] - m.coords[n, :, 0]))
+
+    bonded = [cn(k) for k in (0, 1, 3, 5, 6)]   # resids 1-2, 2-3, 6-7, 9-10, 10-11
+    broken = [cn(k) for k in (2, 4)]            # resids 3->6 and 7->9
+    assert max(bonded) < 1.6, bonded
+    assert min(broken) > 2.0, broken
+
+
+def test_align_full_to_observed_confines_gaps_to_backbone_breaks():
+    # unconstrained, the aligner merges the two holes into one and mis-pairs
+    af, ao = _align_full_to_observed(_MERGE_FULL_SEQ, "KKKPAWWW")
+    assert af == _MERGE_FULL_SEQ
+    assert ao == "KKKP---AWWW"
+    # told where the backbone is actually broken, it splits them correctly
+    af, ao = _align_full_to_observed(_MERGE_FULL_SEQ, "KKKPAWWW", breaks={3, 5})
+    assert af == _MERGE_FULL_SEQ
+    assert ao == "KKK--PA-WWW"
+
+
+def test_detect_sequence_gaps_splits_holes_at_backbone_breaks():
+    m = _bonded_chain_mol(_MERGE_OBS_RESNAMES, _MERGE_OBS_RESIDS)
+    gaps, skipped = detectSequenceGaps(m, {"A": _MERGE_FULL_SEQ})
+    assert skipped == []
+    internal = [
+        (g["after_resid"], g["before_resid"], g["missing_seq"])
+        for g in gaps
+        if not g["is_terminal"]
+    ]
+    # the two holes are reported where the backbone is broken, NOT merged into a
+    # single "PPA" run hanging off resid 6
+    assert internal == [(3, 6, "PP"), (7, 9, "E")]
+
+
+def test_splice_places_runs_at_backbone_breaks():
+    # donor and original share coordinates for the co-observed residues, so a
+    # correctly paired alignment superposes exactly and every hole must fill
+    donor = _bonded_chain_mol(_MERGE_FULL_RESNAMES, list(range(1, 12)), chain="A")
+    gapped = _bonded_chain_mol(_MERGE_OBS_RESNAMES, _MERGE_OBS_RESIDS, chain="A")
+
+    spliced, new_mask = spliceMissingResidues(gapped, donor, {"A": "A"})
+
+    ca = spliced.name == "CA"
+    assert [int(r) for r in spliced.resid[ca]] == list(range(1, 12))
+    assert [str(n) for n in spliced.resname[ca]] == _MERGE_FULL_RESNAMES
+    assert [str(i) for i in spliced.insertion[ca]] == [""] * 11
+    # only the two holes are new; the deposited residues are kept as they were
+    assert [int(r) for r in spliced.resid[new_mask & ca]] == [4, 5, 8]
+
+
+def test_splice_fills_runs_separated_by_a_single_grafted_residue():
+    # Two holes separated by ONE co-observed residue (resid 6), whose deposited
+    # position is displaced enough that closing the first hole's C-side junction
+    # requires grafting resid 6 from the donor. That leaves the first run's C-side
+    # abutting the SECOND run, whose residues are still in the donor's own frame:
+    # measuring a junction against them compares frames, not atoms.
+    full = ["MET", "LYS", "THR", "TRP", "ASP", "GLU",
+            "TYR", "ARG", "LEU", "ASN", "GLY"]
+    donor = _bonded_chain_mol(full, list(range(1, 12)), chain="A")
+    # a donor arrives in its own arbitrary frame, as a prediction does
+    rot = np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+    donor.coords[:, :, 0] = donor.coords[:, :, 0] @ rot.T + [50.0, -20.0, 10.0]
+
+    gapped = _bonded_chain_mol(
+        ["MET", "LYS", "THR", "GLU", "LEU", "ASN", "GLY"],
+        [1, 2, 3, 6, 9, 10, 11],
+        chain="A",
+        shift={6: (0.0, -2.0, 0.0)},
+    )
+
+    spliced, new_mask = spliceMissingResidues(gapped, donor, {"A": "A"})
+
+    ca = spliced.name == "CA"
+    assert [int(r) for r in spliced.resid[ca]] == list(range(1, 12))
+    assert [str(n) for n in spliced.resname[ca]] == full
+    assert _worst_bonded_junction(spliced) < 1.6
+
+
 def test_sequence_identity_full_match_and_mismatch():
     # observed AGS is an exact sub-sequence of full AGHIS -> identity 1.0
     assert _sequence_identity("AGHIS", "AG--S") == 1.0
