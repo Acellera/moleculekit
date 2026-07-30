@@ -11,8 +11,6 @@ from libc.string cimport strcmp
 from libc.stdio cimport printf
 from libc.math cimport round, sqrt, acos, floor, fabs
 from cython.parallel import prange
-from cpython cimport array
-import array
 
 # We now need to fix a datatype for our arrays. I've used the variable
 # DTYPE for this, which is assigned to the usual NumPy runtime

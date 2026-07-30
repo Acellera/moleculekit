@@ -18,6 +18,16 @@ jobs:
         env:
           CIBW_PLATFORM: pyodide
           CIBW_TEST_SKIP: "*pyodide*"
+          # The two Pyodide runtimes we currently publish (2024_0 and 2025_0).
+          # Pinned because requires-python no longer has an upper bound, so
+          # cibuildwheel would otherwise add the cp314 runtime we have not validated.
+          # Widen deliberately when adopting a new runtime; if a pinned one
+          # disappears the upload step fails on if-no-files-found.
+          CIBW_BUILD: "cp312-pyodide* cp313-pyodide*"
+          # Pyodide ships one interpreter per runtime, so a Stable ABI wheel buys
+          # nothing here. Keep emitting the version-specific wheel this job has
+          # always produced rather than an abi3-tagged one. See setup.py.
+          CIBW_ENVIRONMENT: MOLECULEKIT_DISABLE_STABLE_ABI=1
           # Force the version to avoid setuptools_scm producing a
           # .dev0+g<sha>.d<date> local version when the tree is detected
           # as dirty during the build.

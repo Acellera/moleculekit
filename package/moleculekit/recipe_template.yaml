@@ -5,6 +5,15 @@ package:
 source:
   path: ../..
 
+build:
+  python:
+    # The extensions are built against the CPython Stable ABI, so a single package
+    # per platform serves every supported Python rather than one package per
+    # version. The python list in variants.yaml therefore holds only the version
+    # we compile against, which must stay in step with the run constraint below
+    # and with requires-python in pyproject.toml.
+    version_independent: true
+
 requirements:
   build:
     - ${{ compiler('c') }}
@@ -18,7 +27,7 @@ requirements:
     - setuptools-scm>=8
     - numpy >=2.0.0rc1
   run:
-    - python
+    - python >=3.11
 
 tests:
   - python:

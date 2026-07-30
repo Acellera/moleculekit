@@ -1,5 +1,3 @@
+# Only the version we compile against: the Stable ABI package covers the rest.
 python:
-  - 3.10
   - 3.11
-  - 3.12
-  - 3.13

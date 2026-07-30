@@ -3,7 +3,9 @@ name = "moleculekit"
 description = "A molecule reading/writing and manipulation package."
 authors = [{ name = "Stefan Doerr", email = "s.doerr@acellera.com" }]
 readme = "README.md"
-requires-python = ">=3.10"
+# Floor is 3.11 because the extensions are built against the CPython Stable ABI and
+# Py_buffer, which our memoryviews need, only entered the limited API in 3.11.
+requires-python = ">=3.11"
 dynamic = ["version"]
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -95,11 +97,20 @@ testpaths = ["tests"]
 
 
 [tool.cibuildwheel]
+# The extensions target the Stable ABI, so cibuildwheel compiles cp311 once and
+# then reuses that cp311-abi3 wheel for every later version rather than rebuilding
+# ("Found previously built wheel ... Skipping build step"), leaving a single wheel
+# per platform in the output. It still runs test-command against the reused wheel
+# on each version, and abi3audit over the result. requires-python already sets the
+# floor, so no explicit build selector is needed here.
 # Disable PyPy builds due to our Cython code not being compatible with it yet
 # Disable Windows 32 builds, Musllinux builds due to rdkit not building on it
 # Disable i686, ppc64le, s390x, universal2, armv7l due to numpy not building on them
 skip = [
-  "cp314*",             # Propka has a bug with Python 3.14. Remove at next release >3.5.1
+  # Free-threaded builds cannot use the Stable ABI: setuptools rejects
+  # py_limited_api when Py_GIL_DISABLED is set, so these fail outright.
+  # See https://github.com/python/cpython/issues/111506
+  "cp3*t-*",
   "pp*",
   "*win32",
   "*armv7l",
@@ -112,6 +123,13 @@ skip = [
 ]
 test-requires = ["pytest", "pytest-xdist"]
 test-command = "pytest -n auto {project}/tests"
+# Only one binary is produced, so testing the ends of the range is what matters:
+# 3.11 is the version actually compiled and 3.14 the newest, and a failure confined
+# to an interior version while both ends pass is not a Stable ABI failure mode.
+# Interior versions are covered by test.yml, which builds from source on 3.11 to
+# 3.14 across all three OSes on every non-tag push. Each version tested here costs
+# four more full suite runs on every release.
+test-skip = "cp312-* cp313-*"
 manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
 # build-frontend = "build[uv]"

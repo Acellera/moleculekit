@@ -3,6 +3,29 @@ from Cython.Build import cythonize
 import numpy
 import os
 
+# Build every extension against the CPython Stable ABI (PEP 384) so that one
+# wheel per platform serves all supported interpreters instead of one wheel per
+# (platform, Python version). 0x030B0000 targets 3.11, the earliest version that
+# exposes Py_buffer through the limited API, which our memoryviews require.
+#
+# The bdist_wheel option below is what actually tags the wheel "cp311-abi3".
+# Setting py_limited_api on the Extension alone produces an abi3 .so inside a
+# version-specific wheel, which pip then refuses to install on other versions.
+#
+# Emscripten/Pyodide wheels are tied to one Pyodide runtime and are built per
+# version regardless, so the Stable ABI gains nothing there. pyodide_build.yml
+# sets this variable to keep that path producing the wheels it always has.
+STABLE_ABI = not os.environ.get("MOLECULEKIT_DISABLE_STABLE_ABI")
+
+LIMITED_API = (
+    {
+        "define_macros": [("Py_LIMITED_API", "0x030B0000")],
+        "py_limited_api": True,
+    }
+    if STABLE_ABI
+    else {}
+)
+
 extentions = [
     "moleculekit/interactions/hbonds/hbonds.pyx",
     "moleculekit/interactions/pipi/pipi.pyx",
@@ -23,6 +46,7 @@ extentions = [
         language="c++",
         extra_compile_args=["-O3"],
         # extra_link_args=["-fopenmp"],
+        **LIMITED_API,
     )
     for ext in extentions
 ]
@@ -41,6 +65,7 @@ extentions.append(
             numpy.get_include(),
         ],
         language="c++",
+        **LIMITED_API,
     )
 )
 extentions.append(
@@ -58,6 +83,7 @@ extentions.append(
             numpy.get_include(),
         ],
         language="c",
+        **LIMITED_API,
     )
 )
 extentions.append(
@@ -73,6 +99,7 @@ extentions.append(
             numpy.get_include(),
         ],
         language="c",
+        **LIMITED_API,
     )
 )
 extentions.append(
@@ -88,6 +115,7 @@ extentions.append(
             numpy.get_include(),
         ],
         language="c",
+        **LIMITED_API,
     )
 )
 extentions.append(
@@ -104,6 +132,7 @@ extentions.append(
         ],
         extra_compile_args=["-w"],
         language="c++",
+        **LIMITED_API,
     )
 )
 # Port of scipy.spatial.cKDTree (scipy BSD-3-Clause license).  See
@@ -128,7 +157,12 @@ extentions.append(
         ],
         extra_compile_args=["-O3", "-w"],
         language="c++",
+        **LIMITED_API,
     )
 )
 
-setup(zip_safe=False, ext_modules=cythonize(extentions, language_level="3"))
+setup(
+    zip_safe=False,
+    ext_modules=cythonize(extentions, language_level="3"),
+    options={"bdist_wheel": {"py_limited_api": "cp311"}} if STABLE_ABI else {},
+)
