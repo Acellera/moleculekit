@@ -23,7 +23,10 @@ dependencies = [
   "mdtraj",
   "acellera-propka",  # Remove once they make a new release
   # "openbabel>=3.1.1",
-  "acellera-pdb2pqr>=3.7.1.post1",
+  # post2 is the floor because earlier releases depend on upstream propka, which
+  # installs over acellera-propka's files. Whichever lands last wins, and when
+  # upstream wins the Python 3.14 annotations fix is silently lost.
+  "acellera-pdb2pqr>=3.7.1.post2",
   "biopython",
 ]
 
