@@ -55,12 +55,15 @@ show3d(mol)
 resolved = resolveFullSequences(mol, "5VQ2")
 sequences = {ch: v["sequence"] for ch, v in resolved.items()}
 
-gaps, skipped = detectSequenceGaps(mol, sequences)
+gaps, skipped, mismatches = detectSequenceGaps(mol, sequences)
 for g in gaps:
     print(g)
+print("skipped chains:", skipped, " mismatches:", mismatches)
 ```
 
 Each gap dict gives the chain, the observed resid just before (`after_resid`) and after (`before_resid`) the gap, the missing subsequence (`missing_seq`), and whether it is a chain terminus (`is_terminal`). Chains A and B show the identical set of three gaps: a 3-residue internal loop between resid 33 and 37 (`PTI`), a 10-residue internal loop between resid 58 and 69 (`AGQEEYSAMR`, the switch-II region), and a single unresolved residue after resid 168 (`K`) with no observed residue following it, so `before_resid` is `None` and `is_terminal` is `True`.
+
+The two other return values report what the alignment could *not* treat as a plain gap. `skipped` lists protein chains left out because they contain non-canonical residues, and `mismatches` lists positions where a residue is present but differs from the one the reference has there (an engineered mutation, a natural variant, or a reference from a different construct). Both are empty here: the reference came from the entry's own deposited sequence, so it agrees with the model residue for residue.
 
 ## Step 3 - Graft the missing residues from a donor crystal
 
@@ -111,7 +114,7 @@ The filled structure is now ready to hand to {py:func}`~moleculekit.tools.prepar
 ## Recap
 
 - {py:func}`~moleculekit.rcsb.resolveFullSequences` gets the full deposited sequence per chain; unwrap its `sequence` field before passing a `{chain: sequence}` map to {py:func}`~moleculekit.tools.modelling.detectSequenceGaps`.
-- {py:func}`~moleculekit.tools.modelling.detectSequenceGaps` returns `(gaps, skipped_chains)`; each gap locates a missing-residue run between two observed resids.
+- {py:func}`~moleculekit.tools.modelling.detectSequenceGaps` returns `(gaps, skipped_chains, mismatches)`; each gap locates a missing-residue run between two observed resids, while `mismatches` flags residues that are present but disagree with the reference sequence.
 - {py:func}`~moleculekit.tools.modelling.spliceMissingResidues` grafts the residues missing from your structure out of a more complete donor of the same protein, returning `(mol, new_mask)`; increase `graft_flanks` and re-run to close regions a minimal graft skips.
 - {py:func}`~moleculekit.tools.modelling.detectSplicedClashes` flags newly modelled atoms that overlap cofactors, ions, or ligands.
 
