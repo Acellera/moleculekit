@@ -83,14 +83,107 @@ def _observed_backbone_breaks(mol, atom_idx, tol=2.0):
     """
     breaks = set()
     for k in range(1, len(atom_idx)):
-        prev, cur = atom_idx[k - 1], atom_idx[k]
-        c = prev[mol.name[prev] == "C"]
-        n = cur[mol.name[cur] == "N"]
-        if not len(c) or not len(n):
+        dist = _peptide_cn_distance(mol, atom_idx[k - 1], atom_idx[k])
+        if dist is None or dist > tol:
             breaks.add(k)
+    return breaks
+
+
+def _peptide_cn_distance(mol, prev_atoms, cur_atoms):
+    """Distance (Angstrom) from the C of one residue to the N of the next, on the
+    first frame. None when either atom is absent, i.e. when continuity cannot be
+    established from coordinates at all."""
+    c = prev_atoms[mol.name[prev_atoms] == "C"]
+    n = cur_atoms[mol.name[cur_atoms] == "N"]
+    if not len(c) or not len(n):
+        return None
+    return float(np.linalg.norm(mol.coords[c[0], :, 0] - mol.coords[n[0], :, 0]))
+
+
+def _residue_groups(mol, sel):
+    """Atoms of ``sel`` grouped per residue in file order.
+
+    Returns a list of ``((segid, chain, resid, insertion), atom_indices)``. Residue
+    boundaries come from a change in any of those four fields between adjacent
+    atoms, matching how the rest of this module walks a structure: the depositor's
+    ATOM order is the chain order, and sorting by resid mis-orders insertion codes.
+    """
+    idx = np.where(mol.atomselect(sel))[0]
+    if len(idx) == 0:
+        return []
+    keys = list(
+        zip(
+            mol.segid[idx].astype(str),
+            mol.chain[idx].astype(str),
+            mol.resid[idx].astype(int),
+            mol.insertion[idx].astype(str),
+        )
+    )
+    groups = []
+    start = 0
+    for k in range(1, len(idx) + 1):
+        if k == len(idx) or keys[k] != keys[start]:
+            groups.append((keys[start], idx[start:k]))
+            start = k
+    return groups
+
+
+def detectBackboneBreaks(mol, sel="protein", tol=2.0):
+    """Report every place where the protein backbone is broken.
+
+    Two residues are compared when they are adjacent in file order **and** share a
+    segid and a chain, so a chain or segment boundary is never mistaken for a
+    break. This is the check to run on a built or prepared structure: a break that
+    survives into it is an unmodelled gap (or one the builder capped), and no job
+    status reports it.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The structure to check. Only the first frame is used.
+    sel : str
+        Atom selection to check. The default limits it to protein residues.
+    tol : float
+        Maximum C-N distance (Angstrom) still counted as a peptide bond. A real
+        peptide bond is ~1.33 A.
+
+    Returns
+    -------
+    breaks : list of dict
+        One entry per break, in file order: ``{"segid", "chain", "after_resid",
+        "after_insertion", "before_resid", "before_insertion", "distance"}``.
+        ``after_*`` identifies the residue the break follows and ``before_*`` the
+        one it precedes (the same convention as :func:`detectSequenceGaps`).
+        ``distance`` is ``None`` when the C or N atom itself is missing, which is a
+        break in the sense that continuity cannot be established -- see
+        :func:`moleculekit.tools.backbone.check_backbone` to rebuild such atoms.
+
+    Examples
+    --------
+    >>> from moleculekit.tools.modelling import detectBackboneBreaks
+    >>> breaks = detectBackboneBreaks(mol)                       # doctest: +SKIP
+    >>> [(b["after_resid"], b["before_resid"]) for b in breaks]  # doctest: +SKIP
+    [(964, 977)]
+    """
+    groups = _residue_groups(mol, sel)
+    breaks = []
+    for (kprev, prev), (kcur, cur) in zip(groups, groups[1:]):
+        if kprev[:2] != kcur[:2]:  # different chain or segment: not consecutive
             continue
-        if np.linalg.norm(mol.coords[c[0], :, 0] - mol.coords[n[0], :, 0]) > tol:
-            breaks.add(k)
+        dist = _peptide_cn_distance(mol, prev, cur)
+        if dist is not None and dist <= tol:
+            continue
+        breaks.append(
+            {
+                "segid": kprev[0],
+                "chain": kprev[1],
+                "after_resid": kprev[2],
+                "after_insertion": kprev[3],
+                "before_resid": kcur[2],
+                "before_insertion": kcur[3],
+                "distance": dist,
+            }
+        )
     return breaks
 
 
@@ -448,25 +541,39 @@ def detectSequenceGaps(mol, sequences):
         resid immediately after it (``None`` for a C-terminal gap).
     skipped_ncaa_chains : list of str
         Protein chains skipped because they contain non-canonical residues.
+    mismatches : list of dict
+        Positions where a residue *is* present but is not the residue the
+        reference has there -- engineered mutations, natural variants, or a
+        reference belonging to a different construct. Each
+        ``{"chain", "resid", "insertion", "reference", "observed", "ref_index"}``,
+        where ``reference``/``observed`` are the one-letter codes and ``ref_index``
+        is the 0-based position in ``sequences[chain]``, so
+        ``sequences[chain][ref_index]`` can be patched to the observed residue to
+        model the construct as crystallised rather than the wild type. Positions
+        where either side is ``X`` (unknown or modified residue) are not reported:
+        they are not evidence of a substitution.
     """
     obsseq, obsidx = mol.getSequence(
         dict_key="chain", return_idx=True, sel="protein", _logger=False
     )
     gaps = []
     skipped = []
+    mismatches = []
     for chain, obs in obsseq.items():
         if chain not in sequences or not obs:
             continue
         if not _chain_is_canonical(mol, chain):
             skipped.append(chain)
             continue
-        # observed resids, one per observed residue (order matches obsseq)
+        # observed resids/insertions, one per observed residue (order matches obsseq)
         resids = [int(mol.resid[atoms[0]]) for atoms in obsidx[chain]]
+        insertions = [str(mol.insertion[atoms[0]]) for atoms in obsidx[chain]]
         aligned_full, aligned_obs = _align_full_to_observed(
             sequences[chain], obs, breaks=_observed_backbone_breaks(mol, obsidx[chain])
         )
 
         oi = 0  # pointer into observed residues
+        fi = 0  # pointer into sequences[chain]
         run = ""  # current run of missing residues
         run_after = None  # observed resid before the run
         for cf, co in zip(aligned_full, aligned_obs):
@@ -483,10 +590,24 @@ def detectSequenceGaps(mol, sequences):
                         }
                     )
                     run = ""
+                # the residue is present but is not the one the reference has here
+                if cf != "-" and cf != co and "X" not in (cf, co):
+                    mismatches.append(
+                        {
+                            "chain": chain,
+                            "resid": resids[oi],
+                            "insertion": insertions[oi],
+                            "reference": cf,
+                            "observed": co,
+                            "ref_index": fi,
+                        }
+                    )
                 run_after = resids[oi]
                 oi += 1
             elif cf != "-":
                 run += cf
+            if cf != "-":
+                fi += 1
         if run:  # trailing (C-terminal) gap
             gaps.append(
                 {
@@ -497,7 +618,7 @@ def detectSequenceGaps(mol, sequences):
                     "is_terminal": True,
                 }
             )
-    return gaps, skipped
+    return gaps, skipped, mismatches
 
 
 def prepareGapModellingInput(mol, sequences, gaps, outdir):

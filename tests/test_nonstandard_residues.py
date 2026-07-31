@@ -1,9 +1,11 @@
 import os
 import numpy as np
+import pytest
 from moleculekit.molecule import Molecule, UniqueResidueID
 from moleculekit.tools._anchor_variants import lookup_anchor
 from moleculekit.residues import ORIGINAL_RESIDUE_NAME_TABLE
 from moleculekit.tools.nonstandard_residues import (
+    applyResidueTemplates,
     detectNonStandardResidues,
     ChainResidueSpec,
     ScaffoldSpec,
@@ -1543,3 +1545,154 @@ def test_residues_requiring_template_excludes_canonical_junction_renames():
     result = residuesRequiringTemplate(mol)
     assert result == ["LFI"]
     assert "CYS" not in result
+
+
+NLE_DUAL_CONTEXT_PDB = os.path.join(DATA_DIR, "dual_context_nle.pdb")
+
+
+def _dual_context_mol():
+    # A structure where the same NCAA (resname "NLE") sits mid-chain in one chain
+    # (chain A: ALA-NLE-ALA, peptide-bonded on both sides) and at a C-terminus in
+    # another (chain B: ALA-NLE, no bond on NLE's C), so detect assigns NLE (mid-
+    # chain, new_resname=None) + CNLE (C-terminal). Bonds are explicit (no
+    # distance-based guessing).
+    return Molecule(NLE_DUAL_CONTEXT_PDB)
+
+
+def test_apply_residue_templates_prefixed_keys_applied_per_context():
+    mol = _dual_context_mol()
+    specs = detectNonStandardResidues(mol)
+    keys = {s.new_resname or s.resname for s in specs if isinstance(s, ChainResidueSpec)}
+    assert {"NLE", "CNLE"} <= keys
+    templates = {
+        "NLE": {"smiles": "CCCC[C@@H](C=O)N"},
+        "CNLE": {"smiles": "CCCC[C@@H](C(=O)O)N"},
+    }
+    # Should apply without raising and add hydrogens to both copies.
+    applyResidueTemplates(mol, templates, specs)
+    assert (mol.element == "H").sum() > 0
+
+
+def test_apply_residue_templates_plain_key_fallback_warns(caplog):
+    mol = _dual_context_mol()
+    specs = detectNonStandardResidues(mol)
+    templates = {"NLE": {"smiles": "CCCC[C@@H](C=O)N"}}  # no CNLE key
+    with caplog.at_level("WARNING"):
+        applyResidueTemplates(mol, templates, specs)
+    assert any(
+        "CNLE" in r.message or "terminus" in r.message.lower() for r in caplog.records
+    )
+
+
+def test_apply_residue_templates_unmatched_key_warns_but_valid_key_applied(caplog):
+    mol = _dual_context_mol()
+    specs = detectNonStandardResidues(mol)
+    templates = {
+        "NLE": {"smiles": "CCCC[C@@H](C=O)N"},
+        "CNLE": {"smiles": "CCCC[C@@H](C(=O)O)N"},
+        "ZZZ": {"smiles": "CCCC[C@@H](C=O)N"},  # typo'd/stale key: no such residue
+    }
+    with caplog.at_level("WARNING"):
+        applyResidueTemplates(mol, templates, specs)
+    # The valid keys were still applied (hydrogens added to both copies).
+    assert (mol.element == "H").sum() > 0
+    # The unmatched key is named in a warning rather than silently ignored.
+    assert any("ZZZ" in r.message for r in caplog.records)
+
+
+def test_apply_residue_templates_noop_without_templates():
+    mol = _dual_context_mol()
+    specs = detectNonStandardResidues(mol)
+    before = mol.numAtoms
+    applyResidueTemplates(mol, None, specs)
+    applyResidueTemplates(mol, {}, specs)
+    assert mol.numAtoms == before
+
+
+def test_apply_residue_templates_rejects_ambiguous_template():
+    mol = _dual_context_mol()
+    specs = detectNonStandardResidues(mol)
+    for bad in ({}, {"smiles": "CCC", "file": "x.cif"}, "CCC"):
+        with pytest.raises(ValueError):
+            applyResidueTemplates(mol, {"NLE": bad}, specs)
+
+
+def test_apply_residue_templates_dispatch(monkeypatch):
+    """A .cif value routes to templateResidueFromMolecule; a SMILES value routes
+    to templateResidueFromSmiles, each keyed by its spec's plain resname and
+    applied via a boolean mask selecting just that residue's atoms. The
+    class-level spies keep the real Molecule(cif) load working while recording
+    which path was taken."""
+    calls = {"smiles": [], "molecule": []}
+    monkeypatch.setattr(
+        Molecule,
+        "templateResidueFromSmiles",
+        lambda self, sel, smiles, **kw: calls["smiles"].append(
+            (np.asarray(sel).tolist(), smiles)
+        ),
+    )
+    monkeypatch.setattr(
+        Molecule,
+        "templateResidueFromMolecule",
+        lambda self, sel, refmol, **kw: calls["molecule"].append(
+            (np.asarray(sel).tolist(), type(refmol).__name__)
+        ),
+    )
+
+    cif = os.path.join(DATA_DIR, "LIG.cif")
+    protein = Molecule().empty(2)
+    protein.resname[:] = ["BEN", "LIG"]
+
+    resid = UniqueResidueID(segid="", chain="", resid=1, insertion="")
+    specs = [
+        LigandSpec(resname="BEN", residue=resid),
+        LigandSpec(resname="LIG", residue=resid),
+    ]
+
+    # A {"smiles": ...} value routes to SMILES; a {"file": "*.cif"} value loads
+    # the Molecule and routes to the name-matched template.
+    applyResidueTemplates(
+        protein,
+        {"BEN": {"smiles": "[NH2+]=C(N)c1ccccc1"}, "LIG": {"file": cif}},
+        specs,
+    )
+    assert calls["smiles"] == [([True, False], "[NH2+]=C(N)c1ccccc1")]
+    assert calls["molecule"] == [([False, True], "Molecule")]
+
+
+def test_apply_residue_templates_does_not_change_the_detected_specs():
+    """Callers detect once and reuse the spec list for templating AND for
+    systemPrepare. That is only safe if templating changes no spec field: it
+    assigns intra-residue bonds, orders, charges and hydrogens, while every field
+    is decided by resname and inter-residue connectivity. 5VBL exercises both
+    kinds at once - 5 templated NCAAs plus 4 CYX disulfides and a GLU-LYS
+    isopeptide that must survive untouched."""
+
+    def fingerprint(specs):
+        return sorted(
+            (
+                type(s).__name__,
+                s.resname,
+                None if s.residue is None else str(s.residue),
+                getattr(s, "new_resname", None),
+                getattr(s, "anchor_atom", None),
+                getattr(s, "is_n_term", None),
+                getattr(s, "is_c_term", None),
+            )
+            for s in specs
+        )
+
+    smiles = {
+        "200": "c1cc(ccc1C[C@@H](C(=O)O)N)Cl",
+        "ALC": "C1CCC(CC1)C[C@@H](C(=O)O)N",
+        "HRG": "C(CCNC(=N)N)C[C@@H](C(=O)O)N",
+        "NLE": "CCCC[C@@H](C(=O)O)N",
+        "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C(=O)O",
+    }
+    mol = Molecule(VBL_PDB)
+    mol.filter("not water", _logger=False)
+    before = detectNonStandardResidues(mol)
+    assert len([s for s in before if getattr(s, "anchor_atom", None)]) > 0
+
+    applyResidueTemplates(mol, {k: {"smiles": v} for k, v in smiles.items()}, before)
+    assert fingerprint(detectNonStandardResidues(mol)) == fingerprint(before)

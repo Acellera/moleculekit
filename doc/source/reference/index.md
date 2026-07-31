@@ -156,6 +156,7 @@ moleculekit.representations
 
 moleculekit.rcsb
 moleculekit.opm
+moleculekit.uniprot
 ```
 
 ## Small molecules

@@ -1042,3 +1042,133 @@ def residuesRequiringTemplate(mol, guess_bonds=True):
     """
     specs = detectNonStandardResidues(mol, guess_bonds=guess_bonds)
     return sorted({s.resname for s in specs if requiresTemplate(s)})
+
+
+def _template_source(template, context):
+    """Return the molecule source from a ``{smiles?, file?}`` mapping -- the file
+    path (as a str) when a ``file`` is given, otherwise the SMILES string -- after
+    validating that exactly one of the two is provided. ``context`` is used only
+    for the error message."""
+    if not isinstance(template, dict):
+        raise ValueError(f"{context} must be a dict with a 'smiles' or 'file' key.")
+    smiles = template.get("smiles")
+    file = template.get("file")
+    if bool(smiles) == bool(file):
+        raise ValueError(f"{context}: provide exactly one of 'smiles' or 'file'.")
+    return str(file) if file else smiles
+
+
+def applyResidueTemplates(mol, residue_templates, specs):
+    """Template each residue named in ``residue_templates``, routed per residue.
+
+    Each ``residue_templates`` entry provides exactly one of ``smiles`` / ``file``
+    and is applied to the specific residue(s) identified by ``specs`` (as returned
+    by :func:`detectNonStandardResidues`) rather than to every residue that merely
+    shares a resname. A :class:`ChainResidueSpec` is keyed by
+    ``new_resname or resname``: the detector prefixes ``resname`` with
+    ``"N"``/``"C"``/``"B"`` when the same non-canonical amino acid appears with
+    more than one terminus configuration in ``mol``, so a caller can supply a
+    different template per context (e.g. a free-acid C-terminal SMILES vs. a
+    mid-chain, amide-bonded one). When no template is registered under a prefixed
+    key, the plain ``resname`` key is used as a fallback and a warning is logged,
+    since the same template is then applied to a terminus-specific context it was
+    not necessarily written for. Any other spec type (:class:`ScaffoldSpec`,
+    :class:`CovalentLigandSpec`, :class:`LigandSpec`) is keyed by its plain
+    ``resname`` and applied once to every atom of that resname (all copies
+    templated together).
+
+    A ``.cif``/``.sdf`` ``file`` value is loaded as a reference Molecule and
+    matched via ``templateResidueFromMolecule`` (``.cif`` by atom name, ``.sdf``
+    converted to SMILES internally and matched by graph); a ``smiles`` value is
+    matched via ``templateResidueFromSmiles``. Either way the source supplies
+    bonds, bond orders, formal charges and hydrogens and is never appended to the
+    structure. A spec with no matching template entry (after the fallback) is left
+    untouched. Conversely, any ``residue_templates`` key that never matched a spec
+    (typo'd or stale, e.g. naming a terminus context that was not actually
+    detected) logs a warning naming the key rather than being silently ignored.
+
+    Run this before :func:`moleculekit.tools.preparation.systemPrepare`, and pass
+    it the same spec list you then hand to ``systemPrepare`` -- **do not re-detect
+    afterwards**. Templating changes no field any spec carries: it assigns
+    intra-residue bonds, bond orders, formal charges and hydrogens, while every
+    spec field is decided by resname and inter-residue connectivity. Re-detecting
+    is not merely redundant, it loses specs on an input whose bonds were not
+    explicit: templating leaves the molecule with bonds for the templated residues
+    only, which is enough for :func:`detectNonStandardResidues` to stop
+    distance-guessing, so the disulfides and isopeptides elsewhere in the
+    structure go undetected.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The structure to template, mutated in place.
+    residue_templates : dict[str, dict] or None
+        Mapping of a residue name (or terminus-prefixed residue name) to a
+        ``{"smiles": ...}`` / ``{"file": ...}`` spec. ``None`` or empty is a no-op.
+    specs : list
+        Per-residue specs, as returned by :func:`detectNonStandardResidues`.
+
+    Examples
+    --------
+    >>> specs = detectNonStandardResidues(mol)                       # doctest: +SKIP
+    >>> applyResidueTemplates(mol, {"NLE": {"smiles": "CCCC[C@@H](C=O)N"},
+    ...                             "CNLE": {"file": "cnle.cif"}}, specs)  # doctest: +SKIP
+    """
+    from moleculekit.molecule import Molecule
+
+    if not residue_templates:
+        return
+    provided = dict(residue_templates)
+    templated_resnames = set()
+    consumed_keys = set()
+
+    for spec in specs:
+        resname = spec.resname
+        is_chain_spec = isinstance(spec, ChainResidueSpec)
+        if is_chain_spec:
+            key = spec.new_resname or resname
+        else:
+            # Non-chain specs (free ligands, scaffolds, covalent ligands) are
+            # always keyed by their plain resname and templated once for all
+            # copies at once; skip repeats so a resname shared by several
+            # specs isn't re-templated redundantly.
+            if resname in templated_resnames:
+                continue
+            key = resname
+
+        template = provided.get(key)
+        if template is not None:
+            consumed_keys.add(key)
+        elif key != resname:
+            template = provided.get(resname)
+            if template is not None:
+                consumed_keys.add(resname)
+                logger.warning(
+                    f"residue_templates has no entry for {key!r} (a "
+                    f"terminus-specific context of {resname!r}); falling "
+                    f"back to the plain {resname!r} template for this residue."
+                )
+        if template is None:
+            continue
+
+        source = _template_source(template, f"residue_templates[{key!r}]")
+        mask = (
+            getResidueMask(mol, spec) if is_chain_spec else (mol.resname == resname)
+        )
+        if str(source).lower().endswith((".cif", ".sdf")):
+            mol.templateResidueFromMolecule(
+                mask, Molecule(source), addHs=True, guessBonds=True, _logger=False
+            )
+        else:
+            mol.templateResidueFromSmiles(
+                mask, source, addHs=True, guessBonds=True, _logger=False
+            )
+        if not is_chain_spec:
+            templated_resnames.add(resname)
+
+    for key in provided:
+        if key not in consumed_keys:
+            logger.warning(
+                f"residue_templates key {key!r} did not match any detected "
+                "residue; ignoring."
+            )

@@ -4,6 +4,7 @@ import pytest
 from moleculekit.molecule import Molecule
 from moleculekit.tools.modelling import (
     _align_full_to_observed,
+    detectBackboneBreaks,
     detectSplicedClashes,
     detectSequenceGaps,
     prepareGapModellingInput,
@@ -150,7 +151,7 @@ def test_align_full_to_observed_confines_gaps_to_backbone_breaks():
 
 def test_detect_sequence_gaps_splits_holes_at_backbone_breaks():
     m = _bonded_chain_mol(_MERGE_OBS_RESNAMES, _MERGE_OBS_RESIDS)
-    gaps, skipped = detectSequenceGaps(m, {"A": _MERGE_FULL_SEQ})
+    gaps, skipped, _ = detectSequenceGaps(m, {"A": _MERGE_FULL_SEQ})
     assert skipped == []
     internal = [
         (g["after_resid"], g["before_resid"], g["missing_seq"])
@@ -256,7 +257,7 @@ def test_detect_sequence_gaps_internal():
     # observed ALA GLY SER (resid 1,2,5) missing 2 residues (resid 3,4) -> internal gap
     m = _chain_mol(["ALA", "GLY", "SER"], [1, 2, 5])
     full = {"A": "AGHIS"}  # A G [H I] S  -> observed A G S, missing HI
-    gaps, skipped = detectSequenceGaps(m, full)
+    gaps, skipped, _ = detectSequenceGaps(m, full)
     assert skipped == []
     assert len(gaps) == 1
     g = gaps[0]
@@ -270,7 +271,7 @@ def test_detect_sequence_gaps_internal():
 def test_detect_sequence_gaps_terminal():
     m = _chain_mol(["GLY", "SER"], [3, 4])  # observed G S at resid 3,4
     full = {"A": "AAGS"}  # missing A A at the N-terminus
-    gaps, skipped = detectSequenceGaps(m, full)
+    gaps, skipped, _ = detectSequenceGaps(m, full)
     assert len(gaps) == 1
     assert gaps[0]["missing_seq"] == "AA"
     assert gaps[0]["after_resid"] is None
@@ -592,7 +593,7 @@ def test_detect_sequence_gaps_skips_ncaa_chain():
     # NLE (norleucine) is a protein residue but not canonical, so the whole chain
     # is skipped and reported, never gap-modelled.
     m = _chain_mol(["ALA", "GLY", "NLE"], [1, 2, 3])
-    gaps, skipped = detectSequenceGaps(m, {"A": "AGXAA"})
+    gaps, skipped, _ = detectSequenceGaps(m, {"A": "AGXAA"})
     assert skipped == ["A"]
     assert gaps == []
 
@@ -623,7 +624,7 @@ def _full_sequence():
 
 def test_1m17_real_case_detects_gaps():
     gapped = Molecule(os.path.join(curr_dir, "test_modelling", "1m17_gapped.pdb.gz"))
-    gaps, skipped = detectSequenceGaps(gapped, {"A": _full_sequence()})
+    gaps, skipped, _ = detectSequenceGaps(gapped, {"A": _full_sequence()})
     assert skipped == []
 
     internal = [g for g in gaps if not g["is_terminal"]]
@@ -914,3 +915,119 @@ def test_splice_5vq2_from_4dso_crosscrystal():
     # Cofactors preserved throughout: both GTP molecules (2 x 32 atoms) + both Mg.
     assert int((sp2.resname == "GTP").sum()) == 64
     assert int((sp2.resname == "MG").sum()) == 2
+
+
+def test_detect_sequence_gaps_reports_mismatches():
+    # Bonded backbone, equal lengths: the observed GLY 2 aligns to a THR in the
+    # reference, which is a point mutation, not a missing residue.
+    m = _bonded_chain_mol(["ALA", "GLY", "SER"], [1, 2, 3])
+    gaps, skipped, mismatches = detectSequenceGaps(m, {"A": "ATS"})
+    assert gaps == []
+    assert skipped == []
+    assert mismatches == [
+        {
+            "chain": "A",
+            "resid": 2,
+            "insertion": "",
+            "reference": "T",
+            "observed": "G",
+            "ref_index": 1,
+        }
+    ]
+
+
+def test_detect_sequence_gaps_mismatch_ref_index_spans_gap():
+    # A mismatch downstream of a gap must carry the reference index INCLUDING the
+    # missing residues, so patching sequences[chain][ref_index] hits the residue
+    # the mismatch is actually about.
+    m = _bonded_chain_mol(["ALA", "GLY", "SER"], [1, 2, 6])
+    gaps, _, mismatches = detectSequenceGaps(m, {"A": "AGHIKT"})
+    assert len(gaps) == 1 and gaps[0]["missing_seq"] == "HIK"
+    assert [
+        (x["resid"], x["reference"], x["observed"], x["ref_index"]) for x in mismatches
+    ] == [(6, "T", "S", 5)]
+    # the index is usable as-is to graft the observed residue onto the reference
+    ref = list("AGHIKT")
+    ref[mismatches[0]["ref_index"]] = mismatches[0]["observed"]
+    assert "".join(ref) == "AGHIKS"
+
+
+def test_detect_sequence_gaps_mismatch_carries_insertion_code():
+    m = _bonded_chain_mol(["ALA", "GLY", "SER"], [1, 2, 3])
+    m.insertion[m.resid == 2] = "A"
+    _, _, mismatches = detectSequenceGaps(m, {"A": "ATS"})
+    assert [(x["resid"], x["insertion"]) for x in mismatches] == [(2, "A")]
+
+
+def test_detect_sequence_gaps_ignores_unknown_residue_mismatches():
+    # "X" on either side is an unknown / modified residue, not a mutation.
+    m = _bonded_chain_mol(["ALA", "GLY", "SER"], [1, 2, 3])
+    _, _, mismatches = detectSequenceGaps(m, {"A": "AXS"})
+    assert mismatches == []
+
+
+def test_detect_sequence_gaps_no_mismatches_when_identical():
+    m = _bonded_chain_mol(["ALA", "GLY", "SER"], [1, 2, 6])
+    gaps, _, mismatches = detectSequenceGaps(m, {"A": "AGHIKS"})
+    assert len(gaps) == 1
+    assert mismatches == []
+
+
+def test_detect_backbone_breaks_finds_the_break():
+    m = _bonded_chain_mol(["ALA", "GLY", "SER", "THR"], [1, 2, 6, 7])
+    breaks = detectBackboneBreaks(m)
+    assert len(breaks) == 1
+    b = breaks[0]
+    assert (b["segid"], b["chain"], b["after_resid"], b["before_resid"]) == (
+        "P",
+        "A",
+        2,
+        6,
+    )
+    assert b["distance"] > 2.0
+
+
+def test_detect_backbone_breaks_none_on_continuous_chain():
+    m = _bonded_chain_mol(["ALA", "GLY", "SER"], [1, 2, 3])
+    assert detectBackboneBreaks(m) == []
+
+
+def test_detect_backbone_breaks_ignores_chain_and_segment_boundaries():
+    # Two chains sharing one (empty) segid: the junction between them is not a
+    # break, however far apart they sit.
+    a = _bonded_chain_mol(["ALA", "GLY"], [1, 2], chain="A", segid="")
+    b = _bonded_chain_mol(["SER", "THR"], [1, 2], chain="B", segid="")
+    m = a.copy()
+    m.append(b)
+    assert detectBackboneBreaks(m) == []
+    # Same for one chain id split across two segids.
+    c = _bonded_chain_mol(["ALA", "GLY"], [1, 2], chain="A", segid="P1")
+    d = _bonded_chain_mol(["SER", "THR"], [3, 4], chain="A", segid="P2")
+    m2 = c.copy()
+    m2.append(d)
+    assert detectBackboneBreaks(m2) == []
+
+
+def test_detect_backbone_breaks_tolerance_is_configurable():
+    m = _bonded_chain_mol(["ALA", "GLY", "SER"], [1, 2, 3])
+    # a peptide C-N is ~1.33 A, so a tolerance below it turns every junction into
+    # a break - proves the threshold is what decides, not the bonds
+    assert len(detectBackboneBreaks(m, tol=1.0)) == 2
+
+
+def test_detect_backbone_breaks_1m17_real_case():
+    gapped = Molecule(os.path.join(curr_dir, "test_modelling", "1m17_gapped.pdb.gz"))
+    breaks = detectBackboneBreaks(gapped)
+    # the single internal gap of the deposited structure, and nothing else
+    assert [(b["after_resid"], b["before_resid"]) for b in breaks] == [(964, 977)]
+
+
+def test_detect_backbone_breaks_reports_missing_backbone_atom():
+    # A residue with no N at all: continuity cannot be established from
+    # coordinates, so it is a break with distance None rather than a silent pass.
+    m = _bonded_chain_mol(["ALA", "GLY", "SER"], [1, 2, 3])
+    m.remove("resid 2 and name N", _logger=False)
+    breaks = detectBackboneBreaks(m)
+    assert [(b["after_resid"], b["before_resid"], b["distance"]) for b in breaks] == [
+        (1, 2, None)
+    ]
