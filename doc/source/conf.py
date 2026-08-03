@@ -40,6 +40,16 @@ source_suffix = {
 
 exclude_patterns = ["build", "**/.ipynb_checkpoints"]
 
+# Publish llms.txt, the index that points retrieval pipelines at llms-full.txt.
+# It is a committed source file rather than hook output, and ".txt" is not a
+# source_suffix, so without this Sphinx never copies it into the build dir -- and
+# docs.yml deploys by rsyncing only doc/build/html.
+#
+# llms-full.txt must NOT be listed here. Extra files are copied during
+# builder.finish(), which runs before the build-finished hook below writes it, so
+# listing it would publish a stale copy or fail on a clean build.
+html_extra_path = ["llms.txt"]
+
 # -- MyST / MyST-NB ----------------------------------------------------------
 
 myst_enable_extensions = [
