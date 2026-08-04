@@ -2735,7 +2735,18 @@ class Molecule(object):
             The bond type of that bond
         bidx : int
             The index of that bond in the bond/bondtype array
+
+        Raises
+        ------
+        TypeError
+            If an index is not an integer. Atom selection strings are not
+            accepted, use `mol.atomselect(sel, indexes=True)` to convert them.
+        IndexError
+            If an index does not point to an atom of this Molecule
         """
+        _checkAtomIndex(idx1, "idx1", self.numAtoms)
+        _checkAtomIndex(idx2, "idx2", self.numAtoms)
+
         idx = np.where((self.bonds == (idx1, idx2)).all(axis=1))[0]
         if len(idx):
             return True, self.bondtype[idx[0]], idx[0]
@@ -2807,7 +2818,17 @@ class Molecule(object):
         -------
         atoms : list of int
             The atoms bonded to `idx`
+
+        Raises
+        ------
+        TypeError
+            If `idx` is not an integer. Atom selection strings are not
+            accepted, use `mol.atomselect(sel, indexes=True)` to convert them.
+        IndexError
+            If `idx` does not point to an atom of this Molecule
         """
+        _checkAtomIndex(idx, "idx", self.numAtoms)
+
         if bonds is None:
             bonds = self.bonds
         rows = np.where(bonds == idx)[0]
@@ -3714,6 +3735,20 @@ def _detectCollisions(coords1, coords2, gap, remove_idx):
     contacts = np.unique(contacts[1::2]).astype(np.uint32)
     close = contacts[np.isin(contacts, remove_idx)]
     return close
+
+
+def _checkAtomIndex(idx, argname, numatoms):
+    if not isinstance(idx, (int, np.integer)):
+        extra = ""
+        if isinstance(idx, str):
+            extra = " Atom selection strings are not accepted, convert them first with mol.atomselect(sel, indexes=True)."
+        raise TypeError(
+            f"Argument {argname} must be an integer atom index, got {type(idx).__name__}.{extra}"
+        )
+    if idx < 0 or idx >= numatoms:
+        raise IndexError(
+            f"Argument {argname} ({idx}) is out of range for a Molecule with {numatoms} atoms."
+        )
 
 
 def _getResidueIndexesByAtom(mol, idx):

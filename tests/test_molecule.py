@@ -121,6 +121,52 @@ def test_appendingBondsBondtypes():
     assert newmol.bonds.shape[0] == len(newmol.bondtype)
 
 
+def test_bondMethodsRejectNonIntegerIndexes():
+    """Passing atom selection strings instead of indexes used to silently report
+    that the bond did not exist, so addBond/removeBond became no-ops."""
+    mol = Molecule(os.path.join(curr_dir, "test_molecule", "h2o2.mol2"))
+
+    for method in (mol.hasBond, mol.removeBond):
+        with pytest.raises(TypeError):
+            method("name Oa", "name Ob")
+        with pytest.raises(TypeError):
+            method(0, "name Ob")
+        with pytest.raises(TypeError):
+            method(0, 1.0)
+
+    with pytest.raises(TypeError):
+        mol.addBond("name Oa", "name Ob", "1")
+
+    with pytest.raises(TypeError):
+        mol.getNeighbors("name Oa")
+
+    # Numpy integers stay valid
+    assert mol.hasBond(np.uint32(0), np.int64(1))[0] == mol.hasBond(0, 1)[0]
+    assert mol.getNeighbors(np.uint32(0)) == mol.getNeighbors(0)
+
+
+def test_bondMethodsRejectOutOfRangeIndexes():
+    mol = Molecule(os.path.join(curr_dir, "test_molecule", "h2o2.mol2"))
+
+    for method in (mol.hasBond, mol.removeBond):
+        with pytest.raises(IndexError):
+            method(0, mol.numAtoms)
+        with pytest.raises(IndexError):
+            method(-1, 1)
+
+    with pytest.raises(IndexError):
+        mol.addBond(0, mol.numAtoms, "1")
+
+    for badidx in (mol.numAtoms, -1):
+        with pytest.raises(IndexError):
+            mol.getNeighbors(badidx)
+
+    # The extreme valid indexes are still accepted
+    assert mol.hasBond(1, mol.numAtoms - 1)[0]
+    assert not mol.hasBond(0, mol.numAtoms - 1)[0]
+    assert mol.getNeighbors(mol.numAtoms - 1) == [1]
+
+
 def test_uniqueAtomID():
     mol = MOL3PTB.copy()
     uqid = UniqueAtomID.fromMolecule(mol, "resid 20 and name CA")
