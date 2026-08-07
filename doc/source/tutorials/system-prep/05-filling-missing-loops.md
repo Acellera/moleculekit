@@ -12,7 +12,7 @@ kernelspec:
 
 # Filling missing loops from a homologous structure
 
-**You will learn:** how to fill unresolved (missing-residue) regions of a crystal structure by grafting the missing residues from a more complete donor structure of the same protein, using {py:func}`~moleculekit.tools.modelling.spliceMissingResidues`, and how to find and check those gaps with {py:func}`~moleculekit.rcsb.resolveFullSequences`, {py:func}`~moleculekit.tools.modelling.detectSequenceGaps`, and {py:func}`~moleculekit.tools.modelling.detectSplicedClashes`.
+**You will learn:** how to fill unresolved (missing-residue) regions of a crystal structure by grafting the missing residues from a more complete donor structure of the same protein, using {py:func}`~moleculekit.tools.modelling.spliceMissingResidues`, and how to find and check those gaps with {py:func}`~moleculekit.rcsb.resolveFullSequences`, {py:func}`~moleculekit.tools.modelling.detectSequenceGaps`, {py:func}`~moleculekit.tools.modelling.detectBackboneBreaks`, and {py:func}`~moleculekit.tools.modelling.detectSplicedClashes`.
 
 **Prerequisites:**
 - The [Mutation, gap closing, and auto-segmentation](04-mutation-gap-closing-segmentation.md) tutorial.
@@ -24,6 +24,7 @@ from moleculekit.molecule import Molecule
 from moleculekit.rcsb import resolveFullSequences
 from moleculekit.tools.modelling import (
     detectSequenceGaps,
+    detectBackboneBreaks,
     spliceMissingResidues,
     detectSplicedClashes,
 )
@@ -98,7 +99,39 @@ for ch in ("A", "B"):
 print("GTP atoms:", int((sp2.resname == "GTP").sum()), " MG atoms:", int((sp2.resname == "MG").sum()))
 ```
 
-## Step 5 - Check the modelled residues for clashes
+## Step 5 - Choosing which gaps to fill
+
+By default a splice fills every run the donor can supply, which includes residues lying *beyond* either terminus of your structure. A donor crystal observed over a wider range therefore lengthens your chains, even when nothing was missing between them. When you want a specific span, name the gaps you want.
+
+`gaps` takes the same `chain` / `after_resid` / `before_resid` entries that {py:func}`~moleculekit.tools.modelling.detectSequenceGaps` and {py:func}`~moleculekit.tools.modelling.detectBackboneBreaks` return, so you filter one of those lists and pass it in. {py:func}`~moleculekit.tools.modelling.detectBackboneBreaks` only ever compares residues that are adjacent in the file, so it cannot report a terminal tail: passing its output fills exactly the breaks your structure actually has and leaves both termini as deposited.
+
+Call {py:func}`~moleculekit.tools.modelling.detectBackboneBreaks` before the [auto-segmentation](04-mutation-gap-closing-segmentation.md) step, not after: it never reports a break across a segid boundary, and auto-segmenting starts a new segment at each break, so on an already-segmented structure it always comes back empty. {py:func}`~moleculekit.tools.modelling.detectSequenceGaps` skips a chain containing non-canonical residues entirely, so that chain contributes no entries and stays unfilled by this filter.
+
+Starting again from the deposited structure, this closes the two internal loops per chain and leaves the unresolved C-terminal residue 169 off:
+
+```{code-cell} python
+internal_only, _ = spliceMissingResidues(
+    mol, donor, graft_flanks=2, gaps=detectBackboneBreaks(mol)
+)
+
+for ch in ("A", "B"):
+    resids = internal_only.resid[internal_only.atomselect("protein")
+                                 & (internal_only.chain == ch)]
+    print(f"chain {ch}: {int(resids.min())}-{int(resids.max())}, "
+          f"{len(set(int(r) for r in resids))} residues")
+```
+
+Both chains still end at their deposited last residue rather than being extended to the donor's. Re-running the break check confirms the two internal loops are now closed, since an empty list means no backbone break remains:
+
+```{code-cell} python
+print(detectBackboneBreaks(internal_only))
+```
+
+The still-missing C-terminal residue does not show up here even though it stays unfilled: a chain terminus is not a backbone break, so {py:func}`~moleculekit.tools.modelling.detectBackboneBreaks` has nothing to report about it either way.
+
+To go the other way and request a terminus explicitly, write the entry yourself: `after_resid` is `None` for an N-terminal run and `before_resid` is `None` for a C-terminal one, which is exactly how {py:func}`~moleculekit.tools.modelling.detectSequenceGaps` reports the ones it flags `is_terminal`. Passing `gaps=[]` fills nothing.
+
+## Step 6 - Check the modelled residues for clashes
 
 A grafted loop can land in a cofactor, ion, or water site. {py:func}`~moleculekit.tools.modelling.detectSplicedClashes` checks the newly added atoms (the mask returned by the splice) against the non-protein components, which here include the crystallographic waters:
 
@@ -116,6 +149,7 @@ The filled structure is now ready to hand to {py:func}`~moleculekit.tools.prepar
 - {py:func}`~moleculekit.rcsb.resolveFullSequences` gets the full deposited sequence per chain; unwrap its `sequence` field before passing a `{chain: sequence}` map to {py:func}`~moleculekit.tools.modelling.detectSequenceGaps`.
 - {py:func}`~moleculekit.tools.modelling.detectSequenceGaps` returns `(gaps, skipped_chains, mismatches)`; each gap locates a missing-residue run between two observed resids, while `mismatches` flags residues that are present but disagree with the reference sequence.
 - {py:func}`~moleculekit.tools.modelling.spliceMissingResidues` grafts the residues missing from your structure out of a more complete donor of the same protein, returning `(mol, new_mask)`; increase `graft_flanks` and re-run to close regions a minimal graft skips.
+- Pass `gaps=` to {py:func}`~moleculekit.tools.modelling.spliceMissingResidues` to choose which runs are filled; without it a donor observed over a wider range extends your chains past both termini. `gaps=detectBackboneBreaks(mol)` fills only the breaks your structure has.
 - {py:func}`~moleculekit.tools.modelling.detectSplicedClashes` flags newly modelled atoms that overlap cofactors, ions, or ligands.
 
 ## Next

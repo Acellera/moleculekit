@@ -1098,8 +1098,54 @@ def _superpose_and_graft_runs(
     return [s for k, s in enumerate(slots) if k not in skip]
 
 
+def _select_requested_runs(slots, chain, requested):
+    """Drop the new residues of every inserted run the caller did not ask for.
+
+    A run is keyed by ``(chain, resid before it, resid after it)``, taking the
+    deposited resids recorded on the kept slots flanking it. The residue before a
+    run is ``None`` when the run starts the chain and the one after it is ``None``
+    when the run ends it, so a terminal tail is only kept when ``requested`` names
+    it with a ``None`` on that side. Insertion codes are not compared: neither
+    :func:`detectSequenceGaps` nor a hand-built entry needs to carry them, and two
+    runs sharing an ``(after_resid, before_resid)`` pair would need insertion codes
+    on both flanks.
+
+    Must run before :func:`_superpose_and_graft_runs` so a dropped run costs no
+    superposition and never grafts donor flanks over kept original residues, and
+    before :func:`_number_new_residues` so a dropped run consumes no numbering.
+
+    Returns
+    -------
+    slots : list of dict
+        ``slots`` without the dropped runs' new residues.
+    matched : set
+        The keys in ``requested`` that a run was found for.
+    """
+    n = len(slots)
+    drop, matched = set(), set()
+    i = 0
+    while i < n:
+        if not slots[i]["new"]:
+            i += 1
+            continue
+        j = i
+        while j < n and slots[j]["new"]:
+            j += 1
+        key = (
+            chain,
+            slots[i - 1]["resid"] if i > 0 else None,
+            slots[j]["resid"] if j < n else None,
+        )
+        if key in requested:
+            matched.add(key)
+        else:
+            drop.update(range(i, j))
+        i = j
+    return [s for k, s in enumerate(slots) if k not in drop], matched
+
+
 def spliceMissingResidues(
-    mol, donor, chain_map=None, graft_flanks=1, min_identity=0.95
+    mol, donor, chain_map=None, graft_flanks=1, min_identity=0.95, gaps=None
 ):
     """Insert only the newly added residues from ``donor`` into ``mol``.
 
@@ -1107,7 +1153,9 @@ def spliceMissingResidues(
     deposited coordinates AND with their deposited residue numbering, except the
     ``graft_flanks`` residues on each side of a filled gap (see below). Each modelled
     chain is rebuilt as its original residues plus the residues present in
-    ``donor`` but absent from the original; each inserted residue is numbered to
+    ``donor`` but absent from the original, including any lying beyond either
+    terminus, so a donor observed over a wider range extends the chain; pass
+    ``gaps`` to choose which of those runs are filled. Each inserted residue is numbered to
     fall between its flanking original residues, using the natural integer gap where
     there is room and insertion codes otherwise. A run too long for both (more residues
     than the free insertion codes can number) instead shifts the following residues of
@@ -1150,6 +1198,23 @@ def spliceMissingResidues(
         the flanking residues from ``donor`` (keeping their original numbering)
         restores a continuous backbone. Set to 0 to keep every original residue
         exactly.
+    gaps : list of dict, optional
+        Restrict insertion to the gaps named here. Each entry is read for
+        ``chain``, ``after_resid`` and ``before_resid``, the convention shared by
+        :func:`detectBackboneBreaks` and :func:`detectSequenceGaps`, so the output
+        of either can be filtered and handed straight in. ``after_resid`` is
+        ``None`` for a run at the chain's N-terminus and ``before_resid`` is
+        ``None`` for one at its C-terminus, which is why
+        ``gaps=detectBackboneBreaks(mol)`` fills exactly the breaks the structure
+        has and leaves both termini as deposited. An empty list inserts nothing.
+        Insertion codes are not matched on. Entries matching no insertable run are
+        reported with a warning. Passing ``None`` fills every gap, terminal runs
+        included. Call :func:`detectBackboneBreaks` before segmenting the
+        structure: it never reports a break across a segid boundary, and
+        segmenting starts a new segment at each break, so running it after leaves
+        it reporting no breaks at all. :func:`detectSequenceGaps` skips a chain
+        containing non-canonical residues entirely, so that chain contributes no
+        entries here and is left unfilled.
 
     Returns
     -------
@@ -1157,6 +1222,15 @@ def spliceMissingResidues(
         ``mol`` with the modelled residues inserted.
     new_mask : numpy.ndarray
         Boolean mask over ``spliced`` marking the inserted atoms.
+
+    Examples
+    --------
+    >>> from moleculekit.tools.modelling import (
+    ...     detectBackboneBreaks, spliceMissingResidues)
+    >>> breaks = detectBackboneBreaks(mol)                        # doctest: +SKIP
+    >>> spliced, new = spliceMissingResidues(mol, donor, gaps=breaks)  # doctest: +SKIP
+    >>> detectBackboneBreaks(spliced)                             # doctest: +SKIP
+    []
     """
     MARK = -987654  # temporary beta marker to recover inserted atoms after rebuild
     # Read-only aliases: neither is mutated in place (all mutation happens on
@@ -1172,6 +1246,16 @@ def spliceMissingResidues(
             f"No donor chain matched original chain '{ochain}' at >= {min_identity} "
             "sequence identity; leaving that chain unmodelled."
         )
+
+    requested = None
+    if gaps is not None:
+        # materialise before consuming it into `requested`: an iterator (a
+        # generator, `filter(...)`, ...) would otherwise be exhausted here and the
+        # warning loop below, which iterates `gaps` again, would silently see none
+        # of it.
+        gaps = list(gaps)
+        requested = {(g["chain"], g["after_resid"], g["before_resid"]) for g in gaps}
+    matched_keys = set()
 
     modelled_orig_chains = list(pairing.keys())
     keep_mask = np.logical_not(
@@ -1232,6 +1316,10 @@ def spliceMissingResidues(
                 )
                 pi += 1
 
+        if requested is not None:
+            slots, matched = _select_requested_runs(slots, orig_chain, requested)
+            matched_keys |= matched
+
         # Take the residues flanking each inserted run from the model too, so the
         # junction backbone is continuous (the modeller moved those flanks to close
         # the gap; keeping the original ones leaves a stretched, cappable bond).
@@ -1253,6 +1341,28 @@ def spliceMissingResidues(
             new_chain = frag if new_chain is None else _concat(new_chain, frag)
         if new_chain is not None:
             result = _concat(result, new_chain)
+
+    if gaps is not None:
+        # iterate `gaps`, not the set, so the order is the caller's and repeated
+        # entries are reported once
+        reported = set()
+        for g in gaps:
+            key = (g["chain"], g["after_resid"], g["before_resid"])
+            if key in matched_keys or key in reported:
+                continue
+            reported.add(key)
+            chain, after_resid, before_resid = key
+            if after_resid is None:
+                where = f"before resid {before_resid} at the N-terminus"
+            elif before_resid is None:
+                where = f"after resid {after_resid} at the C-terminus"
+            else:
+                where = f"between resid {after_resid} and {before_resid}"
+            logger.warning(
+                f"Requested gap in chain '{chain}' {where} was not filled: no "
+                "residues are missing there, the donor does not supply them, or "
+                "the resids do not match the deposited numbering."
+            )
 
     new_mask = result.beta == MARK
     result.beta[new_mask] = 0.0

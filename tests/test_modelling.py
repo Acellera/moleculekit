@@ -788,6 +788,234 @@ def test_splice_donor_monomer_fills_original_dimer():
     assert int((new_mask & (spliced.name == "CA")).sum()) == 4
 
 
+# A donor spanning resids 1-11 with eleven distinct residue types, so the
+# alignment has only one sensible pairing. Targets are built by DELETING residues
+# from this donor rather than by building a second molecule: _bonded_chain_mol
+# threads residues along a curve starting at the first resid in its list, so an
+# independently built target that starts at a different resid would sit at a
+# different point on the curve and the co-observed residues would not superpose.
+# Filtering keeps every kept residue at exactly the donor's coordinates.
+_TAIL_FULL = ["MET", "LYS", "THR", "TRP", "ASP", "GLU",
+              "TYR", "ARG", "LEU", "ASN", "GLY"]
+
+
+def _tail_donor():
+    return _bonded_chain_mol(_TAIL_FULL, list(range(1, 12)), chain="A")
+
+
+def _drop_resids(mol, resids):
+    """The donor minus `resids`, i.e. a target missing exactly those residues."""
+    m = mol.copy()
+    m.filter(~np.isin(m.resid, list(resids)), _logger=False)
+    m.guessBonds()
+    return m
+
+
+def _ca_resids(mol, mask=None):
+    ca = mol.name == "CA"
+    if mask is not None:
+        ca = ca & mask
+    return [int(r) for r in mol.resid[ca]]
+
+
+def test_splice_extends_both_termini_when_no_gaps_given():
+    # Baseline: with gaps=None a donor observed over a wider range than the target
+    # extends it past BOTH termini, on top of filling the internal hole. This is
+    # the 1BL6-into-1KV2 shape (donor 4-354 into target 5-352 yields 4-354).
+    donor = _tail_donor()
+    target = _drop_resids(donor, [1, 2, 6, 11])   # missing N-tail, resid 6, C-tail
+
+    spliced, new_mask = spliceMissingResidues(target, donor, {"A": "A"})
+
+    assert _ca_resids(spliced) == list(range(1, 12))
+    assert [str(n) for n in spliced.resname[spliced.name == "CA"]] == _TAIL_FULL
+    assert _ca_resids(spliced, new_mask) == [1, 2, 6, 11]
+
+
+def test_splice_gaps_from_backbone_breaks_fills_interior_only():
+    # THE case the parameter exists for: detectBackboneBreaks cannot report a
+    # terminal tail (it only compares residues adjacent in file order), so passing
+    # its output fills the interior hole and leaves both termini exactly as
+    # deposited. Asserting the first and last resid is what distinguishes this from
+    # "the filter dropped everything".
+    donor = _tail_donor()
+    target = _drop_resids(donor, [1, 2, 6, 11])
+
+    breaks = detectBackboneBreaks(target)
+    assert [(b["after_resid"], b["before_resid"]) for b in breaks] == [(5, 7)]
+
+    spliced, new_mask = spliceMissingResidues(target, donor, {"A": "A"}, gaps=breaks)
+
+    resids = _ca_resids(spliced)
+    assert resids == list(range(3, 11))       # 3-10: interior closed, tails absent
+    assert resids[0] == 3 and resids[-1] == 10
+    assert _ca_resids(spliced, new_mask) == [6]
+
+
+def test_splice_does_not_extend_a_target_with_no_backbone_break():
+    # The 2CBA-into-1CA2 case stated directly: the target has nothing missing in
+    # the middle, so detectBackboneBreaks returns [] and the donor's wider span
+    # must not touch it.
+    donor = _tail_donor()
+    target = _drop_resids(donor, [1, 2, 11])   # tails only, backbone continuous
+
+    breaks = detectBackboneBreaks(target)
+    assert breaks == []
+
+    spliced, new_mask = spliceMissingResidues(target, donor, {"A": "A"}, gaps=breaks)
+
+    assert _ca_resids(spliced) == list(range(3, 11))
+    assert int(new_mask.sum()) == 0
+
+
+def test_splice_gaps_selects_one_of_two_interior_holes():
+    donor = _tail_donor()
+    target = _drop_resids(donor, [4, 5, 8])    # two interior holes, no tails missing
+
+    breaks = detectBackboneBreaks(target)
+    assert [(b["after_resid"], b["before_resid"]) for b in breaks] == [(3, 6), (7, 9)]
+
+    chosen = [b for b in breaks if b["after_resid"] == 3]
+    spliced, new_mask = spliceMissingResidues(target, donor, {"A": "A"}, gaps=chosen)
+
+    # the first hole is closed, the second is still open
+    assert _ca_resids(spliced) == [1, 2, 3, 4, 5, 6, 7, 9, 10, 11]
+    assert _ca_resids(spliced, new_mask) == [4, 5]
+    assert [(b["after_resid"], b["before_resid"])
+            for b in detectBackboneBreaks(spliced)] == [(7, 9)]
+
+
+def test_splice_empty_gaps_inserts_nothing():
+    # An empty list is a real request ("fill none of them"), not a missing
+    # argument: the same target fills three runs under gaps=None.
+    donor = _tail_donor()
+    target = _drop_resids(donor, [1, 2, 6, 11])
+
+    spliced, new_mask = spliceMissingResidues(target, donor, {"A": "A"}, gaps=[])
+
+    assert _ca_resids(spliced) == [3, 4, 5, 7, 8, 9, 10]
+    assert int(new_mask.sum()) == 0
+
+
+def test_splice_gaps_selects_one_terminus_independently():
+    # The two termini are separately addressable: asking for the N-terminal run by
+    # name fills it and leaves the C-terminal one alone.
+    donor = _tail_donor()
+    target = _drop_resids(donor, [1, 2, 11])
+
+    gaps = [{"chain": "A", "after_resid": None, "before_resid": 3}]
+    spliced, new_mask = spliceMissingResidues(target, donor, {"A": "A"}, gaps=gaps)
+
+    assert _ca_resids(spliced) == list(range(1, 11))   # 1-10: N-tail back, no 11
+    assert _ca_resids(spliced, new_mask) == [1, 2]
+
+
+def test_splice_warns_for_a_requested_gap_it_cannot_fill(caplog):
+    # Resids 5 and 6 are both present and covalently continuous, so there is no run
+    # to insert between them. Asking for one must not pass silently: a mistyped
+    # resid would otherwise look like a successful splice that filled nothing.
+    donor = _tail_donor()
+    target = _drop_resids(donor, [1, 2, 11])
+
+    gaps = [{"chain": "A", "after_resid": 5, "before_resid": 6}]
+    with caplog.at_level("WARNING"):
+        spliced, new_mask = spliceMissingResidues(target, donor, {"A": "A"}, gaps=gaps)
+
+    assert int(new_mask.sum()) == 0
+    assert _ca_resids(spliced) == list(range(3, 11))
+    assert any("was not filled" in r.message and "'A'" in r.message
+               and "5" in r.message for r in caplog.records)
+
+
+def test_splice_does_not_warn_when_every_requested_gap_is_filled(caplog):
+    # The warning must not fire for the runs that DID fill, otherwise it is noise
+    # on every correct call.
+    donor = _tail_donor()
+    target = _drop_resids(donor, [1, 2, 6, 11])
+
+    with caplog.at_level("WARNING"):
+        spliceMissingResidues(target, donor, {"A": "A"},
+                              gaps=detectBackboneBreaks(target))
+
+    assert not any("was not filled" in r.message for r in caplog.records)
+
+
+def test_splice_gaps_filter_is_scoped_to_the_named_chain():
+    # A homodimer whose two chains carry the identical (after_resid, before_resid)
+    # break, requesting the gap in chain A only. The run key is (chain, after_resid,
+    # before_resid); without the `chain` component a regression would still pass
+    # every other test here, since none of them uses more than one chain with
+    # `gaps=`, and would fill chain B too.
+    donor = _tail_donor()
+    chainA = _drop_resids(donor, [6])
+    chainA.chain[:] = "A"
+    chainB = _drop_resids(donor, [6])
+    chainB.chain[:] = "B"
+    chainB.segid[:] = "Q"
+    target = chainA.copy()
+    target.append(chainB)
+
+    gaps = [{"chain": "A", "after_resid": 5, "before_resid": 7}]
+    spliced, new_mask = spliceMissingResidues(target, donor, gaps=gaps)
+
+    assert _ca_resids(spliced, spliced.chain == "A") == list(range(1, 12))
+    assert _ca_resids(spliced, spliced.chain == "B") == [1, 2, 3, 4, 5, 7, 8, 9, 10, 11]
+    assert int(new_mask[spliced.chain == "A"].sum()) > 0
+    assert int(new_mask[spliced.chain == "B"].sum()) == 0
+
+
+def test_splice_gaps_selects_c_terminal_tail_independently():
+    # Only the N-terminal direction is exercised by
+    # test_splice_gaps_selects_one_terminus_independently; a regression that mixed
+    # up which side a None marks (e.g. treating before_resid=None as N-terminal)
+    # would still pass that test while getting this one backwards.
+    donor = _tail_donor()
+    target = _drop_resids(donor, [1, 2, 11])
+
+    gaps = [{"chain": "A", "after_resid": 10, "before_resid": None}]
+    spliced, new_mask = spliceMissingResidues(target, donor, {"A": "A"}, gaps=gaps)
+
+    assert _ca_resids(spliced) == list(range(3, 12))   # 3-11: C-tail back, no 1/2
+    assert _ca_resids(spliced, new_mask) == [11]
+
+
+def test_splice_warns_for_unmatched_terminal_request_without_saying_none(caplog):
+    # FIX 4's path: an N-terminal request against a target whose N-terminus is
+    # already intact has no run to match. The message must describe the request in
+    # words (chain's N-terminus), not print `None` for the missing after_resid.
+    donor = _tail_donor()
+    target = _drop_resids(donor, [6, 11])   # N-terminus intact, nothing to request
+
+    gaps = [{"chain": "A", "after_resid": None, "before_resid": 1}]
+    with caplog.at_level("WARNING"):
+        spliced, new_mask = spliceMissingResidues(target, donor, {"A": "A"}, gaps=gaps)
+
+    assert int(new_mask.sum()) == 0
+    warnings = [r.message for r in caplog.records if "was not filled" in r.message]
+    assert len(warnings) == 1
+    assert "None" not in warnings[0]
+    assert "N-terminus" in warnings[0] and "resid 1" in warnings[0]
+
+
+def test_splice_gaps_from_detect_sequence_gaps_fills_interior_only():
+    # The docstring explicitly promises detectSequenceGaps' output works directly
+    # as `gaps=`; nothing else here exercises that path (only detectBackboneBreaks
+    # is used elsewhere). Filtering to the non-terminal entries and passing the
+    # rest must fill only the interior hole, leaving both termini as deposited.
+    donor = _tail_donor()
+    full_seq = donor.getSequence()["A"]
+    target = _drop_resids(donor, [1, 2, 6, 11])
+
+    gaps, skipped, _ = detectSequenceGaps(target, {"A": full_seq})
+    assert skipped == []
+    interior = [g for g in gaps if not g["is_terminal"]]
+
+    spliced, new_mask = spliceMissingResidues(target, donor, {"A": "A"}, gaps=interior)
+
+    assert _ca_resids(spliced) == list(range(3, 11))   # 3-10: interior closed, tails absent
+    assert _ca_resids(spliced, new_mask) == [6]
+
+
 def _worst_bonded_junction(sp):
     """Max backbone C(i)->N(i+1) distance over consecutive residues that are
     actually bonded (contiguous numbering). A numbering jump marks an unfilled
