@@ -110,6 +110,8 @@ testpaths = ["tests"]
 # Disable Windows 32 builds, Musllinux builds due to rdkit not building on it
 # Disable i686, ppc64le, s390x, universal2, armv7l due to numpy not building on them
 skip = [
+  # rdkit ships no cp315 wheel yet, so the test install fails. Remove when it does.
+  "cp315-*",
   # Free-threaded builds cannot use the Stable ABI: setuptools rejects
   # py_limited_api when Py_GIL_DISABLED is set, so these fail outright.
   # See https://github.com/python/cpython/issues/111506
