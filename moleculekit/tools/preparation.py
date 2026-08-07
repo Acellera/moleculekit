@@ -411,6 +411,19 @@ _PDB2PQR_KNOWN_VARIANTS = {
 }
 
 
+# Residues whose AMBER-scheme atom rename must be undone when an already-prepared
+# structure is fed back in. ``_pdb2pqr`` applies the AMBER name scheme on the way
+# OUT (``biomolecule.apply_name_scheme``), so a prepared structure carries AMBER
+# atom names, while PDB2PQR's own topology expects its canonical names on the way
+# IN. Only residues listed here are rewritten.
+#
+# Add an entry only with a failing round-trip as evidence. Most residues that
+# carry a rename do NOT belong here: PDB2PQR re-reads its own nucleic output
+# (O1P/O2P) and its N-terminal variants without complaint, and WAT's rename is
+# many-to-one (H1->HW, H2->HW) and therefore not invertible at all.
+_AMBER_NAME_INVERSE_RESIDUES = {"LYN"}
+
+
 def _restore_trimmed_canonical_sidechains(mol, detect_specs):
     """Reconstruct the heavy-atom sidechain of every canonical protein
     residue in ``mol`` whose sidechain is **completely** missing,
@@ -704,6 +717,87 @@ def _apply_patches_force_prot(biomolecule, force_protonation):
             biomolecule.apply_patch(force_protonation[key], res)
 
 
+def _amber_name_inverse(definition):
+    """Return ``{resname: {amber_name: pdb2pqr_name}}`` for the residues in
+    :data:`_AMBER_NAME_INVERSE_RESIDUES`.
+
+    Derived from PDB2QR's own AMBER ``.names`` data rather than hardcoded. The
+    forward direction is applied on output by
+    ``biomolecule.apply_name_scheme(Forcefield("amber", ...))``; deriving the
+    inverse from that same source keeps both directions locked together, so a
+    change in PDB2PQR's data cannot silently desynchronise them.
+
+    Raises if a listed residue's rename is many-to-one, since that cannot be
+    inverted and means something un-invertible was allowlisted.
+    """
+    from pdb2pqr import forcefield
+
+    scheme = forcefield.Forcefield("amber", definition, None)
+    inverse = {}
+    for resname in _AMBER_NAME_INVERSE_RESIDUES:
+        res = scheme.map.get(resname)
+        if res is None:
+            continue
+        renames = {
+            canonical: atom.name
+            for canonical, atom in res.atoms.items()
+            if atom.name != canonical
+        }
+        if not renames:
+            continue
+        if len(set(renames.values())) != len(renames):
+            raise RuntimeError(
+                f"The AMBER name scheme for residue {resname} is many-to-one "
+                f"({renames}) and cannot be inverted. Remove {resname} from "
+                "_AMBER_NAME_INVERSE_RESIDUES."
+            )
+        inverse[resname] = {amber: canonical for canonical, amber in renames.items()}
+    return inverse
+
+
+def _apply_amber_name_inverse(pdblist, definition):
+    """Rewrite AMBER atom names back to PDB2PQR's canonical names on the parsed
+    ATOM/HETATM records, for the residues in
+    :data:`_AMBER_NAME_INVERSE_RESIDUES`. Mutates the records in place.
+
+    Without this, re-preparing an already-prepared structure fails: a ``LYN``
+    written by a previous ``systemPrepare`` carries ``HZ2``/``HZ3``, while
+    PDB2PQR's ``LYN`` (``LYS`` with ``HZ3`` removed) expects ``HZ1``/``HZ2``, so
+    ``HZ3`` reads as a foreign atom and ``HZ1`` as a missing one and PDB2PQR
+    reports "Found gap in biomolecule structure".
+
+    Must run AFTER :func:`_stamp_pdblist_identity`, which sets ``rec.name`` from
+    the source molecule and would otherwise re-apply the AMBER names.
+    """
+    inverse = _amber_name_inverse(definition)
+    if not inverse:
+        return
+
+    # Group records by residue so a rename only fires when its target name is
+    # absent from that residue: a residue mislabelled LYN but carrying all of
+    # HZ1/HZ2/HZ3 must not gain a duplicate HZ1.
+    by_residue = {}
+    for rec in pdblist:
+        resname = getattr(rec, "res_name", None)
+        if resname not in inverse:
+            continue
+        key = (
+            resname,
+            getattr(rec, "chain_id", ""),
+            getattr(rec, "res_seq", None),
+            getattr(rec, "ins_code", ""),
+        )
+        by_residue.setdefault(key, []).append(rec)
+
+    for key, records in by_residue.items():
+        mapping = inverse[key[0]]
+        present = {getattr(rec, "name", None) for rec in records}
+        for rec in records:
+            target = mapping.get(getattr(rec, "name", None))
+            if target is not None and target not in present:
+                rec.name = target
+
+
 def _stamp_pdblist_identity(pdblist, mol):
     """Overwrite the identity and naming fields of PDB2PQR's parsed
     ATOM/HETATM records with the true values from ``mol``.
@@ -808,6 +902,10 @@ def _pdb2pqr(
     # record count still matches src_mol.
     if src_mol is not None:
         _stamp_pdblist_identity(pdblist, src_mol)
+    # Undo the AMBER atom-name renames this function applies on output, so an
+    # already-prepared structure can be re-prepared. Must follow the stamp
+    # above, which restores names from src_mol (i.e. the AMBER names).
+    _apply_amber_name_inverse(pdblist, definition)
     if drop_water:
         pdblist = drop_water_func(pdblist)
 

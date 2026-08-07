@@ -132,7 +132,10 @@ PROTEIN_RESIDUES = (
         full_name="Tryptophan", resname="TRP", single_letter="W", resname_variants=[]
     ),
     _Residue(
-        full_name="Tyrosine", resname="TYR", single_letter="Y", resname_variants=[]
+        full_name="Tyrosine",
+        resname="TYR",
+        single_letter="Y",
+        resname_variants=["TYM"],
     ),
     _Residue(full_name="Valine", resname="VAL", single_letter="V", resname_variants=[]),
     _Residue(

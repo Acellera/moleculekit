@@ -1987,3 +1987,124 @@ def test_stamp_pdblist_identity_detects_reordering(tmp_path):
 
     with pytest.raises(RuntimeError, match="order"):
         _stamp_pdblist_identity(pdblist, src)
+
+
+def test_tym_roundtrip():
+    """A prepared structure carrying TYM must re-prepare cleanly.
+
+    TYM was missing from TYR's resname_variants, so it was absent from
+    PROTEIN_RESNAMES / _CANONICAL_RESNAMES and detectNonStandardResidues
+    classified it as a non-canonical residue requiring a template.
+    """
+    from moleculekit.tools.autosegment import autoSegment
+    from moleculekit.tools.nonstandard_residues import (
+        PROTEIN_RESNAMES,
+        _CANONICAL_RESNAMES,
+    )
+
+    assert "TYM" in PROTEIN_RESNAMES
+    assert "TYM" in _CANONICAL_RESNAMES
+
+    mol = Molecule(os.path.join(curr_dir, "pdb", "3ptb.pdb"))
+    mol.filter("protein", _logger=False)
+    mol = autoSegment(mol, fields=("segid", "chain"))
+
+    tyr = np.where(mol.resname == "TYR")[0]
+    assert len(tyr) > 0
+    resid = int(mol.resid[tyr[0]])
+    chain = str(mol.chain[tyr[0]])
+
+    prepared, _ = systemPrepare(
+        mol,
+        pH=7.0,
+        force_protonation=[(f"chain {chain} and resid {resid}", "TYM")],
+    )
+    sel = (prepared.resid == resid) & (prepared.chain == chain)
+    assert str(prepared.resname[sel][0]) == "TYM"
+
+    # Re-prepare the prepared output: this is what used to raise.
+    again = autoSegment(prepared.copy(), fields=("segid", "chain"))
+    reprepared, _ = systemPrepare(again, pH=7.0)
+    sel2 = (reprepared.resid == resid) & (reprepared.chain == chain)
+    assert str(reprepared.resname[sel2][0]) == "TYM"
+
+
+def test_amber_name_inverse_map_invariants():
+    """Structural invariants of the derived inverse map.
+
+    Deliberately does NOT assert HZ3->HZ1. The forward rename is PDB2PQR's
+    data; if it changes, the derived inverse follows it and the behavioural
+    round-trip test below is what proves correctness. Pinning the value here
+    would turn a self-correcting change into a spurious failure.
+    """
+    from pdb2pqr import io
+    from moleculekit.tools.preparation import (
+        _AMBER_NAME_INVERSE_RESIDUES,
+        _amber_name_inverse,
+    )
+
+    inverse = _amber_name_inverse(io.get_definitions())
+
+    assert "LYN" in _AMBER_NAME_INVERSE_RESIDUES
+    assert "LYN" in inverse, "LYN has no rename in PDB2PQR's AMBER names data"
+    for resname, mapping in inverse.items():
+        assert resname in _AMBER_NAME_INVERSE_RESIDUES
+        assert len(set(mapping.values())) == len(mapping), (
+            f"{resname} inverse is not one-to-one: {mapping}"
+        )
+    # Residues we must never rewrite, even though they carry renames.
+    for excluded in ("WAT", "DA", "RG", "NALA"):
+        assert excluded not in inverse
+
+
+def test_lyn_roundtrip():
+    """A prepared structure carrying LYN must re-prepare cleanly.
+
+    systemPrepare emits LYN with AMBER names (HZ2/HZ3) while PDB2PQR's LYN
+    expects HZ1/HZ2, so re-reading used to fail with
+    "Unable to debump biomolecule ... Found gap in biomolecule structure".
+    """
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol = Molecule(os.path.join(curr_dir, "pdb", "3ptb.pdb"))
+    mol.filter("protein", _logger=False)
+    mol = autoSegment(mol, fields=("segid", "chain"))
+
+    prepared, _ = systemPrepare(mol, pH=10.5)
+    assert (prepared.resname == "LYN").any(), "no LYN produced at pH 10.5"
+
+    # Re-prepare the prepared output: this is what used to raise.
+    again = autoSegment(prepared.copy(), fields=("segid", "chain"))
+    reprepared, _ = systemPrepare(again, pH=10.5)
+
+    assert (reprepared.resname == "LYN").any(), "LYN was not preserved"
+
+    def states(m):
+        markers = {"HID", "HIE", "HIP", "LYN", "CYX", "ASH", "GLH", "TYM", "AR0"}
+        return {
+            (int(r), str(c)): str(n)
+            for n, r, c in zip(m.resname, m.resid, m.chain)
+            if n in markers
+        }
+
+    assert states(prepared) == states(reprepared), "round-trip is not idempotent"
+
+
+def test_lyn_with_all_three_hz_is_not_given_a_duplicate():
+    """A residue mislabelled LYN but carrying HZ1/HZ2/HZ3 must not gain a
+    duplicate HZ1: the rename only fires when its target name is absent."""
+    from pdb2pqr import io, pdb as pdb2pqr_pdb
+    from moleculekit.tools.preparation import _apply_amber_name_inverse
+
+    def _rec(name):
+        rec = pdb2pqr_pdb.ATOM.__new__(pdb2pqr_pdb.ATOM)
+        rec.name = name
+        rec.res_name = "LYN"
+        rec.chain_id = "A"
+        rec.res_seq = 1
+        rec.ins_code = ""
+        return rec
+
+    records = [_rec("HZ1"), _rec("HZ2"), _rec("HZ3")]
+    _apply_amber_name_inverse(records, io.get_definitions())
+    assert [r.name for r in records] == ["HZ1", "HZ2", "HZ3"]
