@@ -1190,6 +1190,36 @@ def CIFwrite(
         aCat.append([mol.resname[0], "NON-POLYMER", int(mol.formalcharge.sum())])
         curContainer.append(aCat)
 
+    if atom_block == "atom_site":
+        # `label_entity_id` names an entity on every atom; without `_entity` to
+        # say what each one is, a reader cannot tell a chain from a ligand.
+        # dict.fromkeys to dedupe: segid is per atom, so this is one row per
+        # entity rather than one per atom.
+        entity_ids = [s for s in dict.fromkeys(mol.segid) if s.strip()]
+        if entity_ids:
+            from moleculekit.residues import (
+                SINGLE_LETTER_RESIDUE_NAME_TABLE,
+                WATER_RESIDUE_NAMES,
+            )
+
+            water_names = tuple(WATER_RESIDUE_NAMES)
+            polymer_names = tuple(SINGLE_LETTER_RESIDUE_NAME_TABLE)
+            resnames = np.char.upper(mol.resname.astype(str))
+
+            eCat = DataCategory("entity")
+            eCat.appendAttribute("id")
+            eCat.appendAttribute("type")
+            for eid in entity_ids:
+                here = resnames[mol.segid == eid]
+                if np.isin(here, water_names).any():
+                    etype = "water"
+                elif np.isin(here, polymer_names).any():
+                    etype = "polymer"
+                else:
+                    etype = "non-polymer"
+                eCat.append([eid, etype])
+            curContainer.append(eCat)
+
     aCat = DataCategory(atom_block)
     for at in mapping:
         aCat.appendAttribute(at)
