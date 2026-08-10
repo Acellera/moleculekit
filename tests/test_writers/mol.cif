@@ -11,6 +11,9 @@ _cell.Z_PDB        1
 ##
 _symmetry.space_group_name_H-M  "P 1"
 ##
+_entity.id    X
+_entity.type  polymer
+##
 loop_
 _atom_site.group_PDB
 _atom_site.id
