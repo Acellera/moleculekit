@@ -1696,3 +1696,46 @@ def test_apply_residue_templates_does_not_change_the_detected_specs():
 
     applyResidueTemplates(mol, {k: {"smiles": v} for k, v in smiles.items()}, before)
     assert fingerprint(detectNonStandardResidues(mol)) == fingerprint(before)
+
+
+def test_diagnose_template_mismatch_reports_counts(monkeypatch):
+    from moleculekit.tools import nonstandard_residues as nsr
+
+    mol = Molecule().empty(8)
+    mol.resname[:] = "XYZ"
+    mol.record[:] = "HETATM"
+    mol.chain[:] = ["A"] * 4 + ["B"] * 4
+    mol.resid[:] = [1] * 4 + [7] * 4
+    mol.element[:] = ["C", "C", "O", "H"] * 2
+    monkeypatch.setattr(
+        nsr,
+        "rcsbFetchLigandInfo",
+        lambda c: {"chem_comp": {"name": "test compound", "formula": "C2 O"}},
+    )
+    rep = nsr.diagnoseTemplateMismatch(mol, "XYZ", "CCCCO")
+    assert rep.copies == 2
+    assert rep.heavy_atoms_structure == 3  # per copy, H excluded
+    assert rep.heavy_atoms_template == 5
+    assert rep.name == "test compound"
+    text = str(rep)
+    assert "XYZ" in text and "test compound" in text and "C2 O" in text
+
+
+def test_diagnose_template_mismatch_tolerates_missing_component(monkeypatch):
+    # A resname RCSB has never heard of (docking-tool LIG/UNL) must still get
+    # its counts diagnosed; only name/formula stay unknown.
+    from moleculekit.tools import nonstandard_residues as nsr
+
+    mol = Molecule().empty(3)
+    mol.resname[:] = "XYZ"
+    mol.record[:] = "HETATM"
+    mol.element[:] = ["C", "C", "O"]
+
+    def _raise(c):
+        raise RuntimeError("no such component")
+
+    monkeypatch.setattr(nsr, "rcsbFetchLigandInfo", _raise)
+    rep = nsr.diagnoseTemplateMismatch(mol, "XYZ", "CCO")
+    assert rep.name is None and rep.formula is None
+    assert rep.copies == 1 and rep.heavy_atoms_structure == 3
+    assert "XYZ" in str(rep)

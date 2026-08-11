@@ -49,6 +49,7 @@ from moleculekit.residues import (
     WATER_RESIDUE_NAMES,
     LIPID_RESIDUE_NAMES,
 )
+from moleculekit.rcsb import rcsbFetchLigandInfo
 from moleculekit.tools._anchor_variants import lookup_anchor
 from moleculekit.periodictable import METAL_ELEMENTS
 from moleculekit import __share_dir
@@ -1172,3 +1173,92 @@ def applyResidueTemplates(mol, residue_templates, specs):
                 f"residue_templates key {key!r} did not match any detected "
                 "residue; ignoring."
             )
+
+
+@dataclass
+class TemplateMismatchReport:
+    """What :func:`diagnoseTemplateMismatch` found for one failing residue.
+
+    ``str()`` renders it as a single human-readable line naming the compound
+    and comparing per-copy heavy-atom counts, e.g.
+    ``03P: <name> [<formula>] - 1 copy(ies), 15 heavy atoms per copy in the
+    structure vs 25 in the template``.
+    """
+
+    resname: str
+    copies: int
+    heavy_atoms_structure: int
+    heavy_atoms_template: int
+    name: "str | None" = None
+    formula: "str | None" = None
+
+    def __str__(self) -> str:
+        what = self.name or "unknown component (no RCSB record)"
+        formula = f" [{self.formula}]" if self.formula else ""
+        return (
+            f"{self.resname}: {what}{formula} - {self.copies} copy(ies), "
+            f"{self.heavy_atoms_structure} heavy atoms per copy in the "
+            f"structure vs {self.heavy_atoms_template} in the template"
+        )
+
+
+def diagnoseTemplateMismatch(mol, resname: str, smiles: str) -> TemplateMismatchReport:
+    """Diagnose why a residue template failed to match the structure's atoms.
+
+    When a builder raises because a template SMILES "contains heavy atoms which
+    could not be matched to the residue", this names the molecule and compares
+    how many heavy atoms each copy actually has in the structure against how
+    many the template defines - a residue resolved to a fraction of its own
+    definition is unmodelled density, not different chemistry. The RCSB
+    component lookup is best-effort: a resname RCSB does not know (e.g. a
+    docking tool's ``LIG``/``UNL``) still gets its counts diagnosed, with
+    ``name``/``formula`` left ``None``.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The structure the build ran on.
+    resname : str
+        The resname of the residue whose template failed.
+    smiles : str
+        The template SMILES that failed to match.
+
+    Returns
+    -------
+    report : TemplateMismatchReport
+        Copy count, per-copy heavy-atom count in the structure, heavy-atom
+        count of the template, and the RCSB component name/formula when
+        available. Print it for a one-line human-readable summary.
+
+    Raises
+    ------
+    ValueError
+        If ``smiles`` cannot be parsed or no residue named ``resname`` exists
+        in ``mol``.
+    """
+    from rdkit import Chem
+
+    templ = Chem.MolFromSmiles(smiles)
+    if templ is None:
+        raise ValueError(f"Could not parse template SMILES {smiles!r}.")
+    sel = mol.resname == resname
+    if not sel.any():
+        raise ValueError(f"No residue named {resname!r} in the molecule.")
+    copies = len(
+        set(zip(mol.segid[sel], mol.chain[sel], mol.resid[sel], mol.insertion[sel]))
+    )
+    present = int((sel & (mol.element != "H")).sum()) // max(copies, 1)
+    name = formula = None
+    try:
+        comp = rcsbFetchLigandInfo(resname).get("chem_comp") or {}
+        name, formula = comp.get("name"), comp.get("formula")
+    except Exception as e:
+        logger.warning(f"Could not fetch the RCSB component record for {resname}: {e}")
+    return TemplateMismatchReport(
+        resname=resname,
+        copies=copies,
+        heavy_atoms_structure=present,
+        heavy_atoms_template=templ.GetNumHeavyAtoms(),
+        name=name,
+        formula=formula,
+    )

@@ -2,10 +2,15 @@
 into per-residue build templates.
 
 The public entry points are :func:`capNonstandardResiduesForTitration` and
-:func:`templatesFromTitration`, both dict-in / dict-out (``{key: smiles}``).
-The caller runs its own pKa tool (e.g. AcePka) over the titration SMILES and
-hands the protonated result back; moleculekit never reads the tool's file
-formats.
+:func:`templatesFromTitration`, both dict-in / dict-out (``{key: smiles}``),
+with optional file endpoints for tools that communicate over files:
+``capNonstandardResiduesForTitration(outfile=...)`` writes the titration input
+as a ``key,SMILES,base`` CSV, and ``templatesFromTitration`` accepts the pKa
+tool's output CSV path in place of the dict. The only assumption made about
+the tool (e.g. AcePka) is that it rewrites the ``SMILES`` column and echoes
+every other column through, which makes the round-trip self-contained: the
+echoed ``base`` column guarantees cap-stripping re-derives each anchor from
+exactly the base SMILES that was titrated, with no RCSB re-fetch in between.
 
 Each residue is built from its full base SMILES (an RCSB ligand descriptor or
 a caller override), so it carries the complete chemistry even when the
@@ -38,7 +43,10 @@ does. After titration, :func:`templatesFromTitration` strips the caps back off
 per residue for the builder.
 """
 
+import csv
+import json
 import logging
+import os
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -740,7 +748,7 @@ def _uncapped_residue_smiles(
     return Chem.MolToSmiles(out)
 
 
-def _titration_specs(specs: list, smiles: dict | None):
+def _titration_specs(specs: list, smiles: dict | None, bases: dict | None = None):
     """Yield ``(key, spec, base_smiles)`` for each unique template-requiring
     residue in ``specs``, deduplicated by key.
 
@@ -761,6 +769,10 @@ def _titration_specs(specs: list, smiles: dict | None):
     smiles : dict or None
         ``{resname: smiles}`` overrides; resnames absent here are fetched from
         RCSB by their CCD code.
+    bases : dict or None
+        ``{key: base_smiles}`` known base SMILES per *key* (not resname), e.g.
+        read back from a titration CSV's echoed ``base`` column. A key present
+        here uses its entry verbatim - no override lookup, no RCSB fetch.
 
     Yields
     ------
@@ -801,13 +813,17 @@ def _titration_specs(specs: list, smiles: dict | None):
         if key in seen:
             continue
         seen.add(key)
-        yield key, spec, base_for(spec.resname)
+        if bases is not None and key in bases:
+            yield key, spec, bases[key]
+        else:
+            yield key, spec, base_for(spec.resname)
 
 
 def capNonstandardResiduesForTitration(
     mol: Molecule,
     specs: list,
     smiles: dict | None = None,
+    outfile: str | None = None,
     _logger: bool = True,
 ) -> dict[str, str]:
     """Build per-context pKa-titration input SMILES for the non-standard
@@ -823,8 +839,8 @@ def capNonstandardResiduesForTitration(
 
     The result is a plain ``{key: smiles}`` dict. The caller runs its own pKa
     tool over the values (e.g. AcePka) and passes the protonated result back to
-    :func:`templatesFromTitration` as a dict of the same keys; moleculekit does
-    not read or write any pKa tool's file format.
+    :func:`templatesFromTitration` - as a dict of the same keys, or, for a
+    file-based tool, as the path to its output CSV (see ``outfile``).
 
     Parameters
     ----------
@@ -836,6 +852,13 @@ def capNonstandardResiduesForTitration(
     smiles : dict or None
         Optional ``{resname: smiles}`` overrides; resnames absent here are
         fetched from RCSB by their CCD code.
+    outfile : str or None
+        When given, also write the result as a CSV with a ``key``, ``SMILES``
+        and ``base`` column per entry - the input for a file-based pKa tool
+        that rewrites ``SMILES`` and echoes the other columns through (e.g.
+        AcePka). The echoed ``base`` column is what lets
+        :func:`templatesFromTitration` re-derive each anchor from exactly the
+        base SMILES that was titrated, with no state carried in between.
 
     Returns
     -------
@@ -850,7 +873,9 @@ def capNonstandardResiduesForTitration(
         nor a fetchable RCSB SMILES.
     """
     out: dict[str, str] = {}
+    bases: dict[str, str] = {}
     for key, spec, base in _titration_specs(specs, smiles):
+        bases[key] = base
         if isinstance(spec, LigandSpec):
             out[key] = base
             continue
@@ -863,6 +888,12 @@ def capNonstandardResiduesForTitration(
                     f"titrating it uncapped ({e})."
                 )
             out[key] = base
+    if outfile is not None:
+        with open(outfile, "w", newline="") as fh:
+            writer = csv.writer(fh)
+            writer.writerow(["key", "SMILES", "base"])
+            for key, smi in out.items():
+                writer.writerow([key, smi, bases[key]])
     return out
 
 
@@ -944,7 +975,11 @@ def _submol_from_atoms(mol: "Mol", atom_idxs: list[int] | tuple[int, ...]) -> "M
 
 
 def templatesFromTitration(
-    mol: Molecule, specs: list, protonated: dict, smiles: dict | None = None
+    mol: Molecule,
+    specs: list,
+    protonated: "dict | str | os.PathLike",
+    smiles: dict | None = None,
+    outfile: str | None = None,
 ) -> dict[str, str]:
     """Strip the caps off pKa-titrated SMILES back into per-residue templates.
 
@@ -970,13 +1005,23 @@ def templatesFromTitration(
     specs : list
         The specs from
         :func:`moleculekit.tools.nonstandard_residues.detectNonStandardResidues`.
-    protonated : dict
+    protonated : dict or str or os.PathLike
         ``{key: smiles}`` of the pKa-tool-protonated titration output, keyed
-        exactly as :func:`capNonstandardResiduesForTitration` returned.
+        exactly as :func:`capNonstandardResiduesForTitration` returned - or the
+        path to the tool's output CSV (e.g. AcePka's ``protonated.csv``). The
+        CSV must carry ``key`` and ``SMILES`` columns; when the ``base`` column
+        written by ``capNonstandardResiduesForTitration(outfile=...)`` was
+        echoed through by the tool, each anchor is re-derived from that echoed
+        base - provably the same SMILES that was titrated, with no RCSB
+        re-fetch and no ``smiles=`` overrides to carry between sessions.
     smiles : dict or None
         The same ``{resname: smiles}`` overrides passed to
         :func:`capNonstandardResiduesForTitration`, so anchors are re-derived
-        from identical base SMILES.
+        from identical base SMILES. Not needed when ``protonated`` is a CSV
+        path with a ``base`` column.
+    outfile : str or None
+        When given, also write the templates as JSON mapping each key to
+        ``{"smiles": template}`` - the shape residue-template consumers take.
 
     Returns
     -------
@@ -993,8 +1038,22 @@ def templatesFromTitration(
     """
     from rdkit import Chem
 
+    bases = None
+    if isinstance(protonated, (str, os.PathLike)):
+        with open(protonated, newline="") as fh:
+            rows = list(csv.DictReader(fh))
+        missing = {"key", "SMILES"} - set(rows[0] if rows else ())
+        if missing:
+            raise RuntimeError(
+                f"{protonated} is missing the {sorted(missing)} column(s); "
+                "expected the CSV written by capNonstandardResiduesForTitration "
+                "with its SMILES column rewritten by the pKa tool."
+            )
+        bases = {r["key"]: r["base"] for r in rows if r.get("base")}
+        protonated = {r["key"]: r["SMILES"] for r in rows}
+
     out: dict[str, str] = {}
-    for key, spec, base in _titration_specs(specs, smiles):
+    for key, spec, base in _titration_specs(specs, smiles, bases=bases):
         if key not in protonated:
             raise RuntimeError(f"protonated has no entry for key {key!r}.")
         prot_smi = protonated[key]
@@ -1020,4 +1079,7 @@ def templatesFromTitration(
                 f"inside protonated SMILES {prot_smi!r}."
             )
         out[key] = Chem.MolToSmiles(_submol_from_atoms(capped_prot, match))
+    if outfile is not None:
+        with open(outfile, "w") as fh:
+            json.dump({k: {"smiles": v} for k, v in out.items()}, fh, indent=2)
     return out

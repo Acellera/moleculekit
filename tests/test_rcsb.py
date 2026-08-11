@@ -7,6 +7,7 @@ from moleculekit.molecule import Molecule
 from moleculekit.rcsb import (
     rcsbFetchLigandInfo,
     rcsbFetchLigandSmiles,
+    rcsbIsMembraneProtein,
     rcsbSequenceSearch,
     resolveFullSequences,
 )
@@ -155,3 +156,57 @@ def test_resolve_full_sequences_search_path():
     assert res["A"]["sequence"] == "AGSAA"
     assert res["A"]["source"] == "sequence_search"
     assert res["A"]["identity"] == 0.98
+
+
+def test_resolve_full_sequences_search_keeps_entity_id():
+    # The hit's polymer entity id is the only trace of WHICH deposited entry a
+    # file input matches; surveyStructure derives its candidate PDB id from it.
+    m = _tiny_protein()
+    with mock.patch(
+        "moleculekit.rcsb.rcsbSequenceSearch",
+        return_value=[{"polymer_entity_id": "132L_1", "identity": 0.98, "score": 1.0}],
+    ), mock.patch(
+        "moleculekit.rcsb._get_pdb_entity_sequences",
+        return_value={"132L_1": "AGSAA"},
+    ):
+        res = resolveFullSequences(m)
+    assert res["A"]["entity_id"] == "132L_1"
+
+
+def test_resolve_full_sequences_pdbid_entity_id_is_none():
+    # With a known pdbid there is no search hit; entity_id is explicitly None
+    # so consumers can key on it without hasattr/get dances.
+    m = _tiny_protein()
+    with mock.patch(
+        "moleculekit.rcsb._entity_sequences_for_pdbid",
+        return_value={"A": "AGSAA"},
+    ):
+        res = resolveFullSequences(m, pdbid="XXXX")
+    assert res["A"]["entity_id"] is None
+
+
+def test_is_membrane_protein_true_from_keywords():
+    fake = {
+        "struct_keywords": {
+            "pdbx_keywords": "MEMBRANE PROTEIN",
+            "text": "GPCR, integral membrane protein",
+        }
+    }
+    with mock.patch("moleculekit.rcsb._getRCSBjson", return_value=fake):
+        assert rcsbIsMembraneProtein("7q5b") is True
+
+
+def test_is_membrane_protein_false_for_soluble():
+    fake = {
+        "struct_keywords": {
+            "pdbx_keywords": "HYDROLASE",
+            "text": "serine protease, trypsin",
+        }
+    }
+    with mock.patch("moleculekit.rcsb._getRCSBjson", return_value=fake):
+        assert rcsbIsMembraneProtein("3ptb") is False
+
+
+def test_is_membrane_protein_missing_keywords_is_false():
+    with mock.patch("moleculekit.rcsb._getRCSBjson", return_value={}):
+        assert rcsbIsMembraneProtein("1abc") is False

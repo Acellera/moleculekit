@@ -300,6 +300,39 @@ def rcsbFetchLigandSmiles(
     return smiles
 
 
+def rcsbIsMembraneProtein(pdbid: str) -> bool:
+    """Check whether an RCSB entry's keywords classify it as a membrane protein.
+
+    Queries the entry's ``struct_keywords`` block and reports whether the word
+    "membrane" appears in it. This is a best-effort classification based on the
+    depositors' keywords, not a structural analysis.
+
+    Parameters
+    ----------
+    pdbid : str
+        The 4-letter RCSB PDB id. Case-insensitive.
+
+    Returns
+    -------
+    is_membrane : bool
+        True when the entry's keywords mention "membrane".
+
+    Raises
+    ------
+    RuntimeError
+        If the RCSB request fails (unknown entry, network failure).
+
+    Examples
+    --------
+    >>> rcsbIsMembraneProtein("7q5b")  # doctest: +SKIP
+    True
+    """
+    url = f"https://data.rcsb.org/rest/v1/core/entry/{pdbid.strip().upper()}"
+    kw = _getRCSBjson(url).get("struct_keywords") or {}
+    text = f"{kw.get('pdbx_keywords') or ''} {kw.get('text') or ''}"
+    return "membrane" in text.lower()
+
+
 def rcsbSequenceSearch(
     sequence: str, identity_cutoff: float = 0.9, rows: int = 10
 ) -> list:
@@ -404,8 +437,11 @@ def resolveFullSequences(mol, pdbid=None):
     Returns
     -------
     resolved : dict
-        ``{chain: {"sequence": str, "source": str, "identity": float}}`` for each
-        protein chain for which a full sequence could be found.
+        ``{chain: {"sequence": str, "source": str, "identity": float,
+        "entity_id": str | None}}`` for each protein chain for which a full
+        sequence could be found. ``entity_id`` is the RCSB polymer entity id of
+        the best sequence-search hit (e.g. ``"132L_1"``) and ``None`` on the
+        ``pdb_entity`` path, where the entry is already known.
     """
     observed = mol.getSequence(dict_key="chain", sel="protein", _logger=False)
     resolved = {}
@@ -419,6 +455,7 @@ def resolveFullSequences(mol, pdbid=None):
                 "sequence": entity_seqs[chain],
                 "source": "pdb_entity",
                 "identity": 1.0,
+                "entity_id": None,
             }
             continue
         hits = rcsbSequenceSearch(obs.replace("X", ""))
@@ -436,5 +473,6 @@ def resolveFullSequences(mol, pdbid=None):
             "sequence": full,
             "source": "sequence_search",
             "identity": best["identity"],
+            "entity_id": best["polymer_entity_id"],
         }
     return resolved

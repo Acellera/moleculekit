@@ -1349,3 +1349,86 @@ def test_own_phosphate_crosslink_template_stays_phosphate():
     assert m is not None
     p = next(a for a in m.GetAtoms() if a.GetSymbol() == "P")
     assert p.GetTotalNumHs() == 0  # a phosphate, not an H-phosphonate
+
+
+# ---------------------------------------------------------------------------
+# File round-trip: titration.csv out, protonated.csv in, templates.json out.
+# ---------------------------------------------------------------------------
+
+
+def test_capForTitration_outfile_writes_key_smiles_base(tmp_path):
+    import csv
+
+    from moleculekit.tools import residue_titration as rt
+
+    mol = _dal_mol()
+    spec = _dal_spec(mol)
+    base = "C[C@H](C(=O)O)N"
+    out_csv = tmp_path / "titration.csv"
+    titration = rt.capNonstandardResiduesForTitration(
+        mol, [spec], smiles={"DAL": base}, outfile=str(out_csv)
+    )
+    with open(out_csv, newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    assert [set(r) for r in rows] == [{"key", "SMILES", "base"}]
+    assert rows[0]["key"] == "DAL"
+    assert rows[0]["SMILES"] == titration["DAL"]
+    assert rows[0]["base"] == base
+
+
+def test_templatesFromTitration_reads_protonated_csv_with_echoed_base(
+    tmp_path, monkeypatch
+):
+    from moleculekit.tools import residue_titration as rt
+
+    mol = _dal_mol()
+    spec = _dal_spec(mol)
+
+    # No smiles= override and network disabled: the anchor's base SMILES must
+    # come from the CSV's echoed `base` column, not from an RCSB fetch.
+    def _no_net(*a, **k):
+        raise AssertionError("RCSB fetch attempted despite an echoed base column")
+
+    monkeypatch.setattr(rt, "rcsbFetchLigandSmiles", _no_net)
+
+    seen_bases = []
+
+    def _fake_uncapped(m, s, b):
+        seen_bases.append(b)
+        return "NC(CC(=O)O)C=O"
+
+    monkeypatch.setattr(rt, "_uncapped_residue_smiles", _fake_uncapped)
+
+    csv_path = tmp_path / "protonated.csv"
+    csv_path.write_text(
+        "key,SMILES,base\nDAL,CC(=O)NC(CC(=O)[O-])C(=O)NC,C[C@H](C(=O)O)N\n"
+    )
+    out = rt.templatesFromTitration(mol, [spec], str(csv_path))
+    assert seen_bases == ["C[C@H](C(=O)O)N"]
+    m = Chem.MolFromSmiles(out["DAL"])
+    assert Chem.MolToSmiles(m) == Chem.MolToSmiles(
+        Chem.MolFromSmiles("NC(CC(=O)[O-])C=O")
+    )
+
+
+def test_templatesFromTitration_outfile_writes_wrapped_json(tmp_path, monkeypatch):
+    import json
+
+    from moleculekit.tools import residue_titration as rt
+
+    mol = _dal_mol()
+    spec = _dal_spec(mol)
+    monkeypatch.setattr(
+        rt, "_uncapped_residue_smiles", lambda m, s, b: "NC(CC(=O)O)C=O"
+    )
+    protonated = {"DAL": "CC(=O)NC(CC(=O)[O-])C(=O)NC"}
+    out_json = tmp_path / "templates.json"
+    out = rt.templatesFromTitration(
+        mol,
+        [spec],
+        protonated,
+        smiles={"DAL": "C[C@H](C(=O)O)N"},
+        outfile=str(out_json),
+    )
+    with open(out_json) as fh:
+        assert json.load(fh) == {"DAL": {"smiles": out["DAL"]}}
