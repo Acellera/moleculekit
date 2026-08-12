@@ -1206,19 +1206,54 @@ def CIFwrite(
             polymer_names = tuple(SINGLE_LETTER_RESIDUE_NAME_TABLE)
             resnames = np.char.upper(mol.resname.astype(str))
 
+            from moleculekit.residues import (
+                NUCLEIC_RESIDUE_NAMES,
+                PROTEIN_RESIDUE_NAMES,
+            )
+
+            # `_entity.type` says a chain is *a* polymer; `_entity_poly.type`
+            # says which kind, and readers need the second. Mol* selects
+            # polymer as `entityType == "polymer" AND entitySubtype matches
+            # (polypeptide|nucleotide|...)`, and entitySubtype comes from here,
+            # so a protein written without it is not selected as protein, is
+            # not in the polymer, and draws no cartoon at all. Nucleic escapes
+            # that because its subtype is inferred from the base names; a
+            # peptide has no such fallback.
+            protein_names = tuple(PROTEIN_RESIDUE_NAMES)
+            nucleic_names = tuple(
+                {n.upper() for n in NUCLEIC_RESIDUE_NAMES}
+                | {b + s for b in "ACGTU" for s in ("", "3", "5")}
+                | {"D" + b + s for b in "ACGTU" for s in ("", "3", "5")}
+            )
+
             eCat = DataCategory("entity")
             eCat.appendAttribute("id")
             eCat.appendAttribute("type")
+            pCat = DataCategory("entity_poly")
+            pCat.appendAttribute("entity_id")
+            pCat.appendAttribute("type")
             for eid in entity_ids:
                 here = resnames[mol.segid == eid]
+                subtype = None
                 if np.isin(here, water_names).any():
                     etype = "water"
                 elif np.isin(here, polymer_names).any():
                     etype = "polymer"
+                    # Deoxy first: DA/DC/DG/DT are in both spellings below.
+                    if np.isin(here, tuple(n for n in nucleic_names if n[0] == "D")).any():
+                        subtype = "polydeoxyribonucleotide"
+                    elif np.isin(here, nucleic_names).any():
+                        subtype = "polyribonucleotide"
+                    elif np.isin(here, protein_names).any():
+                        subtype = "polypeptide(L)"
                 else:
                     etype = "non-polymer"
                 eCat.append([eid, etype])
+                if subtype is not None:
+                    pCat.append([eid, subtype])
             curContainer.append(eCat)
+            if pCat.getRowCount():
+                curContainer.append(pCat)
 
     aCat = DataCategory(atom_block)
     for at in mapping:
