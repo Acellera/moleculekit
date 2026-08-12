@@ -577,6 +577,25 @@ def _apply_template_mapping(
             mol.addBond(sel_start + local_idx, new_ext, bt)
 
 
+def _residue_bond_names(mol, mask):
+    """Intra-residue bonds of the masked residue, as sorted name pairs.
+
+    Two copies templated from one SMILES can end up with the same atoms and
+    still not share a force-field template: what differs is which heavy atom a
+    hydrogen ended up on. 5VQ2's two GTP copies coordinate their Mg through
+    different phosphate oxygens, so each keeps its proton on a different one --
+    both copies come out with the same 45 names, and only the bonds say so.
+    """
+    idx = set(np.where(mask)[0].tolist())
+    pairs = set()
+    for a, b in mol.bonds:
+        a, b = int(a), int(b)
+        if a in idx and b in idx:
+            na, nb = str(mol.name[a]), str(mol.name[b])
+            pairs.add((na, nb) if na <= nb else (nb, na))
+    return tuple(sorted(pairs))
+
+
 def template_residue_from_smiles(
     mol: Molecule,
     sel: str,
@@ -661,6 +680,7 @@ def template_residue_from_smiles(
     )
     if len(keys) > 1:
         per_copy_atoms = {}
+        per_copy_bonds = {}
         for resid, insertion, chain, segid in keys:
             mask = (
                 (mol.resid == resid)
@@ -690,18 +710,39 @@ def template_residue_from_smiles(
             per_copy_atoms[(chain, resid, insertion, segid)] = tuple(
                 sorted(mol.name[post].tolist())
             )
+            per_copy_bonds[(chain, resid, insertion, segid)] = _residue_bond_names(
+                mol, post
+            )
         # All copies were templated from the same SMILES, so they must end up
-        # with the same atoms. They can only diverge when a copy carries a
-        # cross-residue bond the others don't (e.g. a metal coordination or a
-        # covalent modification), which strips a different set of boundary
-        # hydrogens. Downstream parameterization builds a single force-field
-        # template per resname, so divergent copies silently produce a template
-        # that fits one copy and fails the other (e.g. a missing atom type for
-        # an extra hydrogen). Fail loudly here instead.
-        if len(set(per_copy_atoms.values())) > 1:
+        # with the same atoms *and* the same bonds between them. They can only
+        # diverge when a copy carries a cross-residue bond the others don't
+        # (e.g. a metal coordination or a covalent modification), which strips a
+        # different set of boundary hydrogens. Downstream parameterization builds
+        # a single force-field template per resname, so divergent copies silently
+        # produce a template that fits one copy and fails the other (e.g. a
+        # missing atom type for an extra hydrogen). Fail loudly here instead.
+        #
+        # Bonds are checked as well as atoms because the divergence often costs
+        # no atom at all: when the copies coordinate a metal through different
+        # oxygens they keep the same number of protons and merely put them
+        # elsewhere, so the names match and only the bonds differ. Comparing
+        # names alone let 5VQ2 through -- both GTP copies came out with the same
+        # 45 names, one protonated on O3G and the other on O2B -- and the single
+        # mol2 written downstream then recorded one attachment, leaving the other
+        # copy with a 5 A "bond" that only tleap's unit check noticed.
+        if (
+            len(set(per_copy_atoms.values())) > 1
+            or len(set(per_copy_bonds.values())) > 1
+        ):
             resname = str(mol.resname[selidx][0])
-            # Atoms shared by every copy; anything else is what makes them differ.
+            # Atoms and bonds shared by every copy; anything else is what makes
+            # them differ. A copy can diverge in either or both: a stripped
+            # hydrogen shows up as a missing atom, a relocated one only as a
+            # different bond.
             shared = set.intersection(*(set(a) for a in per_copy_atoms.values()))
+            shared_bonds = set.intersection(
+                *(set(b) for b in per_copy_bonds.values())
+            )
             lines = []
             for (chain, resid, insertion, segid), atoms in per_copy_atoms.items():
                 loc = f"chain {chain} resid {resid}{insertion.strip()}"
@@ -709,12 +750,20 @@ def template_residue_from_smiles(
                     loc += f" segid {segid}"
                 extra = sorted(set(atoms) - shared)
                 diff = f" (extra atoms: {', '.join(extra)})" if extra else ""
+                if not extra:
+                    own = sorted(
+                        set(per_copy_bonds[(chain, resid, insertion, segid)])
+                        - shared_bonds
+                    )
+                    if own:
+                        bonded = ", ".join(f"{a}-{b}" for a, b in own)
+                        diff = f" (only this copy bonds: {bonded})"
                 lines.append(f"  {loc}: {len(atoms)} atoms{diff}")
             # Point at a concrete fix: keep the most common signature under the
             # original resname and rename a divergent copy to a fresh one.
             groups = {}
             for key, atoms in per_copy_atoms.items():
-                groups.setdefault(atoms, []).append(key)
+                groups.setdefault((atoms, per_copy_bonds[key]), []).append(key)
             minority = min(groups.values(), key=len)
             chain, resid, insertion, segid = minority[0]
             new_resname = (resname[:2] + "X")[:4]
@@ -725,11 +774,12 @@ def template_residue_from_smiles(
             )
             raise RuntimeError(
                 f"Residue '{resname}' was templated from the same SMILES but its "
-                "copies ended up with different atoms, so they cannot share a "
-                "single force-field template:\n" + "\n".join(lines) + "\n"
+                "copies ended up with different atoms or bonds, so they cannot "
+                "share a single force-field template:\n" + "\n".join(lines) + "\n"
                 "This usually means the copies have different cross-residue bonds "
                 "(e.g. a metal coordination or covalent link present on one copy "
-                "but not another), which strips a different set of hydrogens. "
+                "but not another), which strips a different set of hydrogens or "
+                "moves one onto a different atom. "
                 "Give the chemically distinct copies different resnames so each is "
                 f"templated and parameterized on its own ({example})."
             )

@@ -253,6 +253,26 @@ def test_templateResidueFromSmiles_incomplete_template_errors():
         mol.templateResidueFromSmiles("resname BEN", "c1ccccc1", guessBonds=True)
 
 
+def test_templateResidueFromSmiles_copies_differing_only_in_bonds_error():
+    """Copies that keep the same atoms but move a proton must still raise.
+
+    5VQ2's two GTP copies coordinate their Mg through different phosphate
+    oxygens, so each keeps its proton on a different one. Both copies come out
+    with the same 45 atom names and the same 13 hydrogens -- only the bonds
+    differ -- so a guard comparing atom names alone sees one signature and lets
+    them through. Downstream that is silent: one mol2 is written for the
+    resname, recording one of the two attachments, and the other copy reaches
+    tleap with a 5 A "bond" that nothing but its unit check notices.
+    """
+    mol = Molecule("5vq2")
+    smiles = (
+        "Nc1nc2c(ncn2[C@@H]2O[C@H](CO[P@](=O)([O-])O[P@](=O)(O)OP(=O)([O-])O)"
+        "[C@@H](O)[C@H]2O)c(=O)[nH]1"
+    )
+    with pytest.raises(RuntimeError, match="different atoms or bonds"):
+        mol.templateResidueFromSmiles("resname GTP", smiles, addHs=True)
+
+
 @pytest.mark.parametrize(
     "smiles",
     (
