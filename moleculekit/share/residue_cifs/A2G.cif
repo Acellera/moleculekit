@@ -1,0 +1,208 @@
+data_A2G
+# 
+_chem_comp.id                                    A2G 
+_chem_comp.name                                  2-acetamido-2-deoxy-alpha-D-galactopyranose 
+_chem_comp.type                                  "D-saccharide, alpha linking" 
+_chem_comp.pdbx_type                             ATOMS 
+_chem_comp.formula                               "C8 H15 N O6" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         
+;N-acetyl-alpha-D-galactosamine; 2-acetamido-2-deoxy-alpha-D-galactose; 2-acetamido-2-deoxy-D-galactose;
+2-acetamido-2-deoxy-galactose; N-ACETYL-2-DEOXY-2-AMINO-GALACTOSE
+;
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2024-09-27 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        221.208 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     A2G 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        Corina 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        1D0H 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+_chem_comp.pdbx_pcm                              Y 
+# 
+loop_
+_pdbx_chem_comp_synonyms.ordinal 
+_pdbx_chem_comp_synonyms.comp_id 
+_pdbx_chem_comp_synonyms.name 
+_pdbx_chem_comp_synonyms.provenance 
+_pdbx_chem_comp_synonyms.type 
+1 A2G N-acetyl-alpha-D-galactosamine        PDB ? 
+2 A2G 2-acetamido-2-deoxy-alpha-D-galactose PDB ? 
+3 A2G 2-acetamido-2-deoxy-D-galactose       PDB ? 
+4 A2G 2-acetamido-2-deoxy-galactose         PDB ? 
+5 A2G N-ACETYL-2-DEOXY-2-AMINO-GALACTOSE    PDB ? 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+A2G O5  O   O 0 1 N N N N N N -5.612 11.751 77.615 -1.252 -1.038 -0.470 O5  A2G 1  
+A2G C1  C1  C 0 1 N N S N N N -5.734 10.437 77.081 0.092  -1.175 -0.005 C1  A2G 2  
+A2G O1  O1  O 0 1 N Y N N N N -7.066 10.103 76.864 0.084  -1.632 1.349  O1  A2G 3  
+A2G C2  C2  C 0 1 N N R N N N -4.970 9.427  77.919 0.798  0.181  -0.082 C2  A2G 4  
+A2G N2  N2  N 0 1 N N N N N N -5.227 8.059  77.552 2.158  0.055  0.449  N2  A2G 5  
+A2G C3  C3  C 0 1 N N R N N N -5.269 9.590  79.411 0.016  1.203  0.749  C3  A2G 6  
+A2G O3  O3  O 0 1 N N N N N N -4.423 8.760  80.199 0.627  2.489  0.624  O3  A2G 7  
+A2G C4  C4  C 0 1 N N R N N N -5.097 10.998 79.898 -1.425 1.268  0.234  C4  A2G 8  
+A2G O4  O4  O 0 1 N N N N N N -3.702 11.231 80.050 -1.428 1.730  -1.118 O4  A2G 9  
+A2G C5  C5  C 0 1 N N R N N N -5.779 12.014 78.997 -2.045 -0.130 0.298  C5  A2G 10 
+A2G C6  C6  C 0 1 N N N N N N -5.250 13.419 79.214 -3.465 -0.085 -0.271 C6  A2G 11 
+A2G O6  O6  O 0 1 N N N N N N -6.015 14.280 80.023 -4.085 -1.362 -0.105 O6  A2G 12 
+A2G C7  C7  C 0 1 N N N N N N -4.545 7.133  76.933 3.158  -0.365 -0.351 C7  A2G 13 
+A2G O7  O7  O 0 1 N N N N N N -3.358 7.160  76.598 2.932  -0.639 -1.511 O7  A2G 14 
+A2G C8  C8  C 0 1 N N N N N N -5.417 5.932  76.619 4.556  -0.494 0.195  C8  A2G 15 
+A2G H1  H1  H 0 1 N N N N N N -5.259 10.414 76.089 0.620  -1.896 -0.629 H1  A2G 16 
+A2G HO1 HO1 H 0 1 N Y N N N N -7.119 9.224  76.508 -0.350 -2.488 1.472  HO1 A2G 17 
+A2G H2  H2  H 0 1 N N N N N N -3.911 9.643  77.716 0.841  0.511  -1.120 H2  A2G 18 
+A2G HN2 HN2 H 0 1 N N N N N N -6.134 7.747  77.835 2.338  0.275  1.377  HN2 A2G 19 
+A2G H3  H3  H 0 1 N N N N N N -6.324 9.299  79.524 0.016  0.898  1.796  H3  A2G 20 
+A2G HO3 HO3 H 0 1 N Y N N N N -4.629 8.880  81.119 0.183  3.186  1.125  HO3 A2G 21 
+A2G H4  H4  H 0 1 N N N N N N -5.597 11.126 80.870 -2.003 1.953  0.854  H4  A2G 22 
+A2G HO4 HO4 H 0 1 N Y N N N N -3.560 12.118 80.359 -2.310 1.796  -1.510 HO4 A2G 23 
+A2G H5  H5  H 0 1 N N N N N N -6.840 11.931 79.275 -2.079 -0.465 1.335  H5  A2G 24 
+A2G H61 H6  H 0 1 N N N N N N -4.265 13.320 79.694 -4.044 0.671  0.258  H61 A2G 25 
+A2G H81 H8  H 0 1 N N N N N N -4.822 5.176  76.086 4.564  -0.206 1.247  H81 A2G 26 
+A2G H82 H8A H 0 1 N N N N N N -5.801 5.503  77.556 4.890  -1.527 0.099  H82 A2G 27 
+A2G H83 H8B H 0 1 N N N N N N -6.261 6.247  75.987 5.227  0.158  -0.365 H83 A2G 28 
+A2G H62 H14 H 0 1 N N N N N N -5.178 13.891 78.223 -3.424 0.164  -1.331 H62 A2G 29 
+A2G HO6 H15 H 0 1 N Y N N N N -5.584 15.125 80.083 -4.989 -1.407 -0.444 HO6 A2G 30 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+A2G O5 C5  SING N N 1  
+A2G C1 O5  SING N N 2  
+A2G C1 C2  SING N N 3  
+A2G C1 H1  SING N N 4  
+A2G O1 C1  SING N N 5  
+A2G O1 HO1 SING N N 6  
+A2G C2 C3  SING N N 7  
+A2G C2 H2  SING N N 8  
+A2G N2 C2  SING N N 9  
+A2G N2 HN2 SING N N 10 
+A2G C3 C4  SING N N 11 
+A2G C3 O3  SING N N 12 
+A2G C3 H3  SING N N 13 
+A2G O3 HO3 SING N N 14 
+A2G C4 O4  SING N N 15 
+A2G C4 H4  SING N N 16 
+A2G O4 HO4 SING N N 17 
+A2G C5 C4  SING N N 18 
+A2G C5 C6  SING N N 19 
+A2G C5 H5  SING N N 20 
+A2G C6 O6  SING N N 21 
+A2G C6 H61 SING N N 22 
+A2G C7 N2  SING N N 23 
+A2G O7 C7  DOUB N N 24 
+A2G C8 C7  SING N N 25 
+A2G C8 H81 SING N N 26 
+A2G C8 H82 SING N N 27 
+A2G C8 H83 SING N N 28 
+A2G C6 H62 SING N N 29 
+A2G O6 HO6 SING N N 30 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+A2G SMILES           ACDLabs              12.01 "O=C(NC1C(O)C(O)C(OC1O)CO)C"                                                                                     
+A2G SMILES_CANONICAL CACTVS               3.370 "CC(=O)N[C@H]1[C@@H](O)O[C@H](CO)[C@H](O)[C@@H]1O"                                                               
+A2G SMILES           CACTVS               3.370 "CC(=O)N[CH]1[CH](O)O[CH](CO)[CH](O)[CH]1O"                                                                      
+A2G SMILES_CANONICAL "OpenEye OEToolkits" 1.7.0 "CC(=O)N[C@@H]1[C@H]([C@H]([C@H](O[C@@H]1O)CO)O)O"                                                               
+A2G SMILES           "OpenEye OEToolkits" 1.7.0 "CC(=O)NC1C(C(C(OC1O)CO)O)O"                                                                                     
+A2G InChI            InChI                1.03  "InChI=1S/C8H15NO6/c1-3(11)9-5-7(13)6(12)4(2-10)15-8(5)14/h4-8,10,12-14H,2H2,1H3,(H,9,11)/t4-,5-,6+,7-,8+/m1/s1" 
+A2G InChIKey         InChI                1.03  OVRNDRQMDRJTHS-CBQIKETKSA-N                                                                                      
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+A2G "SYSTEMATIC NAME"                     ACDLabs              12.01 "2-(acetylamino)-2-deoxy-alpha-D-galactopyranose"                            
+A2G "SYSTEMATIC NAME"                     "OpenEye OEToolkits" 1.7.0 "N-[(2S,3R,4R,5R,6R)-2,4,5-trihydroxy-6-(hydroxymethyl)oxan-3-yl]ethanamide" 
+A2G "CONDENSED IUPAC CARBOHYDRATE SYMBOL" GMML                 1.0   DGalpNAca                                                                    
+A2G "COMMON NAME"                         GMML                 1.0   N-acetyl-a-D-galactopyranosamine                                             
+A2G "IUPAC CARBOHYDRATE SYMBOL"           PDB-CARE             1.0   a-D-GalpNAc                                                                  
+A2G "SNFG CARBOHYDRATE SYMBOL"            GMML                 1.0   GalNAc                                                                       
+# 
+loop_
+_pdbx_chem_comp_feature.comp_id 
+_pdbx_chem_comp_feature.type 
+_pdbx_chem_comp_feature.value 
+_pdbx_chem_comp_feature.source 
+_pdbx_chem_comp_feature.support 
+A2G "CARBOHYDRATE ISOMER"                 D        PDB ? 
+A2G "CARBOHYDRATE RING"                   pyranose PDB ? 
+A2G "CARBOHYDRATE ANOMER"                 alpha    PDB ? 
+A2G "CARBOHYDRATE PRIMARY CARBONYL GROUP" aldose   PDB ? 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+A2G "Create component"         1999-07-08 RCSB 
+A2G "Modify descriptor"        2011-06-04 RCSB 
+A2G "Other modification"       2019-08-12 RCSB 
+A2G "Other modification"       2019-12-19 RCSB 
+A2G "Other modification"       2020-07-03 RCSB 
+A2G "Modify name"              2020-07-17 RCSB 
+A2G "Modify synonyms"          2020-07-17 RCSB 
+A2G "Modify atom id"           2020-07-17 RCSB 
+A2G "Modify component atom id" 2020-07-17 RCSB 
+A2G "Modify PCM"               2024-09-27 PDBE 
+# 
+loop_
+_pdbx_chem_comp_pcm.pcm_id 
+_pdbx_chem_comp_pcm.comp_id 
+_pdbx_chem_comp_pcm.modified_residue_id 
+_pdbx_chem_comp_pcm.type 
+_pdbx_chem_comp_pcm.category 
+_pdbx_chem_comp_pcm.position 
+_pdbx_chem_comp_pcm.polypeptide_position 
+_pdbx_chem_comp_pcm.comp_id_linking_atom 
+_pdbx_chem_comp_pcm.modified_residue_id_linking_atom 
+_pdbx_chem_comp_pcm.uniprot_specific_ptm_accession 
+_pdbx_chem_comp_pcm.uniprot_generic_ptm_accession 
+1 A2G CYS S-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 SG  ? ? 
+2 A2G SER O-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 OG  ? ? 
+3 A2G THR O-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 OG1 ? ? 
+4 A2G CG6 None            Carbohydrate "Amino-acid side chain" "Any position" C1 SG  ? ? 
+5 A2G T9E None            Carbohydrate "Amino-acid side chain" "Any position" C1 SEG ? ? 
+6 A2G VAH None            Carbohydrate "Amino-acid side chain" "Any position" C1 OG1 ? ? 
+# 

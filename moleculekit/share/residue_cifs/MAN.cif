@@ -1,0 +1,195 @@
+data_MAN
+# 
+_chem_comp.id                                    MAN 
+_chem_comp.name                                  alpha-D-mannopyranose 
+_chem_comp.type                                  "D-saccharide, alpha linking" 
+_chem_comp.pdbx_type                             ATOMS 
+_chem_comp.formula                               "C6 H12 O6" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         "alpha-D-mannose; D-mannose; mannose" 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2024-09-27 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        180.156 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     MAN 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        ? 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        1GPZ 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+_chem_comp.pdbx_pcm                              Y 
+# 
+loop_
+_pdbx_chem_comp_synonyms.ordinal 
+_pdbx_chem_comp_synonyms.comp_id 
+_pdbx_chem_comp_synonyms.name 
+_pdbx_chem_comp_synonyms.provenance 
+_pdbx_chem_comp_synonyms.type 
+1 MAN alpha-D-mannose PDB ? 
+2 MAN D-mannose       PDB ? 
+3 MAN mannose         PDB ? 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+MAN C1  C1  C 0 1 N N S N N N 99.738  -29.415 24.222 -1.692 -0.156 -0.316 C1  MAN 1  
+MAN C2  C2  C 0 1 N N S N N N 101.239 -29.305 24.564 -0.878 0.091  -1.588 C2  MAN 2  
+MAN C3  C3  C 0 1 N N S N N N 102.016 -28.461 23.551 0.535  -0.467 -1.391 C3  MAN 3  
+MAN C4  C4  C 0 1 N N S N N N 101.699 -28.940 22.129 1.126  0.134  -0.111 C4  MAN 4  
+MAN C5  C5  C 0 1 N N R N N N 100.197 -28.798 21.881 0.160  -0.117 1.048  C5  MAN 5  
+MAN C6  C6  C 0 1 N N N N N N 99.829  -29.254 20.463 0.757  0.448  2.339  C6  MAN 6  
+MAN O1  O1  O 0 1 N Y N N N N 99.000  -28.349 24.713 -1.735 -1.558 -0.046 O1  MAN 7  
+MAN O2  O2  O 0 1 N N N N N N 101.809 -30.606 24.635 -0.808 1.494  -1.845 O2  MAN 8  
+MAN O3  O3  O 0 1 N N N N N N 103.406 -28.578 23.812 1.350  -0.113 -2.511 O3  MAN 9  
+MAN O4  O4  O 0 1 N N N N N N 102.419 -28.180 21.167 2.384  -0.482 0.170  O4  MAN 10 
+MAN O5  O5  O 0 1 N N N N N N 99.454  -29.636 22.812 -1.087 0.520  0.784  O5  MAN 11 
+MAN O6  O6  O 0 1 N N N N N N 98.821  -28.437 19.876 -0.142 0.211  3.423  O6  MAN 12 
+MAN H1  H1  H 0 1 N N N N N N 99.408  -30.340 24.750 -2.707 0.216  -0.457 H1  MAN 13 
+MAN H2  H2  H 0 1 N N N N N N 101.314 -28.790 25.550 -1.354 -0.410 -2.430 H2  MAN 14 
+MAN H3  H3  H 0 1 N N N N N N 101.716 -27.391 23.643 0.491  -1.552 -1.300 H3  MAN 15 
+MAN H4  H4  H 0 1 N N N N N N 102.004 -30.007 22.028 1.267  1.207  -0.244 H4  MAN 16 
+MAN H5  H5  H 0 1 N N N N N N 99.938  -27.722 22.018 0.002  -1.189 1.162  H5  MAN 17 
+MAN H61 H61 H 0 1 N N N N N N 100.731 -29.309 19.811 0.915  1.521  2.226  H61 MAN 18 
+MAN H62 H62 H 0 1 N N N N N N 99.533  -30.329 20.450 1.710  -0.039 2.543  H62 MAN 19 
+MAN HO1 HO1 H 0 1 N Y N N N N 98.076  -28.416 24.502 -2.260 -1.672 0.757  HO1 MAN 20 
+MAN HO2 HO2 H 0 1 N Y N N N N 102.732 -30.538 24.845 -1.717 1.804  -1.955 HO2 MAN 21 
+MAN HO3 HO3 H 0 1 N Y N N N N 103.888 -28.054 23.183 0.934  -0.501 -3.293 HO3 MAN 22 
+MAN HO4 HO4 H 0 1 N Y N N N N 102.222 -28.476 20.286 2.958  -0.305 -0.587 HO4 MAN 23 
+MAN HO6 HO6 H 0 1 N Y N N N N 98.593  -28.719 18.998 0.270  0.582  4.215  HO6 MAN 24 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+MAN C1 C2  SING N N 1  
+MAN C1 O1  SING N N 2  
+MAN C1 O5  SING N N 3  
+MAN C1 H1  SING N N 4  
+MAN C2 C3  SING N N 5  
+MAN C2 O2  SING N N 6  
+MAN C2 H2  SING N N 7  
+MAN C3 C4  SING N N 8  
+MAN C3 O3  SING N N 9  
+MAN C3 H3  SING N N 10 
+MAN C4 C5  SING N N 11 
+MAN C4 O4  SING N N 12 
+MAN C4 H4  SING N N 13 
+MAN C5 C6  SING N N 14 
+MAN C5 O5  SING N N 15 
+MAN C5 H5  SING N N 16 
+MAN C6 O6  SING N N 17 
+MAN C6 H61 SING N N 18 
+MAN C6 H62 SING N N 19 
+MAN O1 HO1 SING N N 20 
+MAN O2 HO2 SING N N 21 
+MAN O3 HO3 SING N N 22 
+MAN O4 HO4 SING N N 23 
+MAN O6 HO6 SING N N 24 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+MAN SMILES           ACDLabs              10.04 "OC1C(O)C(OC(O)C1O)CO"                                                            
+MAN SMILES_CANONICAL CACTVS               3.341 "OC[C@H]1O[C@H](O)[C@@H](O)[C@@H](O)[C@@H]1O"                                     
+MAN SMILES           CACTVS               3.341 "OC[CH]1O[CH](O)[CH](O)[CH](O)[CH]1O"                                             
+MAN SMILES_CANONICAL "OpenEye OEToolkits" 1.5.0 "C([C@@H]1[C@H]([C@@H]([C@@H]([C@H](O1)O)O)O)O)O"                                 
+MAN SMILES           "OpenEye OEToolkits" 1.5.0 "C(C1C(C(C(C(O1)O)O)O)O)O"                                                        
+MAN InChI            InChI                1.03  "InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5+,6+/m1/s1" 
+MAN InChIKey         InChI                1.03  WQZGKKKJIJFFOK-PQMKYFCFSA-N                                                       
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+MAN "SYSTEMATIC NAME"                     ACDLabs              10.04 alpha-D-mannopyranose                                    
+MAN "SYSTEMATIC NAME"                     "OpenEye OEToolkits" 1.5.0 "(2S,3S,4S,5S,6R)-6-(hydroxymethyl)oxane-2,3,4,5-tetrol" 
+MAN "CONDENSED IUPAC CARBOHYDRATE SYMBOL" GMML                 1.0   DManpa                                                   
+MAN "COMMON NAME"                         GMML                 1.0   a-D-mannopyranose                                        
+MAN "IUPAC CARBOHYDRATE SYMBOL"           PDB-CARE             1.0   a-D-Manp                                                 
+MAN "SNFG CARBOHYDRATE SYMBOL"            GMML                 1.0   Man                                                      
+# 
+loop_
+_pdbx_chem_comp_feature.comp_id 
+_pdbx_chem_comp_feature.type 
+_pdbx_chem_comp_feature.value 
+_pdbx_chem_comp_feature.source 
+_pdbx_chem_comp_feature.support 
+MAN "CARBOHYDRATE ISOMER"                 D        PDB ? 
+MAN "CARBOHYDRATE RING"                   pyranose PDB ? 
+MAN "CARBOHYDRATE ANOMER"                 alpha    PDB ? 
+MAN "CARBOHYDRATE PRIMARY CARBONYL GROUP" aldose   PDB ? 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+MAN "Create component"   1999-07-08 RCSB 
+MAN "Modify descriptor"  2011-06-04 RCSB 
+MAN "Other modification" 2019-08-12 RCSB 
+MAN "Other modification" 2019-12-19 RCSB 
+MAN "Other modification" 2020-07-03 RCSB 
+MAN "Modify name"        2020-07-17 RCSB 
+MAN "Modify synonyms"    2020-07-17 RCSB 
+MAN "Modify PCM"         2024-09-27 PDBE 
+# 
+loop_
+_pdbx_chem_comp_pcm.pcm_id 
+_pdbx_chem_comp_pcm.comp_id 
+_pdbx_chem_comp_pcm.modified_residue_id 
+_pdbx_chem_comp_pcm.type 
+_pdbx_chem_comp_pcm.category 
+_pdbx_chem_comp_pcm.position 
+_pdbx_chem_comp_pcm.polypeptide_position 
+_pdbx_chem_comp_pcm.comp_id_linking_atom 
+_pdbx_chem_comp_pcm.modified_residue_id_linking_atom 
+_pdbx_chem_comp_pcm.uniprot_specific_ptm_accession 
+_pdbx_chem_comp_pcm.uniprot_generic_ptm_accession 
+1  MAN SER O-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 OG  ? ? 
+2  MAN THR O-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 OG1 ? ? 
+3  MAN TRP C-Mannosylation Carbohydrate "Amino-acid side chain" "Any position" C1 CD1 ? ? 
+4  MAN 3FG None            Carbohydrate "Amino-acid side chain" "Any position" C1 OD1 ? ? 
+5  MAN ARG None            Carbohydrate "Amino-acid side chain" "Any position" C4 NH2 ? ? 
+6  MAN ASN None            Carbohydrate "Amino-acid side chain" "Any position" C1 ND2 ? ? 
+7  MAN D4P None            Carbohydrate "Amino-acid side chain" "Any position" C1 O4  ? ? 
+8  MAN GLU None            Carbohydrate "Amino-acid side chain" "Any position" C1 OE1 ? ? 
+9  MAN HG7 None            Carbohydrate "Amino-acid side chain" "Any position" O1 C5  ? ? 
+10 MAN MDF None            Carbohydrate "Amino-acid side chain" "Any position" C1 OH2 ? ? 
+11 MAN SER None            Carbohydrate "Amino-acid side chain" "Any position" O1 CB  ? ? 
+12 MAN THR None            Carbohydrate "Amino-acid side chain" "Any position" O1 CB  ? ? 
+# 

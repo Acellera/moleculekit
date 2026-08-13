@@ -238,14 +238,69 @@ class CustomNucleicResidue(Nucleic):
         pass
 
 
-def _process_custom_nucleic_residue(mol: Molecule, resid: int = None):
-    """Prepare a modified-nucleotide reference residue for the pdb2pqr nucleic
-    Definition. Unlike :func:`_process_custom_residue` (amino-acid backbone
-    aligned onto alanine), a nucleotide reference cif already carries a
-    well-formed sugar-phosphate backbone and ideal coordinates, so this only
-    needs to give any unmatched hydrogens unique names."""
-    if resid is None:
-        resid = mol.resid[0]
+class CustomSugarResidue(Nucleic):
+    """Custom monosaccharide residue class, registered under pdb2pqr's
+    nucleic-acid module rather than its amino-acid one.
+
+    This is not about nucleic-acid chemistry: it is the only registration
+    path that avoids two amino-acid-only assumptions pdb2pqr's ``Amino``
+    machinery hard-codes and no sugar can satisfy. ``Biomolecule.
+    set_reference_distance`` (called unconditionally by debumping) requires
+    every ``aa.Amino`` residue to have a ``CA`` atom and raises otherwise;
+    and the rotamer-debumping pass only ever touches ``aa.Amino`` residues
+    in the first place. Registering sugars as ``na.Nucleic`` instead gives
+    them the same heavy-atom-repair and hydrogen-addition treatment as a
+    modified nucleotide (both paths are gated on
+    ``isinstance(residue, (aa.Amino, na.Nucleic))``) without tripping the
+    ``CA`` requirement, and without pdb2pqr attempting to debump them.
+
+    A sugar is also never a real nucleic-acid 5'/3' terminus: its
+    glycosidic attachment point (to a protein anchor, another sugar, or
+    nothing for a free reducing end) is handled afterwards by moleculekit's
+    own ``_apply_glycan_modifications``, not by a pdb2pqr terminus patch.
+    ``n_term_blocked`` / ``c_term_blocked`` are set unconditionally here (the
+    same flags :func:`moleculekit.tools.preparation._stamp_non_termini` sets
+    per-residue for protein junctions) so ``Biomolecule.assign_termini``
+    never applies a 5TERM/3TERM patch to a sugar just because it happens to
+    sit first or last in pdb2pqr's chain grouping.
+    """
+
+    def __init__(self, atoms, ref):
+        Nucleic.__init__(self, atoms, ref)
+        self.reference = ref
+        self.n_term_blocked = True
+        self.c_term_blocked = True
+
+    def letter_code(self):
+        return "X"
+
+    def set_state(self):
+        # Keep the deposited resname as the ff name, exactly like
+        # CustomNucleicResidue; GLYCAM renaming happens later in
+        # moleculekit, never through a pdb2pqr patch.
+        pass
+
+
+def _rename_placeholder_hydrogens(mol: Molecule) -> Molecule:
+    """Give any ``X_H`` placeholder hydrogen names in ``mol`` unique names.
+
+    This is the whole preparation a modified-nucleotide or monosaccharide
+    reference cif needs for its pdb2pqr Definition: unlike an amino acid
+    (:func:`_process_custom_residue`, which aligns the backbone onto
+    alanine and reorders atoms), such a cif already carries a complete
+    topology and ideal coordinates.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The reference residue molecule, modified in place.
+
+    Returns
+    -------
+    mol : Molecule
+        The same molecule, with any ``X_H`` placeholder hydrogen names
+        replaced by unique names.
+    """
     hydr = mol.name == "X_H"
     if hydr.any():
         mol.name[hydr] = [f"H{i}" for i in range(10, int(hydr.sum()) + 10)]
@@ -352,12 +407,17 @@ def _get_custom_ff(user_ff=None):
         # HACK: pdb2pqr requires each residue to have a unique class, looked up
         # by name in pdb2pqr.aa (amino) then pdb2pqr.na (nucleic). Register each
         # custom residue under the right module so it is resolved as the correct
-        # polymer type: modified nucleotides as Nucleic, everything else Amino.
+        # polymer type: modified nucleotides and sugars as Nucleic (see
+        # CustomSugarResidue for why a sugar cannot be an Amino), everything
+        # else Amino.
         import pdb2pqr.na
         from moleculekit.residues import MODIFIED_NUCLEIC_RESIDUE_NAMES
+        from moleculekit.tools.glycans import GLYCAM_SUGARS
 
         for resn in custom_resnames:
-            if resn in MODIFIED_NUCLEIC_RESIDUE_NAMES:
+            if resn in GLYCAM_SUGARS:
+                pdb2pqr.na.__dict__[resn] = CustomSugarResidue
+            elif resn in MODIFIED_NUCLEIC_RESIDUE_NAMES:
                 pdb2pqr.na.__dict__[resn] = CustomNucleicResidue
             else:
                 pdb2pqr.aa.__dict__[resn] = CustomResidue

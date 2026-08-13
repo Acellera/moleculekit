@@ -1,0 +1,183 @@
+data_GLA
+# 
+_chem_comp.id                                    GLA 
+_chem_comp.name                                  alpha-D-galactopyranose 
+_chem_comp.type                                  "D-saccharide, alpha linking" 
+_chem_comp.pdbx_type                             ATOMS 
+_chem_comp.formula                               "C6 H12 O6" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         "alpha-D-galactose; D-galactose; galactose; ALPHA D-GALACTOSE" 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2024-09-27 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        180.156 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     GLA 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        ? 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        8ABP 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  EBI 
+_chem_comp.pdbx_pcm                              Y 
+# 
+loop_
+_pdbx_chem_comp_synonyms.ordinal 
+_pdbx_chem_comp_synonyms.comp_id 
+_pdbx_chem_comp_synonyms.name 
+_pdbx_chem_comp_synonyms.provenance 
+_pdbx_chem_comp_synonyms.type 
+1 GLA alpha-D-galactose   PDB ? 
+2 GLA D-galactose         PDB ? 
+3 GLA galactose           PDB ? 
+4 GLA "ALPHA D-GALACTOSE" PDB ? 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+GLA C1  C1  C 0 1 N N S N N N 14.312 56.846 55.116 1.424  -0.489 -0.382 C1  GLA 1  
+GLA C2  C2  C 0 1 N N R N N N 12.873 57.140 54.749 0.392  -0.498 -1.512 C2  GLA 2  
+GLA C3  C3  C 0 1 N N S N N N 12.373 56.256 53.626 -0.650 0.592  -1.244 C3  GLA 3  
+GLA C4  C4  C 0 1 N N R N N N 13.334 56.364 52.401 -1.222 0.387  0.163  C4  GLA 4  
+GLA C5  C5  C 0 1 N N R N N N 14.735 56.054 52.846 -0.068 0.330  1.166  C5  GLA 5  
+GLA C6  C6  C 0 1 N N N N N N 15.685 56.357 51.684 -0.630 0.161  2.579  C6  GLA 6  
+GLA O1  O1  O 0 1 N Y N N N N 14.401 55.565 55.685 2.043  0.797  -0.316 O1  GLA 7  
+GLA O2  O2  O 0 1 N N N N N N 12.023 56.989 55.927 1.044  -0.242 -2.757 O2  GLA 8  
+GLA O3  O3  O 0 1 N N N N N N 11.068 56.630 53.244 -1.700 0.498  -2.209 O3  GLA 9  
+GLA O4  O4  O 0 1 N N N N N N 13.184 57.694 51.793 -1.958 -0.836 0.206  O4  GLA 10 
+GLA O5  O5  O 0 1 N N N N N N 15.135 56.882 53.922 0.783  -0.771 0.859  O5  GLA 11 
+GLA O6  O6  O 0 1 N N N N N N 16.890 55.781 52.074 0.446  0.112  3.517  O6  GLA 12 
+GLA H1  H1  H 0 1 N N N N N N 14.665 57.611 55.845 2.183  -1.246 -0.578 H1  GLA 13 
+GLA H2  H2  H 0 1 N N N N N N 12.827 58.192 54.382 -0.097 -1.470 -1.550 H2  GLA 14 
+GLA H3  H3  H 0 1 N N N N N N 12.349 55.201 53.986 -0.180 1.573  -1.309 H3  GLA 15 
+GLA H4  H4  H 0 1 N N N N N N 13.079 55.619 51.611 -1.881 1.218  0.414  H4  GLA 16 
+GLA H5  H5  H 0 1 N N N N N N 14.766 54.985 53.164 0.504  1.256  1.112  H5  GLA 17 
+GLA H61 H61 H 0 1 N N N N N N 15.315 56.016 50.688 -1.202 -0.764 2.634  H61 GLA 18 
+GLA H62 H62 H 0 1 N N N N N N 15.757 57.438 51.421 -1.279 1.004  2.815  H62 GLA 19 
+GLA HO1 HO1 H 0 1 N Y N N N N 15.304 55.380 55.915 2.688  0.760  0.403  HO1 GLA 20 
+GLA HO2 HO2 H 0 1 N Y N N N N 11.120 57.173 55.696 1.695  -0.947 -2.882 HO2 GLA 21 
+GLA HO3 HO3 H 0 1 N Y N N N N 10.754 56.075 52.539 -1.293 0.620  -3.078 HO3 GLA 22 
+GLA HO4 HO4 H 0 1 N Y N N N N 13.769 57.759 51.047 -2.669 -0.758 -0.443 HO4 GLA 23 
+GLA HO6 HO6 H 0 1 N Y N N N N 17.479 55.969 51.353 0.050  0.005  4.393  HO6 GLA 24 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+GLA C1 C2  SING N N 1  
+GLA C1 O1  SING N N 2  
+GLA C1 O5  SING N N 3  
+GLA C1 H1  SING N N 4  
+GLA C2 C3  SING N N 5  
+GLA C2 O2  SING N N 6  
+GLA C2 H2  SING N N 7  
+GLA C3 C4  SING N N 8  
+GLA C3 O3  SING N N 9  
+GLA C3 H3  SING N N 10 
+GLA C4 C5  SING N N 11 
+GLA C4 O4  SING N N 12 
+GLA C4 H4  SING N N 13 
+GLA C5 C6  SING N N 14 
+GLA C5 O5  SING N N 15 
+GLA C5 H5  SING N N 16 
+GLA C6 O6  SING N N 17 
+GLA C6 H61 SING N N 18 
+GLA C6 H62 SING N N 19 
+GLA O1 HO1 SING N N 20 
+GLA O2 HO2 SING N N 21 
+GLA O3 HO3 SING N N 22 
+GLA O4 HO4 SING N N 23 
+GLA O6 HO6 SING N N 24 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+GLA SMILES           ACDLabs              10.04 "OC1C(O)C(OC(O)C1O)CO"                                                            
+GLA SMILES_CANONICAL CACTVS               3.341 "OC[C@H]1O[C@H](O)[C@H](O)[C@@H](O)[C@H]1O"                                       
+GLA SMILES           CACTVS               3.341 "OC[CH]1O[CH](O)[CH](O)[CH](O)[CH]1O"                                             
+GLA SMILES_CANONICAL "OpenEye OEToolkits" 1.5.0 "C([C@@H]1[C@@H]([C@@H]([C@H]([C@H](O1)O)O)O)O)O"                                 
+GLA SMILES           "OpenEye OEToolkits" 1.5.0 "C(C1C(C(C(C(O1)O)O)O)O)O"                                                        
+GLA InChI            InChI                1.03  "InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3+,4+,5-,6+/m1/s1" 
+GLA InChIKey         InChI                1.03  WQZGKKKJIJFFOK-PHYPRBDBSA-N                                                       
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+GLA "SYSTEMATIC NAME"                     ACDLabs              10.04 alpha-D-galactopyranose                                  
+GLA "SYSTEMATIC NAME"                     "OpenEye OEToolkits" 1.5.0 "(2S,3R,4S,5R,6R)-6-(hydroxymethyl)oxane-2,3,4,5-tetrol" 
+GLA "CONDENSED IUPAC CARBOHYDRATE SYMBOL" GMML                 1.0   DGalpa                                                   
+GLA "COMMON NAME"                         GMML                 1.0   a-D-galactopyranose                                      
+GLA "IUPAC CARBOHYDRATE SYMBOL"           PDB-CARE             1.0   a-D-Galp                                                 
+GLA "SNFG CARBOHYDRATE SYMBOL"            GMML                 1.0   Gal                                                      
+# 
+loop_
+_pdbx_chem_comp_feature.comp_id 
+_pdbx_chem_comp_feature.type 
+_pdbx_chem_comp_feature.value 
+_pdbx_chem_comp_feature.source 
+_pdbx_chem_comp_feature.support 
+GLA "CARBOHYDRATE ISOMER"                 D        PDB ? 
+GLA "CARBOHYDRATE RING"                   pyranose PDB ? 
+GLA "CARBOHYDRATE ANOMER"                 alpha    PDB ? 
+GLA "CARBOHYDRATE PRIMARY CARBONYL GROUP" aldose   PDB ? 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+GLA "Create component"   1999-07-08 EBI  
+GLA "Modify descriptor"  2011-06-04 RCSB 
+GLA "Other modification" 2019-08-12 RCSB 
+GLA "Other modification" 2019-12-19 RCSB 
+GLA "Other modification" 2020-07-03 RCSB 
+GLA "Modify name"        2020-07-17 RCSB 
+GLA "Modify synonyms"    2020-07-17 RCSB 
+GLA "Modify PCM"         2024-09-27 PDBE 
+# 
+_pdbx_chem_comp_pcm.pcm_id                             1 
+_pdbx_chem_comp_pcm.comp_id                            GLA 
+_pdbx_chem_comp_pcm.modified_residue_id                SER 
+_pdbx_chem_comp_pcm.type                               O-Glycosylation 
+_pdbx_chem_comp_pcm.category                           Carbohydrate 
+_pdbx_chem_comp_pcm.position                           "Amino-acid side chain" 
+_pdbx_chem_comp_pcm.polypeptide_position               "Any position" 
+_pdbx_chem_comp_pcm.comp_id_linking_atom               C1 
+_pdbx_chem_comp_pcm.modified_residue_id_linking_atom   OG 
+_pdbx_chem_comp_pcm.uniprot_specific_ptm_accession     ? 
+_pdbx_chem_comp_pcm.uniprot_generic_ptm_accession      ? 
+# 

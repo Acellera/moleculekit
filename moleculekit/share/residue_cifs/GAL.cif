@@ -1,0 +1,188 @@
+data_GAL
+# 
+_chem_comp.id                                    GAL 
+_chem_comp.name                                  beta-D-galactopyranose 
+_chem_comp.type                                  "D-saccharide, beta linking" 
+_chem_comp.pdbx_type                             ATOMS 
+_chem_comp.formula                               "C6 H12 O6" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         "beta-D-galactose; D-galactose; galactose" 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2024-09-27 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         GLB 
+_chem_comp.formula_weight                        180.156 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     GAL 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        Corina 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        2SBA 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  EBI 
+_chem_comp.pdbx_pcm                              Y 
+# 
+loop_
+_pdbx_chem_comp_synonyms.ordinal 
+_pdbx_chem_comp_synonyms.comp_id 
+_pdbx_chem_comp_synonyms.name 
+_pdbx_chem_comp_synonyms.provenance 
+_pdbx_chem_comp_synonyms.type 
+1 GAL beta-D-galactose PDB ? 
+2 GAL D-galactose      PDB ? 
+3 GAL galactose        PDB ? 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+GAL C1  C1  C 0 1 N N R N N N 4.917 90.579 82.825 0.516  1.409  -0.191 C1  GAL 1  
+GAL C2  C2  C 0 1 N N R N N N 4.266 91.826 82.131 1.522  0.302  0.136  C2  GAL 2  
+GAL C3  C3  C 0 1 N N S N N N 4.688 91.932 80.680 1.103  -0.986 -0.578 C3  GAL 3  
+GAL C4  C4  C 0 1 N N R N N N 6.237 91.798 80.545 -0.322 -1.352 -0.152 C4  GAL 4  
+GAL C5  C5  C 0 1 N N R N N N 6.741 90.512 81.139 -1.258 -0.182 -0.468 C5  GAL 5  
+GAL C6  C6  C 0 1 N N N N N N 8.268 90.598 81.059 -2.672 -0.516 0.009  C6  GAL 6  
+GAL O1  O1  O 0 1 N Y N N N N 5.162 90.127 84.186 0.870  2.599  0.517  O1  GAL 7  
+GAL O2  O2  O 0 1 N N N N N N 2.834 91.865 82.221 2.823  0.693  -0.308 O2  GAL 8  
+GAL O3  O3  O 0 1 N N N N N N 4.152 93.123 80.095 1.995  -2.044 -0.220 O3  GAL 9  
+GAL O4  O4  O 0 1 N N N N N N 6.919 92.828 81.225 -0.348 -1.618 1.251  O4  GAL 10 
+GAL O5  O5  O 0 1 N N N N N N 6.348 90.446 82.531 -0.793 0.992  0.202  O5  GAL 11 
+GAL O6  O6  O 0 1 N N N N N N 9.020 89.410 81.129 -3.567 0.525  -0.389 O6  GAL 12 
+GAL H1  H1  H 0 1 N N N N N N 4.004 90.086 82.459 0.528  1.606  -1.263 H1  GAL 13 
+GAL H2  H2  H 0 1 N N N N N N 4.644 92.693 82.693 1.540  0.132  1.213  H2  GAL 14 
+GAL H3  H3  H 0 1 N N N N N N 4.267 91.093 80.106 1.133  -0.831 -1.657 H3  GAL 15 
+GAL H4  H4  H 0 1 N N N N N N 6.432 91.842 79.463 -0.650 -2.237 -0.698 H4  GAL 16 
+GAL H5  H5  H 0 1 N N N N N N 6.343 89.630 80.615 -1.269 -0.006 -1.544 H5  GAL 17 
+GAL H61 H61 H 0 1 N N N N N N 8.504 91.059 80.089 -2.992 -1.459 -0.434 H61 GAL 18 
+GAL H62 H62 H 0 1 N N N N N N 8.590 91.221 81.907 -2.678 -0.604 1.095  H62 GAL 19 
+GAL HO1 HO1 H 0 1 N Y N N N N 5.598 89.283 84.166 0.274  3.343  0.357  HO1 GAL 20 
+GAL HO2 HO2 H 0 1 N Y N N N N 2.510 92.642 81.782 3.151  1.506  0.100  HO2 GAL 21 
+GAL HO3 HO3 H 0 1 N Y N N N N 4.423 93.179 79.186 2.918  -1.876 -0.455 HO3 GAL 22 
+GAL HO4 HO4 H 0 1 N Y N N N N 7.856 92.712 81.119 0.227  -2.347 1.524  HO4 GAL 23 
+GAL HO6 HO6 H 0 1 N Y N N N N 9.945 89.616 81.067 -4.484 0.379  -0.119 HO6 GAL 24 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+GAL C1 C2  SING N N 1  
+GAL C1 O1  SING N N 2  
+GAL C1 O5  SING N N 3  
+GAL C1 H1  SING N N 4  
+GAL C2 C3  SING N N 5  
+GAL C2 O2  SING N N 6  
+GAL C2 H2  SING N N 7  
+GAL C3 C4  SING N N 8  
+GAL C3 O3  SING N N 9  
+GAL C3 H3  SING N N 10 
+GAL C4 C5  SING N N 11 
+GAL C4 O4  SING N N 12 
+GAL C4 H4  SING N N 13 
+GAL C5 C6  SING N N 14 
+GAL C5 O5  SING N N 15 
+GAL C5 H5  SING N N 16 
+GAL C6 O6  SING N N 17 
+GAL C6 H61 SING N N 18 
+GAL C6 H62 SING N N 19 
+GAL O1 HO1 SING N N 20 
+GAL O2 HO2 SING N N 21 
+GAL O3 HO3 SING N N 22 
+GAL O4 HO4 SING N N 23 
+GAL O6 HO6 SING N N 24 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+GAL SMILES           ACDLabs              12.01 "OC1C(O)C(OC(O)C1O)CO"                                                            
+GAL SMILES_CANONICAL CACTVS               3.370 "OC[C@H]1O[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O"                                      
+GAL SMILES           CACTVS               3.370 "OC[CH]1O[CH](O)[CH](O)[CH](O)[CH]1O"                                             
+GAL SMILES_CANONICAL "OpenEye OEToolkits" 1.7.2 "C([C@@H]1[C@@H]([C@@H]([C@H]([C@@H](O1)O)O)O)O)O"                                
+GAL SMILES           "OpenEye OEToolkits" 1.7.2 "C(C1C(C(C(C(O1)O)O)O)O)O"                                                        
+GAL InChI            InChI                1.03  "InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3+,4+,5-,6-/m1/s1" 
+GAL InChIKey         InChI                1.03  WQZGKKKJIJFFOK-FPRJBGLDSA-N                                                       
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+GAL "SYSTEMATIC NAME"                     ACDLabs              12.01 beta-D-galactopyranose                                   
+GAL "SYSTEMATIC NAME"                     "OpenEye OEToolkits" 1.7.2 "(2R,3R,4S,5R,6R)-6-(hydroxymethyl)oxane-2,3,4,5-tetrol" 
+GAL "CONDENSED IUPAC CARBOHYDRATE SYMBOL" GMML                 1.0   DGalpb                                                   
+GAL "COMMON NAME"                         GMML                 1.0   b-D-galactopyranose                                      
+GAL "IUPAC CARBOHYDRATE SYMBOL"           PDB-CARE             1.0   b-D-Galp                                                 
+GAL "SNFG CARBOHYDRATE SYMBOL"            GMML                 1.0   Gal                                                      
+# 
+loop_
+_pdbx_chem_comp_feature.comp_id 
+_pdbx_chem_comp_feature.type 
+_pdbx_chem_comp_feature.value 
+_pdbx_chem_comp_feature.source 
+_pdbx_chem_comp_feature.support 
+GAL "CARBOHYDRATE ISOMER"                 D        PDB ? 
+GAL "CARBOHYDRATE RING"                   pyranose PDB ? 
+GAL "CARBOHYDRATE ANOMER"                 beta     PDB ? 
+GAL "CARBOHYDRATE PRIMARY CARBONYL GROUP" aldose   PDB ? 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+GAL "Create component"         1999-07-08 EBI  
+GAL "Modify leaving atom flag" 2011-05-10 RCSB 
+GAL "Modify descriptor"        2011-06-04 RCSB 
+GAL "Other modification"       2019-08-12 RCSB 
+GAL "Other modification"       2019-12-19 RCSB 
+GAL "Other modification"       2020-07-03 RCSB 
+GAL "Modify name"              2020-07-17 RCSB 
+GAL "Modify synonyms"          2020-07-17 RCSB 
+GAL "Modify PCM"               2024-09-27 PDBE 
+# 
+loop_
+_pdbx_chem_comp_pcm.pcm_id 
+_pdbx_chem_comp_pcm.comp_id 
+_pdbx_chem_comp_pcm.modified_residue_id 
+_pdbx_chem_comp_pcm.type 
+_pdbx_chem_comp_pcm.category 
+_pdbx_chem_comp_pcm.position 
+_pdbx_chem_comp_pcm.polypeptide_position 
+_pdbx_chem_comp_pcm.comp_id_linking_atom 
+_pdbx_chem_comp_pcm.modified_residue_id_linking_atom 
+_pdbx_chem_comp_pcm.uniprot_specific_ptm_accession 
+_pdbx_chem_comp_pcm.uniprot_generic_ptm_accession 
+1 GAL ASN N-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 ND2 ? ? 
+2 GAL ESC None            Carbohydrate "Amino-acid side chain" "Any position" O1 CE  ? ? 
+3 GAL GLU None            Carbohydrate "Amino-acid side chain" "Any position" C1 OE1 ? ? 
+4 GAL TYR None            Carbohydrate "Amino-acid side chain" "Any position" C1 OH  ? ? 
+# 

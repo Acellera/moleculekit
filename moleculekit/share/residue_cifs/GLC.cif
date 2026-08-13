@@ -1,0 +1,190 @@
+data_GLC
+# 
+_chem_comp.id                                    GLC 
+_chem_comp.name                                  alpha-D-glucopyranose 
+_chem_comp.type                                  "D-saccharide, alpha linking" 
+_chem_comp.pdbx_type                             ATOMS 
+_chem_comp.formula                               "C6 H12 O6" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         "alpha-D-glucose; D-glucose; glucose" 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2024-09-27 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         AGC 
+_chem_comp.formula_weight                        180.156 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     GLC 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        Corina 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        1ANF 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  EBI 
+_chem_comp.pdbx_pcm                              Y 
+# 
+loop_
+_pdbx_chem_comp_synonyms.ordinal 
+_pdbx_chem_comp_synonyms.comp_id 
+_pdbx_chem_comp_synonyms.name 
+_pdbx_chem_comp_synonyms.provenance 
+_pdbx_chem_comp_synonyms.type 
+1 GLC alpha-D-glucose PDB ? 
+2 GLC D-glucose       PDB ? 
+3 GLC glucose         PDB ? 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+GLC C1  C1  C 0 1 N N S N N N 8.537  13.141 37.436 -0.567 1.572  -0.245 C1  GLC 1  
+GLC C2  C2  C 0 1 N N R N N N 8.657  12.625 38.866 -1.578 0.465  -0.554 C2  GLC 2  
+GLC C3  C3  C 0 1 N N S N N N 8.946  13.753 39.819 -1.179 -0.806 0.203  C3  GLC 3  
+GLC C4  C4  C 0 1 N N S N N N 10.145 14.523 39.360 0.249  -1.195 -0.192 C4  GLC 4  
+GLC C5  C5  C 0 1 N N R N N N 9.847  15.161 37.965 1.189  -0.024 0.102  C5  GLC 5  
+GLC C6  C6  C 0 1 N N N N N N 11.109 15.823 37.373 2.607  -0.383 -0.345 C6  GLC 6  
+GLC O1  O1  O 0 1 N Y N N N N 7.343  13.747 37.260 -0.600 1.871  1.151  O1  GLC 7  
+GLC O2  O2  O 0 1 N N N N N N 7.430  12.031 39.245 -2.881 0.879  -0.139 O2  GLC 8  
+GLC O3  O3  O 0 1 N N N N N N 9.253  13.149 41.094 -2.075 -1.866 -0.137 O3  GLC 9  
+GLC O4  O4  O 0 1 N N N N N N 10.317 15.675 40.245 0.658  -2.338 0.562  O4  GLC 10 
+GLC O5  O5  O 0 1 N N N N N N 9.352  14.183 37.085 0.744  1.133  -0.608 O5  GLC 11 
+GLC O6  O6  O 0 1 N N N N N N 10.583 16.542 36.238 3.506  0.661  0.035  O6  GLC 12 
+GLC H1  H1  H 0 1 N N N N N N 8.756  12.230 36.860 -0.822 2.466  -0.815 H1  GLC 13 
+GLC H2  H2  H 0 1 N N N N N N 9.480  11.896 38.906 -1.583 0.264  -1.626 H2  GLC 14 
+GLC H3  H3  H 0 1 N N N N N N 8.087  14.437 39.879 -1.223 -0.619 1.276  H3  GLC 15 
+GLC H4  H4  H 0 1 N N N N N N 11.012 13.847 39.341 0.281  -1.429 -1.257 H4  GLC 16 
+GLC H5  H5  H 0 1 N N N N N N 9.086  15.944 38.101 1.187  0.184  1.173  H5  GLC 17 
+GLC H61 H61 H 0 1 N N N N N N 11.595 16.496 38.095 2.913  -1.315 0.129  H61 GLC 18 
+GLC H62 H62 H 0 1 N N N N N N 11.894 15.101 37.105 2.627  -0.503 -1.428 H62 GLC 19 
+GLC HO1 HO1 H 0 1 N Y N N N N 6.932  13.889 38.105 0.017  2.566  1.420  HO1 GLC 20 
+GLC HO2 HO2 H 0 1 N Y N N N N 7.419  11.898 40.186 -3.197 1.682  -0.576 HO2 GLC 21 
+GLC HO3 HO3 H 0 1 N Y N N N N 9.320  12.207 40.991 -3.000 -1.684 0.080  HO3 GLC 22 
+GLC HO4 HO4 H 0 1 N Y N N N N 10.354 15.379 41.147 0.102  -3.118 0.427  HO4 GLC 23 
+GLC HO6 HO6 H 0 1 N Y N N N N 10.467 17.457 36.468 4.425  0.501  -0.218 HO6 GLC 24 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+GLC C1 C2  SING N N 1  
+GLC C1 O1  SING N N 2  
+GLC C1 O5  SING N N 3  
+GLC C1 H1  SING N N 4  
+GLC C2 C3  SING N N 5  
+GLC C2 O2  SING N N 6  
+GLC C2 H2  SING N N 7  
+GLC C3 C4  SING N N 8  
+GLC C3 O3  SING N N 9  
+GLC C3 H3  SING N N 10 
+GLC C4 C5  SING N N 11 
+GLC C4 O4  SING N N 12 
+GLC C4 H4  SING N N 13 
+GLC C5 C6  SING N N 14 
+GLC C5 O5  SING N N 15 
+GLC C5 H5  SING N N 16 
+GLC C6 O6  SING N N 17 
+GLC C6 H61 SING N N 18 
+GLC C6 H62 SING N N 19 
+GLC O1 HO1 SING N N 20 
+GLC O2 HO2 SING N N 21 
+GLC O3 HO3 SING N N 22 
+GLC O4 HO4 SING N N 23 
+GLC O6 HO6 SING N N 24 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+GLC SMILES           ACDLabs              10.04 "OC1C(O)C(OC(O)C1O)CO"                                                            
+GLC SMILES_CANONICAL CACTVS               3.341 "OC[C@H]1O[C@H](O)[C@H](O)[C@@H](O)[C@@H]1O"                                      
+GLC SMILES           CACTVS               3.341 "OC[CH]1O[CH](O)[CH](O)[CH](O)[CH]1O"                                             
+GLC SMILES_CANONICAL "OpenEye OEToolkits" 1.5.0 "C([C@@H]1[C@H]([C@@H]([C@H]([C@H](O1)O)O)O)O)O"                                  
+GLC SMILES           "OpenEye OEToolkits" 1.5.0 "C(C1C(C(C(C(O1)O)O)O)O)O"                                                        
+GLC InChI            InChI                1.03  "InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6+/m1/s1" 
+GLC InChIKey         InChI                1.03  WQZGKKKJIJFFOK-DVKNGEFBSA-N                                                       
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+GLC "SYSTEMATIC NAME"                     ACDLabs              10.04 alpha-D-glucopyranose                                    
+GLC "SYSTEMATIC NAME"                     "OpenEye OEToolkits" 1.5.0 "(2S,3R,4S,5S,6R)-6-(hydroxymethyl)oxane-2,3,4,5-tetrol" 
+GLC "CONDENSED IUPAC CARBOHYDRATE SYMBOL" GMML                 1.0   DGlcpa                                                   
+GLC "COMMON NAME"                         GMML                 1.0   a-D-glucopyranose                                        
+GLC "IUPAC CARBOHYDRATE SYMBOL"           PDB-CARE             1.0   a-D-Glcp                                                 
+GLC "SNFG CARBOHYDRATE SYMBOL"            GMML                 1.0   Glc                                                      
+# 
+loop_
+_pdbx_chem_comp_feature.comp_id 
+_pdbx_chem_comp_feature.type 
+_pdbx_chem_comp_feature.value 
+_pdbx_chem_comp_feature.source 
+_pdbx_chem_comp_feature.support 
+GLC "CARBOHYDRATE ISOMER"                 D        PDB ? 
+GLC "CARBOHYDRATE RING"                   pyranose PDB ? 
+GLC "CARBOHYDRATE ANOMER"                 alpha    PDB ? 
+GLC "CARBOHYDRATE PRIMARY CARBONYL GROUP" aldose   PDB ? 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+GLC "Create component"   1999-07-08 EBI  
+GLC "Modify descriptor"  2011-06-04 RCSB 
+GLC "Other modification" 2019-08-12 RCSB 
+GLC "Other modification" 2019-12-19 RCSB 
+GLC "Other modification" 2020-07-03 RCSB 
+GLC "Modify name"        2020-07-17 RCSB 
+GLC "Modify synonyms"    2020-07-17 RCSB 
+GLC "Modify PCM"         2024-09-27 PDBE 
+# 
+loop_
+_pdbx_chem_comp_pcm.pcm_id 
+_pdbx_chem_comp_pcm.comp_id 
+_pdbx_chem_comp_pcm.modified_residue_id 
+_pdbx_chem_comp_pcm.type 
+_pdbx_chem_comp_pcm.category 
+_pdbx_chem_comp_pcm.position 
+_pdbx_chem_comp_pcm.polypeptide_position 
+_pdbx_chem_comp_pcm.comp_id_linking_atom 
+_pdbx_chem_comp_pcm.modified_residue_id_linking_atom 
+_pdbx_chem_comp_pcm.uniprot_specific_ptm_accession 
+_pdbx_chem_comp_pcm.uniprot_generic_ptm_accession 
+1 GLC SER O-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 OG  ? ? 
+2 GLC THR O-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 OG1 ? ? 
+3 GLC TYR O-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 OH  ? ? 
+4 GLC ASP None            Carbohydrate "Amino-acid side chain" "Any position" C1 OD1 ? ? 
+5 GLC ASP None            Carbohydrate "Amino-acid side chain" "Any position" C1 OD2 ? ? 
+6 GLC GLU None            Carbohydrate "Amino-acid side chain" "Any position" C1 OE1 ? ? 
+7 GLC GLU None            Carbohydrate "Amino-acid side chain" "Any position" C1 OE2 ? ? 
+# 

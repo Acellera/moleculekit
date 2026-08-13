@@ -198,11 +198,12 @@ def _generate_nonstandard_residues_ff(
     from moleculekit.tools.preparation_customres import _get_custom_ff
     from moleculekit.tools.preparation_customres import (
         _process_custom_residue,
-        _process_custom_nucleic_residue,
+        _rename_placeholder_hydrogens,
         _mol_to_dat_def,
         _mol_to_xml_def,
     )
     from moleculekit.tools.nonstandard_residues import ChainResidueSpec
+    from moleculekit.tools.glycans import GLYCAM_SUGARS
     from moleculekit.residues import (
         MODIFIED_PROTEIN_RESIDUE_NAMES,
         MODIFIED_NUCLEIC_RESIDUE_NAMES,
@@ -250,7 +251,21 @@ def _generate_nonstandard_residues_ff(
         if r not in definition.map and os.path.isfile(os.path.join(cif_dir, f"{r}.cif"))
     )
 
-    if not ncaa_not_in_ff and not modres_from_cif:
+    # Glycan sugar residues (GlycanSpec, see moleculekit.tools.glycans): source
+    # their topology from the same shipped reference cifs so PDB2PQR can
+    # protonate them and repair missing heavy atoms, exactly like the modified
+    # residues above. Unlike an amino acid or nucleotide, a sugar has neither a
+    # backbone N/C nor a 5'/3' end, so it gets its own minimal loop below
+    # instead of reusing the amino-acid / nucleic branches (which would raise
+    # on ``np.where(cresmol.name == "N")[0][0]`` or assume a phosphate
+    # backbone respectively).
+    sugars_from_cif = sorted(
+        r
+        for r in (present_resnames & set(GLYCAM_SUGARS))
+        if r not in definition.map and os.path.isfile(os.path.join(cif_dir, f"{r}.cif"))
+    )
+
+    if not ncaa_not_in_ff and not modres_from_cif and not sugars_from_cif:
         return definition, forcefield
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -339,9 +354,29 @@ def _generate_nonstandard_residues_ff(
             if drop.any():
                 cresmol.remove(drop, _logger=False)
             if res in MODIFIED_NUCLEIC_RESIDUE_NAMES:
-                cres = _process_custom_nucleic_residue(cresmol)
+                cres = _rename_placeholder_hydrogens(cresmol)
             else:
                 cres = _process_custom_residue(cresmol)
+            cres.resname[:] = res
+            _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
+            _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
+
+        for res in sugars_from_cif:
+            cresmol = Molecule(os.path.join(cif_dir, f"{res}.cif"))
+            cresmol.chain[:] = ""
+            cresmol.segid[:] = ""
+            # The reference cif is the free reducing form, but all copies of a
+            # resname share one Definition, so keeping the anomeric hydroxyl
+            # would make PDB2PQR graft one onto glycosidically-linked sugars
+            # too. Strip it for the mid-glycan form; free reducing ends are
+            # completed afterwards by _apply_glycan_modifications.
+            tmpl = GLYCAM_SUGARS[res]
+            o_name = tmpl.anomeric_oxygen
+            h_name = f"HO{o_name[1:]}"
+            drop = (cresmol.name == o_name) | (cresmol.name == h_name)
+            if drop.any():
+                cresmol.remove(drop, _logger=False)
+            cres = _rename_placeholder_hydrogens(cresmol)
             cres.resname[:] = res
             _mol_to_xml_def(cres, os.path.join(tmpdir, f"{res}.xml"))
             _mol_to_dat_def(cres, os.path.join(tmpdir, f"{res}.dat"))
@@ -870,6 +905,7 @@ def _pdb2pqr(
     no_opt=None,
     no_titr=None,
     non_termini=None,
+    glycan_residues=None,
     propka_args=None,
     src_mol=None,
 ):
@@ -916,6 +952,14 @@ def _pdb2pqr(
     # distance check) almost untouched - it just reads these flags.
     if non_termini:
         _stamp_non_termini(biomolecule, non_termini)
+    # Sugar residues sharing a chain letter with a real polymer (e.g. a
+    # glycan HETATM block trailing a protein chain under the same PDB chain
+    # id) must not be left in PDB2PQR's chain grouping for that letter: its
+    # own chain/residue identity is untouched, only the internal grouping
+    # PDB2PQR uses to find a chain's first/last residue for terminus
+    # assignment. See _split_glycan_chains.
+    if glycan_residues:
+        _split_glycan_chains(biomolecule, glycan_residues)
     biomolecule.set_termini(neutraln=neutraln, neutralc=neutralc)
     biomolecule.update_bonds()
     if clean:
@@ -1133,8 +1177,68 @@ def _stamp_non_termini(biomolecule, non_termini):
             residue.c_term_blocked = True
 
 
+def _split_glycan_chains(biomolecule, glycan_residues):
+    """Move every glycan sugar residue into its own internal
+    :class:`~pdb2pqr.structures.Chain`, out of the chain PDB2PQR grouped it
+    into by PDB chain id.
+
+    A glycan conventionally shares its anchor protein's chain letter, so
+    PDB2PQR groups the two together. When such a chain ends in something
+    non-polymeric (water, as in 2B5I), ``Biomolecule.assign_termini`` scans
+    backward for the last amino/nucleic acid without checking that
+    residue's own blocked status, and sugars register as ``na.Nucleic``
+    (see
+    :class:`~moleculekit.tools.preparation_customres.CustomSugarResidue`),
+    so it would patch a sugar as the C-terminus. Excising the sugars first
+    keeps that scan away from them entirely.
+
+    Only the transient ``biomolecule.chains`` grouping is touched; residue
+    and atom ``chain_id`` values are untouched, so the chain identity
+    moleculekit reports downstream is unaffected.
+
+    Parameters
+    ----------
+    biomolecule : pdb2pqr.biomolecule.Biomolecule
+        The PDB2PQR biomolecule, right after ``setup_molecule`` and before
+        ``set_termini``.
+    glycan_residues : set
+        Set of ``(resid, chain, insertion)`` tuples identifying every sugar
+        residue of every glycan in the structure.
+    """
+    from pdb2pqr import structures as struct
+
+    def _is_glycan(residue):
+        key = (
+            int(residue.res_seq),
+            str(residue.chain_id),
+            str(residue.ins_code).strip(),
+        )
+        return key in glycan_residues
+
+    extra_chains = []
+    for chain in biomolecule.chains:
+        glycan_res = [r for r in chain.residues if _is_glycan(r)]
+        if not glycan_res:
+            continue
+        core = [r for r in chain.residues if not _is_glycan(r)]
+        if not core:
+            continue  # already a pure-glycan chain, nothing to fix
+        chain.residues = core
+        newchain = struct.Chain(chain.chain_id)
+        for residue in glycan_res:
+            newchain.add_residue(residue)
+        extra_chains.append(newchain)
+    biomolecule.chains.extend(extra_chains)
+
+
 def _get_hold_residues(
-    mol_in, no_opt, no_prot, no_titr, force_protonation, nonpeptidic_bonds
+    mol_in,
+    no_opt,
+    no_prot,
+    no_titr,
+    force_protonation,
+    nonpeptidic_bonds,
+    glycan_residues=None,
 ):
     # Converts atom selections used for no optimization residues and no protonation residues
     # to tuples of (resid, chain, insertion) which are used by pdb2pqr as unique residue identifiers
@@ -1200,8 +1304,14 @@ def _get_hold_residues(
             _no_titr += [prot_key, other_key]
             # Never let PDB2PQR protonate the non-protein partner; it is
             # templated separately. The protein junction residue is left out
-            # of _no_prot on purpose so PDB2PQR still hydrogenates it.
-            _no_prot.append(other_key)
+            # of _no_prot on purpose so PDB2PQR still hydrogenates it. The
+            # one exception is a glycan's stem sugar: unlike a generic
+            # covalent ligand, it IS meant to be protonated by PDB2PQR (via
+            # its shipped GLYCAM cif topology, see
+            # _generate_nonstandard_residues_ff), so it must stay off
+            # _no_prot too or it would come back with zero hydrogens.
+            if glycan_residues is None or other_key not in glycan_residues:
+                _no_prot.append(other_key)
             _frozen.append(
                 (prot_key, str(mol_in.resname[nn[0]]), str(mol_in.name[nn[0]]))
             )
@@ -1309,11 +1419,9 @@ def _fix_backbone_amide_h_names(mol):
     H. A true N-terminal NH3+ has multiple Hs bonded to N and is left
     untouched.
     """
-    from moleculekit.residues import PROTEIN_RESIDUES
+    from moleculekit.residues import PROTEIN_RESIDUE_NAMES_WITH_VARIANTS
 
-    canonical = {rr.resname for rr in PROTEIN_RESIDUES} | {
-        v for rr in PROTEIN_RESIDUES for v in rr.resname_variants
-    }
+    canonical = PROTEIN_RESIDUE_NAMES_WITH_VARIANTS
     nh_min, nh_max = 0.8, 1.2  # typical N-H bond length ~1.01 Å
     coords = mol.coords[:, :, 0]
     uqres = mol.getResidues(return_idx=False)
@@ -1943,6 +2051,207 @@ def _apply_detect_spec_renames(mol, detect_specs):
             mol.resname[res_mask] = str(spec.new_resname)
 
 
+def _apply_glycan_modifications(mol: Molecule, detect_specs: list) -> None:
+    """Apply GLYCAM-06 renames and topology fixups to every glycan sugar in
+    ``mol``, in place, after the PDB2PQR roundtrip and
+    :func:`_apply_detect_spec_renames`.
+
+    Three things happen, in this order (removals and insertions reindex
+    ``mol``, so every residue mask is re-resolved by identity -- segid,
+    chain, resid, insertion, never resname or atom index -- right before
+    it is used):
+
+    1. Anchor-hydrogen removal. Every glycosylated protein anchor
+       (:data:`moleculekit.tools.glycans.GLYCAM_ANCHORS`) is protonated by
+       PDB2PQR as if it were a free residue, so it carries one hydrogen too
+       many at the atom the glycosidic bond actually occupies. For SER/THR
+       /HYP the displaced hydrogen has a fixed name (``HG``, ``HG1``,
+       ``HD1``) and is simply dropped. For ASN, PDB2PQR's free-amide ND2
+       carries both ``HD21``/``HD22``; the one closest to the sugar's own
+       anomeric carbon is the one the glycosidic bond displaced, so it is
+       removed and the survivor renamed to ``HD21`` (the ``NLN`` template
+       name). This must run before any renames below: it needs the sugar's
+       still-original atom name to look up its anomeric carbon.
+    2. Atom renames (``GlycanSpec.atom_renames``, the N-acetyl / N-glycolyl
+       substituent atoms) followed by the residue renames themselves (the
+       sugar to its GLYCAM unit name, the anchor to its GLYCAM anchor
+       resname). Pure value changes, no reindexing.
+    3. The free-reducing-end split, last, because it is the only step that
+       inserts/removes atoms. A sugar with no outgoing glycosidic bond at
+       its own anomeric carbon (``GlycanSpec.free_reducing_end``) has its
+       anomeric hydroxyl oxygen (and hydrogen, if present) split off into
+       its own ``ROH`` residue, GLYCAM's free-hydroxyl cap, sharing the
+       sugar's segment/chain with a fresh resid. PDB2PQR never repairs this
+       atom on purpose (:func:`_generate_nonstandard_residues_ff` strips it
+       from every sugar's shared topology Definition, since a
+       glycosidically-linked copy of the same resname must never have it),
+       so this step uses the real atom whenever the sugar still has it
+       *after* PDB2PQR runs. That is usually, but not reliably, the
+       deposited input atom: PDB2PQR's own heavy-atom repair also deletes
+       any atom absent from a residue's Definition as "extra", a pass that
+       fires structure-wide whenever *any* residue anywhere is missing a
+       heavy atom, so a real, deposited O1 can be removed by PDB2PQR before
+       this function ever runs even though this function never removed it
+       itself. When the atom is absent at this point, for whatever reason,
+       one is constructed here instead at a rough geometric position that a
+       downstream minimization relaxes, and a warning is logged naming the
+       residue so the substitution is never silent.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The PDB2PQR-prepared molecule, modified in place.
+    detect_specs : list
+        Specs from :func:`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues`;
+        only the :class:`~moleculekit.tools.nonstandard_residues.GlycanSpec`
+        entries are consulted, everything else is ignored.
+
+    Returns
+    -------
+    None
+    """
+    from moleculekit.tools.nonstandard_residues import GlycanSpec
+    from moleculekit.tools.glycans import GLYCAM_SUGARS, GLYCAN_ANCHORS
+
+    gly = [s for s in detect_specs if isinstance(s, GlycanSpec)]
+    if not gly:
+        return
+
+    def _res_mask(rid):
+        return (
+            (mol.segid == str(rid.segid))
+            & (mol.chain == str(rid.chain))
+            & (mol.resid == int(rid.resid))
+            & (mol.insertion == str(rid.insertion))
+        )
+
+    # 1. Anchor-hydrogen removal, BEFORE any renames (needs the sugar's
+    # still-original atom names to locate its anomeric carbon).
+    for spec in gly:
+        if spec.anchor_residue is None:
+            continue
+        amask = _res_mask(spec.anchor_residue)
+        drop_h = GLYCAN_ANCHORS[spec.anchor_residue.resname][2]
+        rm = np.zeros(mol.numAtoms, dtype=bool)
+        if drop_h is not None:
+            rm |= amask & (mol.name == drop_h)
+        else:
+            # ASN: PDB2PQR protonates ND2 as a free primary amide (both
+            # HD21 and HD22); the glycosidic bond displaces whichever one
+            # points toward the sugar's own anomeric carbon.
+            tmpl = GLYCAM_SUGARS[spec.resname]
+            smask = _res_mask(spec.residue)
+            c1 = np.where(smask & (mol.name == tmpl.anomeric_carbon))[0]
+            hidx = np.where(amask & np.isin(mol.name, ["HD21", "HD22"]))[0]
+            if len(hidx) > 1:
+                if len(c1) == 1:
+                    d = np.linalg.norm(
+                        mol.coords[hidx, :, 0] - mol.coords[c1[0], :, 0], axis=1
+                    )
+                    rm[hidx[np.argmin(d)]] = True
+                else:
+                    rm[hidx[1:]] = True  # fallback: keep only the first
+        if rm.any():
+            mol.remove(rm, _logger=False)
+        # Rename the surviving amide hydrogen (if this was the ASN branch)
+        # to the NLN template name; a no-op for SER/THR/HYP, which have no
+        # HD21/HD22 atom at all.
+        amask = _res_mask(spec.anchor_residue)
+        surv = amask & np.isin(mol.name, ["HD21", "HD22"])
+        mol.name[surv] = "HD21"
+
+    # 2. Atom renames, then residue renames (sugar + its anchor). Pure
+    # value changes: no reindexing, so masks stay valid within this loop.
+    for spec in gly:
+        smask = _res_mask(spec.residue)
+        for old, new in spec.atom_renames.items():
+            mol.name[smask & (mol.name == old)] = new
+        mol.resname[smask] = str(spec.new_resname)
+        if spec.anchor_residue is not None:
+            mol.resname[_res_mask(spec.anchor_residue)] = str(spec.anchor_new_resname)
+
+    # 3. Free reducing-end ROH split, last (inserts/removes atoms).
+    for spec in gly:
+        if not spec.free_reducing_end:
+            continue
+        tmpl = GLYCAM_SUGARS[spec.resname]
+        smask = _res_mask(spec.residue)
+        seg = str(mol.segid[smask][0])
+        chain = str(mol.chain[smask][0])
+        new_resid = int(mol.resid[mol.segid == seg].max()) + 1
+
+        o1_idx = np.where(smask & (mol.name == tmpl.anomeric_oxygen))[0]
+        if len(o1_idx):
+            # Already resolved in the input: carry the real atom(s) over
+            # rather than discarding deposited coordinates. A companion
+            # hydrogen, if PDB2PQR added or the input carried one, is
+            # found by proximity (a real O-H bond is always well under
+            # 1.2 A; nothing else in a sugar sits that close to O1).
+            o1_idx = int(o1_idx[0])
+            hcand = np.where(smask & (mol.element == "H"))[0]
+            sel = [o1_idx]
+            if len(hcand):
+                d = np.linalg.norm(
+                    mol.coords[hcand, :, 0] - mol.coords[o1_idx, :, 0], axis=1
+                )
+                near = hcand[d < 1.2]
+                if len(near):
+                    sel.append(int(near[0]))
+            o1sel = np.zeros(mol.numAtoms, dtype=bool)
+            o1sel[sel] = True
+            rohmol = mol.copy(sel=o1sel)
+            # GLYCAM's ROH cap always names its own atom O1, regardless of
+            # which position the source sugar's anomeric oxygen occupied
+            # (O2 for a sialic acid, O1 for everything else).
+            rohmol.name[rohmol.element == "O"] = "O1"
+            rohmol.name[rohmol.element == "H"] = "HO1"
+            mol.remove(o1sel, _logger=False)
+        else:
+            # No anomeric oxygen here, which does not prove the input lacked
+            # one: PDB2PQR drops atoms missing from a resname's Definition as
+            # "extra", so it can delete a deposited O1 too. Build a rough
+            # position (1.43 A from the anomeric carbon, opposite its
+            # heavy-atom centroid) for minimization to relax, and warn so the
+            # substitution is never silent.
+            rid = spec.residue
+            logger.warning(
+                f"Glycan sugar {spec.resname} (prepared as {spec.new_resname}) "
+                f"{rid.chain}:{rid.resid}{rid.insertion} (segid {rid.segid}) has "
+                "no anomeric oxygen after preparation; constructing its "
+                "position geometrically instead of using a deposited one."
+            )
+            c1_idx = int(np.where(smask & (mol.name == tmpl.anomeric_carbon))[0][0])
+            c1_xyz = mol.coords[c1_idx, :, 0]
+            neigh = [
+                int(n) for n in mol.getNeighbors(c1_idx) if str(mol.element[n]) != "H"
+            ]
+            if neigh:
+                direction = c1_xyz - mol.coords[neigh, :, 0].mean(axis=0)
+            else:
+                direction = np.array([1.0, 0.0, 0.0])
+            norm = float(np.linalg.norm(direction))
+            direction = direction / norm if norm > 1e-6 else np.array([1.0, 0.0, 0.0])
+
+            rohmol = Molecule().empty(1)
+            rohmol.record[:] = "HETATM"
+            rohmol.name[:] = "O1"
+            rohmol.element[:] = "O"
+            rohmol.coords = (
+                (c1_xyz + direction * 1.43)
+                .reshape(1, 3, 1)
+                .astype(Molecule._dtypes["coords"])
+            )
+
+        rohmol.resname[:] = "ROH"
+        rohmol.resid[:] = new_resid
+        rohmol.insertion[:] = ""
+        rohmol.chain[:] = chain
+        rohmol.segid[:] = seg
+
+        insert_at = int(np.where(_res_mask(spec.residue))[0][0])
+        mol.insert(rohmol, insert_at)
+
+
 def systemPrepare(
     mol_in: Molecule,
     titration: bool = True,
@@ -2317,8 +2626,26 @@ def systemPrepare(
             # Rename to desired protonation state
             mol_in.set("resname", resn, sel=sel)
 
+    # Taken from mol_in's resnames, not detect_specs, which a caller may have
+    # filtered: sugars get the shipped cif topology regardless. Used to keep
+    # PDB2PQR hydrogenating a stem sugar despite its frozen junction (see
+    # _get_hold_residues) and to regroup its chains (_split_glycan_chains).
+    from moleculekit.tools.glycans import GLYCAM_SUGARS
+
+    _is_sugar = np.isin(mol_in.resname, list(GLYCAM_SUGARS))
+    _glycan_residues = {
+        (int(mol_in.resid[i]), str(mol_in.chain[i]), str(mol_in.insertion[i]).strip())
+        for i in np.where(_is_sugar)[0]
+    }
+
     _no_opt, _no_prot, _no_titr, _frozen = _get_hold_residues(
-        mol_in, no_opt, no_prot, no_titr, force_protonation, nonpept
+        mol_in,
+        no_opt,
+        no_prot,
+        no_titr,
+        force_protonation,
+        nonpept,
+        glycan_residues=_glycan_residues,
     )
     _check_frozen_histidines(mol_in, _no_prot + [key for key, _, _ in _frozen])
 
@@ -2353,6 +2680,7 @@ def systemPrepare(
             no_prot=_no_prot,
             no_titr=_no_titr,
             non_termini=_non_termini,
+            glycan_residues=_glycan_residues,
             definition=definition,
             forcefield_=forcefield,
             src_mol=mol_in,
@@ -2418,6 +2746,7 @@ def systemPrepare(
 
     if detect_specs:
         _apply_detect_spec_renames(mol_out, detect_specs)
+        _apply_glycan_modifications(mol_out, detect_specs)
 
     logger.setLevel(old_level)
 

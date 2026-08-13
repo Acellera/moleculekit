@@ -1,0 +1,188 @@
+data_BMA
+# 
+_chem_comp.id                                    BMA 
+_chem_comp.name                                  beta-D-mannopyranose 
+_chem_comp.type                                  "D-saccharide, beta linking" 
+_chem_comp.pdbx_type                             ATOMS 
+_chem_comp.formula                               "C6 H12 O6" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         "beta-D-mannose; D-mannose; mannose" 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2024-09-27 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        180.156 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     BMA 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        ? 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        1CF5 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+_chem_comp.pdbx_pcm                              Y 
+# 
+loop_
+_pdbx_chem_comp_synonyms.ordinal 
+_pdbx_chem_comp_synonyms.comp_id 
+_pdbx_chem_comp_synonyms.name 
+_pdbx_chem_comp_synonyms.provenance 
+_pdbx_chem_comp_synonyms.type 
+1 BMA beta-D-mannose PDB ? 
+2 BMA D-mannose      PDB ? 
+3 BMA mannose        PDB ? 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+BMA C1  C1  C 0 1 N N R N N N 27.913 -0.014 -0.918 -1.442 -0.578 -0.504 C1  BMA 1  
+BMA C2  C2  C 0 1 N N S N N N 28.289 1.181  -0.018 -0.493 -0.194 -1.642 C2  BMA 2  
+BMA C3  C3  C 0 1 N N S N N N 29.844 1.264  -0.063 0.945  -0.515 -1.223 C3  BMA 3  
+BMA C4  C4  C 0 1 N N S N N N 30.565 -0.137 -0.527 1.227  0.168  0.119  C4  BMA 4  
+BMA C5  C5  C 0 1 N N R N N N 29.687 -1.504 -0.194 0.149  -0.244 1.124  C5  BMA 5  
+BMA C6  C6  C 0 1 N N N N N N 29.877 -2.207 1.231  0.442  0.405  2.478  C6  BMA 6  
+BMA O1  O1  O 0 1 N Y N N N N 26.518 -0.013 -1.109 -2.789 -0.311 -0.899 O1  BMA 7  
+BMA O2  O2  O 0 1 N N N N N N 27.730 1.125  1.374  -0.614 1.202  -1.915 O2  BMA 8  
+BMA O3  O3  O 0 1 N N N N N N 30.418 1.690  1.173  1.853  -0.027 -2.213 O3  BMA 9  
+BMA O4  O4  O 0 1 N N N N N N 30.854 -0.128 -1.954 2.510  -0.235 0.601  O4  BMA 10 
+BMA O5  O5  O 0 1 N N N N N N 28.253 -1.252 -0.293 -1.130 0.181  0.661  O5  BMA 11 
+BMA O6  O6  O 0 1 N N N N N N 30.472 -3.557 1.147  -0.561 0.018  3.419  O6  BMA 12 
+BMA H1  H1  H 0 1 N N N N N N 28.466 0.085  -1.880 -1.333 -1.640 -0.284 H1  BMA 13 
+BMA H2  H2  H 0 1 N N N N N N 27.818 2.114  -0.405 -0.748 -0.763 -2.537 H2  BMA 14 
+BMA H3  H3  H 0 1 N N N N N N 30.043 2.037  -0.841 1.063  -1.593 -1.118 H3  BMA 15 
+BMA H4  H4  H 0 1 N N N N N N 31.501 -0.179 0.077  1.211  1.250  -0.011 H4  BMA 16 
+BMA H5  H5  H 0 1 N N N N N N 30.101 -2.195 -0.964 0.152  -1.328 1.234  H5  BMA 17 
+BMA H61 H61 H 0 1 N N N N N N 30.469 -1.556 1.916  0.439  1.489  2.369  H61 BMA 18 
+BMA H62 H62 H 0 1 N N N N N N 28.912 -2.234 1.789  1.418  0.078  2.835  H62 BMA 19 
+BMA HO1 HO1 H 0 1 N Y N N N N 26.286 -0.749 -1.663 -3.354 -0.570 -0.159 HO1 BMA 20 
+BMA HO2 HO2 H 0 1 N Y N N N N 27.961 1.861  1.928  -1.534 1.360  -2.167 HO2 BMA 21 
+BMA HO3 HO3 H 0 1 N Y N N N N 31.366 1.740  1.145  1.630  -0.474 -3.041 HO3 BMA 22 
+BMA HO4 HO4 H 0 1 N Y N N N N 31.271 -0.938 -2.222 3.157  0.035  -0.064 HO4 BMA 23 
+BMA HO6 HO6 H 0 1 N Y N N N N 30.584 -3.974 1.992  -0.340 0.447  4.256  HO6 BMA 24 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+BMA C1 C2  SING N N 1  
+BMA C1 O1  SING N N 2  
+BMA C1 O5  SING N N 3  
+BMA C1 H1  SING N N 4  
+BMA C2 C3  SING N N 5  
+BMA C2 O2  SING N N 6  
+BMA C2 H2  SING N N 7  
+BMA C3 C4  SING N N 8  
+BMA C3 O3  SING N N 9  
+BMA C3 H3  SING N N 10 
+BMA C4 C5  SING N N 11 
+BMA C4 O4  SING N N 12 
+BMA C4 H4  SING N N 13 
+BMA C5 C6  SING N N 14 
+BMA C5 O5  SING N N 15 
+BMA C5 H5  SING N N 16 
+BMA C6 O6  SING N N 17 
+BMA C6 H61 SING N N 18 
+BMA C6 H62 SING N N 19 
+BMA O1 HO1 SING N N 20 
+BMA O2 HO2 SING N N 21 
+BMA O3 HO3 SING N N 22 
+BMA O4 HO4 SING N N 23 
+BMA O6 HO6 SING N N 24 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+BMA SMILES           ACDLabs              10.04 "OC1C(O)C(OC(O)C1O)CO"                                                            
+BMA SMILES_CANONICAL CACTVS               3.341 "OC[C@H]1O[C@@H](O)[C@@H](O)[C@@H](O)[C@@H]1O"                                    
+BMA SMILES           CACTVS               3.341 "OC[CH]1O[CH](O)[CH](O)[CH](O)[CH]1O"                                             
+BMA SMILES_CANONICAL "OpenEye OEToolkits" 1.5.0 "C([C@@H]1[C@H]([C@@H]([C@@H]([C@@H](O1)O)O)O)O)O"                                
+BMA SMILES           "OpenEye OEToolkits" 1.5.0 "C(C1C(C(C(C(O1)O)O)O)O)O"                                                        
+BMA InChI            InChI                1.03  "InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5+,6-/m1/s1" 
+BMA InChIKey         InChI                1.03  WQZGKKKJIJFFOK-RWOPYEJCSA-N                                                       
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+BMA "SYSTEMATIC NAME"                     ACDLabs              10.04 beta-D-mannopyranose                                     
+BMA "SYSTEMATIC NAME"                     "OpenEye OEToolkits" 1.5.0 "(2R,3S,4S,5S,6R)-6-(hydroxymethyl)oxane-2,3,4,5-tetrol" 
+BMA "CONDENSED IUPAC CARBOHYDRATE SYMBOL" GMML                 1.0   DManpb                                                   
+BMA "COMMON NAME"                         GMML                 1.0   b-D-mannopyranose                                        
+BMA "IUPAC CARBOHYDRATE SYMBOL"           PDB-CARE             1.0   b-D-Manp                                                 
+BMA "SNFG CARBOHYDRATE SYMBOL"            GMML                 1.0   Man                                                      
+# 
+loop_
+_pdbx_chem_comp_feature.comp_id 
+_pdbx_chem_comp_feature.type 
+_pdbx_chem_comp_feature.value 
+_pdbx_chem_comp_feature.source 
+_pdbx_chem_comp_feature.support 
+BMA "CARBOHYDRATE ISOMER"                 D        PDB ? 
+BMA "CARBOHYDRATE RING"                   pyranose PDB ? 
+BMA "CARBOHYDRATE ANOMER"                 beta     PDB ? 
+BMA "CARBOHYDRATE PRIMARY CARBONYL GROUP" aldose   PDB ? 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+BMA "Create component"   1999-07-08 RCSB 
+BMA "Modify descriptor"  2011-06-04 RCSB 
+BMA "Other modification" 2019-08-12 RCSB 
+BMA "Other modification" 2019-12-19 RCSB 
+BMA "Other modification" 2020-07-03 RCSB 
+BMA "Modify name"        2020-07-17 RCSB 
+BMA "Modify synonyms"    2020-07-17 RCSB 
+BMA "Modify PCM"         2024-09-27 PDBE 
+# 
+loop_
+_pdbx_chem_comp_pcm.pcm_id 
+_pdbx_chem_comp_pcm.comp_id 
+_pdbx_chem_comp_pcm.modified_residue_id 
+_pdbx_chem_comp_pcm.type 
+_pdbx_chem_comp_pcm.category 
+_pdbx_chem_comp_pcm.position 
+_pdbx_chem_comp_pcm.polypeptide_position 
+_pdbx_chem_comp_pcm.comp_id_linking_atom 
+_pdbx_chem_comp_pcm.modified_residue_id_linking_atom 
+_pdbx_chem_comp_pcm.uniprot_specific_ptm_accession 
+_pdbx_chem_comp_pcm.uniprot_generic_ptm_accession 
+1 BMA 3FG None Carbohydrate "Amino-acid side chain" "Any position" C1 OD1 ? ? 
+2 BMA FOD None Carbohydrate "Amino-acid side chain" "Any position" C1 O2  ? ? 
+3 BMA SER None Carbohydrate "Amino-acid side chain" "Any position" C1 OG  ? ? 
+4 BMA THR None Carbohydrate "Amino-acid side chain" "Any position" C1 OG1 ? ? 
+5 BMA TRP None Carbohydrate "Amino-acid side chain" "Any position" C1 CD1 ? ? 
+# 

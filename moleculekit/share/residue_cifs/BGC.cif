@@ -1,0 +1,197 @@
+data_BGC
+# 
+_chem_comp.id                                    BGC 
+_chem_comp.name                                  beta-D-glucopyranose 
+_chem_comp.type                                  "D-saccharide, beta linking" 
+_chem_comp.pdbx_type                             ATOMS 
+_chem_comp.formula                               "C6 H12 O6" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         "beta-D-glucose; D-glucose; glucose" 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     2002-01-22 
+_chem_comp.pdbx_modified_date                    2026-01-27 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        180.156 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     BGC 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        Corina 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        1GU3 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  EBI 
+_chem_comp.pdbx_pcm                              Y 
+# 
+loop_
+_pdbx_chem_comp_synonyms.ordinal 
+_pdbx_chem_comp_synonyms.comp_id 
+_pdbx_chem_comp_synonyms.name 
+_pdbx_chem_comp_synonyms.provenance 
+_pdbx_chem_comp_synonyms.type 
+1 BGC beta-D-glucose PDB ? 
+2 BGC D-glucose      PDB ? 
+3 BGC glucose        PDB ? 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+BGC C2  C2   C 0 1 N N R N N N -10.996 33.341 27.027 -1.599 0.273  -0.228 C2  BGC 1  
+BGC C3  C3   C 0 1 N N S N N N -12.038 32.592 26.187 -1.032 -1.069 0.244  C3  BGC 2  
+BGC C4  C4   C 0 1 N N S N N N -11.494 31.246 25.653 0.406  -1.210 -0.265 C4  BGC 3  
+BGC C5  C5   C 0 1 N N R N N N -10.708 30.453 26.718 1.234  -0.022 0.232  C5  BGC 4  
+BGC C6  C6   C 0 1 N N N N N N -9.957  29.291 26.064 2.657  -0.124 -0.322 C6  BGC 5  
+BGC C1  C1   C 0 1 N N R N N N -10.467 32.372 28.084 -0.694 1.404  0.269  C1  BGC 6  
+BGC O1  O1   O 0 1 N Y N N N N -9.562  33.031 28.945 -1.186 2.655  -0.214 O1  BGC 7  
+BGC O2  O2   O 0 1 N N N N N N -11.604 34.434 27.662 -2.915 0.448  0.302  O2  BGC 8  
+BGC O3  O3   O 0 1 N N N N N N -12.595 33.387 25.141 -1.829 -2.135 -0.276 O3  BGC 9  
+BGC O4  O4   O 0 1 N N N N N N -12.566 30.471 25.149 0.971  -2.426 0.229  O4  BGC 10 
+BGC O5  O5   O 0 1 N N N N N N -9.808  31.290 27.452 0.635  1.195  -0.215 O5  BGC 11 
+BGC O6  O6   O 0 1 N N N N N N -9.968  28.157 26.895 3.460  0.918  0.235  O6  BGC 12 
+BGC H2  H2   H 0 1 N N N N N N -10.168 33.665 26.379 -1.639 0.290  -1.317 H2  BGC 13 
+BGC H3  H3   H 0 1 N N N N N N -12.857 32.335 26.875 -1.038 -1.105 1.333  H3  BGC 14 
+BGC H4  H4   H 0 1 N N N N N N -10.799 31.475 24.832 0.407  -1.223 -1.355 H4  BGC 15 
+BGC H5  H5   H 0 1 N N N N N N -11.442 30.023 27.416 1.266  -0.033 1.322  H5  BGC 16 
+BGC H61 H6C1 H 0 1 N N N N N N -10.441 29.042 25.108 3.082  -1.092 -0.056 H61 BGC 17 
+BGC H62 H6C2 H 0 1 N N N N N N -8.915  29.593 25.880 2.632  -0.024 -1.407 H62 BGC 18 
+BGC H1  H1   H 0 1 N N N N N N -11.323 31.996 28.663 -0.687 1.412  1.359  H1  BGC 19 
+BGC HO1 HA   H 0 1 N Y N N N N -9.241  32.419 29.596 -0.660 3.418  0.062  HO1 BGC 20 
+BGC HO2 HB   H 0 1 N Y N N N N -10.958 34.898 28.182 -3.336 1.279  0.043  HO2 BGC 21 
+BGC HO3 HC   H 0 1 N Y N N N N -13.231 32.874 24.657 -2.755 -2.104 0.001  HO3 BGC 22 
+BGC HO4 HD   H 0 1 N Y N N N N -12.233 29.644 24.821 0.493  -3.221 -0.044 HO4 BGC 23 
+BGC HO6 H6   H 0 1 N Y N N N N -9.498  27.449 26.471 4.377  0.915  -0.072 HO6 BGC 24 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+BGC C2 C3  SING N N 1  
+BGC C2 C1  SING N N 2  
+BGC C2 O2  SING N N 3  
+BGC C2 H2  SING N N 4  
+BGC C3 C4  SING N N 5  
+BGC C3 O3  SING N N 6  
+BGC C3 H3  SING N N 7  
+BGC C4 C5  SING N N 8  
+BGC C4 O4  SING N N 9  
+BGC C4 H4  SING N N 10 
+BGC C5 C6  SING N N 11 
+BGC C5 O5  SING N N 12 
+BGC C5 H5  SING N N 13 
+BGC C6 O6  SING N N 14 
+BGC C6 H61 SING N N 15 
+BGC C6 H62 SING N N 16 
+BGC C1 O1  SING N N 17 
+BGC C1 O5  SING N N 18 
+BGC C1 H1  SING N N 19 
+BGC O1 HO1 SING N N 20 
+BGC O2 HO2 SING N N 21 
+BGC O3 HO3 SING N N 22 
+BGC O4 HO4 SING N N 23 
+BGC O6 HO6 SING N N 24 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+BGC SMILES           ACDLabs              12.01 "OC1C(O)C(OC(O)C1O)CO"                                                            
+BGC InChI            InChI                1.03  "InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6-/m1/s1" 
+BGC InChIKey         InChI                1.03  WQZGKKKJIJFFOK-VFUOTHLCSA-N                                                       
+BGC SMILES_CANONICAL CACTVS               3.370 "OC[C@H]1O[C@@H](O)[C@H](O)[C@@H](O)[C@@H]1O"                                     
+BGC SMILES           CACTVS               3.370 "OC[CH]1O[CH](O)[CH](O)[CH](O)[CH]1O"                                             
+BGC SMILES_CANONICAL "OpenEye OEToolkits" 1.7.6 "C([C@@H]1[C@H]([C@@H]([C@H]([C@@H](O1)O)O)O)O)O"                                 
+BGC SMILES           "OpenEye OEToolkits" 1.7.6 "C(C1C(C(C(C(O1)O)O)O)O)O"                                                        
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+BGC "SYSTEMATIC NAME"                     ACDLabs              12.01 beta-D-glucopyranose                                     
+BGC "SYSTEMATIC NAME"                     "OpenEye OEToolkits" 1.7.6 "(2R,3R,4S,5S,6R)-6-(hydroxymethyl)oxane-2,3,4,5-tetrol" 
+BGC "CONDENSED IUPAC CARBOHYDRATE SYMBOL" GMML                 1.0   DGlcpb                                                   
+BGC "COMMON NAME"                         GMML                 1.0   b-D-glucopyranose                                        
+BGC "IUPAC CARBOHYDRATE SYMBOL"           PDB-CARE             1.0   b-D-Glcp                                                 
+BGC "SNFG CARBOHYDRATE SYMBOL"            GMML                 1.0   Glc                                                      
+# 
+loop_
+_pdbx_chem_comp_feature.comp_id 
+_pdbx_chem_comp_feature.type 
+_pdbx_chem_comp_feature.value 
+_pdbx_chem_comp_feature.source 
+_pdbx_chem_comp_feature.support 
+BGC "CARBOHYDRATE ISOMER"                 D        PDB ? 
+BGC "CARBOHYDRATE RING"                   pyranose PDB ? 
+BGC "CARBOHYDRATE ANOMER"                 beta     PDB ? 
+BGC "CARBOHYDRATE PRIMARY CARBONYL GROUP" aldose   PDB ? 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+BGC "Create component"         2002-01-22 EBI  
+BGC "Modify leaving atom flag" 2011-05-23 EBI  
+BGC "Modify descriptor"        2011-06-04 RCSB 
+BGC "Modify leaving atom flag" 2012-06-22 RCSB 
+BGC "Other modification"       2019-08-12 RCSB 
+BGC "Other modification"       2019-12-19 RCSB 
+BGC "Other modification"       2020-07-03 RCSB 
+BGC "Modify name"              2020-07-17 RCSB 
+BGC "Modify synonyms"          2020-07-17 RCSB 
+BGC "Modify atom id"           2020-07-17 RCSB 
+BGC "Modify component atom id" 2020-07-17 RCSB 
+BGC "Modify PCM"               2024-09-27 PDBE 
+BGC "Modify PCM"               2026-01-27 PDBJ 
+# 
+loop_
+_pdbx_chem_comp_pcm.pcm_id 
+_pdbx_chem_comp_pcm.comp_id 
+_pdbx_chem_comp_pcm.modified_residue_id 
+_pdbx_chem_comp_pcm.type 
+_pdbx_chem_comp_pcm.category 
+_pdbx_chem_comp_pcm.position 
+_pdbx_chem_comp_pcm.polypeptide_position 
+_pdbx_chem_comp_pcm.comp_id_linking_atom 
+_pdbx_chem_comp_pcm.modified_residue_id_linking_atom 
+_pdbx_chem_comp_pcm.uniprot_specific_ptm_accession 
+_pdbx_chem_comp_pcm.uniprot_generic_ptm_accession 
+1 BGC ASN N-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 ND2 ? ? 
+2 BGC CYS S-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 SG  ? ? 
+3 BGC SER O-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 OG  ? ? 
+4 BGC TYR O-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 OH  ? ? 
+5 BGC ASP None            Carbohydrate "Amino-acid side chain" "Any position" C1 OD2 ? ? 
+6 BGC GHP None            Carbohydrate "Amino-acid side chain" "Any position" C1 O4  ? ? 
+7 BGC LYS None            Carbohydrate "Amino-acid side chain" "Any position" C6 NZ  ? ? 
+8 BGC THR None            Carbohydrate "Amino-acid side chain" "Any position" C1 OG1 ? ? 
+9 BGC GLU None            Carbohydrate "Amino-acid side chain" "Any position" C1 OE1 ? ? 
+# 

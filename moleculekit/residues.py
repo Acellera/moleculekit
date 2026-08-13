@@ -1,12 +1,148 @@
 from collections import namedtuple
-from moleculekit import __share_dir
-import json
-import os
 
-_sel = os.path.join(__share_dir, "atomselect", "atomselect.json")
-with open(_sel, "r") as f:
-    _sel = json.load(f)
-WATER_RESIDUE_NAMES = set(_sel["water_resnames"])
+# This module is the single source of truth for residue-name sets. The
+# atomselect language keeps its own lists in share/atomselect/atomselect.json
+# because it mirrors VMD's selection semantics and cannot be extended there;
+# the sets here are deliberately independent of it, so they can cover names
+# VMD does not know.
+
+WATER_RESIDUE_NAMES = frozenset(
+    {
+        "DOD",
+        "H2O",
+        "HH0",
+        "HOH",
+        "OH2",
+        "OHH",
+        "SOL",
+        "SPC",
+        "TIP",
+        "TIP2",
+        "TIP3",
+        "TIP4",
+        "WAT",
+    }
+)
+
+# Ion resnames as deposited or written by the common force fields: bare
+# element symbols, force-field aliases (CHARMM's CLA / SOD / POT / CAL / CES),
+# oxidation-state variants (MN3, ZN1, CU1, MO3 ... ), monatomic anions and
+# small oxyanions.
+ION_RESIDUE_NAMES = frozenset(
+    {
+        "AL",
+        "BA",
+        "CA",
+        "CAL",
+        "CD",
+        "CES",
+        "CL",
+        "CLA",
+        "CO",
+        "CS",
+        "CU",
+        "CU1",
+        "CUA",
+        "HG",
+        "IN",
+        "IOD",
+        "K",
+        "MG",
+        "MN3",
+        "MO3",
+        "MO4",
+        "MO5",
+        "MO6",
+        "NA",
+        "NAW",
+        "OC7",
+        "PB",
+        "POT",
+        "PT",
+        "RB",
+        "SOD",
+        "TB",
+        "TL",
+        "WO4",
+        "YB",
+        "ZN",
+        "ZN1",
+        "ZN2",
+    }
+)
+
+# A standalone monatomic metal ion follows the PDB convention of naming the
+# residue after its element symbol. Callers MUST gate on the residue having
+# exactly one atom: several of these codes are also real polyatomic ligands
+# (CO is carbon monoxide as well as cobalt, NI and PT have organic
+# namesakes), and a metal inside an organometallic cofactor must keep its
+# real bonds.
+METAL_ION_RESIDUE_NAMES = frozenset(
+    {
+        "AG",
+        "AL",
+        "AU",
+        "BA",
+        "BE",
+        "BI",
+        "CA",
+        "CD",
+        "CE",
+        "CO",
+        "CR",
+        "CS",
+        "CU",
+        "DY",
+        "ER",
+        "EU",
+        "FE",
+        "GA",
+        "GD",
+        "GE",
+        "HF",
+        "HG",
+        "HO",
+        "IN",
+        "IR",
+        "K",
+        "LA",
+        "LI",
+        "LU",
+        "MG",
+        "MN",
+        "MO",
+        "NA",
+        "NB",
+        "ND",
+        "NI",
+        "OS",
+        "PB",
+        "PD",
+        "PR",
+        "PT",
+        "RB",
+        "RE",
+        "RH",
+        "RU",
+        "SB",
+        "SC",
+        "SM",
+        "SN",
+        "SR",
+        "TA",
+        "TB",
+        "TC",
+        "TI",
+        "TL",
+        "TM",
+        "V",
+        "W",
+        "Y",
+        "YB",
+        "ZN",
+        "ZR",
+    }
+)
 
 # Membrane lipid resnames the AMBER lipid force field (leaprc.lipid21) parameterizes
 # at build time -- i.e. the compositions supported by the membrane builder. These are
@@ -319,6 +455,18 @@ PROTEIN_RESIDUE_NAMES = set(rr.resname for rr in PROTEIN_RESIDUES)
 NUCLEIC_RESIDUE_NAMES = set(rr.resname for rr in NUCLEIC_RESIDUES)
 MODIFIED_PROTEIN_RESIDUE_NAMES = set(rr.resname for rr in MODIFIED_PROTEIN_RESIDUES)
 MODIFIED_NUCLEIC_RESIDUE_NAMES = set(rr.resname for rr in MODIFIED_NUCLEIC_RESIDUES)
+
+# The same residues including every naming / protonation / termini variant
+# (HIS -> HID / HIE / HIP, CYS -> CYX / CYM, A -> DA / RA / A5 / A3, ...).
+# Use these to answer "is this resname a canonical residue" on a structure
+# that may have been through a force field or a preparation step. The
+# MODIFIED_* sets define no variants, so they need no such counterpart.
+PROTEIN_RESIDUE_NAMES_WITH_VARIANTS = PROTEIN_RESIDUE_NAMES | {
+    v for rr in PROTEIN_RESIDUES for v in rr.resname_variants
+}
+NUCLEIC_RESIDUE_NAMES_WITH_VARIANTS = NUCLEIC_RESIDUE_NAMES | {
+    v for rr in NUCLEIC_RESIDUES for v in rr.resname_variants
+}
 
 # Terminal capping groups. They carry no full backbone (an N-terminal acetyl
 # has no N/CA, a C-terminal amide only an N), so the backbone-atom tests miss

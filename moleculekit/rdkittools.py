@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 # non-metal cross-residue bonds (peptide N-C, disulfide S-S,
 # glycosidic O-C, ...) the H is stripped without a formal charge
 # change. Distinct from
-# ``moleculekit.tools.nonstandard_residues._ION_RESNAMES``, which is a
-# residue-name set for spec detection and also covers non-metal anions
-# (Cl-, I-, oxyanions) that should not trigger deprotonation here.
+# ``moleculekit.residues.ION_RESIDUE_NAMES``, which is a residue-name set
+# and also covers non-metal anions (Cl-, I-, oxyanions) that should not
+# trigger deprotonation here.
 from moleculekit.periodictable import METAL_ELEMENTS as _METAL_ELEMENTS
 
 
@@ -740,9 +740,7 @@ def template_residue_from_smiles(
             # hydrogen shows up as a missing atom, a relocated one only as a
             # different bond.
             shared = set.intersection(*(set(a) for a in per_copy_atoms.values()))
-            shared_bonds = set.intersection(
-                *(set(b) for b in per_copy_bonds.values())
-            )
+            shared_bonds = set.intersection(*(set(b) for b in per_copy_bonds.values()))
             lines = []
             for (chain, resid, insertion, segid), atoms in per_copy_atoms.items():
                 loc = f"chain {chain} resid {resid}{insertion.strip()}"

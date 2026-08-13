@@ -12,16 +12,21 @@ per canonical residue covalently bonded to a non-canonical one:
     amino acid embedded in a polypeptide chain (selenomethionine,
     norleucine, a stapled NCAA, etc.) OR a canonical amino acid whose
     sidechain is covalently bonded to something other than its peptide
-    neighbours (a Cys forming a thioether or disulfide, an Asn
-    N-glycosylated by a sugar, a Glu CD - Lys NZ isopeptide).
+    neighbours (a Cys forming a thioether or disulfide, a Glu CD - Lys NZ
+    isopeptide).
   - :class:`ScaffoldSpec` - free non-canonical residue with two or more
     non-peptide bonds to other residues (the central scaffold of a
     bicyclic peptide, a multi-anchor covalent inhibitor).
   - :class:`CovalentLigandSpec` - free non-canonical residue with exactly
     one non-peptide bond to another residue (single-anchor covalent
-    inhibitor, NAG-Asn glycan stem, single-Cys heme).
+    inhibitor, single-Cys heme).
   - :class:`LigandSpec` - free non-canonical residue with no covalent
     bonds (small-molecule binding-pocket ligand, fatty acid).
+  - :class:`GlycanSpec` - one spec per sugar residue of a glycan (N- or
+    O-linked, or a free oligosaccharide). The protein residue a glycan's
+    stem sugar attaches to (an Asn N-glycosylated by a sugar, a Ser/Thr/Hyp
+    O-glycosylated by one) never gets a spec of its own; its rename
+    travels on the stem sugar's ``anchor_*`` fields instead.
 
 Pass the spec list to :func:`moleculekit.tools.preparation.systemPrepare`
 via ``detect_specs=specs`` to apply the proposed renames + H-drops on
@@ -30,29 +35,25 @@ the prepared molecule.
 
 from __future__ import annotations
 
-import json
 import logging
-import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Union
 
 import numpy as np
 
 from moleculekit.molecule import UniqueResidueID
 from moleculekit.residues import (
-    PROTEIN_RESIDUE_NAMES,
-    NUCLEIC_RESIDUE_NAMES,
+    PROTEIN_RESIDUE_NAMES_WITH_VARIANTS,
+    NUCLEIC_RESIDUE_NAMES_WITH_VARIANTS,
     MODIFIED_PROTEIN_RESIDUE_NAMES,
     MODIFIED_NUCLEIC_RESIDUE_NAMES,
-    PROTEIN_RESIDUES,
-    NUCLEIC_RESIDUES,
     WATER_RESIDUE_NAMES,
     LIPID_RESIDUE_NAMES,
+    ION_RESIDUE_NAMES,
+    METAL_ION_RESIDUE_NAMES,
 )
 from moleculekit.rcsb import rcsbFetchLigandInfo
 from moleculekit.tools._anchor_variants import lookup_anchor
-from moleculekit.periodictable import METAL_ELEMENTS
-from moleculekit import __share_dir
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +74,10 @@ class ChainResidueSpec:
     in a polypeptide chain (selenomethionine, norleucine, a stapled
     NCAA, etc.) OR a canonical amino acid whose sidechain is covalently
     bonded to something other than its peptide neighbours (a Cys
-    forming a thioether or disulfide, an Asn N-glycosylated by a sugar,
-    a Glu CD - Lys NZ isopeptide).
+    forming a thioether or disulfide, a Glu CD - Lys NZ isopeptide). A
+    glycan-anchor residue (Asn N-glycosylated by a sugar, a Ser/Thr/Hyp
+    O-glycosylated by one) is excluded: it gets no spec of its own, see
+    :class:`GlycanSpec`.
 
     Fields:
 
@@ -137,8 +140,9 @@ class ScaffoldSpec:
 class CovalentLigandSpec:
     """A non-canonical residue that is not peptide-bonded into a chain and
     has exactly one non-peptide bond going out to another residue. Examples:
-    a single-anchor covalent inhibitor, a NAG-Asn glycan stem, a single-Cys
-    heme."""
+    a single-anchor covalent inhibitor, a single-Cys heme. A sugar residue
+    is excluded even though it fits this shape: it always gets a
+    :class:`GlycanSpec` instead."""
 
     resname: str
     residue: UniqueResidueID
@@ -155,28 +159,74 @@ class LigandSpec:
     residue: UniqueResidueID
 
 
+@dataclass
+class GlycanSpec:
+    """One spec per sugar residue of a glycan (N- or O-linked, or a free
+    oligosaccharide with no protein anchor at all). Emitted instead of
+    :class:`ScaffoldSpec` / :class:`CovalentLigandSpec` / :class:`LigandSpec`
+    for every residue recognized in
+    :data:`moleculekit.tools.glycans.GLYCAM_SUGARS`. The protein residue a
+    glycan's stem sugar attaches to (ASN / SER / THR / HYP, see
+    :data:`moleculekit.tools.glycans.GLYCAN_ANCHORS`) never gets a spec of
+    its own; its rename travels on the stem sugar's ``anchor_*`` fields
+    instead.
+
+    Fields:
+
+    - ``resname``: the sugar's resname in the input ``Molecule`` (``"NAG"``,
+      ``"BMA"``, ``"SIA"``, ...).
+    - ``residue``: :class:`UniqueResidueID` for the residue (segid / chain /
+      resid / insertion).
+    - ``new_resname``: the 3-character GLYCAM-06 unit name to rename to
+      (e.g. ``"4YB"``), built by
+      :func:`moleculekit.tools.glycans.glycamResname` from the sugar
+      identity and the positions other sugars are linked onto it at. Its
+      first character encodes those positions, recoverable with
+      :func:`moleculekit.tools.glycans.linkedPositionsFromGlycamResname`.
+    - ``atom_renames``: PDB atom name -> GLYCAM atom name for this sugar's
+      own substituent atoms (the N-acetyl / N-glycolyl carbons), copied from
+      :attr:`moleculekit.tools.glycans.SugarTemplate.atom_renames`. Empty
+      for sugars with no such substituent.
+    - ``anchor_residue``: :class:`UniqueResidueID` of the protein residue
+      this sugar's anomeric carbon bonds to, set only on a stem sugar
+      directly attached to the protein. ``None`` for every other sugar in
+      the tree (linked onto a parent sugar instead) and for a free
+      oligosaccharide with no protein anchor.
+    - ``anchor_new_resname``: the GLYCAM anchor-residue name
+      ``anchor_residue`` must be renamed to (``"NLN"``, ``"OLS"``,
+      ``"OLT"``, or ``"OLP"``; see
+      :data:`moleculekit.tools.glycans.GLYCAN_ANCHORS`). ``None`` when
+      ``anchor_residue`` is ``None``.
+    - ``anchor_atom``: name of the anchor residue's side-chain atom the
+      anomeric carbon bonds to (e.g. ``"ND2"``). ``None`` when
+      ``anchor_residue`` is ``None``.
+    - ``free_reducing_end``: True when nothing is bonded to this sugar's own
+      anomeric carbon (a free reducing end), regardless of whether the
+      anomeric hydroxyl atom itself is resolved in the input structure.
+    """
+
+    resname: str
+    residue: UniqueResidueID
+    new_resname: str | None = None
+    atom_renames: dict = field(default_factory=dict)
+    anchor_residue: UniqueResidueID | None = None
+    anchor_new_resname: str | None = None
+    anchor_atom: str | None = None
+    free_reducing_end: bool = False
+
+
 PerResidueSpec = Union[
     ChainResidueSpec,
     ScaffoldSpec,
     CovalentLigandSpec,
     LigandSpec,
+    GlycanSpec,
 ]
 
 
 # ---------------------------------------------------------------------------
 # Canonical-resname sets and small helpers.
 # ---------------------------------------------------------------------------
-
-
-with open(os.path.join(__share_dir, "atomselect", "atomselect.json")) as _f:
-    _ION_RESNAMES = set(json.load(_f).get("ion_resnames", []))
-
-# Free monatomic metal ions follow the PDB convention of naming the residue
-# after the element symbol in uppercase (FE, ZN, CA, MN, NI, ...). Used as a
-# resname-based fallback to recognise metal-coordination bonds on inputs that
-# carry no bond types; resname- not element-based so a metal that is a genuine
-# atom of a larger residue (an organometallic cofactor) is left untouched.
-_METAL_ION_RESNAMES = frozenset(e.upper() for e in METAL_ELEMENTS)
 
 
 # Standard peptide-terminus caps. AMBER ff14SB / ff19SB ship parameters for
@@ -196,35 +246,30 @@ _BACKBONE_NONANCHOR_ATOMS = {"O", "CA"}
 
 
 def _canonical_resnames():
-    names = set(PROTEIN_RESIDUE_NAMES)
-    names |= set(NUCLEIC_RESIDUE_NAMES)
+    names = set(PROTEIN_RESIDUE_NAMES_WITH_VARIANTS)
+    names |= set(NUCLEIC_RESIDUE_NAMES_WITH_VARIANTS)
     names |= set(MODIFIED_PROTEIN_RESIDUE_NAMES)
     names |= set(MODIFIED_NUCLEIC_RESIDUE_NAMES)
-    for rr in PROTEIN_RESIDUES + NUCLEIC_RESIDUES:
-        names.update(rr.resname_variants)
     names |= WATER_RESIDUE_NAMES
-    names |= _ION_RESNAMES
+    names |= ION_RESIDUE_NAMES
     # Membrane lipids are parameterized by the AMBER lipid force field at build
     # time, so they need no user-driven parameterization -- skip them like ions.
     names |= LIPID_RESIDUE_NAMES
     # Free monatomic metal ions (resname == element symbol, e.g. FE, NI) need
-    # no parameterization any more than the ions already in _ION_RESNAMES;
+    # no parameterization any more than the ions already in ION_RESIDUE_NAMES;
     # without this they would fall through to a LigandSpec and antechamber
     # would be asked to parameterize a bare metal atom.
-    names |= _METAL_ION_RESNAMES
+    names |= METAL_ION_RESIDUE_NAMES
     names |= _CAP_RESNAMES
     return names
 
 
 _CANONICAL_RESNAMES = _canonical_resnames()
-# Canonical-AA resnames (including ff14SB variants like CYX, HID/HIE/HIP, LYN).
 # Used as a chain-residency hint: CIF / PDB inputs frequently carry only the
 # special inter-residue bonds (via ``_struct_conn`` or ``CONECT``) and omit
 # canonical peptide bonds, so we can't rely on explicit N-C bonds alone to
 # flag chain residency for canonical amino acids.
-PROTEIN_RESNAMES = set(PROTEIN_RESIDUE_NAMES)
-for _rr in PROTEIN_RESIDUES:
-    PROTEIN_RESNAMES.update(_rr.resname_variants)
+PROTEIN_RESNAMES = PROTEIN_RESIDUE_NAMES_WITH_VARIANTS
 
 
 def _residue_groups(mol):
@@ -573,33 +618,40 @@ def detectNonStandardResidues(mol, guess_bonds=True):
 
     Inspects ``mol.bonds`` (without mutating the molecule) and classifies
     every non-canonical residue plus every canonical residue at a
-    non-peptide junction into one of four spec types:
+    non-peptide junction into one of five spec types:
 
     - :class:`ChainResidueSpec` — chain-resident residue that needs
       special parameterization: a non-canonical amino acid embedded in a
       polypeptide chain (selenomethionine, norleucine, stapled-peptide
       residues, ...) OR a canonical AA whose sidechain is covalently
       bonded to anything other than its peptide neighbours (Cys-Cys
-      disulfide, Cys thioether to a heme, Asn N-glycan, Glu-Lys
-      isopeptide, Tyr coordinating a metal, ...). Canonical AAs at a
-      junction always receive ``new_resname``: ``"CYX"`` for both ends
-      of a CYS-SG <-> CYS-SG disulfide; an auto-generated 3-char
-      ``XX#`` name otherwise. Residues that share the same
-      ``(canonical_resname, anchor_atom, partner_resname, is_n_term,
-      is_c_term)`` bucket key collapse to the *same* ``XX#`` so the
-      parameterizer emits one prepi shared across them (e.g. all
-      mid-chain ASN-ND2-bonded-to-NAG residues land on one bucket).
-      Chain-terminal forms get their own buckets because they carry
-      extra atoms (``OXT`` on the C-terminus, ``H1/H2/H3`` on the
-      N-terminus) and different charges.
+      disulfide, Cys thioether to a heme, Glu-Lys isopeptide, Tyr
+      coordinating a metal, ...). Canonical AAs at a junction always
+      receive ``new_resname``: ``"CYX"`` for both ends of a CYS-SG <->
+      CYS-SG disulfide; an auto-generated 3-char ``XX#`` name otherwise.
+      Residues that share the same ``(canonical_resname, anchor_atom,
+      partner_resname, is_n_term, is_c_term)`` bucket key collapse to
+      the *same* ``XX#`` so the parameterizer emits one prepi shared
+      across them. Chain-terminal forms get their own buckets because
+      they carry extra atoms (``OXT`` on the C-terminus, ``H1/H2/H3`` on
+      the N-terminus) and different charges. A glycan-anchor residue
+      (Asn N-glycosylated by a sugar, a Ser/Thr/Hyp O-glycosylated by
+      one) is excluded from this bucketing entirely: see
+      :class:`GlycanSpec` below.
     - :class:`ScaffoldSpec` — non-chain-resident residue with 2+
       non-peptide bonds (bicyclic-peptide central scaffold,
       multi-anchor covalent inhibitor).
     - :class:`CovalentLigandSpec` — non-chain-resident residue with
       exactly one non-peptide bond (single-anchor covalent inhibitor,
-      NAG-Asn glycan stem, single-Cys heme).
+      single-Cys heme).
     - :class:`LigandSpec` — non-chain-resident residue with no covalent
       bonds (free small-molecule ligand, fatty acid).
+    - :class:`GlycanSpec` - a sugar residue recognized in
+      :data:`moleculekit.tools.glycans.GLYCAM_SUGARS` (N-linked,
+      O-linked, or a free oligosaccharide), regardless of how many
+      non-peptide bonds it carries. The protein residue a glycan's stem
+      sugar attaches to gets no spec of its own; its rename travels on
+      the stem sugar's ``anchor_*`` fields instead.
 
     Chain-resident NCAAs that appear with more than one terminus
     configuration in the same molecule are disambiguated post hoc by
@@ -655,9 +707,10 @@ def detectNonStandardResidues(mol, guess_bonds=True):
     -------
     list[PerResidueSpec]
         Flat list mixing :class:`ChainResidueSpec`, :class:`ScaffoldSpec`,
-        :class:`CovalentLigandSpec`, and :class:`LigandSpec` entries.
-        Ordered by residue index in ``mol``. Empty when the molecule has
-        no non-standard residues and no sidechain crosslinks.
+        :class:`CovalentLigandSpec`, :class:`LigandSpec`, and
+        :class:`GlycanSpec` entries. Ordered by residue index in ``mol``.
+        Empty when the molecule has no non-standard residues and no
+        sidechain crosslinks.
 
     Raises
     ------
@@ -736,13 +789,13 @@ def detectNonStandardResidues(mol, guess_bonds=True):
         # covalent, so skip it:
         #   * a free metal ion - by PDB convention its residue is named after
         #     the element symbol in uppercase (FE, ZN, CA, MN, ...), which is
-        #     what ``_METAL_ION_RESNAMES`` holds. This is resname- not
+        #     what ``METAL_ION_RESIDUE_NAMES`` holds. This is resname- not
         #     element-based on purpose: a metal that is a genuine atom of a
         #     larger residue (an organometallic cofactor such as a HEM iron)
         #     keeps any real bond, including a coordination that changes a
         #     partner residue's protonation.
         #   * a non-metal ion (halides such as CL / IOD) or a standalone ion
-        #     in ``_ION_RESNAMES``, or water - all of which can appear in
+        #     in ``ION_RESIDUE_NAMES``, or water - all of which can appear in
         #     LINK / metal-coordination records (chelated inhibitors, water
         #     bridges) but are never real covalent partners.
         # Skipping these keeps such partners classified as free ligands /
@@ -750,10 +803,10 @@ def detectNonStandardResidues(mol, guess_bonds=True):
         # and the Ca2+ in 3PTB are skipped here; the HEM-Fe...Tyr coordination
         # in 1u5u is intentionally not.
         if (
-            residues[r1].resname in _METAL_ION_RESNAMES
-            or residues[r2].resname in _METAL_ION_RESNAMES
-            or residues[r1].resname in _ION_RESNAMES
-            or residues[r2].resname in _ION_RESNAMES
+            residues[r1].resname in METAL_ION_RESIDUE_NAMES
+            or residues[r2].resname in METAL_ION_RESIDUE_NAMES
+            or residues[r1].resname in ION_RESIDUE_NAMES
+            or residues[r2].resname in ION_RESIDUE_NAMES
             or residues[r1].resname in WATER_RESIDUE_NAMES
             or residues[r2].resname in WATER_RESIDUE_NAMES
         ):
@@ -826,6 +879,25 @@ def detectNonStandardResidues(mol, guess_bonds=True):
         for r in range(n_res)
     ]
 
+    # Glycan analysis, once, over the same local bond list and per-residue
+    # atom-index grouping already built above. Sugar residues are pulled out
+    # of the canonical-rename / bucketing machinery entirely: they get a
+    # GlycanSpec of their own (see the classification switch below), and the
+    # protein residue their stem sugar attaches to is excluded from renaming
+    # (see the short-circuit in the loop below) since its rename travels on
+    # that GlycanSpec's anchor_* fields instead.
+    from moleculekit.tools.glycans import (
+        GLYCAM_SUGARS,
+        GLYCAN_ANCHORS,
+        analyzeGlycanResidues,
+        glycamResname,
+    )
+
+    glycan_info = analyzeGlycanResidues(mol, bonds, atom_idxs)
+    glycan_anchor_residues = {
+        gi.anchor_res for gi in glycan_info.values() if gi.anchor_res is not None
+    }
+
     # Plan the canonical renames. Bucket key is (canonical_resname,
     # anchor_atom_name, partner_resname, n_term, c_term); residues
     # sharing a bucket get the same 3-char custom resname so the
@@ -844,6 +916,16 @@ def detectNonStandardResidues(mol, guess_bonds=True):
         anchor_partner = sorted(nonpep_partners[r_idx], key=lambda p: (p[0], p[1]))[0]
         other_r, anchor_atom = anchor_partner
         anchor_atoms[r_idx] = anchor_atom
+
+        # Glycan-anchor short-circuit (same pattern as the CYX one below): this
+        # residue is the protein anchor a glycan's stem sugar attaches to, so
+        # it gets no canonical rename and no ChainResidueSpec of its own - its
+        # rename travels on the stem sugar's GlycanSpec.anchor_* fields
+        # instead. Skipped before the ANCHOR_TABLE validation too, since a
+        # glycan anchor atom (e.g. HYP's OD1) need not be a registered
+        # covalent-crosslink anchor variant.
+        if r_idx in glycan_anchor_residues:
+            continue
 
         residue = residues[r_idx]
         # Canonical amino acids and crosslinked KNOWN MODIFIED residues (MSE,
@@ -931,6 +1013,29 @@ def detectNonStandardResidues(mol, guess_bonds=True):
         is_renamed_canonical = r_idx in canonical_renames
         nonpep_count = len(nonpep_partners[r_idx])
 
+        if r_idx in glycan_info:
+            gi = glycan_info[r_idx]
+            tmpl = GLYCAM_SUGARS[residue.resname]
+            anchor_kwargs = {}
+            if gi.anchor_res is not None:
+                aresname = residues[gi.anchor_res].resname
+                anchor_kwargs = dict(
+                    anchor_residue=residues[gi.anchor_res],
+                    anchor_new_resname=GLYCAN_ANCHORS[aresname][0],
+                    anchor_atom=gi.anchor_atom,
+                )
+            specs.append(
+                GlycanSpec(
+                    resname=residue.resname,
+                    residue=residue,
+                    new_resname=glycamResname(residue.resname, gi.linked_positions),
+                    atom_renames=dict(tmpl.atom_renames),
+                    free_reducing_end=gi.free_reducing_end,
+                    **anchor_kwargs,
+                )
+            )
+            continue
+
         if is_canonical and not is_renamed_canonical:
             continue  # plain canonical AA, no special handling needed
 
@@ -963,12 +1068,14 @@ def requiresTemplate(spec):
     acids, scaffolds), i.e. those needing a SMILES or CIF template to add bonds,
     bond orders and hydrogens before parameterization. False for a canonical
     residue the detector reports only because it was renamed at a covalent
-    junction (its resname stays canonical) and for force-field-shipped modified
-    residues.
+    junction (its resname stays canonical), for force-field-shipped modified
+    residues, and for a :class:`GlycanSpec`: a sugar's resname is not
+    canonical, but it gets its pdb2pqr topology from a shipped GLYCAM residue
+    CIF rather than from a user-supplied SMILES/CIF template.
 
     Parameters
     ----------
-    spec : ChainResidueSpec or ScaffoldSpec or CovalentLigandSpec or LigandSpec
+    spec : ChainResidueSpec or ScaffoldSpec or CovalentLigandSpec or LigandSpec or GlycanSpec
         A spec returned by :func:`detectNonStandardResidues`.
 
     Returns
@@ -976,6 +1083,8 @@ def requiresTemplate(spec):
     bool
         True if ``spec`` requires a supplied template.
     """
+    if isinstance(spec, GlycanSpec):
+        return False
     return spec.resname not in _CANONICAL_RESNAMES
 
 
@@ -993,7 +1102,7 @@ def getResidueMask(mol, spec):
     ----------
     mol : :class:`Molecule <moleculekit.molecule.Molecule>`
         The molecule the spec was detected in, before or after renaming.
-    spec : ChainResidueSpec or ScaffoldSpec or CovalentLigandSpec or LigandSpec
+    spec : ChainResidueSpec or ScaffoldSpec or CovalentLigandSpec or LigandSpec or GlycanSpec
         A spec returned by :func:`detectNonStandardResidues`.
 
     Returns
@@ -1023,11 +1132,13 @@ def residuesRequiringTemplate(mol, guess_bonds=True):
     scaffolds), i.e. the ones for which a SMILES or CIF template must be
     supplied to add bonds, bond orders and hydrogens before they can be
     parameterized. Canonical residues that the detector reports only because
-    they were renamed at a covalent junction (a disulfide ``CYS`` -> ``CYX``, a
-    glycosylated ``ASN``, ...) keep their canonical resname and are excluded,
-    since the force field already provides templates for them. Modified
-    residues the force field ships (``MSE``, ``SEP``, ...) are canonical here
-    too and are likewise excluded.
+    they were renamed at a covalent junction (a disulfide ``CYS`` -> ``CYX``,
+    ...) keep their canonical resname and are excluded, since the force field
+    already provides templates for them. Modified residues the force field
+    ships (``MSE``, ``SEP``, ...) are canonical here too and are likewise
+    excluded. Sugar residues (:class:`GlycanSpec`) are excluded as well: they
+    get their pdb2pqr topology from a shipped GLYCAM residue CIF, never from
+    a user-supplied template.
 
     Parameters
     ----------
@@ -1153,9 +1264,7 @@ def applyResidueTemplates(mol, residue_templates, specs):
             continue
 
         source = _template_source(template, f"residue_templates[{key!r}]")
-        mask = (
-            getResidueMask(mol, spec) if is_chain_spec else (mol.resname == resname)
-        )
+        mask = getResidueMask(mol, spec) if is_chain_spec else (mol.resname == resname)
         if str(source).lower().endswith((".cif", ".sdf")):
             mol.templateResidueFromMolecule(
                 mask, Molecule(source), addHs=True, guessBonds=True, _logger=False

@@ -1,0 +1,176 @@
+data_XYP
+# 
+_chem_comp.id                                    XYP 
+_chem_comp.name                                  beta-D-xylopyranose 
+_chem_comp.type                                  "D-saccharide, beta linking" 
+_chem_comp.pdbx_type                             ATOMS 
+_chem_comp.formula                               "C5 H10 O5" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         "beta-D-xylose; D-xylose; xylose" 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2024-09-27 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        150.130 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     XYP 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        ? 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        1QH7 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+_chem_comp.pdbx_pcm                              Y 
+# 
+loop_
+_pdbx_chem_comp_synonyms.ordinal 
+_pdbx_chem_comp_synonyms.comp_id 
+_pdbx_chem_comp_synonyms.name 
+_pdbx_chem_comp_synonyms.provenance 
+_pdbx_chem_comp_synonyms.type 
+1 XYP beta-D-xylose PDB ? 
+2 XYP D-xylose      PDB ? 
+3 XYP xylose        PDB ? 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+XYP O1  O4A  O 0 1 N Y N N N N 25.473 67.456 19.833 0.501  -0.130 -2.746 O1  XYP 1  
+XYP C1  C1B  C 0 1 N N R N N N 26.238 67.853 20.951 0.509  0.253  -1.370 C1  XYP 2  
+XYP C2  C2B  C 0 1 N N R N N N 27.692 68.019 20.449 -0.780 -0.228 -0.701 C2  XYP 3  
+XYP C3  C3B  C 0 1 N N S N N N 28.484 68.399 21.697 -0.779 0.213  0.766  C3  XYP 4  
+XYP C4  C4B  C 0 1 N N R N N N 28.013 69.789 22.196 0.519  -0.269 1.423  C4  XYP 5  
+XYP C5  C5B  C 0 1 N N N N N N 26.475 69.804 22.292 1.710  0.215  0.593  C5  XYP 6  
+XYP O2  O2B  O 0 1 N N N N N N 28.167 66.806 19.914 -1.907 0.337  -1.372 O2  XYP 7  
+XYP O3  O3B  O 0 1 N N N N N N 29.848 68.362 21.410 -1.904 -0.354 1.439  O3  XYP 8  
+XYP O4  O4B  O 0 1 N N N N N N 28.532 69.789 23.537 0.611  0.260  2.747  O4  XYP 9  
+XYP O5  O5B  O 0 1 N N N N N N 25.837 69.190 21.204 1.637  -0.331 -0.721 O5  XYP 10 
+XYP HO1 HO4A H 0 1 N Y N N N N 24.580 67.354 20.141 1.325  0.194  -3.132 HO1 XYP 11 
+XYP H1  H1B  H 0 1 N N N N N N 26.132 67.149 21.809 0.571  1.338  -1.297 H1  XYP 12 
+XYP H2  H2B  H 0 1 N N N N N N 27.780 68.782 19.640 -0.833 -1.316 -0.752 H2  XYP 13 
+XYP H3  H3B  H 0 1 N N N N N N 28.301 67.669 22.520 -0.831 1.301  0.820  H3  XYP 14 
+XYP H4  H4B  H 0 1 N N N N N N 28.332 70.640 21.550 0.523  -1.358 1.465  H4  XYP 15 
+XYP H51 H5B1 H 0 1 N N N N N N 26.136 69.352 23.253 1.692  1.303  0.535  H51 XYP 16 
+XYP H52 H5B2 H 0 1 N N N N N N 26.099 70.844 22.432 2.637  -0.105 1.068  H52 XYP 17 
+XYP HO2 HO2B H 0 1 N Y N N N N 29.059 66.907 19.605 -1.865 0.037  -2.291 HO2 XYP 18 
+XYP HO3 HO3B H 0 1 N Y N N N N 30.341 68.598 22.186 -1.864 -0.051 2.356  HO3 XYP 19 
+XYP HO4 HO4B H 0 1 N Y N N N N 28.243 70.640 23.842 1.441  -0.064 3.121  HO4 XYP 20 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+XYP O1 C1  SING N N 1  
+XYP O1 HO1 SING N N 2  
+XYP C1 C2  SING N N 3  
+XYP C1 O5  SING N N 4  
+XYP C1 H1  SING N N 5  
+XYP C2 C3  SING N N 6  
+XYP C2 O2  SING N N 7  
+XYP C2 H2  SING N N 8  
+XYP C3 C4  SING N N 9  
+XYP C3 O3  SING N N 10 
+XYP C3 H3  SING N N 11 
+XYP C4 C5  SING N N 12 
+XYP C4 O4  SING N N 13 
+XYP C4 H4  SING N N 14 
+XYP C5 O5  SING N N 15 
+XYP C5 H51 SING N N 16 
+XYP C5 H52 SING N N 17 
+XYP O2 HO2 SING N N 18 
+XYP O3 HO3 SING N N 19 
+XYP O4 HO4 SING N N 20 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+XYP SMILES           ACDLabs              10.04 "OC1C(O)COC(O)C1O"                                                      
+XYP SMILES_CANONICAL CACTVS               3.341 "O[C@@H]1CO[C@@H](O)[C@H](O)[C@H]1O"                                    
+XYP SMILES           CACTVS               3.341 "O[CH]1CO[CH](O)[CH](O)[CH]1O"                                          
+XYP SMILES_CANONICAL "OpenEye OEToolkits" 1.5.0 "C1[C@H]([C@@H]([C@H]([C@@H](O1)O)O)O)O"                                
+XYP SMILES           "OpenEye OEToolkits" 1.5.0 "C1C(C(C(C(O1)O)O)O)O"                                                  
+XYP InChI            InChI                1.03  "InChI=1S/C5H10O5/c6-2-1-10-5(9)4(8)3(2)7/h2-9H,1H2/t2-,3+,4-,5-/m1/s1" 
+XYP InChIKey         InChI                1.03  SRBFZHDQGSBBOR-KKQCNMDGSA-N                                             
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+XYP "SYSTEMATIC NAME"                     ACDLabs              10.04 beta-D-xylopyranose                  
+XYP "SYSTEMATIC NAME"                     "OpenEye OEToolkits" 1.5.0 "(2R,3R,4S,5R)-oxane-2,3,4,5-tetrol" 
+XYP "CONDENSED IUPAC CARBOHYDRATE SYMBOL" GMML                 1.0   DXylpb                               
+XYP "COMMON NAME"                         GMML                 1.0   b-D-xylopyranose                     
+XYP "IUPAC CARBOHYDRATE SYMBOL"           PDB-CARE             1.0   b-D-Xylp                             
+XYP "SNFG CARBOHYDRATE SYMBOL"            GMML                 1.0   Xyl                                  
+# 
+loop_
+_pdbx_chem_comp_feature.comp_id 
+_pdbx_chem_comp_feature.type 
+_pdbx_chem_comp_feature.value 
+_pdbx_chem_comp_feature.source 
+_pdbx_chem_comp_feature.support 
+XYP "CARBOHYDRATE ISOMER"                 D        PDB ? 
+XYP "CARBOHYDRATE RING"                   pyranose PDB ? 
+XYP "CARBOHYDRATE ANOMER"                 beta     PDB ? 
+XYP "CARBOHYDRATE PRIMARY CARBONYL GROUP" aldose   PDB ? 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+XYP "Create component"         1999-07-08 RCSB 
+XYP "Modify descriptor"        2011-06-04 RCSB 
+XYP "Other modification"       2019-08-12 RCSB 
+XYP "Other modification"       2019-12-19 RCSB 
+XYP "Other modification"       2020-07-03 RCSB 
+XYP "Modify name"              2020-07-17 RCSB 
+XYP "Modify synonyms"          2020-07-17 RCSB 
+XYP "Modify atom id"           2020-07-17 RCSB 
+XYP "Modify component atom id" 2020-07-17 RCSB 
+XYP "Modify PCM"               2024-09-27 PDBE 
+# 
+_pdbx_chem_comp_pcm.pcm_id                             1 
+_pdbx_chem_comp_pcm.comp_id                            XYP 
+_pdbx_chem_comp_pcm.modified_residue_id                ASN 
+_pdbx_chem_comp_pcm.type                               None 
+_pdbx_chem_comp_pcm.category                           Carbohydrate 
+_pdbx_chem_comp_pcm.position                           "Amino-acid side chain" 
+_pdbx_chem_comp_pcm.polypeptide_position               "Any position" 
+_pdbx_chem_comp_pcm.comp_id_linking_atom               C1 
+_pdbx_chem_comp_pcm.modified_residue_id_linking_atom   ND2 
+_pdbx_chem_comp_pcm.uniprot_specific_ptm_accession     ? 
+_pdbx_chem_comp_pcm.uniprot_generic_ptm_accession      ? 
+# 

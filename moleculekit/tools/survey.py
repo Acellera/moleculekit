@@ -36,6 +36,7 @@ from moleculekit.tools.modelling import detectBackboneBreaks, detectSequenceGaps
 from moleculekit.tools.nonstandard_residues import (
     ChainResidueSpec,
     CovalentLigandSpec,
+    GlycanSpec,
     LigandSpec,
     ScaffoldSpec,
     detectNonStandardResidues,
@@ -49,6 +50,7 @@ _SPEC_TYPES = {
     ScaffoldSpec: "scaffold",
     CovalentLigandSpec: "covalent ligand",
     LigandSpec: "free ligand",
+    GlycanSpec: "glycan residue",
 }
 
 # Chain-reference sources that a rerun must never overwrite with an RCSB

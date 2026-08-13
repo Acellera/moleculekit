@@ -55,6 +55,7 @@ from moleculekit.rcsb import rcsbFetchLigandSmiles
 from moleculekit.tools.nonstandard_residues import (
     ChainResidueSpec,
     CovalentLigandSpec,
+    GlycanSpec,
     LigandSpec,
     PerResidueSpec,
     ScaffoldSpec,
@@ -758,8 +759,11 @@ def _titration_specs(specs: list, smiles: dict | None, bases: dict | None = None
     ``resname`` for a ligand, scaffold, or covalent ligand), and their base
     SMILES. Specs that do not need a template
     (:func:`moleculekit.tools.nonstandard_residues.requiresTemplate` is False
-    - e.g. a disulfide ``CYS`` renamed to ``CYX``, a glycosylated ``ASN``) are
-    skipped.
+    - e.g. a disulfide ``CYS`` renamed to ``CYX``) are skipped, and so is
+    every :class:`~moleculekit.tools.nonstandard_residues.GlycanSpec`: a
+    sugar's pKa is not titrated (GLYCAM has no ionizable sugar unit) and it
+    gets its topology from a shipped residue CIF rather than an RCSB /
+    override SMILES base.
 
     Parameters
     ----------
@@ -802,6 +806,12 @@ def _titration_specs(specs: list, smiles: dict | None, bases: dict | None = None
 
     seen: set[str] = set()
     for spec in specs:
+        # GlycanSpec is explicitly excluded here (on top of the
+        # requiresTemplate() gate below) so a sugar is never titrated even if
+        # that gate's definition changes later: GLYCAM sugars carry no
+        # ionizable group and never need a titration-input SMILES.
+        if isinstance(spec, GlycanSpec):
+            continue
         if not requiresTemplate(spec):
             continue
         if isinstance(spec, ChainResidueSpec):

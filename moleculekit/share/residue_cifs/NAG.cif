@@ -1,0 +1,216 @@
+data_NAG
+# 
+_chem_comp.id                                    NAG 
+_chem_comp.name                                  2-acetamido-2-deoxy-beta-D-glucopyranose 
+_chem_comp.type                                  "D-saccharide, beta linking" 
+_chem_comp.pdbx_type                             ATOMS 
+_chem_comp.formula                               "C8 H15 N O6" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         
+;N-acetyl-beta-D-glucosamine; 2-acetamido-2-deoxy-beta-D-glucose; 2-acetamido-2-deoxy-D-glucose;
+2-acetamido-2-deoxy-glucose; N-ACETYL-D-GLUCOSAMINE
+;
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2024-09-27 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        221.208 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     NAG 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        Corina 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        8PCH 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+_chem_comp.pdbx_pcm                              Y 
+# 
+loop_
+_pdbx_chem_comp_synonyms.ordinal 
+_pdbx_chem_comp_synonyms.comp_id 
+_pdbx_chem_comp_synonyms.name 
+_pdbx_chem_comp_synonyms.provenance 
+_pdbx_chem_comp_synonyms.type 
+1 NAG N-acetyl-beta-D-glucosamine        PDB ? 
+2 NAG 2-acetamido-2-deoxy-beta-D-glucose PDB ? 
+3 NAG 2-acetamido-2-deoxy-D-glucose      PDB ? 
+4 NAG 2-acetamido-2-deoxy-glucose        PDB ? 
+5 NAG N-ACETYL-D-GLUCOSAMINE             PDB ? 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+NAG C1  C1  C 0 1 N N R N N N 7.396 28.163 26.662 0.185  1.082  -0.421 C1  NAG 1  
+NAG C2  C2  C 0 1 N N R N N N 6.973 29.233 27.644 0.790  -0.220 0.112  C2  NAG 2  
+NAG C3  C3  C 0 1 N N R N N N 7.667 29.055 29.000 -0.124 -1.390 -0.265 C3  NAG 3  
+NAG C4  C4  C 0 1 N N S N N N 7.573 27.588 29.490 -1.526 -1.129 0.294  C4  NAG 4  
+NAG C5  C5  C 0 1 N N R N N N 7.902 26.592 28.373 -2.042 0.207  -0.246 C5  NAG 5  
+NAG C6  C6  C 0 1 N N N N N N 7.599 25.173 28.797 -3.417 0.504  0.355  C6  NAG 6  
+NAG C7  C7  C 0 1 N N N N N N 6.291 31.299 26.595 3.197  0.157  0.076  C7  NAG 7  
+NAG C8  C8  C 0 1 N N N N N N 6.684 32.649 26.036 4.559  -0.052 -0.533 C8  NAG 8  
+NAG N2  N2  N 0 1 N N N N N N 7.268 30.545 27.089 2.114  -0.422 -0.480 N2  NAG 9  
+NAG O1  O1  O 0 1 N Y N N N N 6.676 28.363 25.419 1.003  2.185  -0.024 O1  NAG 10 
+NAG O3  O3  O 0 1 N N N N N N 7.038 29.909 29.947 0.395  -2.600 0.291  O3  NAG 11 
+NAG O4  O4  O 0 1 N N N N N N 8.494 27.358 30.574 -2.405 -2.180 -0.114 O4  NAG 12 
+NAG O5  O5  O 0 1 N N N N N N 7.104 26.875 27.206 -1.130 1.248  0.113  O5  NAG 13 
+NAG O6  O6  O 0 1 N N N N N N 6.232 25.040 29.165 -3.949 1.691  -0.236 O6  NAG 14 
+NAG O7  O7  O 0 1 N N N N N N 5.114 30.936 26.562 3.074  0.845  1.067  O7  NAG 15 
+NAG H1  H1  H 0 1 N N N N N N 8.477 28.257 26.481 0.133  1.040  -1.509 H1  NAG 16 
+NAG H2  H2  H 0 1 N N N N N N 5.888 29.146 27.803 0.879  -0.163 1.197  H2  NAG 17 
+NAG H3  H3  H 0 1 N N N N N N 8.729 29.321 28.892 -0.174 -1.478 -1.350 H3  NAG 18 
+NAG H4  H4  H 0 1 N N N N N N 6.544 27.403 29.831 -1.483 -1.091 1.382  H4  NAG 19 
+NAG H5  H5  H 0 1 N N N N N N 8.971 26.674 28.128 -2.123 0.154  -1.332 H5  NAG 20 
+NAG H61 H61 H 0 1 N N N N N N 7.816 24.492 27.961 -4.088 -0.333 0.157  H61 NAG 21 
+NAG H62 H62 H 0 1 N N N N N N 8.232 24.910 29.657 -3.320 0.645  1.431  H62 NAG 22 
+NAG H81 H81 H 0 1 N N N N N N 5.791 33.159 25.646 4.560  0.320  -1.558 H81 NAG 23 
+NAG H82 H82 H 0 1 N N N N N N 7.136 33.258 26.833 5.305  0.490  0.050  H82 NAG 24 
+NAG H83 H83 H 0 1 N N N N N N 7.411 32.511 25.222 4.799  -1.115 -0.532 H83 NAG 25 
+NAG HN2 HN2 H 0 1 N N N N N N 8.210 30.881 27.079 2.212  -0.973 -1.273 HN2 NAG 26 
+NAG HO1 HO1 H 0 1 N Y N N N N 6.933 27.696 24.793 0.679  3.044  -0.328 HO1 NAG 27 
+NAG HO3 HO3 H 0 1 N Y N N N N 7.459 29.809 30.793 -0.135 -3.384 0.091  HO3 NAG 28 
+NAG HO4 HO4 H 0 1 N Y N N N N 8.425 26.456 30.863 -3.312 -2.079 0.206  HO4 NAG 29 
+NAG HO6 HO6 H 0 1 N Y N N N N 6.060 24.143 29.428 -4.822 1.940  0.099  HO6 NAG 30 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+NAG C1 C2  SING N N 1  
+NAG C1 O1  SING N N 2  
+NAG C1 O5  SING N N 3  
+NAG C1 H1  SING N N 4  
+NAG C2 C3  SING N N 5  
+NAG C2 N2  SING N N 6  
+NAG C2 H2  SING N N 7  
+NAG C3 C4  SING N N 8  
+NAG C3 O3  SING N N 9  
+NAG C3 H3  SING N N 10 
+NAG C4 C5  SING N N 11 
+NAG C4 O4  SING N N 12 
+NAG C4 H4  SING N N 13 
+NAG C5 C6  SING N N 14 
+NAG C5 O5  SING N N 15 
+NAG C5 H5  SING N N 16 
+NAG C6 O6  SING N N 17 
+NAG C6 H61 SING N N 18 
+NAG C6 H62 SING N N 19 
+NAG C7 C8  SING N N 20 
+NAG C7 N2  SING N N 21 
+NAG C7 O7  DOUB N N 22 
+NAG C8 H81 SING N N 23 
+NAG C8 H82 SING N N 24 
+NAG C8 H83 SING N N 25 
+NAG N2 HN2 SING N N 26 
+NAG O1 HO1 SING N N 27 
+NAG O3 HO3 SING N N 28 
+NAG O4 HO4 SING N N 29 
+NAG O6 HO6 SING N N 30 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+NAG SMILES           ACDLabs              12.01 "O=C(NC1C(O)C(O)C(OC1O)CO)C"                                                                                     
+NAG InChI            InChI                1.03  "InChI=1S/C8H15NO6/c1-3(11)9-5-7(13)6(12)4(2-10)15-8(5)14/h4-8,10,12-14H,2H2,1H3,(H,9,11)/t4-,5-,6-,7-,8-/m1/s1" 
+NAG InChIKey         InChI                1.03  OVRNDRQMDRJTHS-FMDGEEDCSA-N                                                                                      
+NAG SMILES_CANONICAL CACTVS               3.370 "CC(=O)N[C@H]1[C@H](O)O[C@H](CO)[C@@H](O)[C@@H]1O"                                                               
+NAG SMILES           CACTVS               3.370 "CC(=O)N[CH]1[CH](O)O[CH](CO)[CH](O)[CH]1O"                                                                      
+NAG SMILES_CANONICAL "OpenEye OEToolkits" 1.7.6 "CC(=O)N[C@@H]1[C@H]([C@@H]([C@H](O[C@H]1O)CO)O)O"                                                               
+NAG SMILES           "OpenEye OEToolkits" 1.7.6 "CC(=O)NC1C(C(C(OC1O)CO)O)O"                                                                                     
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+NAG "SYSTEMATIC NAME"                     ACDLabs              12.01 "2-(acetylamino)-2-deoxy-beta-D-glucopyranose"                                   
+NAG "SYSTEMATIC NAME"                     "OpenEye OEToolkits" 1.7.6 "N-[(2R,3R,4R,5S,6R)-6-(hydroxymethyl)-2,4,5-tris(oxidanyl)oxan-3-yl]ethanamide" 
+NAG "CONDENSED IUPAC CARBOHYDRATE SYMBOL" GMML                 1.0   DGlcpNAcb                                                                        
+NAG "COMMON NAME"                         GMML                 1.0   N-acetyl-b-D-glucopyranosamine                                                   
+NAG "IUPAC CARBOHYDRATE SYMBOL"           PDB-CARE             1.0   b-D-GlcpNAc                                                                      
+NAG "SNFG CARBOHYDRATE SYMBOL"            GMML                 1.0   GlcNAc                                                                           
+# 
+loop_
+_pdbx_chem_comp_feature.comp_id 
+_pdbx_chem_comp_feature.type 
+_pdbx_chem_comp_feature.value 
+_pdbx_chem_comp_feature.source 
+_pdbx_chem_comp_feature.support 
+NAG "CARBOHYDRATE ISOMER"                 D        PDB ? 
+NAG "CARBOHYDRATE RING"                   pyranose PDB ? 
+NAG "CARBOHYDRATE ANOMER"                 beta     PDB ? 
+NAG "CARBOHYDRATE PRIMARY CARBONYL GROUP" aldose   PDB ? 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+NAG "Create component"         1999-07-08 RCSB 
+NAG "Modify descriptor"        2011-06-04 RCSB 
+NAG "Modify leaving atom flag" 2011-07-01 RCSB 
+NAG "Modify leaving atom flag" 2012-11-26 RCSB 
+NAG "Other modification"       2019-08-12 RCSB 
+NAG "Other modification"       2019-12-19 RCSB 
+NAG "Other modification"       2020-07-03 RCSB 
+NAG "Modify name"              2020-07-17 RCSB 
+NAG "Modify synonyms"          2020-07-17 RCSB 
+NAG "Modify PCM"               2024-09-27 PDBE 
+# 
+loop_
+_pdbx_chem_comp_pcm.pcm_id 
+_pdbx_chem_comp_pcm.comp_id 
+_pdbx_chem_comp_pcm.modified_residue_id 
+_pdbx_chem_comp_pcm.type 
+_pdbx_chem_comp_pcm.category 
+_pdbx_chem_comp_pcm.position 
+_pdbx_chem_comp_pcm.polypeptide_position 
+_pdbx_chem_comp_pcm.comp_id_linking_atom 
+_pdbx_chem_comp_pcm.modified_residue_id_linking_atom 
+_pdbx_chem_comp_pcm.uniprot_specific_ptm_accession 
+_pdbx_chem_comp_pcm.uniprot_generic_ptm_accession 
+1  NAG ASN N-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 ND2 ? ? 
+2  NAG ARG N-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 NH1 ? ? 
+3  NAG ARG N-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 NH2 ? ? 
+4  NAG CYS S-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 SG  ? ? 
+5  NAG SER O-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 OG  ? ? 
+6  NAG THR O-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 OG1 ? ? 
+7  NAG ARG None            Carbohydrate "Amino-acid side chain" "Any position" O7 NH1 ? ? 
+8  NAG ASN None            Carbohydrate "Amino-acid side chain" "Any position" C4 ND2 ? ? 
+9  NAG ASN None            Carbohydrate "Amino-acid side chain" "Any position" O3 ND2 ? ? 
+10 NAG EW6 None            Carbohydrate "Amino-acid side chain" "Any position" C1 OG  ? ? 
+11 NAG LYS None            Carbohydrate "Amino-acid side chain" "Any position" O6 NZ  ? ? 
+12 NAG OMX None            Carbohydrate "Amino-acid side chain" "Any position" C1 OC  ? ? 
+13 NAG OMY None            Carbohydrate "Amino-acid side chain" "Any position" C1 ODE ? ? 
+14 NAG YCM None            Carbohydrate "Amino-acid side chain" "Any position" C1 NZ2 ? ? 
+# 

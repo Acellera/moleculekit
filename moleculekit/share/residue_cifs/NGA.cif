@@ -1,0 +1,205 @@
+data_NGA
+# 
+_chem_comp.id                                    NGA 
+_chem_comp.name                                  2-acetamido-2-deoxy-beta-D-galactopyranose 
+_chem_comp.type                                  "D-saccharide, beta linking" 
+_chem_comp.pdbx_type                             ATOMS 
+_chem_comp.formula                               "C8 H15 N O6" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         
+;N-acetyl-beta-D-galactosamine; 2-acetamido-2-deoxy-beta-D-galactose; 2-acetamido-2-deoxy-D-galactose;
+2-acetamido-2-deoxy-galactose; N-ACETYL-D-GALACTOSAMINE
+;
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     1999-07-08 
+_chem_comp.pdbx_modified_date                    2024-09-27 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        221.208 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     NGA 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        Corina 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        3CHB 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+_chem_comp.pdbx_pcm                              Y 
+# 
+loop_
+_pdbx_chem_comp_synonyms.ordinal 
+_pdbx_chem_comp_synonyms.comp_id 
+_pdbx_chem_comp_synonyms.name 
+_pdbx_chem_comp_synonyms.provenance 
+_pdbx_chem_comp_synonyms.type 
+1 NGA N-acetyl-beta-D-galactosamine        PDB ? 
+2 NGA 2-acetamido-2-deoxy-beta-D-galactose PDB ? 
+3 NGA 2-acetamido-2-deoxy-D-galactose      PDB ? 
+4 NGA 2-acetamido-2-deoxy-galactose        PDB ? 
+5 NGA N-ACETYL-D-GALACTOSAMINE             PDB ? 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+NGA C1  C1  C 0 1 N N R N N N -12.079 20.898 -1.919 0.071  1.072  -0.412 C1  NGA 1  
+NGA C2  C2  C 0 1 N N R N N N -11.844 19.742 -0.936 0.740  -0.250 -0.029 C2  NGA 2  
+NGA C3  C3  C 0 1 N N R N N N -10.967 20.217 0.174  -0.079 -1.412 -0.601 C3  NGA 3  
+NGA C4  C4  C 0 1 N N R N N N -9.669  20.856 -0.340 -1.516 -1.316 -0.080 C4  NGA 4  
+NGA C5  C5  C 0 1 N N R N N N -10.072 21.968 -1.280 -2.098 0.048  -0.461 C5  NGA 5  
+NGA C6  C6  C 0 1 N N N N N N -8.975  22.914 -1.693 -3.512 0.176  0.108  C6  NGA 6  
+NGA C7  C7  C 0 1 N N N N N N -13.368 17.886 -0.720 3.116  0.273  0.101  C7  NGA 7  
+NGA C8  C8  C 0 1 N N N N N N -14.811 17.468 -0.421 4.512  0.232  -0.465 C8  NGA 8  
+NGA N2  N2  N 0 1 N N N N N N -13.146 19.205 -0.610 2.097  -0.290 -0.578 N2  NGA 9  
+NGA O1  O1  O 0 1 N Y N N N N -12.834 20.294 -2.960 0.797  2.158  0.166  O1  NGA 10 
+NGA O3  O3  O 0 1 N N N N N N -10.588 19.109 0.990  0.498  -2.652 -0.187 O3  NGA 11 
+NGA O4  O4  O 0 1 N N N N N N -8.909  19.857 -0.976 -1.519 -1.456 1.342  O4  NGA 12 
+NGA O5  O5  O 0 1 N N N N N N -10.831 21.434 -2.362 -1.273 1.084  0.076  O5  NGA 13 
+NGA O6  O6  O 0 1 N N N N N N -9.573  24.131 -2.078 -4.099 1.398  -0.345 O6  NGA 14 
+NGA O7  O7  O 0 1 N N N N N N -12.407 17.166 -1.066 2.909  0.812  1.168  O7  NGA 15 
+NGA H1  H1  H 0 1 N N N N N N -12.610 21.759 -1.487 0.064  1.175  -1.497 H1  NGA 16 
+NGA H2  H2  H 0 1 N N N N N N -11.276 18.889 -1.337 0.783  -0.336 1.057  H2  NGA 17 
+NGA H3  H3  H 0 1 N N N N N N -11.545 20.967 0.734  -0.081 -1.355 -1.689 H3  NGA 18 
+NGA H4  H4  H 0 1 N N N N N N -9.048  21.280 0.463  -2.119 -2.106 -0.526 H4  NGA 19 
+NGA H5  H5  H 0 1 N N N N N N -10.720 22.644 -0.704 -2.133 0.138  -1.547 H5  NGA 20 
+NGA H61 H61 H 0 1 N N N N N N -8.287  23.083 -0.851 -4.118 -0.664 -0.231 H61 NGA 21 
+NGA H62 H62 H 0 1 N N N N N N -8.410  22.489 -2.536 -3.468 0.176  1.196  H62 NGA 22 
+NGA H81 H81 H 0 1 N N N N N N -14.914 16.381 -0.555 4.528  0.738  -1.430 H81 NGA 23 
+NGA H82 H82 H 0 1 N N N N N N -15.062 17.735 0.616  5.196  0.734  0.220  H82 NGA 24 
+NGA H83 H83 H 0 1 N N N N N N -15.493 17.988 -1.109 4.822  -0.805 -0.593 H83 NGA 25 
+NGA HN2 HN2 H 0 1 N N N N N N -13.878 19.814 -0.304 2.262  -0.721 -1.432 HN2 NGA 26 
+NGA HO1 HO1 H 0 1 N Y N N N N -13.031 20.942 -3.626 0.429  3.030  -0.036 HO1 NGA 27 
+NGA HO3 HO3 H 0 1 N Y N N N N -10.030 19.412 1.697  0.029  -3.433 -0.514 HO3 NGA 28 
+NGA HO4 HO4 H 0 1 N Y N N N N -8.100  20.233 -1.302 -2.398 -1.404 1.740  HO4 NGA 29 
+NGA HO6 HO6 H 0 1 N Y N N N N -8.899  24.746 -2.343 -4.998 1.546  -0.022 HO6 NGA 30 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+NGA C1 C2  SING N N 1  
+NGA C1 O1  SING N N 2  
+NGA C1 O5  SING N N 3  
+NGA C1 H1  SING N N 4  
+NGA C2 C3  SING N N 5  
+NGA C2 N2  SING N N 6  
+NGA C2 H2  SING N N 7  
+NGA C3 C4  SING N N 8  
+NGA C3 O3  SING N N 9  
+NGA C3 H3  SING N N 10 
+NGA C4 C5  SING N N 11 
+NGA C4 O4  SING N N 12 
+NGA C4 H4  SING N N 13 
+NGA C5 C6  SING N N 14 
+NGA C5 O5  SING N N 15 
+NGA C5 H5  SING N N 16 
+NGA C6 O6  SING N N 17 
+NGA C6 H61 SING N N 18 
+NGA C6 H62 SING N N 19 
+NGA C7 C8  SING N N 20 
+NGA C7 N2  SING N N 21 
+NGA C7 O7  DOUB N N 22 
+NGA C8 H81 SING N N 23 
+NGA C8 H82 SING N N 24 
+NGA C8 H83 SING N N 25 
+NGA N2 HN2 SING N N 26 
+NGA O1 HO1 SING N N 27 
+NGA O3 HO3 SING N N 28 
+NGA O4 HO4 SING N N 29 
+NGA O6 HO6 SING N N 30 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+NGA SMILES           ACDLabs              10.04 "O=C(NC1C(O)C(O)C(OC1O)CO)C"                                                                                     
+NGA SMILES_CANONICAL CACTVS               3.352 "CC(=O)N[C@H]1[C@H](O)O[C@H](CO)[C@H](O)[C@@H]1O"                                                                
+NGA SMILES           CACTVS               3.352 "CC(=O)N[CH]1[CH](O)O[CH](CO)[CH](O)[CH]1O"                                                                      
+NGA SMILES_CANONICAL "OpenEye OEToolkits" 1.7.0 "CC(=O)N[C@@H]1[C@H]([C@H]([C@H](O[C@H]1O)CO)O)O"                                                                
+NGA SMILES           "OpenEye OEToolkits" 1.7.0 "CC(=O)NC1C(C(C(OC1O)CO)O)O"                                                                                     
+NGA InChI            InChI                1.03  "InChI=1S/C8H15NO6/c1-3(11)9-5-7(13)6(12)4(2-10)15-8(5)14/h4-8,10,12-14H,2H2,1H3,(H,9,11)/t4-,5-,6+,7-,8-/m1/s1" 
+NGA InChIKey         InChI                1.03  OVRNDRQMDRJTHS-JAJWTYFOSA-N                                                                                      
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+NGA "SYSTEMATIC NAME"                     ACDLabs              10.04 "2-(acetylamino)-2-deoxy-beta-D-galactopyranose"                             
+NGA "SYSTEMATIC NAME"                     "OpenEye OEToolkits" 1.6.1 "N-[(2R,3R,4R,5R,6R)-2,4,5-trihydroxy-6-(hydroxymethyl)oxan-3-yl]ethanamide" 
+NGA "CONDENSED IUPAC CARBOHYDRATE SYMBOL" GMML                 1.0   DGalpNAcb                                                                    
+NGA "COMMON NAME"                         GMML                 1.0   N-acetyl-b-D-galactopyranosamine                                             
+NGA "IUPAC CARBOHYDRATE SYMBOL"           PDB-CARE             1.0   b-D-GalpNAc                                                                  
+NGA "SNFG CARBOHYDRATE SYMBOL"            GMML                 1.0   GalNAc                                                                       
+# 
+loop_
+_pdbx_chem_comp_feature.comp_id 
+_pdbx_chem_comp_feature.type 
+_pdbx_chem_comp_feature.value 
+_pdbx_chem_comp_feature.source 
+_pdbx_chem_comp_feature.support 
+NGA "CARBOHYDRATE ISOMER"                 D        PDB ? 
+NGA "CARBOHYDRATE RING"                   pyranose PDB ? 
+NGA "CARBOHYDRATE ANOMER"                 beta     PDB ? 
+NGA "CARBOHYDRATE PRIMARY CARBONYL GROUP" aldose   PDB ? 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+NGA "Create component"   1999-07-08 RCSB 
+NGA "Modify descriptor"  2011-06-04 RCSB 
+NGA "Other modification" 2019-08-12 RCSB 
+NGA "Other modification" 2019-12-19 RCSB 
+NGA "Other modification" 2020-07-03 RCSB 
+NGA "Modify name"        2020-07-17 RCSB 
+NGA "Modify synonyms"    2020-07-17 RCSB 
+NGA "Modify PCM"         2024-09-27 PDBE 
+# 
+loop_
+_pdbx_chem_comp_pcm.pcm_id 
+_pdbx_chem_comp_pcm.comp_id 
+_pdbx_chem_comp_pcm.modified_residue_id 
+_pdbx_chem_comp_pcm.type 
+_pdbx_chem_comp_pcm.category 
+_pdbx_chem_comp_pcm.position 
+_pdbx_chem_comp_pcm.polypeptide_position 
+_pdbx_chem_comp_pcm.comp_id_linking_atom 
+_pdbx_chem_comp_pcm.modified_residue_id_linking_atom 
+_pdbx_chem_comp_pcm.uniprot_specific_ptm_accession 
+_pdbx_chem_comp_pcm.uniprot_generic_ptm_accession 
+1 NGA ASN N-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 ND2 ? ? 
+2 NGA THR O-Glycosylation Carbohydrate "Amino-acid side chain" "Any position" C1 OG1 ? ? 
+3 NGA SER None            Carbohydrate "Amino-acid side chain" "Any position" C1 OG  ? ? 
+4 NGA SER None            Carbohydrate "Amino-acid side chain" "Any position" C6 OG  ? ? 
+5 NGA TYR None            Carbohydrate "Amino-acid side chain" "Any position" C1 OH  ? ? 
+# 

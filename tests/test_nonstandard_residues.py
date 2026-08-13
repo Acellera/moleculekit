@@ -10,6 +10,7 @@ from moleculekit.tools.nonstandard_residues import (
     ChainResidueSpec,
     ScaffoldSpec,
     CovalentLigandSpec,
+    GlycanSpec,
     LigandSpec,
     PROTEIN_RESNAMES,
     _disambiguate_terminus_resnames,
@@ -323,10 +324,11 @@ def test_5vbl_ncaas_and_free_ligand():
 
 def test_1r1j_covalent_glycosylation():
     """1R1J: three NAG-Asn N-glycosylation sites. Each NAG has one bond to
-    an Asn ND2; all three (ASN, ND2, NAG) buckets share the same chain
-    position (mid-chain) so the detector emits one CovalentLigandSpec
-    per NAG plus three CanonicalRenamedSpec entries that share the same
-    new resname.
+    an Asn ND2 and no other glycosidic links, so the detector emits one
+    GlycanSpec per NAG (new_resname "0YB", the unlinked-GlcNAc GLYCAM unit)
+    carrying the Asn anchor on its anchor_* fields; the three ASNs get no
+    spec of their own (no CovalentLigandSpec for the sugars, no
+    ChainResidueSpec rename for the anchors: see GlycanSpec's docstring).
 
     The OIR inhibitor in 1R1J is a thiorphan-class non-covalent Zn-chelator:
     its O19 and S26 contact the active-site Zn (PDB ``LINK`` records, loaded
@@ -336,23 +338,23 @@ def test_1r1j_covalent_glycosylation():
     mol = Molecule(R1J_PDB)
     specs = detectNonStandardResidues(mol)
 
-    cov = [s for s in specs if isinstance(s, CovalentLigandSpec) and s.resname == "NAG"]
+    gly = [s for s in specs if isinstance(s, GlycanSpec) and s.resname == "NAG"]
+    cov_nag = [
+        s for s in specs if isinstance(s, CovalentLigandSpec) and s.resname == "NAG"
+    ]
     asn_renames = [
         s
         for s in specs
         if isinstance(s, ChainResidueSpec) and s.resname == "ASN"
         and s.new_resname is not None
     ]
-    assert len(cov) == 3
-    assert len(asn_renames) == 3
-    new_names = {r.new_resname for r in asn_renames}
-    assert len(new_names) == 1, f"expected one shared rename, got {new_names}"
-    shared = next(iter(new_names))
-    assert len(shared) == 3 and shared.startswith("X")
-    for r in asn_renames:
-        rid = int(r.residue.resid)
-        names = _residue_atom_names(mol, r.resname, rid)
-        assert "ND2" in names
+    assert len(gly) == 3
+    assert cov_nag == []
+    assert asn_renames == []
+    assert all(s.new_resname == "0YB" for s in gly)
+    for s in gly:
+        assert s.anchor_new_resname == "NLN" and s.anchor_atom == "ND2"
+        assert s.anchor_residue is not None and s.anchor_residue.resname == "ASN"
 
     oir = [s for s in specs if s.residue.resname == "OIR"]
     assert len(oir) == 1
@@ -997,10 +999,12 @@ def test_8qfz_three_cys_distinct_buckets():
         assert n.startswith("X") and len(n) == 3
 
 
-def test_1r1j_three_asn_share_bucket():
-    """1R1J: three ASN-ND2-NAG glycosylation sites at distinct mid-chain
-    positions share one X## new_resname because they share bucket key
-    (ASN, ND2, NAG, False, False)."""
+def test_1r1j_asn_not_bucketed():
+    """1R1J: three ASN-ND2-NAG N-glycosylation sites at distinct mid-chain
+    positions used to share one X## bucket rename (the canonical-anchor
+    bucketing path); now each NAG's GlycanSpec carries the anchor rename
+    on its own anchor_* fields instead, so none of the three ASNs get a
+    ChainResidueSpec of their own at all."""
     from moleculekit.tools.nonstandard_residues import (
         ChainResidueSpec, detectNonStandardResidues,
     )
@@ -1009,13 +1013,8 @@ def test_1r1j_three_asn_share_bucket():
     asn_specs = [
         s for s in specs
         if isinstance(s, ChainResidueSpec) and s.resname == "ASN"
-        and s.new_resname is not None
     ]
-    assert len(asn_specs) == 3
-    new_names = {s.new_resname for s in asn_specs}
-    assert len(new_names) == 1, (
-        f"expected three ASNs to share one new_resname; got {new_names}"
-    )
+    assert asn_specs == []
 
 
 def test_unknown_canonical_anchor_raises():
