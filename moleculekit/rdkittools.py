@@ -268,17 +268,29 @@ def _try_strip_unmatched_terminals(
                 to_strip.append(sibling_oh_idx)
                 continue
 
-        if bond.GetBondType() != Chem.BondType.SINGLE:
-            return None
         if neighbor.GetIdx() not in atom_mapping:
             return None
         neighbor_res_idx = atom_mapping[neighbor.GetIdx()]
 
         # Signal A: the matched residue neighbor carries an inter-residue
         # bond, so the missing SMILES atom was effectively replaced by it.
+        #
+        # Checked before the bond order, because what the inter-residue bond
+        # replaced is not always a single-bonded leaving group. Rhodopsin's
+        # retinal is bound to Lys296 through a Schiff base: free retinal's
+        # aldehyde C15=O becomes C15=N to the lysine, so the unmatched atom is a
+        # *doubly* bonded O hanging off the boundary atom. Requiring a single
+        # bond here refused every covalent ligand of that shape -- 1GZM failed
+        # with "contains heavy atoms which could not be matched" on a SMILES
+        # exactly one atom larger than the residue, with C15 already known to be
+        # the boundary. The carbonyl branch above cannot rescue it either: it
+        # needs a sibling -OH, which an aldehyde does not have.
         if neighbor_res_idx in boundary_local_idxs:
             to_strip.append(idx)
             continue
+
+        if bond.GetBondType() != Chem.BondType.SINGLE:
+            return None
 
         # Signal B: carboxyl -OH on a non-terminal amino acid.
         if atom.GetSymbol() == "O" and neighbor.GetSymbol() == "C" and no_oxt:

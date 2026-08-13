@@ -855,3 +855,42 @@ def test_detect_interresidue_bonds_infers_undeposited_isopeptide():
     assert any(li == cg_local and ext == arg_n_global for li, ext, _ in cross), (
         f"expected inferred CG->ARG.N cross bond, got {cross}"
     )
+
+
+def test_templateResidueFromSmiles_strips_a_double_bonded_leaving_atom():
+    """A Schiff base replaces a doubly bonded atom, not a single-bonded one.
+
+    Rhodopsin's retinal is bound to Lys296 through a protonated Schiff base:
+    free retinal's aldehyde C15=O becomes C15=N to the lysine, so the free
+    SMILES carries exactly one heavy atom the residue lacks, hanging off the
+    boundary atom. The strip logic exists for that shape, but tested the bond
+    order before the boundary, so every covalent ligand of this kind was
+    refused -- 1GZM failed with "contains heavy atoms which could not be
+    matched" on a SMILES one atom larger than the residue. The carbonyl branch
+    cannot rescue it either: it needs a sibling -OH, and an aldehyde has none.
+    """
+    import numpy as np
+    from rdkit import Chem
+
+    mol = Molecule("1gzm")
+    smiles = "CC1=C(/C=C/C(C)=C/C=C/C(C)=C/C=O)C(C)(C)CCC1"
+
+    sel = mol.atomselect("resname RET and chain A")
+    heavy_before = int((mol.element[sel] != "H").sum())
+    assert heavy_before == 20, "the bound retinal has lost its aldehyde oxygen"
+    assert Chem.MolFromSmiles(smiles).GetNumAtoms() == 21, "the free SMILES keeps it"
+
+    mol.templateResidueFromSmiles("resname RET and chain A", smiles, addHs=True)
+
+    sel = mol.atomselect("resname RET and chain A")
+    assert int((mol.element[sel] != "H").sum()) == 20, "no heavy atom added or lost"
+    assert int((mol.element[sel] == "H").sum()) > 0, "hydrogens were added"
+    # The C15-NZ bond must survive templating, which is what made the O leave.
+    ret = set(np.where(sel)[0].tolist())
+    prot = set(np.where(mol.atomselect("protein"))[0].tolist())
+    cross = [
+        (int(a), int(b))
+        for a, b in mol.bonds
+        if (int(a) in ret and int(b) in prot) or (int(b) in ret and int(a) in prot)
+    ]
+    assert len(cross) == 1, f"expected the Schiff base to survive, got {cross}"
