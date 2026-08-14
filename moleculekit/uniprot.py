@@ -135,7 +135,126 @@ def uniprotSequence(accession: str) -> str:
         ) from err
 
 
-def trimPrecursorSequences(mol, sequences: dict, chains=None, tol: float = 2.0) -> dict:
+_MATURE_FEATURES = ("Chain", "Peptide")
+_LEADER_FEATURES = ("Signal", "Transit peptide", "Propeptide")
+
+
+def uniprotMatureChains(accession: str) -> list:
+    """The mature chain spans of a UniProt entry, in precursor numbering.
+
+    A structure's terminus is a real biological end only if it coincides with a
+    boundary of one of these spans: everything else is a cut through the
+    backbone. Entries can carry several spans (bovine trypsin P00760 lists the
+    mature chain 24-246 *and* its two alpha-trypsin autolysis products), so all
+    of them are returned and the caller records which one matched.
+
+    Parameters
+    ----------
+    accession : str
+        A UniProtKB accession, e.g. ``"P00760"``.
+
+    Returns
+    -------
+    spans : list of dict
+        ``{"start", "end", "type", "description"}`` per span, in precursor
+        numbering (1-based, inclusive), sorted by ``start`` then ``end``. When
+        the entry declares no ``Chain``/``Peptide`` feature, a single span is
+        synthesised from the precursor minus any leading signal, transit or
+        propeptide (``type="synthesised"``).
+
+    Examples
+    --------
+    >>> from moleculekit.uniprot import uniprotMatureChains
+    >>> uniprotMatureChains("P00533")[0]["start"]    # doctest: +SKIP
+    25
+    """
+    fields = "ft_signal,ft_propep,ft_chain,ft_transit,ft_peptide,sequence"
+    url = (
+        f"{_UNIPROT_REST}/{urllib.parse.quote(str(accession))}.json?fields={fields}"
+    )
+    data = _getUniProtJson(url)
+    length = (data.get("sequence") or {}).get("length")
+    if not length:
+        raise RuntimeError(f"UniProt entry {accession!r} returned no sequence length")
+
+    features = data.get("features") or []
+    spans = []
+    for feat in features:
+        if feat.get("type") not in _MATURE_FEATURES:
+            continue
+        loc = feat.get("location") or {}
+        start = (loc.get("start") or {}).get("value")
+        end = (loc.get("end") or {}).get("value")
+        if start is None or end is None:  # an unknown-position feature is no evidence
+            continue
+        spans.append(
+            {
+                "start": int(start),
+                "end": int(end),
+                "type": str(feat["type"]),
+                "description": str(feat.get("description") or ""),
+            }
+        )
+
+    if not spans:
+        # Cleaved pieces, as (start, end, type). Only the ones that form a
+        # contiguous run from residue 1, or one ending at the precursor's last
+        # residue, are removable: a propeptide in the middle is not evidence
+        # about either terminus.
+        cleaved = []
+        for feat in features:
+            if feat.get("type") not in _LEADER_FEATURES:
+                continue
+            loc = feat.get("location") or {}
+            start = (loc.get("start") or {}).get("value")
+            end = (loc.get("end") or {}).get("value")
+            if start is None or end is None:
+                continue
+            cleaved.append((int(start), int(end), str(feat["type"])))
+        cleaved.sort()
+
+        mature_start, used = 1, []
+        for start, end, kind in cleaved:  # contiguous run from the N-terminus
+            if start != mature_start:
+                break
+            mature_start = end + 1
+            used.append(kind)
+
+        mature_end = int(length)
+        for start, end, kind in reversed(cleaved):  # ... and from the C-terminus
+            if end != mature_end:
+                break
+            mature_end = start - 1
+            used.append(kind)
+
+        if mature_start > mature_end:
+            # The whole precursor is cleaved away (P13948 is a 21-residue
+            # propeptide and nothing else), so there is no mature chain to
+            # report. Returning nothing lets the caller degrade to "unknown"
+            # instead of matching against an impossible span.
+            return []
+
+        names = sorted(set(used))
+        desc = "precursor minus " + ", ".join(names) if names else "precursor"
+        spans.append(
+            {
+                "start": mature_start,
+                "end": mature_end,
+                "type": "synthesised",
+                "description": desc,
+            }
+        )
+
+    # A span must be a real 1-based inclusive range: callers test a terminus
+    # position for equality against start/end, and an inverted span would answer
+    # them with a silent false positive.
+    spans = [s for s in spans if s["start"] <= s["end"]]
+    return sorted(spans, key=lambda s: (s["start"], s["end"]))
+
+
+def trimPrecursorSequences(
+    mol, sequences: dict, chains=None, tol: float = 2.0, return_offsets: bool = False
+) -> "dict | tuple[dict, dict[str, int]]":
     """Trim reference sequences down to the span a structure actually covers.
 
     A UniProt precursor typically starts before, and can end after, the construct
@@ -162,11 +281,18 @@ def trimPrecursorSequences(mol, sequences: dict, chains=None, tol: float = 2.0) 
         Maximum C-N distance (Angstrom) still counted as a peptide bond when
         locating the structure's backbone breaks, which is what tells the aligner
         where residues can legitimately be missing.
+    return_offsets : bool
+        Also return ``{chain: n_leading_trimmed}``. Reference position ``p``
+        (1-based) in a trimmed sequence is UniProt position ``p + offset``,
+        which is how a caller maps a terminus back to precursor numbering.
 
     Returns
     -------
     trimmed : dict
         ``{chain: sequence}``, with untrimmed chains carried through unchanged.
+    offsets : dict
+        Only when ``return_offsets`` is True: the number of leading reference
+        residues dropped per trimmed chain (0 for chains carried through).
 
     Examples
     --------
@@ -184,6 +310,7 @@ def trimPrecursorSequences(mol, sequences: dict, chains=None, tol: float = 2.0) 
         dict_key="chain", return_idx=True, sel="protein", _logger=False
     )
     trimmed = dict(sequences)
+    offsets = {c: 0 for c in sequences}
     targets = list(sequences) if chains is None else list(chains)
     for chain in targets:
         if chain not in trimmed or not obsseq.get(chain):
@@ -206,5 +333,8 @@ def trimPrecursorSequences(mol, sequences: dict, chains=None, tol: float = 2.0) 
                 f"C-terminal reference residue(s) not present in the structure "
                 f"('{full[:lo]}' / '{full[hi:]}')"
             )
+        offsets[chain] = lo
         trimmed[chain] = full[lo:hi]
+    if return_offsets:
+        return trimmed, offsets
     return trimmed

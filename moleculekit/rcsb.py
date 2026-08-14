@@ -397,15 +397,71 @@ def rcsbSequenceSearch(
     return hits
 
 
+def _uniprot_refs(align_rows):
+    """Every UniProt row of an ``rcsb_polymer_entity_align`` list.
+
+    One entity can align to several UniProt entries: 2RH1's single chain is a
+    beta2-adrenergic receptor with T4 lysozyme fused into it, and RCSB reports
+    P07550 (entity 8-237 and 399-500) alongside P00720 (238-398). Keeping only
+    the first row would make every residue of the fusion partner unmappable.
+    """
+    refs = []
+    for row in align_rows or []:
+        if (row.get("reference_database_name") or "").upper() != "UNIPROT":
+            continue
+        accession = row.get("reference_database_accession")
+        if not accession:
+            continue
+        regions = [
+            {
+                "entity_beg_seq_id": int(r["entity_beg_seq_id"]),
+                "ref_beg_seq_id": int(r["ref_beg_seq_id"]),
+                "length": int(r["length"]),
+            }
+            for r in (row.get("aligned_regions") or [])
+            if r.get("entity_beg_seq_id") and r.get("ref_beg_seq_id") and r.get("length")
+        ]
+        refs.append({"accession": str(accession), "aligned_regions": regions})
+    return refs
+
+
+def _primary_accession(refs):
+    """The accession covering the most entity residues, or None.
+
+    For a chimera this is the protein the structure is *of*, not the fusion
+    partner or crystallisation chaperone.
+    """
+    if not refs:
+        return None
+    return max(
+        refs, key=lambda r: sum(g["length"] for g in r["aligned_regions"])
+    )["accession"]
+
+
+_ENTITY_FIELDS = """
+                entity_poly{pdbx_seq_one_letter_code_can}
+                rcsb_polymer_entity_container_identifiers{auth_asym_ids
+                  reference_sequence_identifiers{database_accession database_name}}
+                rcsb_polymer_entity_align{reference_database_name
+                  reference_database_accession
+                  aligned_regions{entity_beg_seq_id ref_beg_seq_id length}}
+"""
+
+
 def _entity_sequences_for_pdbid(pdbid):
     """Map each auth chain of a PDB entry to its full deposited (canonical)
-    sequence via the RCSB GraphQL API. Returns ``{chain: sequence}``."""
+    sequence plus its UniProt cross-references via the RCSB GraphQL API.
+
+    Returns ``{chain: {"sequence", "uniprot_refs"}}``, where ``uniprot_refs`` is
+    every UniProt row's SIFTS entity-to-UniProt residue mapping - what tells a
+    construct boundary from a real biological terminus - and is an empty list
+    when the entry has no UniProt cross-reference.
+    """
     import urllib.parse
 
-    q = (
-        '{entries(entry_ids:["%s"]){polymer_entities{'
-        "entity_poly{pdbx_seq_one_letter_code_can} "
-        "rcsb_polymer_entity_container_identifiers{auth_asym_ids}}}}" % pdbid.upper()
+    q = '{entries(entry_ids:["%s"]){polymer_entities{%s}}}' % (
+        pdbid.upper(),
+        _ENTITY_FIELDS,
     )
     url = "https://data.rcsb.org/graphql?query=" + urllib.parse.quote(q)
     with urllib.request.urlopen(url, timeout=45) as resp:
@@ -414,8 +470,48 @@ def _entity_sequences_for_pdbid(pdbid):
     entries = data["data"]["entries"] or []
     for ent in (entries[0]["polymer_entities"] if entries else []) or []:
         seq = ent["entity_poly"]["pdbx_seq_one_letter_code_can"]
-        for ch in ent["rcsb_polymer_entity_container_identifiers"]["auth_asym_ids"]:
-            out[ch] = seq
+        ids = ent["rcsb_polymer_entity_container_identifiers"]
+        refs = _uniprot_refs(ent.get("rcsb_polymer_entity_align"))
+        if not refs:
+            # No alignment rows: fall back to the plain cross-reference list,
+            # which gives an accession but no residue mapping.
+            for ref in ids.get("reference_sequence_identifiers") or []:
+                if (ref.get("database_name") or "").upper() == "UNIPROT":
+                    refs = [
+                        {
+                            "accession": str(ref["database_accession"]),
+                            "aligned_regions": [],
+                        }
+                    ]
+                    break
+        for ch in ids["auth_asym_ids"]:
+            out[ch] = {"sequence": seq, "uniprot_refs": refs}
+    return out
+
+
+def _entity_uniprot_refs(entity_ids):
+    """UniProt cross-references + SIFTS regions per RCSB polymer entity id.
+
+    Returns ``{ENTITY_ID: [{"accession", "aligned_regions"}, ...]}``, entities
+    without a UniProt cross-reference omitted.
+    """
+    import urllib.parse
+
+    idstr = '","'.join(str(e).upper() for e in entity_ids)
+    q = (
+        '{polymer_entities(entity_ids:["%s"]){rcsb_id '
+        "rcsb_polymer_entity_align{reference_database_name "
+        "reference_database_accession "
+        "aligned_regions{entity_beg_seq_id ref_beg_seq_id length}}}}" % idstr
+    )
+    url = "https://data.rcsb.org/graphql?query=" + urllib.parse.quote(q)
+    with urllib.request.urlopen(url, timeout=45) as resp:
+        data = json.loads(resp.read())
+    out = {}
+    for ent in data["data"]["polymer_entities"] or []:
+        refs = _uniprot_refs(ent.get("rcsb_polymer_entity_align"))
+        if refs:
+            out[str(ent["rcsb_id"]).upper()] = refs
     return out
 
 
@@ -438,10 +534,17 @@ def resolveFullSequences(mol, pdbid=None):
     -------
     resolved : dict
         ``{chain: {"sequence": str, "source": str, "identity": float,
-        "entity_id": str | None}}`` for each protein chain for which a full
+        "entity_id": str | None, "accession": str | None,
+        "uniprot_refs": list}}`` for each protein chain for which a full
         sequence could be found. ``entity_id`` is the RCSB polymer entity id of
         the best sequence-search hit (e.g. ``"132L_1"``) and ``None`` on the
-        ``pdb_entity`` path, where the entry is already known.
+        ``pdb_entity`` path, where the entry is already known. ``uniprot_refs``
+        holds every UniProt cross-reference of the entity as
+        ``{"accession": str, "aligned_regions": [{"entity_beg_seq_id",
+        "ref_beg_seq_id", "length"}, ...]}`` - the SIFTS mapping that turns an
+        entity residue number into a UniProt one - and ``accession`` is the one
+        of those covering the most entity residues (for display). Both are
+        empty/``None`` when RCSB has no UniProt cross-reference for the chain.
     """
     observed = mol.getSequence(dict_key="chain", sel="protein", _logger=False)
     resolved = {}
@@ -451,11 +554,15 @@ def resolveFullSequences(mol, pdbid=None):
         if not obs:
             continue
         if chain in entity_seqs:
+            ent = entity_seqs[chain]
+            refs = ent.get("uniprot_refs") or []
             resolved[chain] = {
-                "sequence": entity_seqs[chain],
+                "sequence": ent["sequence"],
                 "source": "pdb_entity",
                 "identity": 1.0,
                 "entity_id": None,
+                "accession": _primary_accession(refs),
+                "uniprot_refs": refs,
             }
             continue
         hits = rcsbSequenceSearch(obs.replace("X", ""))
@@ -469,10 +576,22 @@ def resolveFullSequences(mol, pdbid=None):
         # _get_pdb_entity_sequences renders modified residues as "?"; map them to
         # "X" (unknown) so the downstream BLOSUM62 aligner accepts the sequence.
         full = full.replace("?", "X")
+        refs_map = {}
+        try:
+            refs_map = _entity_uniprot_refs([best["polymer_entity_id"]])
+        except Exception as e:
+            logger.warning(
+                f"Could not fetch the UniProt cross-references of "
+                f"{best['polymer_entity_id']}: {e}. Terminus classification "
+                "will report this chain as unknown."
+            )
+        chain_refs = refs_map.get(str(best["polymer_entity_id"]).upper(), [])
         resolved[chain] = {
             "sequence": full,
             "source": "sequence_search",
             "identity": best["identity"],
             "entity_id": best["polymer_entity_id"],
+            "accession": _primary_accession(chain_refs),
+            "uniprot_refs": chain_refs,
         }
     return resolved

@@ -8,8 +8,10 @@ origin), whether it is a membrane protein (entry keywords, when the entry is
 known), the full reference sequence of every chain (RCSB entity sequences, a
 sequence search, a UniProt accession, or a caller-supplied sequence), the
 unresolved stretches (gaps) and sequence mismatches (mutations) against that
-reference, and every residue whose bonds and formal charges are unknown. The
-results are returned as a printable :class:`SurveyReport` and persisted under
+reference, and every residue whose bonds and formal charges are unknown. It also
+classifies each protein chain terminus as a real biological end or a cut, which
+is what decides whether that terminus is capped or left charged. The results are
+returned as a printable :class:`SurveyReport` and persisted under
 ``outdir`` (``input.cif``, ``sequences.json``, ``survey.json``) so later
 sessions can act on them. Rerunning is how findings are refined: the resolved
 sequences are reused (``sequences.json`` is the source of truth once written),
@@ -32,6 +34,7 @@ import numpy as np
 
 from moleculekit.molecule import Molecule
 from moleculekit.rcsb import rcsbIsMembraneProtein, resolveFullSequences
+from moleculekit.residues import CAP_RESIDUE_NAMES
 from moleculekit.tools.modelling import detectBackboneBreaks, detectSequenceGaps
 from moleculekit.tools.nonstandard_residues import (
     ChainResidueSpec,
@@ -41,7 +44,12 @@ from moleculekit.tools.nonstandard_residues import (
     ScaffoldSpec,
     detectNonStandardResidues,
 )
-from moleculekit.uniprot import trimPrecursorSequences, uniprotSequence
+from moleculekit.tools.termini import CAP_VOCABULARY, detectTermini
+from moleculekit.uniprot import (
+    trimPrecursorSequences,
+    uniprotMatureChains,
+    uniprotSequence,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +65,22 @@ _SPEC_TYPES = {
 # lookup: they encode a user decision.
 _PROTECTED_SOURCES = {"uniprot", "user"}
 
-_CAP_RESNAMES = ("ACE", "NME", "NHE", "NH2", "NMA")
+
+def _cap_counts(mol):
+    """Cap residues by resname, counted as unique residues.
+
+    Counted from :data:`moleculekit.residues.CAP_RESIDUE_NAMES` rather than the
+    request vocabulary, because the point is to see what is *present*: a structure
+    can carry an `NH2`/`NMA`-spelled cap that nobody can request.
+    """
+    sel = np.isin(mol.resname, CAP_RESIDUE_NAMES)
+    residues = {
+        (str(s), str(c), int(r), str(n))
+        for s, c, r, n in zip(
+            mol.segid[sel], mol.chain[sel], mol.resid[sel], mol.resname[sel]
+        )
+    }
+    return Counter(n for _, _, _, n in residues)
 
 
 @dataclass
@@ -66,6 +89,13 @@ class SurveyReport:
 
     Every field is JSON-serializable; the same content is written to
     ``survey.json`` under the survey's ``outdir``.
+
+    ``termini`` holds two entries per protein chain (see
+    :func:`~moleculekit.tools.termini.detectTermini`): each end classified as
+    ``natural`` (a real biological terminus - leave it charged), ``truncated``
+    (a construct boundary or an unfilled break - cap it) or ``unknown``, with
+    the ``sel`` and ``proposed_cap`` a build request needs. It is the last
+    field so positional construction of the earlier ones keeps working.
     """
 
     structure: str
@@ -79,6 +109,7 @@ class SurveyReport:
     mismatches: list
     skipped_ncaa_chains: list
     nonstandard: list
+    termini: list
 
     def __str__(self) -> str:
         lines = [
@@ -155,6 +186,39 @@ class SurveyReport:
                 )
         else:
             lines.append("  nonstandard  (none)")
+        if self.termini:
+            for t in self.termini:
+                if not t["cappable"]:
+                    # Four different causes land here - cyclic chain,
+                    # non-canonical residue, an already-adjacent ACE/NME, or no
+                    # unambiguous selection - so do not name one of them as if
+                    # it were the reason. Keep the classification visible: a cut
+                    # end that cannot be capped is still a cut end, and that is
+                    # the part the user needs.
+                    extra = f"not cappable ({t['classification']})"
+                elif t["classification"] == "natural":
+                    extra = f"natural ({t['matched_feature']}) -> leave charged"
+                elif t["classification"] == "truncated":
+                    why = (
+                        "unmodelled terminal gap"
+                        if t["evidence"] == "terminal_gap"
+                        else "construct boundary"
+                    )
+                    extra = f"TRUNCATED ({why}) -> {t['proposed_cap']}"
+                else:
+                    extra = (
+                        "unknown (chain has non-canonical residues, so gaps were"
+                        " not detected) - ask the user: real end, or a cut?"
+                        if t["evidence"] == "no_gap_analysis"
+                        else "unknown (no mature-chain evidence) - ask the user:"
+                        " real end, or a cut?"
+                    )
+                lines.append(
+                    f"  termini      chain {t['chain']} {t['end']}-term"
+                    f" {t['resname']}{t['resid']}{t['insertion']}: {extra}"
+                )
+        else:
+            lines.append("  termini      (none)")
         return "\n".join(lines)
 
 
@@ -170,10 +234,11 @@ def surveyStructure(
 
     Loads the structure, writes it as ``{outdir}/input.cif``, resolves each
     protein chain's full reference sequence, detects gaps, mismatches and
-    non-standard residues, and (when the entry is known) checks the RCSB
-    membrane keywords. The resolved sequences are written to
-    ``{outdir}/sequences.json`` (plain ``{chain: sequence}``) and the full
-    report to ``{outdir}/survey.json``.
+    non-standard residues, classifies every protein chain terminus as a real
+    biological end or a cut (which is what decides its cap), and (when the
+    entry is known) checks the RCSB membrane keywords. The resolved sequences
+    are written to ``{outdir}/sequences.json`` (plain ``{chain: sequence}``)
+    and the full report to ``{outdir}/survey.json``.
 
     Rerunning refines the stored state instead of redoing it: chains already
     in ``sequences.json`` are not re-resolved (delete the file to start over),
@@ -238,10 +303,28 @@ def surveyStructure(
             for c, m in (prev.get("chains") or {}).items():
                 if c in seqmap:
                     meta[c] = {
-                        k: m.get(k) for k in ("source", "identity", "entity_id")
+                        k: m.get(k)
+                        for k in (
+                            "source",
+                            "identity",
+                            "entity_id",
+                            "accession",
+                            "uniprot_refs",
+                            "trim_offset",
+                        )
                     }
     for c in seqmap:
-        meta.setdefault(c, {"source": "cached", "identity": None, "entity_id": None})
+        meta.setdefault(
+            c,
+            {
+                "source": "cached",
+                "identity": None,
+                "entity_id": None,
+                "accession": None,
+                "uniprot_refs": [],
+                "trim_offset": 0,
+            },
+        )
 
     observed = {
         c: s
@@ -258,13 +341,31 @@ def surveyStructure(
         for c, value in sequences.items():
             if any(ch.isdigit() for ch in value):  # a UniProt accession
                 seqmap[c] = uniprotSequence(value)
-                meta[c] = {"source": "uniprot", "identity": None, "entity_id": None}
+                meta[c] = {
+                    "source": "uniprot",
+                    "identity": None,
+                    "entity_id": None,
+                    "accession": value,
+                    "uniprot_refs": [],
+                    "trim_offset": 0,
+                }
             else:  # a raw one-letter sequence
                 seqmap[c] = value
-                meta[c] = {"source": "user", "identity": None, "entity_id": None}
+                meta[c] = {
+                    "source": "user",
+                    "identity": None,
+                    "entity_id": None,
+                    "accession": None,
+                    "uniprot_refs": [],
+                    "trim_offset": 0,
+                }
             user_chains.append(c)
         if trim:
-            seqmap = trimPrecursorSequences(mol, seqmap, chains=user_chains)
+            seqmap, offsets = trimPrecursorSequences(
+                mol, seqmap, chains=user_chains, return_offsets=True
+            )
+            for c in user_chains:
+                meta[c]["trim_offset"] = int(offsets.get(c, 0))
 
     # Resolve what is still missing - or, when the entry id changed, everything
     # the user did not set themselves.
@@ -283,8 +384,15 @@ def surveyStructure(
                 seqmap[c] = resolved[c]["sequence"]
                 meta[c] = {
                     k: resolved[c].get(k)
-                    for k in ("source", "identity", "entity_id")
+                    for k in (
+                        "source",
+                        "identity",
+                        "entity_id",
+                        "accession",
+                        "uniprot_refs",
+                    )
                 }
+                meta[c]["trim_offset"] = 0
 
     gaps, skipped, mismatches = detectSequenceGaps(mol, seqmap)
     if keep_mutations and mismatches:
@@ -331,6 +439,33 @@ def surveyStructure(
             }
         )
 
+    # Every accession any chain aligns to, not just the primary one: a chimera's
+    # two ends can belong to two different UniProt entries.
+    accessions = []
+    for m in meta.values():
+        for ref in m.get("uniprot_refs") or []:
+            if ref.get("accession"):  # a hand-edited survey.json may lack it
+                accessions.append(ref["accession"])
+        if m.get("accession"):
+            accessions.append(m["accession"])
+
+    mature_spans = {}
+    for acc in accessions:
+        if acc in mature_spans:
+            continue
+        try:
+            mature_spans[acc] = uniprotMatureChains(acc)
+        except Exception as e:
+            logger.warning(
+                f"Could not fetch the mature-chain features of {acc}: {e}. "
+                "Its termini are reported as unknown."
+            )
+            mature_spans[acc] = []
+
+    termini = detectTermini(
+        mol, seqmap, gaps, meta, mature_spans, skipped_chains=skipped
+    )
+
     report = SurveyReport(
         structure=str(structure),
         outdir=str(outdir),
@@ -343,6 +478,7 @@ def surveyStructure(
         mismatches=mismatches,
         skipped_ncaa_chains=skipped,
         nonstandard=nonstandard,
+        termini=termini,
     )
     with open(survey_path, "w") as fh:
         json.dump(asdict(report), fh, indent=2)
@@ -353,31 +489,37 @@ def surveyStructure(
 class VerifyReport:
     """What :func:`verifyBuildResult` found, printable as a per-check summary.
 
-    ``clean`` is True when the produced structure has no backbone breaks and
-    no protein residues were lost relative to the input. Leftover caps are
-    listed but do not decide ``clean`` on their own: a cap at a genuine chain
-    terminus can be legitimate, and a cap patching a break is already caught
-    by the break and residue-count checks.
+    ``clean`` is True when the produced structure has no backbone breaks, no
+    protein residues were lost relative to the input, and the caps are the ones
+    asked for. A cap patching a backbone break still shows as the distance
+    between the residues the cap sits between and is caught by the ``breaks``
+    check.
     """
 
     reference: str
     result: str
     breaks: list
     caps: list
+    caps_missing: dict
+    caps_extra: dict
     residues_in: dict
     residues_out: dict
 
     @property
     def clean(self) -> bool:
-        """True when there are no breaks and no protein residues were lost.
+        """True when no breaks, no lost residues, and the caps are the ones asked for.
 
         Returns
         -------
         clean : bool
-            Whether the two checks passed.
+            Whether all checks passed.
         """
-        return not self.breaks and sorted(self.residues_in.values()) == sorted(
-            self.residues_out.values()
+        return (
+            not self.breaks
+            and sorted(self.residues_in.values())
+            == sorted(self.residues_out.values())
+            and not self.caps_missing
+            and not self.caps_extra
         )
 
     def __str__(self) -> str:
@@ -404,6 +546,16 @@ class VerifyReport:
                 )
         else:
             lines.append("  caps            : none")
+        for name, n in sorted(self.caps_missing.items()):
+            lines.append(
+                f"  MISSING CAP     : {n} x {name} was requested and the build"
+                " did not add it"
+            )
+        for name, n in sorted(self.caps_extra.items()):
+            lines.append(
+                f"  UNWANTED CAP    : {n} x {name} was added that nobody asked"
+                " for (a terminus meant to stay charged, or a capped break)"
+            )
         lines.append(
             f"  protein residues: in {self.residues_in} -> out"
             f" {self.residues_out}"
@@ -412,7 +564,7 @@ class VerifyReport:
         return "\n".join(lines)
 
 
-def verifyBuildResult(reference: str, result: str) -> VerifyReport:
+def verifyBuildResult(reference: str, result: str, expected_caps=None) -> VerifyReport:
     """Verify a built or prepared structure against the pre-build input.
 
     Three checks a job status cannot make: backbone continuity of the produced
@@ -428,6 +580,15 @@ def verifyBuildResult(reference: str, result: str) -> VerifyReport:
         build).
     result : str
         Path of the produced structure (a build output or a prepared file).
+    expected_caps : dict or None
+        The dict of caps passed to the builder: ``{selection: capname}``.
+        When given, the function compares only cap names and counts (never
+        resids or chains), measured as result-minus-reference, because the
+        builder renumbers every resid after capping and re-letters chains,
+        so the input selections cannot be resolved in the output. A ``"none"``
+        entry means that terminus was to stay charged and is not a cap to find.
+        An unrequested cap — including one patching a break — surfaces as
+        ``caps_extra``. When None (the default), no cap comparison is done.
 
     Returns
     -------
@@ -440,7 +601,7 @@ def verifyBuildResult(reference: str, result: str) -> VerifyReport:
 
     breaks = detectBackboneBreaks(res)
 
-    capsel = np.isin(res.resname, _CAP_RESNAMES)
+    capsel = np.isin(res.resname, CAP_RESIDUE_NAMES)
     caps = [
         {"segid": s, "chain": c, "resid": r, "resname": n}
         for s, c, r, n in sorted(
@@ -460,11 +621,39 @@ def verifyBuildResult(reference: str, result: str) -> VerifyReport:
         seqs = m.getSequence(dict_key="chain", sel="protein", _logger=False)
         return {c: len(s) for c, s in seqs.items() if s}
 
+    caps_missing, caps_extra = {}, {}
+    if expected_caps is not None:
+        bad = sorted(
+            {str(c) for c in expected_caps.values() if str(c) not in CAP_VOCABULARY}
+        )
+        if bad:
+            raise ValueError(
+                f"Unsupported cap name(s) {', '.join(bad)} in expected_caps. "
+                f"Available: {', '.join(CAP_VOCABULARY)}. A typo here would "
+                "otherwise be reported as a cap that is forever missing."
+            )
+        # "none" means the terminus was to stay charged, so it is not a cap to find.
+        wanted = Counter(
+            c for c in expected_caps.values() if str(c).lower() != "none"
+        )
+        # Baseline against the reference: a cap already in the input is not
+        # something the builder added. Without this, a pre-existing cap cancels a
+        # requested one the build never applied and the verdict reads CLEAN.
+        before, after = _cap_counts(ref), _cap_counts(res)
+        for name in set(wanted) | set(after) | set(before):
+            delta = wanted[name] - (after[name] - before[name])
+            if delta > 0:
+                caps_missing[name] = delta
+            elif delta < 0:
+                caps_extra[name] = -delta
+
     return VerifyReport(
         reference=str(reference),
         result=str(result),
         breaks=breaks,
         caps=caps,
+        caps_missing=caps_missing,
+        caps_extra=caps_extra,
         residues_in=_nres(ref),
         residues_out=_nres(res),
     )
