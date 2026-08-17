@@ -12,6 +12,7 @@ positions into the corresponding 3-character GLYCAM-06 residue name (e.g.
 GLYCAM residue name.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -26,6 +27,8 @@ from moleculekit.residues import (
 
 if TYPE_CHECKING:
     from moleculekit.molecule import Molecule
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -906,3 +909,203 @@ def glycanBondsFromNames(mol: "Molecule") -> list:
         for aidx in np.where((mol.resname == resname) & (mol.name == aname))[0]:
             pairs.append((int(aidx), _partner(int(aidx), int(uq[aidx]))))
     return pairs
+
+
+def applyGlycamNaming(mol: "Molecule") -> "Molecule":
+    """Rename every glycan in ``mol`` to GLYCAM-06 naming, in place.
+
+    This is the force-field-naming counterpart of
+    :func:`~moleculekit.tools.preparation.systemPrepare`'s glycan handling:
+    ``systemPrepare`` protonates glycans correctly but leaves them under
+    their original PDB Chemical Component Dictionary names (``NAG``,
+    ``BMA``, ...) because most of those 3-character GLYCAM unit codes also
+    collide with unrelated real PDB ligand codes (``TLA`` is tartrate) and
+    so must not leak into a general-purpose, standalone-usable protonation
+    tool. A builder that has already committed to the GLYCAM force field
+    calls this function to apply that naming just before building.
+
+    Three things happen, in this order (mirrors
+    :func:`~moleculekit.tools.preparation._apply_glycan_modifications`,
+    minus the anchor-hydrogen removal, which is a protonation consequence
+    ``systemPrepare`` already applied and is not repeated here):
+
+    1. Atom renames (:attr:`SugarTemplate.atom_renames`, the N-acetyl /
+       N-glycolyl substituent atoms) followed by the residue renames
+       themselves (the sugar to its GLYCAM unit name via
+       :func:`glycamResname`, the anchor to its GLYCAM anchor resname via
+       :data:`GLYCAN_ANCHORS`). Pure value changes, no reindexing.
+    2. The free-reducing-end split, last, because it is the only step that
+       inserts/removes atoms. A sugar with no outgoing glycosidic bond at
+       its own anomeric carbon has its anomeric hydroxyl oxygen (and
+       hydrogen, if present) split off into its own ``ROH`` residue,
+       GLYCAM's free-hydroxyl cap, sharing the sugar's segment/chain with a
+       fresh resid. ``systemPrepare`` already guarantees this atom pair is
+       present (chemistry); a geometric placeholder is constructed here too
+       for a molecule that reaches this function without having gone
+       through ``systemPrepare`` first, with a warning naming the residue
+       so the substitution is never silent.
+
+    Connectivity is recovered from ``mol.bonds`` via
+    :func:`analyzeGlycanResidues`, so it needs the glycosidic and anchor
+    bonds still present (as ``systemPrepare`` output has, see
+    ``moleculekit.tools.preparation._capture_bonds`` /
+    ``_restore_bonds``); it does not need a
+    :class:`~moleculekit.tools.nonstandard_residues.GlycanSpec` list.
+
+    Parameters
+    ----------
+    mol : moleculekit.molecule.Molecule
+        The molecule to rename, still carrying the original PDB Chemical
+        Component Dictionary sugar and anchor resnames, with its glycosidic
+        and anchor bonds intact. Mutated in place.
+
+    Returns
+    -------
+    mol : moleculekit.molecule.Molecule
+        The same molecule, renamed in place, returned for chaining. A no-op
+        (returned unchanged) when ``mol`` has no glycan.
+
+    Raises
+    ------
+    RuntimeError
+        If a recognized sugar residue is present but carries no bonds at
+        all (the glycan tree structure -- linkage positions, anchor,
+        free reducing end -- cannot be recovered without them).
+    """
+    from moleculekit.molecule import Molecule, UniqueResidueID
+
+    if not pdbSugarMask(mol).any():
+        return mol
+
+    fields = ("resname", "resid", "insertion", "segid", "chain")
+    _, idx_lists = mol.getResidues(fields=fields, return_idx=True)
+
+    has_bond = np.zeros(mol.numAtoms, dtype=bool)
+    bonds = np.asarray(mol.bonds, dtype=np.int64)
+    if len(bonds):
+        has_bond[bonds[:, 0]] = True
+        has_bond[bonds[:, 1]] = True
+
+    residues = [UniqueResidueID.fromMolecule(mol, idx=idx) for idx in idx_lists]
+    for residue, atom_idx in zip(residues, idx_lists):
+        if residue.resname in GLYCAM_SUGARS and not has_bond[atom_idx].any():
+            raise RuntimeError(
+                f"Sugar residue {residue.resname} {residue.chain}:"
+                f"{residue.resid}{residue.insertion} (segid {residue.segid}) "
+                "carries no bonds, so its glycan tree structure (linkage "
+                "positions, anchor, free reducing end) cannot be recovered. "
+                "Ensure the molecule's glycosidic bonds are present (e.g. "
+                "from CONECT records or systemPrepare output) before "
+                "calling this function."
+            )
+
+    glycan_info = analyzeGlycanResidues(mol, mol.bonds, idx_lists)
+    if not glycan_info:
+        return mol
+
+    def _res_mask(rid: UniqueResidueID) -> np.ndarray:
+        return (
+            (mol.segid == str(rid.segid))
+            & (mol.chain == str(rid.chain))
+            & (mol.resid == int(rid.resid))
+            & (mol.insertion == str(rid.insertion))
+        )
+
+    # 1. Atom renames, then residue renames (sugar + its anchor). Pure
+    # value changes: no reindexing, so masks stay valid within this loop.
+    for ri, gi in glycan_info.items():
+        residue = residues[ri]
+        tmpl = GLYCAM_SUGARS[residue.resname]
+        smask = _res_mask(residue)
+        for old, new in tmpl.atom_renames.items():
+            mol.name[smask & (mol.name == old)] = new
+        mol.resname[smask] = glycamResname(residue.resname, gi.linked_positions)
+        if gi.anchor_res is not None:
+            anchor_residue = residues[gi.anchor_res]
+            anchor_new_resname = GLYCAN_ANCHORS[anchor_residue.resname][0]
+            mol.resname[_res_mask(anchor_residue)] = anchor_new_resname
+
+    # 2. Free reducing-end ROH split, last (inserts/removes atoms).
+    for ri, gi in glycan_info.items():
+        if not gi.free_reducing_end:
+            continue
+        residue = residues[ri]
+        tmpl = GLYCAM_SUGARS[residue.resname]
+        smask = _res_mask(residue)
+        seg = str(mol.segid[smask][0])
+        chain = str(mol.chain[smask][0])
+        new_resid = int(mol.resid[mol.segid == seg].max()) + 1
+
+        o1_idx = np.where(smask & (mol.name == tmpl.anomeric_oxygen))[0]
+        if len(o1_idx):
+            # Already resolved (systemPrepare guarantees this for its own
+            # output): carry the real atom(s) over rather than discarding
+            # deposited coordinates. A companion hydrogen is found by
+            # proximity (a real O-H bond is always well under 1.2 A;
+            # nothing else in a sugar sits that close to the anomeric
+            # oxygen).
+            o1_idx = int(o1_idx[0])
+            hcand = np.where(smask & (mol.element == "H"))[0]
+            sel = [o1_idx]
+            if len(hcand):
+                d = np.linalg.norm(
+                    mol.coords[hcand, :, 0] - mol.coords[o1_idx, :, 0], axis=1
+                )
+                near = hcand[d < 1.2]
+                if len(near):
+                    sel.append(int(near[0]))
+            o1sel = np.zeros(mol.numAtoms, dtype=bool)
+            o1sel[sel] = True
+            rohmol = mol.copy(sel=o1sel)
+            # GLYCAM's ROH cap always names its own atom O1, regardless of
+            # which position the source sugar's anomeric oxygen occupied
+            # (O2 for a sialic acid, O1 for everything else).
+            rohmol.name[rohmol.element == "O"] = "O1"
+            rohmol.name[rohmol.element == "H"] = "HO1"
+            mol.remove(o1sel, _logger=False)
+        else:
+            # A molecule that reaches this function without having gone
+            # through systemPrepare first can still be missing its anomeric
+            # oxygen entirely. Build a rough position (1.43 A from the
+            # anomeric carbon, opposite its heavy-atom centroid) for a
+            # downstream minimization to relax, and warn so the
+            # substitution is never silent.
+            logger.warning(
+                f"Glycan sugar {residue.resname} (renamed to "
+                f"{glycamResname(residue.resname, gi.linked_positions)}) "
+                f"{residue.chain}:{residue.resid}{residue.insertion} (segid "
+                f"{residue.segid}) has no anomeric oxygen; constructing its "
+                "position geometrically instead of using a deposited one."
+            )
+            c1_idx = int(np.where(smask & (mol.name == tmpl.anomeric_carbon))[0][0])
+            c1_xyz = mol.coords[c1_idx, :, 0]
+            neigh = [
+                int(n) for n in mol.getNeighbors(c1_idx) if str(mol.element[n]) != "H"
+            ]
+            if neigh:
+                direction = c1_xyz - mol.coords[neigh, :, 0].mean(axis=0)
+            else:
+                direction = np.array([1.0, 0.0, 0.0])
+            norm = float(np.linalg.norm(direction))
+            direction = direction / norm if norm > 1e-6 else np.array([1.0, 0.0, 0.0])
+
+            rohmol = Molecule().empty(1)
+            rohmol.record[:] = "HETATM"
+            rohmol.name[:] = "O1"
+            rohmol.element[:] = "O"
+            rohmol.coords = (
+                (c1_xyz + direction * 1.43)
+                .reshape(1, 3, 1)
+                .astype(Molecule._dtypes["coords"])
+            )
+
+        rohmol.resname[:] = "ROH"
+        rohmol.resid[:] = new_resid
+        rohmol.insertion[:] = ""
+        rohmol.chain[:] = chain
+        rohmol.segid[:] = seg
+
+        insert_at = int(np.where(_res_mask(residue))[0][0])
+        mol.insert(rohmol, insert_at)
+
+    return mol

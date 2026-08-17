@@ -93,11 +93,11 @@ def _two_res_closure(dist, add_bond):
     mol.segid[:] = "P0"
     mol.record[:] = "ATOM"
     coords = np.zeros((8, 3), np.float32)
-    coords[0] = [0.0, 0.0, 0.0]            # N (res1)
+    coords[0] = [0.0, 0.0, 0.0]  # N (res1)
     coords[1] = [1.5, 0.0, 0.0]
     coords[2] = [2.5, 1.0, 0.0]
     coords[3] = [2.0, 2.0, 0.0]
-    coords[6] = [-dist, 0.0, 0.0]          # C (res2): dist from res1 N
+    coords[6] = [-dist, 0.0, 0.0]  # C (res2): dist from res1 N
     coords[4] = [-dist - 1.0, 0.5, 0.0]
     coords[5] = [-dist - 0.5, 1.0, 0.0]
     coords[7] = [-dist - 0.3, -1.0, 0.0]
@@ -125,17 +125,17 @@ def _sidechain_isopeptide():
     mol.segid[:] = "P0"
     mol.record[:] = "ATOM"
     coords = np.zeros((len(names), 3), np.float32)
-    coords[0] = [0.0, 0.0, 0.0]            # ARG1 N (acylated)
+    coords[0] = [0.0, 0.0, 0.0]  # ARG1 N (acylated)
     coords[1] = [1.5, 0.0, 0.0]
     coords[2] = [2.5, 1.0, 0.0]
     coords[3] = [2.0, 2.0, 0.0]
-    coords[4] = [5.0, 0.0, 0.0]            # ACB2 N
+    coords[4] = [5.0, 0.0, 0.0]  # ACB2 N
     coords[5] = [6.0, 0.0, 0.0]
-    coords[6] = [7.0, 1.0, 0.0]            # ACB2 backbone C (free acid)
+    coords[6] = [7.0, 1.0, 0.0]  # ACB2 backbone C (free acid)
     coords[7] = [7.0, 2.0, 0.0]
-    coords[8] = [8.0, 1.0, 0.0]            # ACB2 OXT
-    coords[9] = [5.5, -1.0, 0.0]           # ACB2 CB
-    coords[10] = [-1.33, 0.0, 0.0]         # ACB2 CG: 1.33 A from ARG1 N
+    coords[8] = [8.0, 1.0, 0.0]  # ACB2 OXT
+    coords[9] = [5.5, -1.0, 0.0]  # ACB2 CB
+    coords[10] = [-1.33, 0.0, 0.0]  # ACB2 CG: 1.33 A from ARG1 N
     mol.coords = coords.reshape(len(names), 3, 1)
     intra = [(0, 1), (1, 2), (2, 3), (4, 5), (5, 6), (6, 7), (6, 8), (5, 9), (9, 10)]
     iso = (10, 0)  # ACB2 CG -> ARG1 N
@@ -158,20 +158,32 @@ def _two_cys_disulfide():
     mol.segid[:] = "P0"
     mol.record[:] = "ATOM"
     coords = np.zeros((len(names), 3), np.float32)
-    coords[0] = [-6.0, 5.0, 0.0]           # CYS1 N (backbone far from CYS2 C)
-    coords[1] = [-5.0, 4.0, 0.0]           # CYS1 CA
-    coords[2] = [-5.5, 2.5, 0.0]           # CYS1 C
-    coords[3] = [-6.5, 2.0, 0.0]           # CYS1 O
-    coords[4] = [-3.5, 3.5, 0.0]           # CYS1 CB
-    coords[5] = [0.0, 0.0, 0.0]            # CYS1 SG
-    coords[6] = [8.0, 5.0, 0.0]            # CYS2 N
-    coords[7] = [7.0, 4.0, 0.0]            # CYS2 CA
-    coords[8] = [7.5, 2.5, 0.0]            # CYS2 C (far from CYS1 N)
-    coords[9] = [8.5, 2.0, 0.0]            # CYS2 O
-    coords[10] = [5.5, 3.5, 0.0]           # CYS2 CB
-    coords[11] = [2.05, 0.0, 0.0]          # CYS2 SG (disulfide ~2.05 A)
+    coords[0] = [-6.0, 5.0, 0.0]  # CYS1 N (backbone far from CYS2 C)
+    coords[1] = [-5.0, 4.0, 0.0]  # CYS1 CA
+    coords[2] = [-5.5, 2.5, 0.0]  # CYS1 C
+    coords[3] = [-6.5, 2.0, 0.0]  # CYS1 O
+    coords[4] = [-3.5, 3.5, 0.0]  # CYS1 CB
+    coords[5] = [0.0, 0.0, 0.0]  # CYS1 SG
+    coords[6] = [8.0, 5.0, 0.0]  # CYS2 N
+    coords[7] = [7.0, 4.0, 0.0]  # CYS2 CA
+    coords[8] = [7.5, 2.5, 0.0]  # CYS2 C (far from CYS1 N)
+    coords[9] = [8.5, 2.0, 0.0]  # CYS2 O
+    coords[10] = [5.5, 3.5, 0.0]  # CYS2 CB
+    coords[11] = [2.05, 0.0, 0.0]  # CYS2 SG (disulfide ~2.05 A)
     mol.coords = coords.reshape(len(names), 3, 1)
-    bonds = [(0, 1), (1, 2), (2, 3), (1, 4), (4, 5), (6, 7), (7, 8), (8, 9), (7, 10), (10, 11), (5, 11)]
+    bonds = [
+        (0, 1),
+        (1, 2),
+        (2, 3),
+        (1, 4),
+        (4, 5),
+        (6, 7),
+        (7, 8),
+        (8, 9),
+        (7, 10),
+        (10, 11),
+        (5, 11),
+    ]
     mol.bonds = np.array(bonds, dtype=np.uint32)
     mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
     return mol
@@ -248,11 +260,30 @@ def _incomplete_sidechain_isopeptide():
     mol.chain[:] = "A"
     mol.segid[:] = "P0"
     mol.record[:] = "ATOM"
-    acc = [[-1.33, 0, 0], [-2.5, 0.5, 0], [-3.5, 0, 0], [-3.5, -1, 0], [-4.5, 0.5, 0],
-           [-2.5, 2, 0], [-3.0, 3, 0], [-3.0, 4.5, 0], [-2.0, 5, 0]]
-    don = [[5, -1, 0], [4.5, 0, 0], [5.5, 1, 0], [5.5, 2, 0], [3, 0, 0],
-           [1.5, 0, 0], [0, 0, 0], [0.6, 1, 0]]  # CD (don idx 6 -> global na+6) at origin
-    mol.coords = np.array(acc + don, dtype=np.float32).reshape(na + len(don_names), 3, 1)
+    acc = [
+        [-1.33, 0, 0],
+        [-2.5, 0.5, 0],
+        [-3.5, 0, 0],
+        [-3.5, -1, 0],
+        [-4.5, 0.5, 0],
+        [-2.5, 2, 0],
+        [-3.0, 3, 0],
+        [-3.0, 4.5, 0],
+        [-2.0, 5, 0],
+    ]
+    don = [
+        [5, -1, 0],
+        [4.5, 0, 0],
+        [5.5, 1, 0],
+        [5.5, 2, 0],
+        [3, 0, 0],
+        [1.5, 0, 0],
+        [0, 0, 0],
+        [0.6, 1, 0],
+    ]  # CD (don idx 6 -> global na+6) at origin
+    mol.coords = np.array(acc + don, dtype=np.float32).reshape(
+        na + len(don_names), 3, 1
+    )
     acc_intra = [(0, 1), (1, 2), (2, 3), (2, 4), (1, 5), (5, 6), (6, 7), (7, 8)]
     don_intra = [(0, 1), (1, 2), (2, 3), (1, 4), (4, 5), (5, 6), (6, 7)]
     bonds = acc_intra + [(a + na, b + na) for a, b in don_intra] + [(0, na + 6)]
@@ -283,17 +314,42 @@ def _beta_amino_acid_residue():
     N-CA-C18-C (length 4, one carbon longer than a standard alpha amino acid),
     mirroring microcystin's Adda (1FJM, resname 1ZN). Fully protonated, explicit
     bonds. Used to check _process_custom_residue accepts non-alpha backbones."""
-    names = ["N", "CA", "CB", "C18", "C", "O",
-             "H", "H2", "HA", "HB1", "HB2", "HB3", "H181", "H182"]
-    elems = ["N", "C", "C", "C", "C", "O",
-             "H", "H", "H", "H", "H", "H", "H", "H"]
-    coords = np.array([
-        [0.0, 0.0, 0.0], [1.5, 0.0, 0.0], [1.5, -1.5, 0.0], [2.5, 1.0, 0.0],
-        [3.5, 0.5, 0.0], [3.5, -0.7, 0.0],
-        [-0.5, 0.8, 0.0], [-0.5, -0.8, 0.0], [1.5, 0.5, 0.9],
-        [0.6, -2.0, 0.0], [2.4, -2.0, 0.0], [1.5, -2.0, -0.9],
-        [2.4, 1.6, 0.8], [2.4, 1.6, -0.8],
-    ], dtype=np.float32)
+    names = [
+        "N",
+        "CA",
+        "CB",
+        "C18",
+        "C",
+        "O",
+        "H",
+        "H2",
+        "HA",
+        "HB1",
+        "HB2",
+        "HB3",
+        "H181",
+        "H182",
+    ]
+    elems = ["N", "C", "C", "C", "C", "O", "H", "H", "H", "H", "H", "H", "H", "H"]
+    coords = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.5, 0.0, 0.0],
+            [1.5, -1.5, 0.0],
+            [2.5, 1.0, 0.0],
+            [3.5, 0.5, 0.0],
+            [3.5, -0.7, 0.0],
+            [-0.5, 0.8, 0.0],
+            [-0.5, -0.8, 0.0],
+            [1.5, 0.5, 0.9],
+            [0.6, -2.0, 0.0],
+            [2.4, -2.0, 0.0],
+            [1.5, -2.0, -0.9],
+            [2.4, 1.6, 0.8],
+            [2.4, 1.6, -0.8],
+        ],
+        dtype=np.float32,
+    )
     mol = Molecule().empty(len(names))
     mol.name[:] = names
     mol.element[:] = elems
@@ -303,8 +359,21 @@ def _beta_amino_acid_residue():
     mol.segid[:] = "P0"
     mol.record[:] = "ATOM"
     mol.coords = coords.reshape(-1, 3, 1)
-    bonds = [(0, 1), (1, 2), (1, 3), (3, 4), (4, 5),
-             (0, 6), (0, 7), (1, 8), (2, 9), (2, 10), (2, 11), (3, 12), (3, 13)]
+    bonds = [
+        (0, 1),
+        (1, 2),
+        (1, 3),
+        (3, 4),
+        (4, 5),
+        (0, 6),
+        (0, 7),
+        (1, 8),
+        (2, 9),
+        (2, 10),
+        (2, 11),
+        (3, 12),
+        (3, 13),
+    ]
     mol.bonds = np.array(bonds, dtype=np.uint32)
     mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
     return mol
@@ -347,20 +416,65 @@ def _peptide_plus_crosslink_mol():
     classify it as protein - mirroring microcystin's Adda. The ALA2.C-BZA.N
     peptide bond is then a protein<->non-protein C-N bond; the ALA1.CB-LIG bond
     is a genuine side-chain crosslink."""
-    names = ["N", "CA", "C", "O", "CB",  # ALA1
-             "N", "CA", "C", "O", "CB",  # ALA2
-             "N", "CA", "CM", "C", "O",  # BZA (beta)
-             "C1"]                        # LIG
-    elems = ["N", "C", "C", "O", "C", "N", "C", "C", "O", "C",
-             "N", "C", "C", "C", "O", "C"]
+    names = [
+        "N",
+        "CA",
+        "C",
+        "O",
+        "CB",  # ALA1
+        "N",
+        "CA",
+        "C",
+        "O",
+        "CB",  # ALA2
+        "N",
+        "CA",
+        "CM",
+        "C",
+        "O",  # BZA (beta)
+        "C1",
+    ]  # LIG
+    elems = [
+        "N",
+        "C",
+        "C",
+        "O",
+        "C",
+        "N",
+        "C",
+        "C",
+        "O",
+        "C",
+        "N",
+        "C",
+        "C",
+        "C",
+        "O",
+        "C",
+    ]
     resid = [1] * 5 + [2] * 5 + [3] * 5 + [4]
     resname = ["ALA"] * 5 + ["ALA"] * 5 + ["BZA"] * 5 + ["LIG"]
-    coords = np.array([
-        [0, 0, 0], [1.5, 0, 0], [2.5, 1, 0], [2.5, 2, 0], [1.5, -1.5, 0],
-        [3.8, 1, 0], [5, 1, 0], [6, 2, 0], [6, 3, 0], [5, -0.5, 0],
-        [7.3, 2, 0], [8.5, 2, 0], [9.5, 3, 0], [10.5, 3.5, 0], [10.5, 4.5, 0],
-        [1.5, -3.0, 0],
-    ], dtype=np.float32)
+    coords = np.array(
+        [
+            [0, 0, 0],
+            [1.5, 0, 0],
+            [2.5, 1, 0],
+            [2.5, 2, 0],
+            [1.5, -1.5, 0],
+            [3.8, 1, 0],
+            [5, 1, 0],
+            [6, 2, 0],
+            [6, 3, 0],
+            [5, -0.5, 0],
+            [7.3, 2, 0],
+            [8.5, 2, 0],
+            [9.5, 3, 0],
+            [10.5, 3.5, 0],
+            [10.5, 4.5, 0],
+            [1.5, -3.0, 0],
+        ],
+        dtype=np.float32,
+    )
     mol = Molecule().empty(len(names))
     mol.name[:] = names
     mol.element[:] = elems
@@ -370,12 +484,23 @@ def _peptide_plus_crosslink_mol():
     mol.segid[:] = "P0"
     mol.record[:] = "ATOM"
     mol.coords = coords.reshape(-1, 3, 1)
-    bonds = [(0, 1), (1, 2), (2, 3), (1, 4),       # ALA1
-             (5, 6), (6, 7), (7, 8), (6, 9),       # ALA2
-             (10, 11), (11, 12), (12, 13), (13, 14),  # BZA: N-CA-CM-C (no CA-C)
-             (2, 5),    # ALA1.C - ALA2.N  (peptide, protein-protein)
-             (7, 10),   # ALA2.C - BZA.N   (peptide, protein<->non-protein C-N)
-             (4, 15)]   # ALA1.CB - LIG.C1 (side-chain crosslink)
+    bonds = [
+        (0, 1),
+        (1, 2),
+        (2, 3),
+        (1, 4),  # ALA1
+        (5, 6),
+        (6, 7),
+        (7, 8),
+        (6, 9),  # ALA2
+        (10, 11),
+        (11, 12),
+        (12, 13),
+        (13, 14),  # BZA: N-CA-CM-C (no CA-C)
+        (2, 5),  # ALA1.C - ALA2.N  (peptide, protein-protein)
+        (7, 10),  # ALA2.C - BZA.N   (peptide, protein<->non-protein C-N)
+        (4, 15),
+    ]  # ALA1.CB - LIG.C1 (side-chain crosslink)
     mol.bonds = np.array(bonds, dtype=np.uint32)
     mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
     return mol
@@ -437,7 +562,7 @@ def test_systemprepare_1u5u_heme_tyr_coordination_end_to_end():
        logic so the hydroxyl H is dropped AND the OH gets formal charge -1.
 
     Asserted invariants:
-      - TYR353 was renamed (no longer 'TYR')
+      - TYR353 keeps its canonical name, with the bucket name on its spec
       - TYR353 has no HH and its OH carries formal charge -1 (tyrosinate)
       - HEM net formal charge -1 (porphyrin -4 + Fe+3, matches MCPB.py)
       - Fe is in the +3 state
@@ -459,31 +584,37 @@ def test_systemprepare_1u5u_heme_tyr_coordination_end_to_end():
 
     pmol, _ = systemPrepare(mol, detect_specs=specs)
 
-    # TYR353 - tyrosinate
+    # TYR353 - tyrosinate. The junction bucket rename is force-field naming,
+    # applied only inside preparation to shield the residue from PDB2PQR, so
+    # the returned molecule keeps the canonical name and the bucket name is
+    # carried on the spec for whoever emits the matching topology file.
     m = (pmol.resid == 353) & (pmol.chain == "A")
     assert m.any(), "TYR353/A not found"
-    assert "TYR" not in pmol.resname[m].tolist(), (
-        f"TYR353 should be renamed, got {set(pmol.resname[m].tolist())}"
+    assert set(pmol.resname[m].tolist()) == {
+        "TYR"
+    }, f"TYR353 should keep its canonical name, got {set(pmol.resname[m].tolist())}"
+    tyr_spec = next(s for s in specs if s.resname == "TYR")
+    assert tyr_spec.new_resname is not None and tyr_spec.new_resname != "TYR", (
+        f"TYR353's spec should carry a bucket new_resname, got "
+        f"{tyr_spec.new_resname!r}"
     )
-    assert not (m & (pmol.name == "HH")).any(), (
-        "HH should be stripped on tyrosinate"
-    )
+    assert not (m & (pmol.name == "HH")).any(), "HH should be stripped on tyrosinate"
     oh = m & (pmol.name == "OH")
     assert oh.sum() == 1
-    assert pmol.formalcharge[oh].tolist() == [-1], (
-        f"OH should carry -1 charge, got {pmol.formalcharge[oh].tolist()}"
-    )
+    assert pmol.formalcharge[oh].tolist() == [
+        -1
+    ], f"OH should carry -1 charge, got {pmol.formalcharge[oh].tolist()}"
 
     # HEM - net -1, Fe+3, 4 Fe-N + Fe-Tyr-O + Fe-HOH-O all "mc"
     mh = (pmol.resid == 999) & (pmol.chain == "A") & (pmol.resname == "HEM")
-    assert int(pmol.formalcharge[mh].sum()) == -1, (
-        f"HEM net charge should be -1, got {pmol.formalcharge[mh].sum()}"
-    )
+    assert (
+        int(pmol.formalcharge[mh].sum()) == -1
+    ), f"HEM net charge should be -1, got {pmol.formalcharge[mh].sum()}"
     fe = mh & (pmol.name == "FE")
     assert fe.sum() == 1
-    assert pmol.formalcharge[fe].tolist() == [3], (
-        f"Fe should be +3, got {pmol.formalcharge[fe].tolist()}"
-    )
+    assert pmol.formalcharge[fe].tolist() == [
+        3
+    ], f"Fe should be +3, got {pmol.formalcharge[fe].tolist()}"
     fe_idx = int(np.where(fe)[0][0])
     b_mask = (pmol.bonds[:, 0] == fe_idx) | (pmol.bonds[:, 1] == fe_idx)
     partners = []
@@ -491,9 +622,9 @@ def test_systemprepare_1u5u_heme_tyr_coordination_end_to_end():
         a, c = pmol.bonds[bi]
         partner = int(c if a == fe_idx else a)
         partners.append(partner)
-        assert pmol.bondtype[bi] == "mc", (
-            f"Fe-{pmol.name[partner]} should be 'mc', got {pmol.bondtype[bi]!r}"
-        )
+        assert (
+            pmol.bondtype[bi] == "mc"
+        ), f"Fe-{pmol.name[partner]} should be 'mc', got {pmol.bondtype[bi]!r}"
     assert len(partners) == 6, f"expected 6 Fe coordinations, got {len(partners)}"
     partner_names = sorted(pmol.name[partners].tolist())
     # 4 pyrrole N + 1 Tyr-OH + 1 water-O
@@ -502,7 +633,7 @@ def test_systemprepare_1u5u_heme_tyr_coordination_end_to_end():
     assert partner_names.count("NC") == 1
     assert partner_names.count("ND") == 1
     assert "OH" in partner_names  # tyrosinate
-    assert "O" in partner_names   # axial water
+    assert "O" in partner_names  # axial water
 
 
 def test_systemprepare_ligand():
@@ -706,6 +837,124 @@ def test_rna_protein_complex():
     )
 
 
+def test_rna_resnames_are_canonical():
+    """systemPrepare must not leak PDB2PQR's R-prefixed RNA residue classes
+    (RA, RC, RG, RU and their 5'/3' terminal variants) into its output.
+    ``_prepare_nucleics`` renames canonical RNA to these names before the
+    PDB2PQR call because PDB2PQR needs the prefix to tell RNA from DNA
+    internally, but that is an input convention for PDB2PQR: moleculekit's
+    canonical residue set has no R-prefixed forms, so a residue left renamed
+    would be misclassified as a non-standard ligand by any later detection
+    pass."""
+    test_home = os.path.join(curr_dir, "test_systemprepare", "test-rna-protein-complex")
+    mol = Molecule(os.path.join(test_home, "3WBM.pdb"))
+
+    pmol, _ = systemPrepare(mol, verbose=False)
+
+    resnames = set(pmol.resname.tolist())
+    leaked_rna_names = {
+        "RA",
+        "RA3",
+        "RA5",
+        "RC",
+        "RC3",
+        "RC5",
+        "RG",
+        "RG3",
+        "RG5",
+        "RU",
+        "RU3",
+        "RU5",
+    }
+    assert not (resnames & leaked_rna_names), (
+        f"systemPrepare leaked PDB2PQR's R-prefixed RNA names: "
+        f"{resnames & leaked_rna_names}"
+    )
+    assert {"A", "C", "G", "U"} <= resnames
+
+
+def test_rna_redetect_reports_no_specs():
+    """A non-standard-residue detection pass over an already-prepared RNA
+    structure must report nothing for the canonical RNA. Before the
+    R-prefix fix, PDB2PQR's own RA/RC/RG/RU naming survived into
+    systemPrepare's output, and since moleculekit's canonical residue set
+    has no R-prefixed forms, detectNonStandardResidues mistook every
+    canonical RNA residue for a non-standard ligand requiring a GAFF2
+    template (40 ``LigandSpec`` entries for the 3WBM fixture)."""
+    from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
+
+    test_home = os.path.join(curr_dir, "test_systemprepare", "test-rna-protein-complex")
+    mol = Molecule(os.path.join(test_home, "3WBM.pdb"))
+
+    pmol, _ = systemPrepare(mol, verbose=False)
+    specs = detectNonStandardResidues(pmol, guess_bonds=False)
+
+    assert len(specs) == 0, (
+        f"re-detection over the prepared RNA reported {len(specs)} specs, "
+        f"expected none: {specs}"
+    )
+
+
+def test_rna_idempotent():
+    """Preparing an already-prepared RNA-protein complex a second time must
+    reproduce the same atom count, must not re-leak PDB2PQR's R-prefixed RNA
+    names, and the internal non-standard-residue auto-detection on the
+    second pass must not misclassify the canonical RNA as non-standard
+    ligands. Before the R-prefix fix, the second pass's own auto-detection
+    saw the still-R-prefixed RNA (unrecognized as canonical) and reported 40
+    ``LigandSpec`` entries for it, and the structure lost 2 atoms and gained
+    a spurious ``LYN``."""
+    test_home = os.path.join(curr_dir, "test_systemprepare", "test-rna-protein-complex")
+    mol = Molecule(os.path.join(test_home, "3WBM.pdb"))
+
+    pmol1, specs1 = systemPrepare(mol, verbose=False)
+    pmol2, specs2 = systemPrepare(pmol1.copy(), verbose=False)
+
+    assert pmol1.numAtoms == pmol2.numAtoms
+    assert len(specs2) == 0, (
+        f"re-preparation's internal auto-detect misclassified {len(specs2)} "
+        f"residues as non-standard: {specs2}"
+    )
+
+    leaked_rna_names = {
+        "RA",
+        "RA3",
+        "RA5",
+        "RC",
+        "RC3",
+        "RC5",
+        "RG",
+        "RG3",
+        "RG5",
+        "RU",
+        "RU3",
+        "RU5",
+    }
+    assert not (set(pmol1.resname.tolist()) & leaked_rna_names)
+    assert not (set(pmol2.resname.tolist()) & leaked_rna_names)
+
+
+def test_restore_rna_resnames_collision_guard():
+    """A single-atom residue named RU is PDB2PQR's own convention colliding
+    with the ruthenium ion element code, not RNA uracil, and must not be
+    renamed to U. The rename is gated on the residue actually carrying a
+    nucleic backbone link atom (P, O3', C3', ...); a bare ion has none."""
+    from moleculekit.tools.preparation import _restore_rna_resnames
+
+    mol = Molecule().empty(1)
+    mol.resname[:] = "RU"
+    mol.name[:] = "RU"
+    mol.element[:] = "Ru"
+    mol.resid[:] = 1
+    mol.chain[:] = "A"
+    mol.segid[:] = "I0"
+    mol.coords = np.zeros((1, 3, 1), dtype=np.float32)
+
+    _restore_rna_resnames(mol)
+
+    assert mol.resname[0] == "RU"
+
+
 def test_dna():
     test_home = os.path.join(curr_dir, "test_systemprepare", "test-dna")
     mol = Molecule(os.path.join(test_home, "1BNA.pdb"))
@@ -885,11 +1134,17 @@ def test_capture_bonds_preserves_macrocycle_closure():
     mol.coords = np.zeros((12, 3, 1), dtype=np.float32)
     mol.bonds = np.array(
         [
-            [0, 1], [1, 2], [2, 3],     # res1 intra
-            [4, 5], [5, 6], [6, 7],     # res2 intra
-            [8, 9], [9, 10], [10, 11],  # res3 intra
-            [2, 4],   # res1.C - res2.N  (consecutive peptide)
-            [6, 8],   # res2.C - res3.N  (consecutive peptide)
+            [0, 1],
+            [1, 2],
+            [2, 3],  # res1 intra
+            [4, 5],
+            [5, 6],
+            [6, 7],  # res2 intra
+            [8, 9],
+            [9, 10],
+            [10, 11],  # res3 intra
+            [2, 4],  # res1.C - res2.N  (consecutive peptide)
+            [6, 8],  # res2.C - res3.N  (consecutive peptide)
             [10, 0],  # res3.C - res1.N  (head-to-tail closure)
         ],
         dtype=np.uint32,
@@ -1004,9 +1259,9 @@ def test_capture_and_restore_bonds():
     mol_can.segid[:] = ["P"] * 3
     mol_can.bonds = np.array([[0, 1], [1, 2]], dtype=np.uint32)
     mol_can.bondtype = np.array(["1", "1"], dtype=object)
-    assert _capture_bonds(mol_can, detect_specs=[]) == [], (
-        "bonds inside a canonical, non-spec residue must be dropped"
-    )
+    assert (
+        _capture_bonds(mol_can, detect_specs=[]) == []
+    ), "bonds inside a canonical, non-spec residue must be dropped"
 
     # Listing the canonical residue in detect_specs flips capture back on.
     spec = LigandSpec(
@@ -1065,7 +1320,9 @@ def test_restore_termini_bonds_terminal_atoms():
     assert frozenset((6, 7)) in bondset, "HO must be bonded to OXT (NEUTRAL-CTERM)"
     # The stray HG in residue 3 has no standard-terminus name; it must
     # remain unbonded.
-    assert not any(10 in pair for pair in bondset), "non-terminal orphan must be left alone"
+    assert not any(
+        10 in pair for pair in bondset
+    ), "non-terminal orphan must be left alone"
     assert len(mol.bonds) == len(mol.bondtype), "bonds/bondtype length mismatch"
 
 
@@ -1201,9 +1458,9 @@ def test_systemprepare_errors_on_untemplated_ncaa():
     msg = str(exc.value)
     assert "ALC9:A" in msg, f"error should name ALC9:A, got: {msg}"
     assert "NLE15:A" in msg, f"error should name NLE15:A, got: {msg}"
-    assert "templateResidueFromSmiles" in msg, (
-        f"error should point at templateResidueFromSmiles, got: {msg}"
-    )
+    assert (
+        "templateResidueFromSmiles" in msg
+    ), f"error should point at templateResidueFromSmiles, got: {msg}"
 
 
 def test_5vbl_restore_missing_sidechains():
@@ -1254,9 +1511,13 @@ def test_5vbl_restore_missing_sidechains():
     for (resid, resname), _ in expected_heavy.items():
         mask = (mol.resid == resid) & (mol.resname == resname)
         heavy = set(mol.name[mask & (mol.element != "H")])
-        assert heavy == {"N", "CA", "C", "O", "CB"}, (
-            f"fixture {resname}{resid} should be backbone+CB only, got {heavy}"
-        )
+        assert heavy == {
+            "N",
+            "CA",
+            "C",
+            "O",
+            "CB",
+        }, f"fixture {resname}{resid} should be backbone+CB only, got {heavy}"
 
     pmol, _ = systemPrepare(mol, verbose=False, restore_missing_sidechains=True)
 
@@ -1282,9 +1543,9 @@ def test_5vbl_restore_missing_sidechains():
         mask = (pmol.resid == resid) & (pmol.resname == resname)
         assert mask.any(), f"NCAA {resname}{resid} lost from output"
         heavy = (mask & (pmol.element != "H")).sum()
-        assert heavy == n_heavy, (
-            f"{resname}{resid}: expected {n_heavy} heavy atoms, got {heavy}"
-        )
+        assert (
+            heavy == n_heavy
+        ), f"{resname}{resid}: expected {n_heavy} heavy atoms, got {heavy}"
 
 
 def test_no_oxt_on_midchain_residue():
@@ -1304,9 +1565,7 @@ def test_no_oxt_on_midchain_residue():
     """
     from moleculekit.util import sequenceID
 
-    fixture = os.path.join(
-        curr_dir, "test_nonstandard_residues", "8QFZ_B.cif"
-    )
+    fixture = os.path.join(curr_dir, "test_nonstandard_residues", "8QFZ_B.cif")
     mol = Molecule(fixture)
     pmol, _ = systemPrepare(mol, verbose=False)
 
@@ -1323,9 +1582,7 @@ def test_no_oxt_on_midchain_residue():
         seg_mask = (pmol.segid == seg) & (pmol.chain == chain) & protein_mask
         last_res = int(res_idx[seg_mask].max())
         if int(res_idx[i]) != last_res:
-            bad.append(
-                f"{pmol.resname[i]}{pmol.resid[i]}{pmol.insertion[i]}:{chain}"
-            )
+            bad.append(f"{pmol.resname[i]}{pmol.resid[i]}{pmol.insertion[i]}:{chain}")
     assert not bad, (
         f"Found OXT on non-C-terminal residue(s): {bad}. "
         f"PDB2PQR placed OXT on a residue that's followed by another "
@@ -1351,9 +1608,7 @@ def test_hydrogen_bonds_match_geometry():
     BEFORE bond capture so captured names are stable AMBER names that
     don't collide with anything PDB2PQR may add later.
     """
-    fixture = os.path.join(
-        curr_dir, "test_nonstandard_residues", "8QFZ_B.cif"
-    )
+    fixture = os.path.join(curr_dir, "test_nonstandard_residues", "8QFZ_B.cif")
     mol = Molecule(fixture)
     pmol, _ = systemPrepare(mol, verbose=False)
 
@@ -1372,8 +1627,7 @@ def test_hydrogen_bonds_match_geometry():
                 f"d={d:.2f}"
             )
     assert not bad, (
-        f"Hydrogens bonded to topologically wrong heavy atom (d > 1.3 A): "
-        f"{bad}"
+        f"Hydrogens bonded to topologically wrong heavy atom (d > 1.3 A): " f"{bad}"
     )
 
 
@@ -1459,9 +1713,9 @@ def test_restore_formal_charges_survives_rename():
     by_name = {str(n): int(c) for n, c in zip(mol2.name, mol2.formalcharge)}
     assert by_name["N1"] == 1, "N1 charge must be restored after rename"
     assert by_name["O1"] == -1, "O1 charge must be restored after rename"
-    assert by_name["N"] == 0, (
-        "canonical ALA N must not be touched (not in detect_specs)"
-    )
+    assert (
+        by_name["N"] == 0
+    ), "canonical ALA N must not be touched (not in detect_specs)"
 
 
 def test_restore_formal_charges_drops_missing_atom():
@@ -1609,7 +1863,9 @@ def _nterm_spec():
 
 def _n_h_names(mol):
     n = int(np.where(mol.name == "N")[0][0])
-    return sorted(str(mol.name[nb]) for nb in mol.getNeighbors(n) if mol.element[nb] == "H")
+    return sorted(
+        str(mol.name[nb]) for nb in mol.getNeighbors(n) if mol.element[nb] == "H"
+    )
 
 
 def test_charge_nonstandard_termini_nterm_primary():
@@ -1829,7 +2085,9 @@ def test_backfill_blank_chain_lipid_end_to_end():
     # Regression: a protein (chain A) plus a lipid that arrives with a blank
     # chain and segid MEMB used to crash in _create_table because PDB2PQR
     # relabelled the blank chain. It must now complete, with the lipid kept.
-    mol = Molecule(os.path.join(curr_dir, "test_systemprepare", "dialanine_popc_memb.pdb"))
+    mol = Molecule(
+        os.path.join(curr_dir, "test_systemprepare", "dialanine_popc_memb.pdb")
+    )
     assert (mol.chain[mol.resname == "POPC"] == "").all()  # precondition
 
     pmol, _specs, df = systemPrepare(mol, return_details=True, verbose=False)
@@ -1941,8 +2199,8 @@ def test_lossless_handoff_preserves_4char_resname_and_large_resid():
     )
     lip = mol.resname == "POPC"
     assert int(lip.sum()) == 134  # fixture precondition
-    mol.chain[lip] = "B"      # give it a chain (isolate from chain-backfill)
-    mol.resid[lip] = 10001    # large resid, set in memory (not yet truncated)
+    mol.chain[lip] = "B"  # give it a chain (isolate from chain-backfill)
+    mol.resid[lip] = 10001  # large resid, set in memory (not yet truncated)
 
     pmol, _specs, df = systemPrepare(mol, return_details=True, verbose=False)
 
@@ -2049,9 +2307,9 @@ def test_amber_name_inverse_map_invariants():
     assert "LYN" in inverse, "LYN has no rename in PDB2PQR's AMBER names data"
     for resname, mapping in inverse.items():
         assert resname in _AMBER_NAME_INVERSE_RESIDUES
-        assert len(set(mapping.values())) == len(mapping), (
-            f"{resname} inverse is not one-to-one: {mapping}"
-        )
+        assert len(set(mapping.values())) == len(
+            mapping
+        ), f"{resname} inverse is not one-to-one: {mapping}"
     # Residues we must never rewrite, even though they carry renames.
     for excluded in ("WAT", "DA", "RG", "NALA"):
         assert excluded not in inverse
@@ -2108,3 +2366,51 @@ def test_lyn_with_all_three_hz_is_not_given_a_duplicate():
     records = [_rec("HZ1"), _rec("HZ2"), _rec("HZ3")]
     _apply_amber_name_inverse(records, io.get_definitions())
     assert [r.name for r in records] == ["HZ1", "HZ2", "HZ3"]
+
+
+def test_reference_prepared_pdbs_have_no_overvalent_atoms():
+    """Every committed ``*_prepared.pdb`` reference must be chemically valid
+    on its own, independent of any builder rebuilding it downstream: no
+    oxygen or nitrogen may exceed its maximum valence (its hydrogens plus
+    its heavy-atom neighbors, both found by distance only). This is a
+    structural, naming-agnostic check -- it needs no bond records and
+    cannot be fooled by atom or residue naming -- so it catches classes of
+    bug like a glycosidic oxygen carrying both a hydroxyl hydrogen and a
+    bond to the next residue's anomeric carbon (three-coordinate, i.e.
+    over-valent)."""
+    import glob
+
+    maxval = {"O": 2, "N": 4}
+    h_cut, heavy_cut = 1.25, 1.75
+
+    offenders = []
+    for path in sorted(
+        glob.glob(os.path.join(curr_dir, "**", "*_prepared.pdb"), recursive=True)
+    ):
+        m = Molecule(path)
+        xyz = m.coords[:, :, 0]
+        el = np.array([str(e) for e in m.element])
+        heavy = np.where(el != "H")[0]
+        hidx = np.where(el == "H")[0]
+        h_xyz = xyz[hidx]
+        heavy_xyz = xyz[heavy]
+        for i in heavy:
+            e = el[i]
+            if e not in maxval:
+                continue
+            n_h = (
+                int(np.sum(np.linalg.norm(h_xyz - xyz[i], axis=1) < h_cut))
+                if len(hidx)
+                else 0
+            )
+            d_heavy = np.linalg.norm(heavy_xyz - xyz[i], axis=1)
+            n_heavy = int(np.sum((d_heavy < heavy_cut) & (d_heavy > 0.1)))
+            if n_h + n_heavy > maxval[e]:
+                offenders.append(
+                    f"{os.path.relpath(path, curr_dir)}: "
+                    f"{m.resname[i]}.{m.name[i]} ({n_h + n_heavy} > {maxval[e]})"
+                )
+
+    assert not offenders, "Over-valent atom(s) in reference PDB(s):\n" + "\n".join(
+        offenders
+    )

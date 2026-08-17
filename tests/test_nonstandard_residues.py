@@ -99,11 +99,10 @@ def test_1u5u_heme_iron_tyr_coordination():
     mol = Molecule("1u5u")
     specs = detectNonStandardResidues(mol)
 
-    tyrs = [
-        s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname == "TYR"
+    tyrs = [s for s in specs if isinstance(s, ChainResidueSpec) and s.resname == "TYR"]
+    hems = [
+        s for s in specs if isinstance(s, CovalentLigandSpec) and s.resname == "HEM"
     ]
-    hems = [s for s in specs if isinstance(s, CovalentLigandSpec) and s.resname == "HEM"]
 
     # One TYR353 per chain (A, B) gets flagged, anchored on OH.
     assert len(tyrs) == 2
@@ -116,9 +115,7 @@ def test_1u5u_heme_iron_tyr_coordination():
     # HEM is demoted from free LigandSpec to CovalentLigandSpec.
     assert len(hems) == 2
     assert {h.residue.chain for h in hems} == {"A", "B"}
-    assert not any(
-        isinstance(s, LigandSpec) and s.resname == "HEM" for s in specs
-    )
+    assert not any(isinstance(s, LigandSpec) and s.resname == "HEM" for s in specs)
 
 
 def test_3ptb_calcium_coordination_skips_ion_residue():
@@ -154,9 +151,15 @@ def test_1m63_free_iron_coordination_skipped():
     # / scaffold spurious classifications from the metal-coordination bonds).
     assert all(isinstance(s, ChainResidueSpec) for s in specs)
     from collections import Counter
+
     counts = Counter(s.resname for s in specs)
     assert counts == {
-        "MLE": 8, "DAL": 2, "MVA": 2, "BMT": 2, "ABA": 2, "SAR": 2
+        "MLE": 8,
+        "DAL": 2,
+        "MVA": 2,
+        "BMT": 2,
+        "ABA": 2,
+        "SAR": 2,
     }, counts
 
 
@@ -180,8 +183,17 @@ def _backbone_n_acyl_isopeptide(acceptor_resname):
     mol.segid[:] = "P0"
     mol.record[:] = "ATOM"
     acc_xyz = [[-1.33, 0, 0], [-2.5, 0.5, 0], [-3.5, 0, 0], [-3.5, -1, 0], [-2.5, 2, 0]]
-    don_xyz = [[5, -1, 0], [4.5, 0, 0], [5.5, 1, 0], [5.5, 2, 0], [3, 0, 0],
-               [1.5, 0, 0], [0, 0, 0], [0.6, 1, 0], [0.6, -1, 0]]  # CD (idx 6) at origin
+    don_xyz = [
+        [5, -1, 0],
+        [4.5, 0, 0],
+        [5.5, 1, 0],
+        [5.5, 2, 0],
+        [3, 0, 0],
+        [1.5, 0, 0],
+        [0, 0, 0],
+        [0.6, 1, 0],
+        [0.6, -1, 0],
+    ]  # CD (idx 6) at origin
     mol.coords = np.array(acc_xyz + don_xyz, dtype=np.float32).reshape(-1, 3, 1)
     acc_intra = [(0, 1), (1, 2), (2, 3), (1, 4)]
     don_intra = [(0, 1), (1, 2), (2, 3), (1, 4), (4, 5), (5, 6), (6, 7), (6, 8)]
@@ -243,7 +255,8 @@ def test_8qfz_scaffolded_peptide():
 
     scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
     renames = [
-        s for s in specs
+        s
+        for s in specs
         if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
 
@@ -268,7 +281,8 @@ def test_single_anchor_demotes_scaffold_to_covalent_ligand():
     specs = detectNonStandardResidues(mol)
     cov = [s for s in specs if isinstance(s, CovalentLigandSpec)]
     renames = [
-        s for s in specs
+        s
+        for s in specs
         if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
     scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
@@ -286,18 +300,23 @@ def test_5vbl_ncaas_and_free_ligand():
     specs = detectNonStandardResidues(mol)
 
     ncaas = [
-        s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname not in PROTEIN_RESNAMES
+        s
+        for s in specs
+        if isinstance(s, ChainResidueSpec)
+        and s.resname not in PROTEIN_RESNAMES
         and s.anchor_atom is None
     ]
     crosslinked = [
-        s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname not in PROTEIN_RESNAMES
+        s
+        for s in specs
+        if isinstance(s, ChainResidueSpec)
+        and s.resname not in PROTEIN_RESNAMES
         and s.anchor_atom is not None
     ]
     ligands = [s for s in specs if isinstance(s, LigandSpec)]
     renames = [
-        s for s in specs
+        s
+        for s in specs
         if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
     scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
@@ -345,7 +364,8 @@ def test_1r1j_covalent_glycosylation():
     asn_renames = [
         s
         for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname == "ASN"
+        if isinstance(s, ChainResidueSpec)
+        and s.resname == "ASN"
         and s.new_resname is not None
     ]
     assert len(gly) == 3
@@ -372,12 +392,15 @@ def test_8qu4_ncaa_crosslink():
     specs = detectNonStandardResidues(mol)
 
     crosslinked = [
-        s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname not in PROTEIN_RESNAMES
+        s
+        for s in specs
+        if isinstance(s, ChainResidueSpec)
+        and s.resname not in PROTEIN_RESNAMES
         and s.anchor_atom is not None
     ]
     renames = [
-        s for s in specs
+        s
+        for s in specs
         if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
     scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
@@ -403,8 +426,7 @@ def test_scaffold_anchored_on_ncaa_sidechains():
     # Replace the existing NLE.CE-MK8.CE staple with two anchor bonds to a
     # synthetic 2-carbon SCF residue.
     keep_idx = [
-        i for i, b in enumerate(mol.bonds)
-        if {int(b[0]), int(b[1])} != {nle_ce, mk8_ce}
+        i for i, b in enumerate(mol.bonds) if {int(b[0]), int(b[1])} != {nle_ce, mk8_ce}
     ]
     mol.bonds = mol.bonds[keep_idx]
     mol.bondtype = mol.bondtype[keep_idx]
@@ -431,12 +453,15 @@ def test_scaffold_anchored_on_ncaa_sidechains():
     specs = detectNonStandardResidues(mol)
     scaffolds = [s for s in specs if isinstance(s, ScaffoldSpec)]
     crosslinked = [
-        s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname not in PROTEIN_RESNAMES
+        s
+        for s in specs
+        if isinstance(s, ChainResidueSpec)
+        and s.resname not in PROTEIN_RESNAMES
         and s.anchor_atom is not None
     ]
     renames = [
-        s for s in specs
+        s
+        for s in specs
         if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
 
@@ -461,12 +486,15 @@ def test_canonical_to_ncaa_crosslink():
 
     specs = detectNonStandardResidues(mol)
     crosslinked = [
-        s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname not in PROTEIN_RESNAMES
+        s
+        for s in specs
+        if isinstance(s, ChainResidueSpec)
+        and s.resname not in PROTEIN_RESNAMES
         and s.anchor_atom is not None
     ]
     renames = [
-        s for s in specs
+        s
+        for s in specs
         if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
 
@@ -500,7 +528,8 @@ def test_distinct_partner_resnames_get_distinct_renames():
 
     specs = detectNonStandardResidues(a)
     renames = [
-        s for s in specs
+        s
+        for s in specs
         if isinstance(s, ChainResidueSpec) and s.resname in PROTEIN_RESNAMES
     ]
     assert len(renames) == 2
@@ -512,9 +541,7 @@ def test_distinct_partner_resnames_get_distinct_renames():
 
 def test_ncaa_spec_default_new_resname():
     """new_resname defaults to None on ChainResidueSpec and accepts a string when given."""
-    rid = UniqueResidueID(
-        resname="ALC", chain="A", resid=1, insertion="", segid="A"
-    )
+    rid = UniqueResidueID(resname="ALC", chain="A", resid=1, insertion="", segid="A")
     s1 = ChainResidueSpec(resname="ALC", residue=rid, is_n_term=False, is_c_term=False)
     assert s1.new_resname is None
     s2 = ChainResidueSpec(
@@ -527,7 +554,10 @@ def test_ncaa_spec_default_new_resname():
     assert s2.new_resname == "NALC"
 
     s3 = ChainResidueSpec(
-        resname="ALC", residue=rid, is_n_term=False, is_c_term=False,
+        resname="ALC",
+        residue=rid,
+        is_n_term=False,
+        is_c_term=False,
         anchor_atom="CE",
     )
     assert s3.new_resname is None
@@ -544,15 +574,15 @@ def test_ncaa_spec_default_new_resname():
 
 def test_disambiguate_single_config_no_rename():
     """One NCAA resname, all instances mid-chain -> no rename."""
-    rid_a = UniqueResidueID(
-        resname="ALC", chain="A", resid=1, insertion="", segid="A"
-    )
-    rid_b = UniqueResidueID(
-        resname="ALC", chain="A", resid=2, insertion="", segid="A"
-    )
+    rid_a = UniqueResidueID(resname="ALC", chain="A", resid=1, insertion="", segid="A")
+    rid_b = UniqueResidueID(resname="ALC", chain="A", resid=2, insertion="", segid="A")
     specs = [
-        ChainResidueSpec(resname="ALC", residue=rid_a, is_n_term=False, is_c_term=False),
-        ChainResidueSpec(resname="ALC", residue=rid_b, is_n_term=False, is_c_term=False),
+        ChainResidueSpec(
+            resname="ALC", residue=rid_a, is_n_term=False, is_c_term=False
+        ),
+        ChainResidueSpec(
+            resname="ALC", residue=rid_b, is_n_term=False, is_c_term=False
+        ),
     ]
     _disambiguate_terminus_resnames(specs)
     assert all(s.new_resname is None for s in specs)
@@ -564,9 +594,7 @@ def test_disambiguate_two_configs_renames_nonmid():
     rid_mid = UniqueResidueID(
         resname="ALC", chain="A", resid=2, insertion="", segid="A"
     )
-    rid_n = UniqueResidueID(
-        resname="ALC", chain="A", resid=1, insertion="", segid="A"
-    )
+    rid_n = UniqueResidueID(resname="ALC", chain="A", resid=1, insertion="", segid="A")
     s_mid = ChainResidueSpec(
         resname="ALC", residue=rid_mid, is_n_term=False, is_c_term=False
     )
@@ -580,6 +608,7 @@ def test_disambiguate_two_configs_renames_nonmid():
 
 def test_disambiguate_three_configs():
     """Mid + N + C-term all present -> mid stays, N -> NALC, C -> CALC."""
+
     def _spec(i, n, c):
         return ChainResidueSpec(
             resname="ALC",
@@ -624,15 +653,19 @@ def test_disambiguate_applies_to_crosslinked_ncaa():
     rid_mid = UniqueResidueID(
         resname="MK8", chain="A", resid=2, insertion="", segid="A"
     )
-    rid_n = UniqueResidueID(
-        resname="MK8", chain="A", resid=1, insertion="", segid="A"
-    )
+    rid_n = UniqueResidueID(resname="MK8", chain="A", resid=1, insertion="", segid="A")
     s_mid = ChainResidueSpec(
-        resname="MK8", residue=rid_mid, is_n_term=False, is_c_term=False,
+        resname="MK8",
+        residue=rid_mid,
+        is_n_term=False,
+        is_c_term=False,
         anchor_atom="CE",
     )
     s_n = ChainResidueSpec(
-        resname="MK8", residue=rid_n, is_n_term=True, is_c_term=False,
+        resname="MK8",
+        residue=rid_n,
+        is_n_term=True,
+        is_c_term=False,
         anchor_atom="CE",
     )
     _disambiguate_terminus_resnames([s_mid, s_n])
@@ -692,9 +725,7 @@ def test_disambiguate_4char_input_raises():
 def test_disambiguate_ignores_other_spec_types():
     """The disambiguator only touches ChainResidueSpec entries with non-protein resname.
     Other specs (LigandSpec, ScaffoldSpec, etc.) are left untouched."""
-    rid = UniqueResidueID(
-        resname="OLC", chain="B", resid=1, insertion="", segid="B"
-    )
+    rid = UniqueResidueID(resname="OLC", chain="B", resid=1, insertion="", segid="B")
     other = LigandSpec(resname="OLC", residue=rid)
     s_mid = ChainResidueSpec(
         resname="ALC",
@@ -717,14 +748,15 @@ def test_detect_no_rename_when_all_one_config():
     mol = Molecule(VBL_PDB)
     specs = detectNonStandardResidues(mol)
     ncaas = [
-        s for s in specs
+        s
+        for s in specs
         if isinstance(s, ChainResidueSpec) and s.resname not in PROTEIN_RESNAMES
     ]
     assert len(ncaas) >= 5
     for s in ncaas:
-        assert s.new_resname is None, (
-            f"{s.resname} unexpectedly got new_resname={s.new_resname!r}"
-        )
+        assert (
+            s.new_resname is None
+        ), f"{s.resname} unexpectedly got new_resname={s.new_resname!r}"
 
 
 def test_detect_renames_when_resname_shared_across_configs():
@@ -738,13 +770,10 @@ def test_detect_renames_when_resname_shared_across_configs():
 
     specs = detectNonStandardResidues(mol)
     alc_specs = [
-        s
-        for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname == "ALC"
+        s for s in specs if isinstance(s, ChainResidueSpec) and s.resname == "ALC"
     ]
     assert len(alc_specs) == 2, (
-        f"expected 2 ALC specs (chain A mid + chain Z N-term), got "
-        f"{len(alc_specs)}"
+        f"expected 2 ALC specs (chain A mid + chain Z N-term), got " f"{len(alc_specs)}"
     )
 
     by_chain = {str(s.residue.chain): s for s in alc_specs}
@@ -761,9 +790,7 @@ def test_detect_unaffected_groups_left_alone():
 
     specs = detectNonStandardResidues(mol)
     hrg_specs = [
-        s
-        for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname == "HRG"
+        s for s in specs if isinstance(s, ChainResidueSpec) and s.resname == "HRG"
     ]
     for s in hrg_specs:
         assert s.new_resname is None, (
@@ -835,9 +862,17 @@ def test_apply_detect_spec_renames_skips_none():
     assert (mol.resname == before).all()
 
 
-def test_apply_detect_spec_renames_just_renames():
+@pytest.mark.parametrize(
+    "new_resname,expected",
+    [("CYM", "CYM"), ("CY1", "CYS")],
+    ids=["protonation-variant-applied", "junction-bucket-skipped"],
+)
+def test_apply_detect_spec_renames_only_protonation_variants(new_resname, expected):
     """With H-drop moved upstream to _template_renamed_canonical_residues,
-    _apply_detect_spec_renames is now a rename-only safety net."""
+    _apply_detect_spec_renames is a rename-only safety net, and it renames only
+    to PDB2PQR protonation variants. A junction bucket name is force-field
+    naming, restored on the way out of systemPrepare and reapplied by
+    parameterization, so it must not be re-applied here."""
     from moleculekit.tools.preparation import _apply_detect_spec_renames
 
     mol = Molecule().empty(4)
@@ -855,10 +890,10 @@ def test_apply_detect_spec_renames_just_renames():
         residue=UniqueResidueID(
             resname="CYS", chain="A", resid=1, insertion="", segid="A"
         ),
-        new_resname="CY1",
+        new_resname=new_resname,
     )
     _apply_detect_spec_renames(mol, [spec])
-    assert (mol.resname == "CY1").all()
+    assert (mol.resname == expected).all()
     assert "HG" in set(mol.name)  # NOT dropped here anymore
     assert mol.numAtoms == 4
 
@@ -872,11 +907,18 @@ def test_anchor_table_covers_all_anchors():
     from moleculekit.tools._anchor_variants import ANCHOR_TABLE
 
     expected = {
-        ("CYS", "SG"), ("LYS", "NZ"), ("TYR", "OH"),
-        ("HIS", "ND1"), ("HIS", "NE2"),
-        ("SER", "OG"), ("THR", "OG1"),
+        ("CYS", "SG"),
+        ("LYS", "NZ"),
+        ("TYR", "OH"),
+        ("HIS", "ND1"),
+        ("HIS", "NE2"),
+        ("SER", "OG"),
+        ("THR", "OG1"),
         ("ASN", "ND2"),
-        ("GLU", "CD"), ("ASP", "CG"), ("ASN", "CG"), ("GLN", "CD"),
+        ("GLU", "CD"),
+        ("ASP", "CG"),
+        ("ASN", "CG"),
+        ("GLN", "CD"),
     }
     assert set(ANCHOR_TABLE) == expected
 
@@ -921,6 +963,7 @@ def test_canonical_anchor_smiles():
     assert canonical_anchor_smiles("CYX", "SG") == RESIDUE_SMILES["CYS"]
     assert canonical_anchor_smiles("LYN", "NZ") == RESIDUE_SMILES["LYN"]
     import pytest
+
     with pytest.raises(ValueError, match=r"MET.*SD"):
         canonical_anchor_smiles("MET", "SD")
 
@@ -930,7 +973,8 @@ def test_5vbl_glu_lys_isopeptide_emits_chain_residue_specs():
     The detector emits a ChainResidueSpec for each end with auto-
     generated X## new_resnames."""
     from moleculekit.tools.nonstandard_residues import (
-        ChainResidueSpec, detectNonStandardResidues,
+        ChainResidueSpec,
+        detectNonStandardResidues,
     )
 
     mol = Molecule(VBL_PDB)
@@ -939,9 +983,9 @@ def test_5vbl_glu_lys_isopeptide_emits_chain_residue_specs():
     assert mol.numAtoms == n_atoms_before  # non-mutating
 
     canonical_crosslinks = [
-        s for s in specs
-        if isinstance(s, ChainResidueSpec)
-        and s.resname in ("GLU", "LYS")
+        s
+        for s in specs
+        if isinstance(s, ChainResidueSpec) and s.resname in ("GLU", "LYS")
     ]
     by_resname = {s.resname: s for s in canonical_crosslinks}
     assert set(by_resname) == {"GLU", "LYS"}
@@ -971,8 +1015,7 @@ def test_cyx_disulfide_emits_chain_residue_specs():
 
     specs = detectNonStandardResidues(cys2)
     cys_specs = [
-        s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname == "CYS"
+        s for s in specs if isinstance(s, ChainResidueSpec) and s.resname == "CYS"
     ]
     assert len(cys_specs) == 2
     assert {s.new_resname for s in cys_specs} == {"CYX"}
@@ -984,13 +1027,14 @@ def test_8qfz_three_cys_distinct_buckets():
     mid, C-term). Each gets its own auto-generated X## name because the
     bucket key (resname, anchor, partner, n_term, c_term) differs."""
     from moleculekit.tools.nonstandard_residues import (
-        ChainResidueSpec, detectNonStandardResidues,
+        ChainResidueSpec,
+        detectNonStandardResidues,
     )
+
     mol = Molecule(QFZ_B_CIF)
     specs = detectNonStandardResidues(mol)
     cys_specs = [
-        s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname == "CYS"
+        s for s in specs if isinstance(s, ChainResidueSpec) and s.resname == "CYS"
     ]
     assert len(cys_specs) == 3
     new_names = {s.new_resname for s in cys_specs}
@@ -1006,13 +1050,14 @@ def test_1r1j_asn_not_bucketed():
     on its own anchor_* fields instead, so none of the three ASNs get a
     ChainResidueSpec of their own at all."""
     from moleculekit.tools.nonstandard_residues import (
-        ChainResidueSpec, detectNonStandardResidues,
+        ChainResidueSpec,
+        detectNonStandardResidues,
     )
+
     mol = Molecule(R1J_PDB)
     specs = detectNonStandardResidues(mol)
     asn_specs = [
-        s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname == "ASN"
+        s for s in specs if isinstance(s, ChainResidueSpec) and s.resname == "ASN"
     ]
     assert asn_specs == []
 
@@ -1036,6 +1081,7 @@ def test_unknown_canonical_anchor_raises():
     mol.bondtype = np.array(["1"], dtype=object)
 
     import pytest
+
     with pytest.raises(RuntimeError, match=r"MET.*SD"):
         detectNonStandardResidues(mol)
 
@@ -1157,14 +1203,8 @@ def test_template_renamed_canonical_residues_5vbl():
     _template_renamed_canonical_residues(mol_out, specs)
 
     # GLU 10 renamed to XX#; OE2 dropped (heavy-atom leaving group).
-    glu_spec = next(
-        s for s in specs
-        if s.resname == "GLU" and s.residue.resid == 10
-    )
-    lys_spec = next(
-        s for s in specs
-        if s.resname == "LYS" and s.residue.resid == 13
-    )
+    glu_spec = next(s for s in specs if s.resname == "GLU" and s.residue.resid == 10)
+    lys_spec = next(s for s in specs if s.resname == "LYS" and s.residue.resid == 13)
     glu_names = _residue_atom_names(mol_out, glu_spec.new_resname, 10)
     lys_names = _residue_atom_names(mol_out, lys_spec.new_resname, 13)
     assert "CD" in glu_names
@@ -1173,24 +1213,26 @@ def test_template_renamed_canonical_residues_5vbl():
     assert "NZ" in lys_names
 
     # LYS NZ has exactly 1 H.
-    nz_new = int(mol_out.atomselect(
-        f"resname {lys_spec.new_resname} and resid 13 and name NZ",
-        indexes=True,
-    )[0])
+    nz_new = int(
+        mol_out.atomselect(
+            f"resname {lys_spec.new_resname} and resid 13 and name NZ",
+            indexes=True,
+        )[0]
+    )
     nz_h = [
-        nb for nb in mol_out.getNeighbors(nz_new)
-        if mol_out.element[int(nb)] == "H"
+        nb for nb in mol_out.getNeighbors(nz_new) if mol_out.element[int(nb)] == "H"
     ]
     assert len(nz_h) == 1, (
-        f"expected 1 H on isopeptide NZ, got "
-        f"{[mol_out.name[int(i)] for i in nz_h]}"
+        f"expected 1 H on isopeptide NZ, got " f"{[mol_out.name[int(i)] for i in nz_h]}"
     )
 
     # CD-NZ bond preserved.
-    cd_new = int(mol_out.atomselect(
-        f"resname {glu_spec.new_resname} and resid 10 and name CD",
-        indexes=True,
-    )[0])
+    cd_new = int(
+        mol_out.atomselect(
+            f"resname {glu_spec.new_resname} and resid 10 and name CD",
+            indexes=True,
+        )[0]
+    )
     pair = sorted([cd_new, nz_new])
     assert any(
         sorted([int(b[0]), int(b[1])]) == pair for b in mol_out.bonds
@@ -1204,7 +1246,8 @@ def test_template_renamed_canonical_residues_known_variant_skips_templating():
         _template_renamed_canonical_residues,
     )
     from moleculekit.tools.nonstandard_residues import (
-        ChainResidueSpec, detectNonStandardResidues,
+        ChainResidueSpec,
+        detectNonStandardResidues,
     )
 
     cys2 = Molecule().empty(12)
@@ -1234,13 +1277,17 @@ def test_3rkp_asn_lys_pilin_isopeptide():
     mol = Molecule(RKP_PDB)
     specs = detectNonStandardResidues(mol)
     asn_specs = [
-        s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname == "ASN"
+        s
+        for s in specs
+        if isinstance(s, ChainResidueSpec)
+        and s.resname == "ASN"
         and s.new_resname is not None
     ]
     lys_specs = [
-        s for s in specs
-        if isinstance(s, ChainResidueSpec) and s.resname == "LYS"
+        s
+        for s in specs
+        if isinstance(s, ChainResidueSpec)
+        and s.resname == "LYS"
         and s.new_resname is not None
     ]
     assert len(asn_specs) >= 1
@@ -1262,6 +1309,7 @@ def test_systemprepare_5vbl_glu_lys_isopeptide_end_to_end():
         from moleculekit.tools.preparation import systemPrepare
     except ImportError:
         import pytest
+
         pytest.skip("pdb2pqr not available")
 
     mol = Molecule(VBL_PDB)
@@ -1287,23 +1335,22 @@ def test_systemprepare_5vbl_glu_lys_isopeptide_end_to_end():
     specs = detectNonStandardResidues(mol)
     prepared, _ = systemPrepare(mol, detect_specs=specs, verbose=False)
 
-    glu = next(
-        s for s in specs
-        if s.resname == "GLU" and s.residue.resid == 10
-    )
-    lys = next(
-        s for s in specs
-        if s.resname == "LYS" and s.residue.resid == 13
-    )
-    assert any(prepared.resname == glu.new_resname)
-    assert any(prepared.resname == lys.new_resname)
+    glu = next(s for s in specs if s.resname == "GLU" and s.residue.resid == 10)
+    lys = next(s for s in specs if s.resname == "LYS" and s.residue.resid == 13)
+    # The bucket rename is force-field naming. Preparation applies it only to
+    # shield the residue from PDB2PQR rebuilding the crosslink's leaving group,
+    # then restores the canonical name, so it must not reach the output.
+    assert not any(prepared.resname == glu.new_resname)
+    assert not any(prepared.resname == lys.new_resname)
     cd_mask = (
-        (prepared.resname == glu.new_resname)
+        (prepared.resname == glu.resname)
+        & (prepared.chain == str(glu.residue.chain))
         & (prepared.resid == 10)
         & (prepared.name == "CD")
     )
     nz_mask = (
-        (prepared.resname == lys.new_resname)
+        (prepared.resname == lys.resname)
+        & (prepared.chain == str(lys.residue.chain))
         & (prepared.resid == 13)
         & (prepared.name == "NZ")
     )
@@ -1313,35 +1360,113 @@ def test_systemprepare_5vbl_glu_lys_isopeptide_end_to_end():
     assert any(
         sorted([int(b[0]), int(b[1])]) == pair for b in prepared.bonds
     ), "CD-NZ bond lost during systemPrepare"
-    nz_h = [
-        nb for nb in prepared.getNeighbors(nz)
-        if prepared.element[int(nb)] == "H"
-    ]
+    nz_h = [nb for nb in prepared.getNeighbors(nz) if prepared.element[int(nb)] == "H"]
     assert len(nz_h) == 1
 
 
-def test_systemprepare_8qfz_canonical_to_ncaa_end_to_end():
-    """8QFZ: three CYS-SG-LFI thioethers. After systemPrepare, each
-    renamed CYS still has SG with no HG."""
+def test_detect_is_stable_across_systemprepare(tmp_path):
+    """Detection must classify a crosslinked canonical residue the same way
+    before and after preparation, transported through a CIF as a builder
+    pipeline does.
+
+    The junction bucket rename used to leak into the output, and a residue named
+    ``XX1`` is not canonical: a second pass reclassified it from an anchor built
+    from its ff14SB template into a non-canonical residue needing
+    parameterization, which silently swapped its residue-specific ff14SB
+    backbone charges for the generic amide class. Protonation-variant renames
+    (``CYX``, ``HID``) are exempt: they are genuine preparation output and stay
+    canonical, so only the reported original resname changes."""
     try:
         from moleculekit.tools.preparation import systemPrepare
     except ImportError:
         import pytest
+
+        pytest.skip("pdb2pqr not available")
+
+    from moleculekit.tools.nonstandard_residues import requiresTemplate
+
+    mol = Molecule(VBL_PDB)
+    mol.remove("element H", _logger=False)
+    smiles = {
+        "200": "c1cc(ccc1C[C@@H](C(=O)O)N)Cl",
+        "ALC": "C1CCC(CC1)C[C@@H](C=O)N",
+        "HRG": "C(CCNC(=N)N)C[C@@H](C=O)N",
+        "NLE": "CCCC[C@@H](C=O)N",
+        "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C=O",
+        "OLC": "CCCCCCCC(=O)OC[C@H](O)CO",
+    }
+    for resname, smi in smiles.items():
+        if (mol.resname == resname).any():
+            mol.templateResidueFromSmiles(
+                f'resname "{resname}"', smi, addHs=True, _logger=False
+            )
+    specs = detectNonStandardResidues(mol)
+    prepared, _ = systemPrepare(mol, detect_specs=specs, verbose=False)
+
+    cif = str(tmp_path / "prepared.cif")
+    prepared.write(cif)
+    respecs = detectNonStandardResidues(Molecule(cif), guess_bonds=False)
+
+    def _key(spec_list):
+        return {
+            (
+                str(s.residue.chain),
+                int(s.residue.resid),
+                str(s.residue.insertion),
+            ): (
+                type(s).__name__,
+                s.resname,
+                getattr(s, "new_resname", None),
+                requiresTemplate(s),
+            )
+            for s in spec_list
+        }
+
+    before, after = _key(specs), _key(respecs)
+    assert set(before) == set(after), "detection found different residues"
+    for res, val in before.items():
+        # CYS -> CYX is a protonation state and does stay on the molecule, so
+        # the second pass reports CYX as the original resname. Everything that
+        # decides parameterization must still agree.
+        if val[2] == "CYX":
+            assert after[res][2] == "CYX" and after[res][3] == val[3]
+            continue
+        assert after[res] == val, f"{res}: {val} became {after[res]}"
+
+    # The bucket names themselves must never have reached the molecule.
+    buckets = {
+        getattr(s, "new_resname", None)
+        for s in specs
+        if str(getattr(s, "new_resname", None) or "").startswith("XX")
+    }
+    assert buckets, "5VBL should produce junction bucket renames"
+    assert not set(prepared.resname.tolist()) & buckets
+
+
+def test_systemprepare_8qfz_canonical_to_ncaa_end_to_end():
+    """8QFZ: three CYS-SG-LFI thioethers. After systemPrepare, each CYS still
+    has SG with no HG, and keeps its canonical name: the bucket rename is
+    force-field naming that preparation applies internally and then restores."""
+    try:
+        from moleculekit.tools.preparation import systemPrepare
+    except ImportError:
+        import pytest
+
         pytest.skip("pdb2pqr not available")
 
     mol = Molecule(QFZ_B_CIF)
     specs = detectNonStandardResidues(mol)
     prepared, _ = systemPrepare(mol, detect_specs=specs, verbose=False)
     cys_renames = [
-        s for s in specs
-        if isinstance(s, ChainResidueSpec)
-        and s.resname == "CYS"
-        and s.new_resname
+        s
+        for s in specs
+        if isinstance(s, ChainResidueSpec) and s.resname == "CYS" and s.new_resname
     ]
     assert len(cys_renames) == 3
     for spec in cys_renames:
         rid = spec.residue
-        names = _residue_atom_names(prepared, spec.new_resname, int(rid.resid))
+        assert not any(prepared.resname == spec.new_resname)
+        names = _residue_atom_names(prepared, spec.resname, int(rid.resid))
         assert "SG" in names
         assert "HG" not in names
 
@@ -1372,7 +1497,10 @@ def _mol_from_atoms(atoms, bonds=()):
 def _infer(mol):
     from moleculekit.tools.nonstandard_residues import infer_nonstandard_junction_bonds
 
-    return {tuple(sorted((int(a), int(b)))) for a, b in infer_nonstandard_junction_bonds(mol)}
+    return {
+        tuple(sorted((int(a), int(b))))
+        for a, b in infer_nonstandard_junction_bonds(mol)
+    }
 
 
 def test_infer_junction_sidechain_isopeptide_forward():
@@ -1380,12 +1508,17 @@ def test_infer_junction_sidechain_isopeptide_forward():
     backbone N (microcystin's ACB.CG -> ARG.N) is inferred when the junction
     carries no inter-residue bond."""
     atoms = [
-        ("ACB", 1, "A", "N", "N", (-2, 2, 0)), ("ACB", 1, "A", "CA", "C", (-3, 1, 0)),
-        ("ACB", 1, "A", "C", "C", (-3, 0, 0)), ("ACB", 1, "A", "O", "O", (-4, 0, 0)),
-        ("ACB", 1, "A", "OXT", "O", (-3, -1, 0)), ("ACB", 1, "A", "CB", "C", (-1, 1, 0)),
+        ("ACB", 1, "A", "N", "N", (-2, 2, 0)),
+        ("ACB", 1, "A", "CA", "C", (-3, 1, 0)),
+        ("ACB", 1, "A", "C", "C", (-3, 0, 0)),
+        ("ACB", 1, "A", "O", "O", (-4, 0, 0)),
+        ("ACB", 1, "A", "OXT", "O", (-3, -1, 0)),
+        ("ACB", 1, "A", "CB", "C", (-1, 1, 0)),
         ("ACB", 1, "A", "CG", "C", (0, 0, 0)),
-        ("ARG", 2, "A", "N", "N", (1.33, 0, 0)), ("ARG", 2, "A", "CA", "C", (2.5, 0.5, 0)),
-        ("ARG", 2, "A", "C", "C", (3.5, 0, 0)), ("ARG", 2, "A", "O", "O", (3.5, -1, 0)),
+        ("ARG", 2, "A", "N", "N", (1.33, 0, 0)),
+        ("ARG", 2, "A", "CA", "C", (2.5, 0.5, 0)),
+        ("ARG", 2, "A", "C", "C", (3.5, 0, 0)),
+        ("ARG", 2, "A", "O", "O", (3.5, -1, 0)),
     ]
     mol = _mol_from_atoms(atoms)
     assert _infer(mol) == {(6, 7)}  # ACB.CG -> ARG.N
@@ -1396,12 +1529,18 @@ def test_infer_junction_reverse_backbone_c_to_sidechain_n():
     side-chain amino (the epsilon-poly-lysine direction, alpha-C -> Lys NZ) is
     inferred too - the rule is symmetric."""
     atoms = [
-        ("XAA", 1, "A", "N", "N", (-2.5, 1, 0)), ("XAA", 1, "A", "CA", "C", (-1.5, 0, 0)),
-        ("XAA", 1, "A", "C", "C", (0, 0, 0)), ("XAA", 1, "A", "O", "O", (0.3, -1, 0)),
-        ("LYS", 2, "A", "NZ", "N", (1.33, 0, 0)), ("LYS", 2, "A", "CE", "C", (2.5, 0.5, 0)),
-        ("LYS", 2, "A", "CD", "C", (3.5, 0, 0)), ("LYS", 2, "A", "CG", "C", (4.5, 0.5, 0)),
-        ("LYS", 2, "A", "CB", "C", (5.5, 0, 0)), ("LYS", 2, "A", "CA", "C", (6.5, 0.5, 0)),
-        ("LYS", 2, "A", "N", "N", (7.5, 0, 0)), ("LYS", 2, "A", "C", "C", (8.5, 0.5, 0)),
+        ("XAA", 1, "A", "N", "N", (-2.5, 1, 0)),
+        ("XAA", 1, "A", "CA", "C", (-1.5, 0, 0)),
+        ("XAA", 1, "A", "C", "C", (0, 0, 0)),
+        ("XAA", 1, "A", "O", "O", (0.3, -1, 0)),
+        ("LYS", 2, "A", "NZ", "N", (1.33, 0, 0)),
+        ("LYS", 2, "A", "CE", "C", (2.5, 0.5, 0)),
+        ("LYS", 2, "A", "CD", "C", (3.5, 0, 0)),
+        ("LYS", 2, "A", "CG", "C", (4.5, 0.5, 0)),
+        ("LYS", 2, "A", "CB", "C", (5.5, 0, 0)),
+        ("LYS", 2, "A", "CA", "C", (6.5, 0.5, 0)),
+        ("LYS", 2, "A", "N", "N", (7.5, 0, 0)),
+        ("LYS", 2, "A", "C", "C", (8.5, 0.5, 0)),
         ("LYS", 2, "A", "O", "O", (8.5, -0.5, 0)),
     ]
     mol = _mol_from_atoms(atoms)
@@ -1412,10 +1551,14 @@ def test_infer_junction_skips_canonical_gap():
     """Two canonical residues with a missing peptide bond are never bridged,
     even when geometrically close - that is a real chain gap."""
     atoms = [
-        ("GLY", 1, "A", "N", "N", (-1, 1, 0)), ("GLY", 1, "A", "CA", "C", (-1, 0, 0)),
-        ("GLY", 1, "A", "C", "C", (0, 0, 0)), ("GLY", 1, "A", "O", "O", (0, -1, 0)),
-        ("ALA", 2, "A", "N", "N", (1.33, 0, 0)), ("ALA", 2, "A", "CA", "C", (2.5, 0, 0)),
-        ("ALA", 2, "A", "C", "C", (3.5, 0, 0)), ("ALA", 2, "A", "O", "O", (3.5, -1, 0)),
+        ("GLY", 1, "A", "N", "N", (-1, 1, 0)),
+        ("GLY", 1, "A", "CA", "C", (-1, 0, 0)),
+        ("GLY", 1, "A", "C", "C", (0, 0, 0)),
+        ("GLY", 1, "A", "O", "O", (0, -1, 0)),
+        ("ALA", 2, "A", "N", "N", (1.33, 0, 0)),
+        ("ALA", 2, "A", "CA", "C", (2.5, 0, 0)),
+        ("ALA", 2, "A", "C", "C", (3.5, 0, 0)),
+        ("ALA", 2, "A", "O", "O", (3.5, -1, 0)),
     ]
     mol = _mol_from_atoms(atoms)
     assert _infer(mol) == set()
@@ -1424,12 +1567,17 @@ def test_infer_junction_skips_canonical_gap():
 def test_infer_junction_skips_when_already_bonded():
     """If the junction already carries an inter-residue bond, infer nothing."""
     atoms = [
-        ("ACB", 1, "A", "N", "N", (-2, 2, 0)), ("ACB", 1, "A", "CA", "C", (-3, 1, 0)),
-        ("ACB", 1, "A", "C", "C", (-3, 0, 0)), ("ACB", 1, "A", "O", "O", (-4, 0, 0)),
-        ("ACB", 1, "A", "OXT", "O", (-3, -1, 0)), ("ACB", 1, "A", "CB", "C", (-1, 1, 0)),
+        ("ACB", 1, "A", "N", "N", (-2, 2, 0)),
+        ("ACB", 1, "A", "CA", "C", (-3, 1, 0)),
+        ("ACB", 1, "A", "C", "C", (-3, 0, 0)),
+        ("ACB", 1, "A", "O", "O", (-4, 0, 0)),
+        ("ACB", 1, "A", "OXT", "O", (-3, -1, 0)),
+        ("ACB", 1, "A", "CB", "C", (-1, 1, 0)),
         ("ACB", 1, "A", "CG", "C", (0, 0, 0)),
-        ("ARG", 2, "A", "N", "N", (1.33, 0, 0)), ("ARG", 2, "A", "CA", "C", (2.5, 0.5, 0)),
-        ("ARG", 2, "A", "C", "C", (3.5, 0, 0)), ("ARG", 2, "A", "O", "O", (3.5, -1, 0)),
+        ("ARG", 2, "A", "N", "N", (1.33, 0, 0)),
+        ("ARG", 2, "A", "CA", "C", (2.5, 0.5, 0)),
+        ("ARG", 2, "A", "C", "C", (3.5, 0, 0)),
+        ("ARG", 2, "A", "O", "O", (3.5, -1, 0)),
     ]
     mol = _mol_from_atoms(atoms, bonds=[(6, 7)])  # CG -> N already present
     assert _infer(mol) == set()
@@ -1439,12 +1587,18 @@ def test_infer_junction_skips_sidechain_only_contact():
     """Consecutive non-canonical residues touching only via side chains (a
     disulfide; no backbone N or C involved) are not a backbone continuation."""
     atoms = [
-        ("XAA", 1, "A", "N", "N", (-5, 5, 0)), ("XAA", 1, "A", "CA", "C", (-4, 4, 0)),
-        ("XAA", 1, "A", "C", "C", (-5, 3, 0)), ("XAA", 1, "A", "O", "O", (-6, 3, 0)),
-        ("XAA", 1, "A", "CB", "C", (-3, 3, 0)), ("XAA", 1, "A", "SG", "S", (0, 0, 0)),
-        ("XBB", 2, "A", "N", "N", (8, 5, 0)), ("XBB", 2, "A", "CA", "C", (7, 4, 0)),
-        ("XBB", 2, "A", "C", "C", (8, 3, 0)), ("XBB", 2, "A", "O", "O", (9, 3, 0)),
-        ("XBB", 2, "A", "CB", "C", (5, 3, 0)), ("XBB", 2, "A", "SG", "S", (2.05, 0, 0)),
+        ("XAA", 1, "A", "N", "N", (-5, 5, 0)),
+        ("XAA", 1, "A", "CA", "C", (-4, 4, 0)),
+        ("XAA", 1, "A", "C", "C", (-5, 3, 0)),
+        ("XAA", 1, "A", "O", "O", (-6, 3, 0)),
+        ("XAA", 1, "A", "CB", "C", (-3, 3, 0)),
+        ("XAA", 1, "A", "SG", "S", (0, 0, 0)),
+        ("XBB", 2, "A", "N", "N", (8, 5, 0)),
+        ("XBB", 2, "A", "CA", "C", (7, 4, 0)),
+        ("XBB", 2, "A", "C", "C", (8, 3, 0)),
+        ("XBB", 2, "A", "O", "O", (9, 3, 0)),
+        ("XBB", 2, "A", "CB", "C", (5, 3, 0)),
+        ("XBB", 2, "A", "SG", "S", (2.05, 0, 0)),
     ]
     mol = _mol_from_atoms(atoms)
     assert _infer(mol) == set()
@@ -1462,15 +1616,21 @@ def _links(mol):
 
     a = np.where(mol.resid == 1)[0]
     b = np.where(mol.resid == 2)[0]
-    return {(int(ia), int(ib), k) for ia, ib, k in geometric_interresidue_links(mol, a, b)}
+    return {
+        (int(ia), int(ib), k) for ia, ib, k in geometric_interresidue_links(mol, a, b)
+    }
 
 
 def test_geometric_interresidue_links_peptide():
     atoms = [
-        ("ALA", 1, "A", "N", "N", (-2, 1, 0)), ("ALA", 1, "A", "CA", "C", (-1, 0.5, 0)),
-        ("ALA", 1, "A", "C", "C", (0, 0, 0)), ("ALA", 1, "A", "O", "O", (0, -1, 0)),
-        ("ALA", 2, "A", "N", "N", (1.33, 0, 0)), ("ALA", 2, "A", "CA", "C", (2.5, 0.5, 0)),
-        ("ALA", 2, "A", "C", "C", (3.5, 0, 0)), ("ALA", 2, "A", "O", "O", (3.5, -1, 0)),
+        ("ALA", 1, "A", "N", "N", (-2, 1, 0)),
+        ("ALA", 1, "A", "CA", "C", (-1, 0.5, 0)),
+        ("ALA", 1, "A", "C", "C", (0, 0, 0)),
+        ("ALA", 1, "A", "O", "O", (0, -1, 0)),
+        ("ALA", 2, "A", "N", "N", (1.33, 0, 0)),
+        ("ALA", 2, "A", "CA", "C", (2.5, 0.5, 0)),
+        ("ALA", 2, "A", "C", "C", (3.5, 0, 0)),
+        ("ALA", 2, "A", "O", "O", (3.5, -1, 0)),
     ]
     assert _links(_mol_from_atoms(atoms)) == {(2, 4, "peptide")}  # res1.C -> res2.N
 
@@ -1478,12 +1638,17 @@ def test_geometric_interresidue_links_peptide():
 def test_geometric_interresidue_links_isopeptide_forward():
     """A side-chain carbon of res1 to res2's backbone N is an isopeptide."""
     atoms = [
-        ("ACB", 1, "A", "N", "N", (-2, 2, 0)), ("ACB", 1, "A", "CA", "C", (-3, 1, 0)),
-        ("ACB", 1, "A", "C", "C", (-3, 0, 0)), ("ACB", 1, "A", "O", "O", (-4, 0, 0)),
-        ("ACB", 1, "A", "OXT", "O", (-3, -1, 0)), ("ACB", 1, "A", "CB", "C", (-1, 1, 0)),
+        ("ACB", 1, "A", "N", "N", (-2, 2, 0)),
+        ("ACB", 1, "A", "CA", "C", (-3, 1, 0)),
+        ("ACB", 1, "A", "C", "C", (-3, 0, 0)),
+        ("ACB", 1, "A", "O", "O", (-4, 0, 0)),
+        ("ACB", 1, "A", "OXT", "O", (-3, -1, 0)),
+        ("ACB", 1, "A", "CB", "C", (-1, 1, 0)),
         ("ACB", 1, "A", "CG", "C", (0, 0, 0)),
-        ("ARG", 2, "A", "N", "N", (1.33, 0, 0)), ("ARG", 2, "A", "CA", "C", (2.5, 0.5, 0)),
-        ("ARG", 2, "A", "C", "C", (3.5, 0, 0)), ("ARG", 2, "A", "O", "O", (3.5, -1, 0)),
+        ("ARG", 2, "A", "N", "N", (1.33, 0, 0)),
+        ("ARG", 2, "A", "CA", "C", (2.5, 0.5, 0)),
+        ("ARG", 2, "A", "C", "C", (3.5, 0, 0)),
+        ("ARG", 2, "A", "O", "O", (3.5, -1, 0)),
     ]
     assert _links(_mol_from_atoms(atoms)) == {(6, 7, "isopeptide")}  # res1.CG -> res2.N
 
@@ -1491,10 +1656,14 @@ def test_geometric_interresidue_links_isopeptide_forward():
 def test_geometric_interresidue_links_isopeptide_reverse():
     """res1's backbone C to res2's side-chain amino (epsilon-poly-lysine)."""
     atoms = [
-        ("XAA", 1, "A", "N", "N", (-2.5, 1, 0)), ("XAA", 1, "A", "CA", "C", (-1.5, 0, 0)),
-        ("XAA", 1, "A", "C", "C", (0, 0, 0)), ("XAA", 1, "A", "O", "O", (0.3, -1, 0)),
-        ("LYS", 2, "A", "NZ", "N", (1.33, 0, 0)), ("LYS", 2, "A", "CE", "C", (2.5, 0.5, 0)),
-        ("LYS", 2, "A", "CD", "C", (3.5, 0, 0)), ("LYS", 2, "A", "CA", "C", (6.5, 0.5, 0)),
+        ("XAA", 1, "A", "N", "N", (-2.5, 1, 0)),
+        ("XAA", 1, "A", "CA", "C", (-1.5, 0, 0)),
+        ("XAA", 1, "A", "C", "C", (0, 0, 0)),
+        ("XAA", 1, "A", "O", "O", (0.3, -1, 0)),
+        ("LYS", 2, "A", "NZ", "N", (1.33, 0, 0)),
+        ("LYS", 2, "A", "CE", "C", (2.5, 0.5, 0)),
+        ("LYS", 2, "A", "CD", "C", (3.5, 0, 0)),
+        ("LYS", 2, "A", "CA", "C", (6.5, 0.5, 0)),
         ("LYS", 2, "A", "N", "N", (7.5, 0, 0)),
     ]
     assert _links(_mol_from_atoms(atoms)) == {(2, 4, "isopeptide")}  # res1.C -> res2.NZ
@@ -1502,19 +1671,27 @@ def test_geometric_interresidue_links_isopeptide_reverse():
 
 def test_geometric_interresidue_links_phosphodiester():
     atoms = [
-        ("DG", 1, "A", "O3'", "O", (0, 0, 0)), ("DG", 1, "A", "C3'", "C", (-1, 0.5, 0)),
-        ("DA", 2, "A", "P", "P", (1.6, 0, 0)), ("DA", 2, "A", "OP1", "O", (2, 1, 0)),
+        ("DG", 1, "A", "O3'", "O", (0, 0, 0)),
+        ("DG", 1, "A", "C3'", "C", (-1, 0.5, 0)),
+        ("DA", 2, "A", "P", "P", (1.6, 0, 0)),
+        ("DA", 2, "A", "OP1", "O", (2, 1, 0)),
     ]
-    assert _links(_mol_from_atoms(atoms)) == {(0, 2, "phosphodiester")}  # res1.O3' -> res2.P
+    assert _links(_mol_from_atoms(atoms)) == {
+        (0, 2, "phosphodiester")
+    }  # res1.O3' -> res2.P
 
 
 def test_geometric_interresidue_links_none():
     """Two residues with no atom pair within bonding distance link nothing."""
     atoms = [
-        ("ALA", 1, "A", "N", "N", (-2, 1, 0)), ("ALA", 1, "A", "CA", "C", (-1, 0.5, 0)),
-        ("ALA", 1, "A", "C", "C", (0, 0, 0)), ("ALA", 1, "A", "O", "O", (0, -1, 0)),
-        ("ALA", 2, "A", "N", "N", (5, 0, 0)), ("ALA", 2, "A", "CA", "C", (6, 0.5, 0)),
-        ("ALA", 2, "A", "C", "C", (7, 0, 0)), ("ALA", 2, "A", "O", "O", (7, -1, 0)),
+        ("ALA", 1, "A", "N", "N", (-2, 1, 0)),
+        ("ALA", 1, "A", "CA", "C", (-1, 0.5, 0)),
+        ("ALA", 1, "A", "C", "C", (0, 0, 0)),
+        ("ALA", 1, "A", "O", "O", (0, -1, 0)),
+        ("ALA", 2, "A", "N", "N", (5, 0, 0)),
+        ("ALA", 2, "A", "CA", "C", (6, 0.5, 0)),
+        ("ALA", 2, "A", "C", "C", (7, 0, 0)),
+        ("ALA", 2, "A", "O", "O", (7, -1, 0)),
     ]
     assert _links(_mol_from_atoms(atoms)) == set()
 
@@ -1561,7 +1738,9 @@ def _dual_context_mol():
 def test_apply_residue_templates_prefixed_keys_applied_per_context():
     mol = _dual_context_mol()
     specs = detectNonStandardResidues(mol)
-    keys = {s.new_resname or s.resname for s in specs if isinstance(s, ChainResidueSpec)}
+    keys = {
+        s.new_resname or s.resname for s in specs if isinstance(s, ChainResidueSpec)
+    }
     assert {"NLE", "CNLE"} <= keys
     templates = {
         "NLE": {"smiles": "CCCC[C@@H](C=O)N"},
@@ -1738,3 +1917,50 @@ def test_diagnose_template_mismatch_tolerates_missing_component(monkeypatch):
     assert rep.name is None and rep.formula is None
     assert rep.copies == 1 and rep.heavy_atoms_structure == 3
     assert "XYZ" in str(rep)
+
+
+def test_polyatomic_residue_named_after_a_metal_is_not_an_ion():
+    """Several element symbols are also real polyatomic residue names: CO is
+    cobalt but also carbon monoxide, and RU is ruthenium but also PDB2PQR's
+    RNA uracil. The free-metal-ion skip in the bond scan must be gated on the
+    residue having a single atom. Without the gate a real covalent bond to
+    such a residue is silently discarded as a coordination contact, and the
+    partner residue is never flagged as sitting at a junction."""
+    import numpy as np
+    from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
+
+    # A cysteine whose SG carries a covalent bond to a polyatomic residue
+    # named RU. A monatomic RU is a ruthenium ion and such a bond would be a
+    # coordination contact; more than one atom means it is not an ion (in real
+    # structures RU is PDB2PQR's RNA uracil), so the bond is real.
+    mol = Molecule().empty(8)
+    mol.record[:] = "ATOM"
+    mol.resname[:] = ["CYS"] * 6 + ["RU"] * 2
+    mol.name[:] = ["N", "CA", "C", "O", "CB", "SG", "C", "O"]
+    mol.element[:] = ["N", "C", "C", "O", "C", "S", "C", "O"]
+    mol.resid[:] = [1] * 6 + [2] * 2
+    mol.chain[:] = "A"
+    mol.segid[:] = "P0"
+    mol.coords = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.5, 0.0, 0.0],
+            [2.2, 1.2, 0.0],
+            [1.7, 2.3, 0.0],
+            [2.1, -1.2, 0.0],
+            [3.9, -1.2, 0.0],
+            [5.7, -1.2, 0.0],
+            [6.9, -1.2, 0.0],
+        ],
+        dtype=np.float32,
+    ).reshape(8, 3, 1)
+    mol.bonds = np.array(
+        [[0, 1], [1, 2], [2, 3], [1, 4], [4, 5], [5, 6], [6, 7]], dtype=np.uint32
+    )
+
+    specs = detectNonStandardResidues(mol, guess_bonds=False)
+    anchored = [s for s in specs if getattr(s, "anchor_atom", None) == "SG"]
+    assert anchored, (
+        "the SG-RU bond was discarded as metal coordination; the free-metal-ion "
+        "skip must be gated on the residue being a single atom"
+    )

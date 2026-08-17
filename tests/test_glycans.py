@@ -375,12 +375,45 @@ def test_detect_1r1j_glycanspec():
     assert len(asn_specs) == 0
 
 
-def test_systemprepare_3ave_glycam_renames():
+def test_systemprepare_3ave_glycan_chemistry_only():
+    """systemPrepare fixes glycan chemistry (protonation) but must not apply
+    any GLYCAM force-field naming: most 3-character GLYCAM unit codes
+    collide with unrelated real PDB ligand codes (TLA is tartrate), and
+    systemPrepare is also used standalone, without ever reaching a
+    builder."""
     from moleculekit.tools.preparation import systemPrepare
 
     mol = Molecule(os.path.join(GLYCAN_DIR, "3AVE_frag.pdb"))
     pmol, _ = systemPrepare(mol)
-    # chain/segid may be reassigned by preparation; assert on resnames globally
+    # Sugars and the anchor keep their original PDB Chemical Component
+    # Dictionary names; none of the GLYCAM-06 renames leak out.
+    for code in ("UYB", "4YB", "VMB", "2MA", "0YB", "0fA", "NLN", "ROH"):
+        assert code not in pmol.resname, code
+    assert "NAG" in pmol.resname and "BMA" in pmol.resname and "MAN" in pmol.resname
+    # The anchor stays ASN with exactly one amide hydrogen, named HD21 (the
+    # anomeric carbon displaced the other one -- a protonation consequence
+    # of the glycosidic bond, not a force-field rename).
+    asn297 = (pmol.resname == "ASN") & (pmol.chain == "A") & (pmol.resid == 297)
+    nd2h = asn297 & np.isin(pmol.name, ["HD21", "HD22"])
+    assert np.sum(nd2h) == 1 and pmol.name[nd2h][0] == "HD21"
+    # N-acetyl substituent atoms (C7/O7/C8) are GLYCAM naming (renamed to
+    # C2N/O2N/CME) and stay untouched too.
+    assert "C7" in pmol.name and np.sum(pmol.name == "C2N") == 0
+
+
+def test_apply_glycam_naming_3ave():
+    """applyGlycamNaming performs the GLYCAM force-field renames that
+    systemPrepare no longer does: sugars to their GLYCAM unit names, the
+    anchor to NLN, and the N-acetyl substituent atoms to GLYCAM's own
+    names."""
+    from moleculekit.tools.preparation import systemPrepare
+    from moleculekit.tools.glycans import applyGlycamNaming
+
+    mol = Molecule(os.path.join(GLYCAN_DIR, "3AVE_frag.pdb"))
+    pmol, _ = systemPrepare(mol)
+    gmol = applyGlycamNaming(pmol)
+
+    assert gmol is pmol  # mutated in place, returned for chaining
     for code in ("UYB", "4YB", "VMB", "2MA", "0YB", "0fA", "NLN"):
         assert code in pmol.resname, code
     assert "NAG" not in pmol.resname and "BMA" not in pmol.resname
@@ -394,15 +427,44 @@ def test_systemprepare_3ave_glycam_renames():
     assert np.sum(uyb & (pmol.name == "C7")) == 0
 
 
-def test_systemprepare_1cvn_roh_split():
+def test_systemprepare_1cvn_free_reducing_end_chemistry_only():
+    """The free reducing end keeps its anomeric hydroxyl (oxygen and
+    hydrogen) on the sugar residue itself; systemPrepare must not split it
+    off into a GLYCAM ROH residue."""
     from moleculekit.tools.preparation import systemPrepare
 
     mol = Molecule(os.path.join(GLYCAN_DIR, "1CVN_frag.pdb"))
     pmol, _ = systemPrepare(mol)
+    assert "ROH" not in pmol.resname and "VMA" not in pmol.resname
+    assert "MAN" in pmol.resname
+
+    free_end = (pmol.resname == "MAN") & (pmol.chain == "E") & (pmol.resid == 1)
+    assert free_end.any()
+    o1 = free_end & (pmol.name == "O1")
+    assert np.sum(o1) == 1
+    o1_xyz = pmol.coords[o1, :, 0][0]
+    h_xyz = pmol.coords[free_end & (pmol.element == "H"), :, 0]
+    dists = np.linalg.norm(h_xyz - o1_xyz, axis=1)
+    assert np.sum(dists < 1.2) == 1, "O1 must carry exactly one hydroxyl hydrogen"
+
+
+def test_apply_glycam_naming_1cvn_roh_split():
+    """applyGlycamNaming splits the free reducing end's anomeric hydroxyl
+    into its own ROH residue, GLYCAM's free-hydroxyl-cap packaging
+    residue."""
+    from moleculekit.tools.preparation import systemPrepare
+    from moleculekit.tools.glycans import applyGlycamNaming
+
+    mol = Molecule(os.path.join(GLYCAN_DIR, "1CVN_frag.pdb"))
+    pmol, _ = systemPrepare(mol)
+    applyGlycamNaming(pmol)
+
     assert "ROH" in pmol.resname and "VMA" in pmol.resname
     roh = pmol.resname == "ROH"
-    # ROH is its own residue holding the anomeric hydroxyl oxygen
+    # ROH is its own residue holding the anomeric hydroxyl oxygen and its
+    # hydrogen (systemPrepare guarantees both are present beforehand).
     assert set(pmol.name[roh & (pmol.element != "H")]) == {"O1"}
+    assert set(pmol.name[roh & (pmol.element == "H")]) == {"HO1"}
     vma = pmol.resname == "VMA"
     assert np.sum(vma & (pmol.name == "O1")) == 0
     # ROH shares the sugar's segment and has a unique resid there
@@ -412,11 +474,27 @@ def test_systemprepare_1cvn_roh_split():
     assert roh_resid not in pmol.resid[others]
 
 
-def test_systemprepare_1g1s_olinked():
+def test_systemprepare_1g1s_olinked_chemistry_only():
     from moleculekit.tools.preparation import systemPrepare
 
     mol = Molecule(os.path.join(GLYCAN_DIR, "1G1S_frag.pdb"))
     pmol, _ = systemPrepare(mol)
+    for code in ("OLT", "VVB", "WYB", "3LB", "0SA", "0fA", "0LB"):
+        assert code not in pmol.resname, code
+    assert "THR" in pmol.resname
+    thr = pmol.resname == "THR"
+    assert np.sum(thr & (pmol.name == "HG1")) == 0
+    assert np.sum(thr & (pmol.name == "OG1")) == 1
+
+
+def test_apply_glycam_naming_1g1s_olinked():
+    from moleculekit.tools.preparation import systemPrepare
+    from moleculekit.tools.glycans import applyGlycamNaming
+
+    mol = Molecule(os.path.join(GLYCAN_DIR, "1G1S_frag.pdb"))
+    pmol, _ = systemPrepare(mol)
+    applyGlycamNaming(pmol)
+
     for code in ("OLT", "VVB", "WYB", "3LB", "0SA", "0fA", "0LB"):
         assert code in pmol.resname, code
     olt = pmol.resname == "OLT"
@@ -424,43 +502,131 @@ def test_systemprepare_1g1s_olinked():
     assert np.sum(olt & (pmol.name == "OG1")) == 1
 
 
-def test_detect_is_idempotent_over_its_own_renames():
-    """Detection must be stable across a prepare cycle. systemPrepare renames
-    sugars to their GLYCAM unit names and the glycosylated anchor to NLN, so a
-    second detect pass sees those names rather than the original CCD ones. They
-    are all provided by GLYCAM and need no user parameterization, so the second
-    pass must report nothing for them. Otherwise the sugars come back as
-    covalent-ligand / scaffold specs that get routed to antechamber, and the
-    anchor as an untemplated chain residue."""
-    from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
+@pytest.mark.parametrize("fname", ["3AVE_frag.pdb", "1G1S_frag.pdb", "1CVN_frag.pdb"])
+def test_systemprepare_no_overprotonated_glycosidic_oxygen(fname):
+    """No glycosidic oxygen may carry a hydroxyl hydrogen after
+    systemPrepare: an oxygen bonded to a carbon of another residue is an
+    ether oxygen (part of the glycosidic linkage), not a free hydroxyl, so
+    it must have no hydrogen within bonding distance. Checked structurally,
+    from bonds and coordinates only, independent of atom naming, so it
+    cannot be fooled by a GLYCAM (or any other) rename and would catch the
+    over-protonation regardless of whether the residue is renamed."""
+    from moleculekit.tools.preparation import systemPrepare
+
+    mol = Molecule(os.path.join(GLYCAN_DIR, fname))
+    pmol, _ = systemPrepare(mol, verbose=False)
+
+    bonds = np.asarray(pmol.bonds, dtype=np.int64)
+
+    def _same_residue(i, j):
+        return (
+            pmol.resid[i] == pmol.resid[j]
+            and pmol.chain[i] == pmol.chain[j]
+            and pmol.segid[i] == pmol.segid[j]
+            and pmol.insertion[i] == pmol.insertion[j]
+        )
+
+    offenders = []
+    for a, b in bonds:
+        for o_idx, c_idx in ((int(a), int(b)), (int(b), int(a))):
+            if str(pmol.element[o_idx]) != "O" or str(pmol.element[c_idx]) != "C":
+                continue
+            if _same_residue(o_idx, c_idx):
+                continue  # intra-residue C-O bond, not a glycosidic link
+            # A hydroxyl hydrogen is covalently part of the oxygen's OWN
+            # residue, never a neighboring one, so the search is scoped to
+            # residue-mates -- an unrelated atom of a different residue
+            # sitting close by (e.g. a crowded, not-yet-minimized clash) is
+            # not a hydroxyl and must not be mistaken for one.
+            same_res_h = np.where(
+                (pmol.element == "H")
+                & (pmol.resid == pmol.resid[o_idx])
+                & (pmol.chain == pmol.chain[o_idx])
+                & (pmol.segid == pmol.segid[o_idx])
+                & (pmol.insertion == pmol.insertion[o_idx])
+            )[0]
+            if len(same_res_h) == 0:
+                continue
+            o_xyz = pmol.coords[o_idx, :, 0]
+            d = np.linalg.norm(pmol.coords[same_res_h, :, 0] - o_xyz, axis=1)
+            if np.any(d < 1.2):
+                offenders.append(
+                    f"{pmol.resname[o_idx]}.{pmol.name[o_idx]} "
+                    f"{pmol.chain[o_idx]}:{pmol.resid[o_idx]}{pmol.insertion[o_idx]}"
+                )
+    assert not offenders, f"Over-protonated glycosidic oxygen(s) found: {offenders}"
+
+
+def test_systemprepare_3ave_idempotent():
+    """Preparing an already-prepared glycoprotein a second time must be
+    stable (same atom count and resname set) and must not raise. Before the
+    naming split, the first pass renamed the anchor to NLN; a second pass's
+    internal non-standard-residue auto-detection then saw NLN as neither a
+    canonical amino acid nor a recognized glycan anchor (it only recognizes
+    the anchor by its original resname, ASN/SER/THR/HYP) and raised
+    RuntimeError about an untemplated NLN297:A."""
     from moleculekit.tools.preparation import systemPrepare
 
     mol = Molecule(os.path.join(GLYCAN_DIR, "3AVE_frag.pdb"))
-    first = detectNonStandardResidues(mol)
-    assert any(type(s).__name__ == "GlycanSpec" for s in first)
+    pmol1, _ = systemPrepare(mol, verbose=False)
+    pmol2, _ = systemPrepare(pmol1.copy(), verbose=False)
 
-    pmol, _ = systemPrepare(mol)
-    # The prepared structure carries GLYCAM names, not the input CCD ones.
-    assert "0YB" in pmol.resname and "NLN" in pmol.resname
-    assert "NAG" not in pmol.resname
-
-    second = detectNonStandardResidues(pmol)
-    offenders = sorted({str(s.resname) for s in second})
-    assert not offenders, (
-        f"re-detecting an already-prepared structure reported {offenders}; "
-        "GLYCAM residues must be recognized as force-field-provided"
-    )
+    assert pmol1.numAtoms == pmol2.numAtoms
+    assert set(pmol1.resname.tolist()) == set(pmol2.resname.tolist())
 
 
-def test_glycam_residues_are_canonical():
-    """Every GLYCAM sugar unit, the ROH reducing-end cap and the four
-    glycosylated-amino-acid anchors are parameterized by GLYCAM itself, so they
-    must count as canonical (no template, no antechamber)."""
-    from moleculekit.tools.nonstandard_residues import _CANONICAL_RESNAMES
-    from moleculekit.tools.glycans import GLYCAM_ANCHOR_UNITS, GLYCAM_UNIT_NAMES
+def test_apply_glycam_naming_constructs_missing_anomeric_oxygen():
+    """A free reducing end reaching applyGlycamNaming without its anomeric
+    oxygen at all (bypassing systemPrepare, which normally guarantees it)
+    must not crash: one is constructed geometrically and the residue is
+    still split into ROH, with a warning naming the residue."""
+    from moleculekit.tools.glycans import applyGlycamNaming
 
-    missing = sorted(
-        (set(GLYCAM_UNIT_NAMES) | set(GLYCAM_ANCHOR_UNITS) | {"ROH"})
-        - set(_CANONICAL_RESNAMES)
-    )
-    assert not missing, f"GLYCAM-provided residues missing from canonical set: {missing}"
+    names = ["C1", "C2", "C3", "C4", "C5", "C6", "O2", "O3", "O4", "O5", "O6"]
+    elements = ["C", "C", "C", "C", "C", "C", "O", "O", "O", "O", "O"]
+    n = len(names)
+    mol = Molecule().empty(n)
+    mol.name[:] = names
+    mol.element[:] = elements
+    mol.resname[:] = "MAN"
+    mol.resid[:] = 1
+    mol.chain[:] = "A"
+    mol.segid[:] = "G0"
+    mol.record[:] = "HETATM"
+    coords = np.array(
+        [
+            [0.0, 0.0, 0.0],  # C1
+            [1.5, 0.0, 0.0],  # C2
+            [2.2, 1.3, 0.0],  # C3
+            [1.5, 2.6, 0.0],  # C4
+            [0.0, 2.6, 0.0],  # C5
+            [-0.7, 3.9, 0.0],  # C6
+            [2.2, -1.3, 0.0],  # O2
+            [3.7, 1.3, 0.0],  # O3
+            [2.2, 3.9, 0.0],  # O4
+            [-0.7, 1.3, 0.0],  # O5 (ring oxygen)
+            [-2.2, 3.9, 0.0],  # O6
+        ],
+        dtype=np.float32,
+    ).reshape(n, 3, 1)
+    mol.coords = coords
+    bonds = [
+        (0, 1),
+        (1, 2),
+        (2, 3),
+        (3, 4),
+        (4, 0),
+        (1, 6),
+        (2, 7),
+        (3, 8),
+        (5, 4),
+        (5, 10),
+    ]
+    mol.bonds = np.array(bonds, dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * len(bonds), dtype=object)
+
+    out = applyGlycamNaming(mol)
+
+    assert "0MA" in out.resname and "ROH" in out.resname
+    roh = out.resname == "ROH"
+    assert list(out.name[roh]) == ["O1"] and list(out.element[roh]) == ["O"]

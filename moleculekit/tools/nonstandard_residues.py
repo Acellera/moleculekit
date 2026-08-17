@@ -261,20 +261,6 @@ def _canonical_resnames():
     # would be asked to parameterize a bare metal atom.
     names |= METAL_ION_RESIDUE_NAMES
     names |= _CAP_RESNAMES
-    # GLYCAM provides parameters for every one of its own sugar units, for the
-    # ROH free-reducing-end cap and for the NLN / OLS / OLT / OLP glycosylated
-    # amino acids, so none of them need user-driven parameterization. They must
-    # be listed here because this function's own callers rename residues INTO
-    # these names: systemPrepare turns NAG into 0YB and its anchor ASN into
-    # NLN. Without them a second detect pass over an already-prepared structure
-    # sees unknown residues, and reports the sugars as covalent ligands or
-    # scaffolds needing a template and the anchor as an untemplated chain
-    # residue. Detection has to be idempotent over its own renames.
-    from moleculekit.tools.glycans import GLYCAM_ANCHOR_UNITS, GLYCAM_UNIT_NAMES
-
-    names |= set(GLYCAM_UNIT_NAMES)
-    names |= set(GLYCAM_ANCHOR_UNITS)
-    names.add("ROH")
     return names
 
 
@@ -816,9 +802,22 @@ def detectNonStandardResidues(mol, guess_bonds=True):
         # ions rather than scaffolds. The Zn/Fe centre in calcineurin (1M63)
         # and the Ca2+ in 3PTB are skipped here; the HEM-Fe...Tyr coordination
         # in 1u5u is intentionally not.
+        # The metal check is gated on the residue being a single atom, matching
+        # moleculekit.tools.autosegment._classify_residues. Several element
+        # symbols are also real polyatomic residue names: RU is ruthenium but
+        # also PDB2PQR's name for an RNA uracil, and CO is cobalt but also
+        # carbon monoxide. Without the gate a 20-atom uracil counts as a free
+        # metal ion and every covalent bond along the RNA backbone is discarded
+        # here as a coordination contact.
         if (
-            residues[r1].resname in METAL_ION_RESIDUE_NAMES
-            or residues[r2].resname in METAL_ION_RESIDUE_NAMES
+            (
+                residues[r1].resname in METAL_ION_RESIDUE_NAMES
+                and len(atom_idxs[r1]) == 1
+            )
+            or (
+                residues[r2].resname in METAL_ION_RESIDUE_NAMES
+                and len(atom_idxs[r2]) == 1
+            )
             or residues[r1].resname in ION_RESIDUE_NAMES
             or residues[r2].resname in ION_RESIDUE_NAMES
             or residues[r1].resname in WATER_RESIDUE_NAMES
