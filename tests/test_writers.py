@@ -256,6 +256,131 @@ def test_cif_roundtrip():
         )
 
 
+def _two_lys_disagreeing_on_H3(tmp_path):
+    """Two LYS residues that use the atom name ``H3`` for different atoms, which
+    is what ``systemPrepare`` produces: a plain N-terminal LYS whose ``H3`` is a
+    terminal amine hydrogen, and a crosslinked LYS re-templated from SMILES whose
+    hydrogens carry rdkit's generic names, so its ``H3`` sits on ``CB``."""
+    from moleculekit.molecule import Molecule
+
+    names = ["N", "CA", "CB", "H3"]
+    mol = Molecule().empty(10)
+    # A second resname keeps this a normal structure file rather than a
+    # single-component definition, where the template is exact by construction.
+    mol.name[:] = names * 2 + ["N", "CA"]
+    mol.element[:] = ["N", "C", "C", "H"] * 2 + ["N", "C"]
+    mol.resname[:] = ["LYS"] * 8 + ["ALA"] * 2
+    mol.resid[:] = [1] * 4 + [13] * 4 + [14] * 2
+    mol.chain[:] = "A"
+    mol.segid[:] = "P0"
+    mol.record[:] = "ATOM"
+    coords = np.zeros((10, 3), np.float32)
+    for i in range(2):
+        coords[i * 4 + 0] = [0.0, 3.0 * i, 0.0]  # N
+        coords[i * 4 + 1] = [1.5, 3.0 * i, 0.0]  # CA
+        coords[i * 4 + 2] = [2.2, 3.0 * i + 1.0, 0.0]  # CB
+    coords[3] = [-0.9, 0.4, 0.0]  # LYS 1  H3 on N
+    coords[7] = [2.9, 4.6, 0.0]  # LYS 13 H3 on CB
+    coords[8] = [0.0, 9.0, 0.0]
+    coords[9] = [1.5, 9.0, 0.0]
+    mol.coords = coords.reshape(10, 3, 1)
+    # N-H3 on LYS 1, CB-H3 on LYS 13: the same name, different partners.
+    mol.bonds = np.array(
+        [[0, 1], [1, 2], [0, 3], [4, 5], [5, 6], [6, 7], [8, 9]], dtype=np.uint32
+    )
+    mol.bondtype = np.array(["1"] * 7, dtype=object)
+    return mol
+
+
+def test_cif_conflicting_resname_bonds_roundtrip_exactly(tmp_path):
+    """A per-resname ``chem_comp_bond`` template cannot express two instances of
+    a resname that disagree about an atom name. Such a resname must fall back to
+    per-instance ``struct_conn`` records so the bonds round-trip exactly, while
+    resnames whose instances agree keep the compact template."""
+    from moleculekit.molecule import Molecule
+
+    mol = _two_lys_disagreeing_on_H3(tmp_path)
+
+    out = str(tmp_path / "conflict.cif")
+    mol.write(out)
+
+    text = open(out).read()
+    templated = {
+        line.split()[0]
+        for line in text.splitlines()
+        if line.strip() and not line.startswith(("_", "#", "loop_", "data_"))
+    }
+    assert "LYS" not in templated, "conflicting LYS must not be templated"
+
+    back = Molecule(out)
+    assert back.numBonds == mol.numBonds
+    before = {
+        tuple(sorted((str(mol.name[int(a)]), str(mol.name[int(b)]))))
+        for a, b in mol.bonds
+    }
+    after = {
+        tuple(sorted((str(back.name[int(a)]), str(back.name[int(b)]))))
+        for a, b in back.bonds
+    }
+    assert before == after
+    deg = np.zeros(back.numAtoms, int)
+    for a, b in back.bonds:
+        deg[int(a)] += 1
+        deg[int(b)] += 1
+    h3 = [i for i in range(back.numAtoms) if str(back.name[i]) == "H3"]
+    assert all(deg[i] == 1 for i in h3), "H3 must keep exactly one bond per instance"
+
+
+def test_cif_agreeing_resname_uses_chem_comp_bond(tmp_path):
+    """Two instances of a resname carrying the same bonds under the same names
+    are compressed into one template, and still round-trip exactly."""
+    from moleculekit.molecule import Molecule
+
+    mol = _two_lys_disagreeing_on_H3(tmp_path)
+    # Move LYS 13's H3 onto N, so both LYS instances now agree.
+    h3_13 = np.where((mol.resid == 13) & (mol.name == "H3"))[0]
+    n_13 = np.where((mol.resid == 13) & (mol.name == "N"))[0]
+    mol.bonds[5] = [n_13[0], h3_13[0]]
+
+    out = str(tmp_path / "agree.cif")
+    mol.write(out)
+    text = open(out).read()
+    assert "chem_comp_bond" in text
+    templated = {
+        line.split()[0]
+        for line in text.splitlines()
+        if line.strip() and not line.startswith(("_", "#", "loop_", "data_"))
+    }
+    assert "LYS" in templated
+
+    back = Molecule(out)
+    assert back.numBonds == mol.numBonds
+
+
+def test_cif_single_component_still_uses_chem_comp_bond(tmp_path):
+    """A one-component file has a single instance by construction, so the
+    template is exact and stays the compact representation the PDB deposits."""
+    from moleculekit.molecule import Molecule
+
+    mol = Molecule().empty(2)
+    mol.name[:] = ["C1", "C2"]
+    mol.element[:] = ["C", "C"]
+    mol.resname[:] = "LIG"
+    mol.resid[:] = 1
+    mol.record[:] = "HETATM"
+    mol.coords = np.array([[[0.0]], [[1.5]]], dtype=np.float32).repeat(3, axis=1)
+    mol.coords = np.zeros((2, 3, 1), dtype=np.float32)
+    mol.coords[1, 0, 0] = 1.5
+    mol.bonds = np.array([[0, 1]], dtype=np.uint32)
+    mol.bondtype = np.array(["1"], dtype=object)
+
+    out = str(tmp_path / "lig.cif")
+    mol.write(out)
+    text = open(out).read()
+    assert "chem_comp_bond" in text
+    assert Molecule(out).numBonds == 1
+
+
 @pytest.mark.parametrize("ext", ["xsc", "trr", "dcd", "netcdf", "inpcrd"])
 def test_boxangle_writing(ext):
     from moleculekit.molecule import Molecule

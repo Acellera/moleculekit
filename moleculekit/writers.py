@@ -1051,6 +1051,29 @@ def CIFwrite(
     writebonds: bool = True,
     fp_precision: int = 3,
 ):
+    """Write ``mol`` to an mmCIF file.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to write.
+    filename : str
+        Output path. Unused when ``return_data`` is True.
+    explicitbonds : tuple or None
+        ``(bonds, bondtype)`` to write instead of ``mol.bonds`` /
+        ``mol.bondtype``.
+    chemcomp : bool or None
+        Force treating the molecule as a single chemical component (True) or as
+        a structure (False). By default a molecule with a single resname is
+        treated as a component.
+    return_data : bool
+        Return the assembled data containers instead of writing a file. Used by
+        :func:`BCIFwrite` to encode the same content as binary mmCIF.
+    writebonds : bool
+        Whether to write connectivity at all.
+    fp_precision : int
+        Number of decimals for the coordinates.
+    """
     from moleculekit.pdbx.writer.PdbxWriter import PdbxWriter
     from moleculekit.residues import ORIGINAL_RESIDUE_NAME_TABLE
     import re
@@ -1240,7 +1263,9 @@ def CIFwrite(
                 elif np.isin(here, polymer_names).any():
                     etype = "polymer"
                     # Deoxy first: DA/DC/DG/DT are in both spellings below.
-                    if np.isin(here, tuple(n for n in nucleic_names if n[0] == "D")).any():
+                    if np.isin(
+                        here, tuple(n for n in nucleic_names if n[0] == "D")
+                    ).any():
                         subtype = "polydeoxyribonucleotide"
                     elif np.isin(here, nucleic_names).any():
                         subtype = "polyribonucleotide"
@@ -1295,21 +1320,82 @@ def CIFwrite(
 
         uqresid = mol.getResidues(return_idx=False)
 
-        bCat = DataCategory("chem_comp_bond")
-        for at in ["comp_id", "atom_id_1", "atom_id_2", "value_order"]:
-            bCat.appendAttribute(at)
-
-        written_bonds = set()
+        # ``chem_comp_bond`` is keyed on the residue NAME, so one record set
+        # describes every instance of that resname and each is read back carrying
+        # the union of their bonds. That is exact only when the instances agree,
+        # which a partially-bonded molecule need not: a crosslinked GLU
+        # re-templated from SMILES carries a full skeleton with rdkit's generic
+        # hydrogen names while a plain GLU beside it carries almost nothing, and
+        # any atom name they use differently (``H3`` on a sidechain carbon vs the
+        # terminal amine's ``H3``) reads back bonded to both partners.
+        #
+        # So decide per resname. A resname's template is the union of its
+        # instances' intra-residue bonds, and it is exact when every instance
+        # carries every template bond whose two atoms it actually has. Absent
+        # atoms simply do not materialize, which is what lets one template cover
+        # a mid-chain residue and its terminal variant (the PDB's own model).
+        # Resnames failing the test emit their intra-residue bonds per instance
+        # as ``struct_conn`` records instead.
+        res_atoms = {}
+        res_bonds = {}
+        resname_instances = {}
+        for i, name in enumerate(atomnames):
+            res = uqresid[i]
+            if res not in res_atoms:
+                res_atoms[res] = set()
+                # Every instance counts, including one carrying no intra-residue
+                # bond at all: applying a template would give it bonds it lacks.
+                resname_instances.setdefault(str(mol.resname[i]), []).append(res)
+            res_atoms[res].add(str(name))
         for i in range(bonds.shape[0]):
-            bond = bonds[i]
-            if uqresid[bond[0]] != uqresid[bond[1]]:
+            b0, b1 = bonds[i][0], bonds[i][1]
+            if uqresid[b0] != uqresid[b1]:
                 continue
-            key = (mol.resname[bond[0]], atomnames[bond[0]], atomnames[bond[1]])
-            if key in written_bonds:
-                continue
-            written_bonds.add(key)
-            bCat.append([*key, bondtype_map[bondtype[i]]])
-        curContainer.append(bCat)
+            pair = tuple(sorted((str(atomnames[b0]), str(atomnames[b1]))))
+            res_bonds.setdefault(uqresid[b0], {})[pair] = bondtype_map[bondtype[i]]
+
+        templated_resnames = {}
+        for rn, instances in resname_instances.items():
+            template = {}
+            for res in instances:
+                template.update(res_bonds.get(res, {}))
+            exact = True
+            for res in instances:
+                have = res_bonds.get(res, {})
+                names = res_atoms.get(res, set())
+                for pair, order in template.items():
+                    if pair[0] in names and pair[1] in names:
+                        if have.get(pair) != order:
+                            exact = False
+                            break
+                if not exact:
+                    break
+            if exact:
+                templated_resnames[rn] = template
+
+        if templated_resnames:
+            bCat = DataCategory("chem_comp_bond")
+            for at in ["comp_id", "atom_id_1", "atom_id_2", "value_order"]:
+                bCat.appendAttribute(at)
+            # Emitted in bond order, keeping each bond's own atom order, so a
+            # molecule whose resnames are all templated writes exactly what it
+            # did before the per-resname test was introduced.
+            written_bonds = set()
+            for i in range(bonds.shape[0]):
+                b0, b1 = bonds[i][0], bonds[i][1]
+                if uqresid[b0] != uqresid[b1]:
+                    continue
+                rn = str(mol.resname[b0])
+                if rn not in templated_resnames:
+                    continue
+                key = (rn, tuple(sorted((str(atomnames[b0]), str(atomnames[b1])))))
+                if key in written_bonds:
+                    continue
+                written_bonds.add(key)
+                bCat.append(
+                    [rn, atomnames[b0], atomnames[b1], bondtype_map[bondtype[i]]]
+                )
+            curContainer.append(bCat)
 
         if not single_mol:
             bCat = DataCategory("struct_conn")
@@ -1328,7 +1414,13 @@ def CIFwrite(
                 bCat.appendAttribute(at)
             for i in range(bonds.shape[0]):
                 bond = bonds[i]
-                if uqresid[bond[0]] == uqresid[bond[1]]:
+                # Intra-residue bonds are skipped only for resnames whose
+                # template was found exact above; the rest are written here per
+                # instance, which is what keeps the round-trip faithful.
+                if (
+                    uqresid[bond[0]] == uqresid[bond[1]]
+                    and str(mol.resname[bond[0]]) in templated_resnames
+                ):
                     continue
                 if bondtype[i] == "mc":
                     conn_type = "metalc"
