@@ -1,0 +1,166 @@
+data_GCU
+#
+
+_chem_comp.id                                   GCU
+_chem_comp.name                                 "alpha-D-glucopyranuronic acid"
+_chem_comp.type                                 "D-saccharide, alpha linking"
+_chem_comp.pdbx_type                            ATOMS
+_chem_comp.formula                              "C6 H10 O7"
+_chem_comp.mon_nstd_parent_comp_id              ?
+_chem_comp.pdbx_synonyms                        "alpha-D-glucuronic acid; D-glucuronic acid; glucuronic acid"
+_chem_comp.pdbx_formal_charge                   0
+_chem_comp.pdbx_initial_date                    1999-07-08
+_chem_comp.pdbx_modified_date                   2020-07-17
+_chem_comp.pdbx_ambiguous_flag                  N
+_chem_comp.pdbx_release_status                  REL
+_chem_comp.pdbx_replaced_by                     ?
+_chem_comp.pdbx_replaces                        ?
+_chem_comp.formula_weight                       194.139
+_chem_comp.one_letter_code                      ?
+_chem_comp.three_letter_code                    GCU
+_chem_comp.pdbx_model_coordinates_details       ?
+_chem_comp.pdbx_model_coordinates_missing_flag  N
+_chem_comp.pdbx_ideal_coordinates_details       ?
+_chem_comp.pdbx_ideal_coordinates_missing_flag  N
+_chem_comp.pdbx_model_coordinates_db_code       1DBO
+_chem_comp.pdbx_subcomponent_list               ?
+_chem_comp.pdbx_processing_site                 RCSB
+#   #
+loop_
+_pdbx_chem_comp_synonyms.ordinal
+_pdbx_chem_comp_synonyms.comp_id
+_pdbx_chem_comp_synonyms.name
+_pdbx_chem_comp_synonyms.provenance
+_pdbx_chem_comp_synonyms.type
+1  GCU  "alpha-D-glucuronic acid"  PDB  ?  
+2  GCU  "D-glucuronic acid"        PDB  ?  
+3  GCU  "glucuronic acid"          PDB  ?  
+#   #
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.pdbx_align
+_chem_comp_atom.pdbx_aromatic_flag
+_chem_comp_atom.pdbx_leaving_atom_flag
+_chem_comp_atom.pdbx_stereo_config
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+_chem_comp_atom.pdbx_component_atom_id
+_chem_comp_atom.pdbx_component_comp_id
+_chem_comp_atom.pdbx_ordinal
+GCU  C1    C1   C  0  1  N  N  S  39.729  20.518  29.321   1.509  -0.087  -1.086  C1    GCU   1  
+GCU  C2    C2   C  0  1  N  N  R  39.080  20.336  30.727   0.272  -0.527  -1.873  C2    GCU   2  
+GCU  C3    C3   C  0  1  N  N  S  40.146  20.692  31.763  -0.970   0.115  -1.253  C3    GCU   3  
+GCU  C4    C4   C  0  1  N  N  S  41.360  19.767  31.557  -0.999  -0.216   0.242  C4    GCU   4  
+GCU  C5    C5   C  0  1  N  N  S  41.946  19.940  30.133   0.332   0.199   0.871  C5    GCU   5  
+GCU  C6    C6   C  0  1  N  N  N  43.143  19.019  29.872   0.300  -0.093   2.349  C6    GCU   6  
+GCU  O1    O1   O  0  1  N  Y  N  40.076  21.907  29.105   1.609   1.337  -1.116  O1    GCU   7  
+GCU  O2    O2   O  0  1  N  N  N  37.968  21.229  30.860   0.399  -0.109  -3.234  O2    GCU   8  
+GCU  O3    O3   O  0  1  N  N  N  39.649  20.463  33.087  -2.146  -0.400  -1.881  O3    GCU   9  
+GCU  O4    O4   O  0  1  N  N  N  42.393  20.112  32.486  -2.067   0.493   0.871  O4    GCU  10  
+GCU  O5    O5   O  0  1  N  N  N  40.885  19.632  29.179   1.400  -0.526   0.266  O5    GCU  11  
+GCU  O6A   O6A  O  0  1  N  N  N  44.364  19.572  30.019   1.110  -0.848   2.832  O6A   GCU  12  
+GCU  O6B   O6B  O  0  1  N  N  N  43.020  17.856  29.565  -0.627   0.483   3.128  O6B   GCU  13  
+GCU  H1    H1   H  0  1  N  N  N  38.992  20.233  28.533   2.400  -0.523  -1.538  H1    GCU  14  
+GCU  H2    H2   H  0  1  N  N  N  38.717  19.290  30.867   0.181  -1.612  -1.832  H2    GCU  15  
+GCU  H3    H3   H  0  1  N  N  N  40.422  21.765  31.641  -0.929   1.196  -1.387  H3    GCU  16  
+GCU  H4    H4   H  0  1  N  N  N  41.016  18.716  31.707  -1.146  -1.288   0.375  H4    GCU  17  
+GCU  H5    H5   H  0  1  N  N  N  42.313  20.987  30.025   0.487   1.267   0.717  H5    GCU  18  
+GCU  HO1   HO1  H  0  1  N  Y  N  40.471  22.017  28.248   2.400   1.572  -0.612  HO1   GCU  19  
+GCU  HO2   HO2  H  0  1  N  Y  N  37.572  21.118  31.716   1.192  -0.536  -3.585  HO2   GCU  20  
+GCU  HO3   HO3  H  0  1  N  Y  N  40.311  20.684  33.730  -2.086  -0.169  -2.818  HO3   GCU  21  
+GCU  HO4   HO4  H  0  1  N  Y  N  43.141  19.541  32.358  -2.044   0.260   1.809  HO4   GCU  22  
+GCU  HO6B  HOB  H  0  0  N  N  N  43.761  17.285  29.403  -0.648   0.295   4.076  HO6B  GCU  23  
+#   #
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+_chem_comp_bond.pdbx_aromatic_flag
+_chem_comp_bond.pdbx_stereo_config
+_chem_comp_bond.pdbx_ordinal
+GCU  C1   C2    SING  N  N   1  
+GCU  C1   O1    SING  N  N   2  
+GCU  C1   O5    SING  N  N   3  
+GCU  C1   H1    SING  N  N   4  
+GCU  C2   C3    SING  N  N   5  
+GCU  C2   O2    SING  N  N   6  
+GCU  C2   H2    SING  N  N   7  
+GCU  C3   C4    SING  N  N   8  
+GCU  C3   O3    SING  N  N   9  
+GCU  C3   H3    SING  N  N  10  
+GCU  C4   C5    SING  N  N  11  
+GCU  C4   O4    SING  N  N  12  
+GCU  C4   H4    SING  N  N  13  
+GCU  C5   C6    SING  N  N  14  
+GCU  C5   O5    SING  N  N  15  
+GCU  C5   H5    SING  N  N  16  
+GCU  C6   O6A   DOUB  N  N  17  
+GCU  C6   O6B   SING  N  N  18  
+GCU  O1   HO1   SING  N  N  19  
+GCU  O2   HO2   SING  N  N  20  
+GCU  O3   HO3   SING  N  N  21  
+GCU  O4   HO4   SING  N  N  22  
+GCU  O6B  HO6B  SING  N  N  23  
+#   #
+loop_
+_pdbx_chem_comp_descriptor.comp_id
+_pdbx_chem_comp_descriptor.type
+_pdbx_chem_comp_descriptor.program
+_pdbx_chem_comp_descriptor.program_version
+_pdbx_chem_comp_descriptor.descriptor
+GCU  SMILES            ACDLabs               10.04  "O=C(O)C1OC(O)C(O)C(O)C1O"  
+GCU  SMILES_CANONICAL  CACTVS                3.341  "O[C@H]1O[C@@H]([C@@H](O)[C@H](O)[C@H]1O)C(O)=O"  
+GCU  SMILES            CACTVS                3.341  "O[CH]1O[CH]([CH](O)[CH](O)[CH]1O)C(O)=O"  
+GCU  SMILES_CANONICAL  "OpenEye OEToolkits"  1.5.0  "[C@@H]1([C@@H]([C@H](O[C@@H]([C@@H]1O)O)C(=O)O)O)O"  
+GCU  SMILES            "OpenEye OEToolkits"  1.5.0  "C1(C(C(OC(C1O)O)C(=O)O)O)O"  
+GCU  InChI             InChI                 1.03   "InChI=1S/C6H10O7/c7-1-2(8)4(5(10)11)13-6(12)3(1)9/h1-4,6-9,12H,(H,10,11)/t1-,2-,3+,4-,6-/m0/s1"  
+GCU  InChIKey          InChI                 1.03   AEMOLEFTQBMNLQ-WAXACMCWSA-N  
+#   #
+loop_
+_pdbx_chem_comp_identifier.comp_id
+_pdbx_chem_comp_identifier.type
+_pdbx_chem_comp_identifier.program
+_pdbx_chem_comp_identifier.program_version
+_pdbx_chem_comp_identifier.identifier
+GCU  "SYSTEMATIC NAME"                      ACDLabs               10.04  "alpha-D-glucopyranuronic acid"  
+GCU  "SYSTEMATIC NAME"                      "OpenEye OEToolkits"  1.5.0  "(2S,3S,4S,5R,6S)-3,4,5,6-tetrahydroxyoxane-2-carboxylic acid"  
+GCU  "CONDENSED IUPAC CARBOHYDRATE SYMBOL"  GMML                  1.0    DGlcpAa  
+GCU  "COMMON NAME"                          GMML                  1.0    "a-D-glucopyranuronic acid"  
+GCU  "IUPAC CARBOHYDRATE SYMBOL"            PDB-CARE              1.0    a-D-GlcpA  
+GCU  "SNFG CARBOHYDRATE SYMBOL"             GMML                  1.0    GlcA  
+#   #
+loop_
+_pdbx_chem_comp_feature.comp_id
+_pdbx_chem_comp_feature.type
+_pdbx_chem_comp_feature.value
+_pdbx_chem_comp_feature.source
+_pdbx_chem_comp_feature.support
+GCU  "CARBOHYDRATE ISOMER"                  D         PDB  ?  
+GCU  "CARBOHYDRATE RING"                    pyranose  PDB  ?  
+GCU  "CARBOHYDRATE ANOMER"                  alpha     PDB  ?  
+GCU  "CARBOHYDRATE PRIMARY CARBONYL GROUP"  aldose    PDB  ?  
+#   #
+loop_
+_pdbx_chem_comp_audit.comp_id
+_pdbx_chem_comp_audit.action_type
+_pdbx_chem_comp_audit.date
+_pdbx_chem_comp_audit.processing_site
+GCU  "Create component"          1999-07-08  RCSB  
+GCU  "Modify descriptor"         2011-06-04  RCSB  
+GCU  "Other modification"        2019-08-12  RCSB  
+GCU  "Other modification"        2019-12-19  RCSB  
+GCU  "Other modification"        2020-07-03  RCSB  
+GCU  "Modify name"               2020-07-17  RCSB  
+GCU  "Modify synonyms"           2020-07-17  RCSB  
+GCU  "Modify atom id"            2020-07-17  RCSB  
+GCU  "Modify component atom id"  2020-07-17  RCSB  
+##

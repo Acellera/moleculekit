@@ -1,0 +1,166 @@
+data_IDR
+#
+
+_chem_comp.id                                   IDR
+_chem_comp.name                                 "alpha-L-idopyranuronic acid"
+_chem_comp.type                                 "L-saccharide, alpha linking"
+_chem_comp.pdbx_type                            ATOMS
+_chem_comp.formula                              "C6 H10 O7"
+_chem_comp.mon_nstd_parent_comp_id              ?
+_chem_comp.pdbx_synonyms                        "alpha-L-iduronic acid; L-iduronic acid; iduronic acid"
+_chem_comp.pdbx_formal_charge                   0
+_chem_comp.pdbx_initial_date                    2000-12-12
+_chem_comp.pdbx_modified_date                   2020-07-17
+_chem_comp.pdbx_ambiguous_flag                  N
+_chem_comp.pdbx_release_status                  REL
+_chem_comp.pdbx_replaced_by                     ?
+_chem_comp.pdbx_replaces                        ?
+_chem_comp.formula_weight                       194.139
+_chem_comp.one_letter_code                      ?
+_chem_comp.three_letter_code                    IDR
+_chem_comp.pdbx_model_coordinates_details       ?
+_chem_comp.pdbx_model_coordinates_missing_flag  N
+_chem_comp.pdbx_ideal_coordinates_details       ?
+_chem_comp.pdbx_ideal_coordinates_missing_flag  N
+_chem_comp.pdbx_model_coordinates_db_code       1HM2
+_chem_comp.pdbx_subcomponent_list               ?
+_chem_comp.pdbx_processing_site                 RCSB
+#   #
+loop_
+_pdbx_chem_comp_synonyms.ordinal
+_pdbx_chem_comp_synonyms.comp_id
+_pdbx_chem_comp_synonyms.name
+_pdbx_chem_comp_synonyms.provenance
+_pdbx_chem_comp_synonyms.type
+1  IDR  "alpha-L-iduronic acid"  PDB  ?  
+2  IDR  "L-iduronic acid"        PDB  ?  
+3  IDR  "iduronic acid"          PDB  ?  
+#   #
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.pdbx_align
+_chem_comp_atom.pdbx_aromatic_flag
+_chem_comp_atom.pdbx_leaving_atom_flag
+_chem_comp_atom.pdbx_stereo_config
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+_chem_comp_atom.pdbx_component_atom_id
+_chem_comp_atom.pdbx_component_comp_id
+_chem_comp_atom.pdbx_ordinal
+IDR  C1    C1   C  0  1  N  N  R  28.213  27.720  47.496   1.030  -0.832   1.240  C1    IDR   1  
+IDR  C2    C2   C  0  1  N  N  R  27.839  27.042  48.823  -0.227  -0.371   1.979  C2    IDR   2  
+IDR  C3    C3   C  0  1  N  N  S  27.031  27.922  49.777  -0.728   0.932   1.352  C3    IDR   3  
+IDR  C4    C4   C  0  1  N  N  S  26.024  28.918  49.133  -0.902   0.715  -0.155  C4    IDR   4  
+IDR  C5    C5   C  0  1  N  N  R  26.670  29.628  47.962   0.406   0.172  -0.734  C5    IDR   5  
+IDR  C6    C6   C  0  1  N  N  N  25.690  30.611  47.344   0.254  -0.013  -2.222  C6    IDR   6  
+IDR  O1    O1   O  0  1  N  Y  N  29.505  28.399  47.628   2.030   0.185   1.324  O1    IDR   7  
+IDR  O2    O2   O  0  1  N  N  N  26.977  25.929  48.324  -1.241  -1.373   1.873  O2    IDR   8  
+IDR  O3    O3   O  0  1  N  N  N  27.965  28.631  50.704   0.222   1.975   1.579  O3    IDR   9  
+IDR  O4    O4   O  0  1  N  N  N  24.735  28.322  48.834  -1.953  -0.224  -0.386  O4    IDR  10  
+IDR  O5    O5   O  0  1  N  N  N  27.095  28.601  46.966   0.719  -1.080  -0.129  O5    IDR  11  
+IDR  O6A   O6A  O  0  1  N  N  N  26.075  31.112  46.265   0.400  -1.108  -2.712  O6A   IDR  12  
+IDR  O6B   O6B  O  0  1  N  N  N  24.644  30.794  48.017  -0.042   1.037  -3.003  O6B   IDR  13  
+IDR  H1    H1   H  0  1  N  N  N  28.340  26.938  46.710   1.404  -1.747   1.698  H1    IDR  14  
+IDR  H2    H2   H  0  1  N  N  N  28.736  26.759  49.420   0.009  -0.202   3.030  H2    IDR  15  
+IDR  H3    H3   H  0  1  N  N  N  26.366  27.214  50.325  -1.685   1.208   1.794  H3    IDR  16  
+IDR  H4    H4   H  0  1  N  N  N  25.775  29.697  49.890  -1.148   1.662  -0.634  H4    IDR  17  
+IDR  H5    H5   H  0  1  N  N  N  27.560  30.205  48.302   1.210   0.881  -0.538  H5    IDR  18  
+IDR  HO1   HO1  H  0  1  N  Y  N  29.736  28.818  46.807   2.804  -0.144   0.848  HO1   IDR  19  
+IDR  HO2   HO2  H  0  1  N  Y  N  26.745  25.509  49.144  -0.885  -2.175   2.279  HO2   IDR  20  
+IDR  HO3   HO3  H  0  1  N  Y  N  27.462  29.177  51.296   0.300   2.077   2.538  HO3   IDR  21  
+IDR  HO4   HO4  H  0  1  N  Y  N  24.120  28.930  48.440  -2.023  -0.335  -1.344  HO4   IDR  22  
+IDR  HO6B  HOB  H  0  0  N  N  N  24.031  31.408  47.630  -0.140   0.917  -3.958  HO6B  IDR  23  
+#   #
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+_chem_comp_bond.pdbx_aromatic_flag
+_chem_comp_bond.pdbx_stereo_config
+_chem_comp_bond.pdbx_ordinal
+IDR  C1   C2    SING  N  N   1  
+IDR  C1   O1    SING  N  N   2  
+IDR  C1   O5    SING  N  N   3  
+IDR  C1   H1    SING  N  N   4  
+IDR  C2   C3    SING  N  N   5  
+IDR  C2   O2    SING  N  N   6  
+IDR  C2   H2    SING  N  N   7  
+IDR  C3   C4    SING  N  N   8  
+IDR  C3   O3    SING  N  N   9  
+IDR  C3   H3    SING  N  N  10  
+IDR  C4   C5    SING  N  N  11  
+IDR  C4   O4    SING  N  N  12  
+IDR  C4   H4    SING  N  N  13  
+IDR  C5   C6    SING  N  N  14  
+IDR  C5   O5    SING  N  N  15  
+IDR  C5   H5    SING  N  N  16  
+IDR  C6   O6A   DOUB  N  N  17  
+IDR  C6   O6B   SING  N  N  18  
+IDR  O1   HO1   SING  N  N  19  
+IDR  O2   HO2   SING  N  N  20  
+IDR  O3   HO3   SING  N  N  21  
+IDR  O4   HO4   SING  N  N  22  
+IDR  O6B  HO6B  SING  N  N  23  
+#   #
+loop_
+_pdbx_chem_comp_descriptor.comp_id
+_pdbx_chem_comp_descriptor.type
+_pdbx_chem_comp_descriptor.program
+_pdbx_chem_comp_descriptor.program_version
+_pdbx_chem_comp_descriptor.descriptor
+IDR  SMILES            ACDLabs               10.04  "O=C(O)C1OC(O)C(O)C(O)C1O"  
+IDR  SMILES_CANONICAL  CACTVS                3.341  "O[C@@H]1O[C@H]([C@@H](O)[C@H](O)[C@H]1O)C(O)=O"  
+IDR  SMILES            CACTVS                3.341  "O[CH]1O[CH]([CH](O)[CH](O)[CH]1O)C(O)=O"  
+IDR  SMILES_CANONICAL  "OpenEye OEToolkits"  1.5.0  "[C@@H]1([C@@H]([C@@H](O[C@H]([C@@H]1O)O)C(=O)O)O)O"  
+IDR  SMILES            "OpenEye OEToolkits"  1.5.0  "C1(C(C(OC(C1O)O)C(=O)O)O)O"  
+IDR  InChI             InChI                 1.03   "InChI=1S/C6H10O7/c7-1-2(8)4(5(10)11)13-6(12)3(1)9/h1-4,6-9,12H,(H,10,11)/t1-,2-,3+,4+,6+/m0/s1"  
+IDR  InChIKey          InChI                 1.03   AEMOLEFTQBMNLQ-VCSGLWQLSA-N  
+#   #
+loop_
+_pdbx_chem_comp_identifier.comp_id
+_pdbx_chem_comp_identifier.type
+_pdbx_chem_comp_identifier.program
+_pdbx_chem_comp_identifier.program_version
+_pdbx_chem_comp_identifier.identifier
+IDR  "SYSTEMATIC NAME"                      ACDLabs               10.04  "alpha-L-idopyranuronic acid"  
+IDR  "SYSTEMATIC NAME"                      "OpenEye OEToolkits"  1.5.0  "(2R,3S,4S,5R,6R)-3,4,5,6-tetrahydroxyoxane-2-carboxylic acid"  
+IDR  "CONDENSED IUPAC CARBOHYDRATE SYMBOL"  GMML                  1.0    LIdopAa  
+IDR  "COMMON NAME"                          GMML                  1.0    "a-L-idopyranuronic acid"  
+IDR  "IUPAC CARBOHYDRATE SYMBOL"            PDB-CARE              1.0    a-L-IdopA  
+IDR  "SNFG CARBOHYDRATE SYMBOL"             GMML                  1.0    IdoA  
+#   #
+loop_
+_pdbx_chem_comp_feature.comp_id
+_pdbx_chem_comp_feature.type
+_pdbx_chem_comp_feature.value
+_pdbx_chem_comp_feature.source
+_pdbx_chem_comp_feature.support
+IDR  "CARBOHYDRATE ISOMER"                  L         PDB  ?  
+IDR  "CARBOHYDRATE RING"                    pyranose  PDB  ?  
+IDR  "CARBOHYDRATE ANOMER"                  alpha     PDB  ?  
+IDR  "CARBOHYDRATE PRIMARY CARBONYL GROUP"  aldose    PDB  ?  
+#   #
+loop_
+_pdbx_chem_comp_audit.comp_id
+_pdbx_chem_comp_audit.action_type
+_pdbx_chem_comp_audit.date
+_pdbx_chem_comp_audit.processing_site
+IDR  "Create component"          2000-12-12  RCSB  
+IDR  "Modify descriptor"         2011-06-04  RCSB  
+IDR  "Other modification"        2019-08-12  RCSB  
+IDR  "Other modification"        2019-12-19  RCSB  
+IDR  "Other modification"        2020-07-03  RCSB  
+IDR  "Modify name"               2020-07-17  RCSB  
+IDR  "Modify synonyms"           2020-07-17  RCSB  
+IDR  "Modify atom id"            2020-07-17  RCSB  
+IDR  "Modify component atom id"  2020-07-17  RCSB  
+##

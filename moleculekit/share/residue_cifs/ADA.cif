@@ -1,0 +1,167 @@
+data_ADA
+#
+
+_chem_comp.id                                   ADA
+_chem_comp.name                                 "alpha-D-galactopyranuronic acid"
+_chem_comp.type                                 "D-saccharide, alpha linking"
+_chem_comp.pdbx_type                            ATOMS
+_chem_comp.formula                              "C6 H10 O7"
+_chem_comp.mon_nstd_parent_comp_id              ?
+_chem_comp.pdbx_synonyms                        "alpha-D-galacturonic acid; D-galacturonic acid; galacturonic acid; ALPHA D-GALACTURONIC ACID"
+_chem_comp.pdbx_formal_charge                   0
+_chem_comp.pdbx_initial_date                    2002-04-08
+_chem_comp.pdbx_modified_date                   2020-07-17
+_chem_comp.pdbx_ambiguous_flag                  N
+_chem_comp.pdbx_release_status                  REL
+_chem_comp.pdbx_replaced_by                     ?
+_chem_comp.pdbx_replaces                        ?
+_chem_comp.formula_weight                       194.139
+_chem_comp.one_letter_code                      ?
+_chem_comp.three_letter_code                    ADA
+_chem_comp.pdbx_model_coordinates_details       ?
+_chem_comp.pdbx_model_coordinates_missing_flag  N
+_chem_comp.pdbx_ideal_coordinates_details       ?
+_chem_comp.pdbx_ideal_coordinates_missing_flag  N
+_chem_comp.pdbx_model_coordinates_db_code       1GXO
+_chem_comp.pdbx_subcomponent_list               ?
+_chem_comp.pdbx_processing_site                 EBI
+#   #
+loop_
+_pdbx_chem_comp_synonyms.ordinal
+_pdbx_chem_comp_synonyms.comp_id
+_pdbx_chem_comp_synonyms.name
+_pdbx_chem_comp_synonyms.provenance
+_pdbx_chem_comp_synonyms.type
+1  ADA  "alpha-D-galacturonic acid"  PDB  ?  
+2  ADA  "D-galacturonic acid"        PDB  ?  
+3  ADA  "galacturonic acid"          PDB  ?  
+4  ADA  "ALPHA D-GALACTURONIC ACID"  PDB  ?  
+#   #
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.pdbx_align
+_chem_comp_atom.pdbx_aromatic_flag
+_chem_comp_atom.pdbx_leaving_atom_flag
+_chem_comp_atom.pdbx_stereo_config
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+_chem_comp_atom.pdbx_component_atom_id
+_chem_comp_atom.pdbx_component_comp_id
+_chem_comp_atom.pdbx_ordinal
+ADA  C1    C1   C  0  1  N  N  S  20.831   0.300  27.409   1.444  -0.340  -0.983  C1    ADA   1  
+ADA  C2    C2   C  0  1  N  N  R  22.110   1.081  27.771   0.164  -0.466  -1.813  C2    ADA   2  
+ADA  C3    C3   C  0  1  N  N  S  22.500   1.068  29.263  -0.882   0.509  -1.270  C3    ADA   3  
+ADA  C4    C4   C  0  1  N  N  R  21.314   1.144  30.251  -1.053   0.259   0.232  C4    ADA   4  
+ADA  C5    C5   C  0  1  N  N  S  20.268   0.099  29.789   0.317   0.330   0.908  C5    ADA   5  
+ADA  C6    C6   C  0  1  N  N  N  19.063   0.230  30.762   0.155   0.117   2.391  C6    ADA   6  
+ADA  O1    O1   O  0  1  N  Y  N  21.084  -1.043  27.040   1.924   1.003  -1.052  O1    ADA   7  
+ADA  O2    O2   O  0  1  N  N  N  23.189   0.600  26.989   0.447  -0.154  -3.179  O2    ADA   8  
+ADA  O3    O3   O  0  1  N  N  N  23.377   2.150  29.491  -2.129   0.300  -1.936  O3    ADA   9  
+ADA  O4    O4   O  0  1  N  N  N  20.615   2.407  30.202  -1.622  -1.034   0.441  O4    ADA  10  
+ADA  O5    O5   O  0  1  N  N  N  19.861   0.347  28.447   1.172  -0.678   0.374  O5    ADA  11  
+ADA  O6B   O6B  O  0  1  N  N  N  19.223   0.708  31.896  -0.611   0.952   3.109  O6B   ADA  12  
+ADA  O6A   O6A  O  0  1  N  N  N  17.948  -0.130  30.412   0.715  -0.805   2.933  O6A   ADA  13  
+ADA  H1    H1   H  0  1  N  N  N  20.382   0.803  26.521   2.201  -1.016  -1.381  H1    ADA  14  
+ADA  H2    H2   H  0  1  N  N  N  21.941   2.145  27.483  -0.216  -1.485  -1.744  H2    ADA  15  
+ADA  H3    H3   H  0  1  N  N  N  23.057   0.124  29.465  -0.548   1.534  -1.434  H3    ADA  16  
+ADA  H4    H4   H  0  1  N  N  N  21.655   0.925  31.290  -1.709   1.019   0.656  H4    ADA  17  
+ADA  H5    H5   H  0  1  N  N  N  20.702  -0.925  29.866   0.759   1.311   0.729  H5    ADA  18  
+ADA  HO1   HA   H  0  1  N  Y  N  20.296  -1.524  26.817   2.730   1.039  -0.519  HO1   ADA  19  
+ADA  HO2   HB   H  0  1  N  Y  N  23.977   1.081  27.212   1.108  -0.791  -3.480  HO2   ADA  20  
+ADA  HO3   HC   H  0  1  N  Y  N  23.617   2.142  30.410  -1.976   0.468  -2.875  HO3   ADA  21  
+ADA  HO4   HD   H  0  1  N  Y  N  19.886   2.454  30.809  -1.705  -1.152   1.397  HO4   ADA  22  
+ADA  HO6B  H6B  H  0  0  N  N  N  18.487   0.788  32.491  -0.716   0.815   4.060  HO6B  ADA  23  
+#   #
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+_chem_comp_bond.pdbx_aromatic_flag
+_chem_comp_bond.pdbx_stereo_config
+_chem_comp_bond.pdbx_ordinal
+ADA  C1   C2    SING  N  N   1  
+ADA  C1   O1    SING  N  N   2  
+ADA  C1   O5    SING  N  N   3  
+ADA  C1   H1    SING  N  N   4  
+ADA  C2   C3    SING  N  N   5  
+ADA  C2   O2    SING  N  N   6  
+ADA  C2   H2    SING  N  N   7  
+ADA  C3   C4    SING  N  N   8  
+ADA  C3   O3    SING  N  N   9  
+ADA  C3   H3    SING  N  N  10  
+ADA  C4   C5    SING  N  N  11  
+ADA  C4   O4    SING  N  N  12  
+ADA  C4   H4    SING  N  N  13  
+ADA  C5   C6    SING  N  N  14  
+ADA  C5   O5    SING  N  N  15  
+ADA  C5   H5    SING  N  N  16  
+ADA  C6   O6B   SING  N  N  17  
+ADA  C6   O6A   DOUB  N  N  18  
+ADA  O1   HO1   SING  N  N  19  
+ADA  O2   HO2   SING  N  N  20  
+ADA  O3   HO3   SING  N  N  21  
+ADA  O4   HO4   SING  N  N  22  
+ADA  O6B  HO6B  SING  N  N  23  
+#   #
+loop_
+_pdbx_chem_comp_descriptor.comp_id
+_pdbx_chem_comp_descriptor.type
+_pdbx_chem_comp_descriptor.program
+_pdbx_chem_comp_descriptor.program_version
+_pdbx_chem_comp_descriptor.descriptor
+ADA  SMILES            ACDLabs               10.04  "O=C(O)C1OC(O)C(O)C(O)C1O"  
+ADA  SMILES_CANONICAL  CACTVS                3.341  "O[C@H]1O[C@@H]([C@H](O)[C@H](O)[C@H]1O)C(O)=O"  
+ADA  SMILES            CACTVS                3.341  "O[CH]1O[CH]([CH](O)[CH](O)[CH]1O)C(O)=O"  
+ADA  SMILES_CANONICAL  "OpenEye OEToolkits"  1.5.0  "[C@@H]1([C@H]([C@H](O[C@@H]([C@@H]1O)O)C(=O)O)O)O"  
+ADA  SMILES            "OpenEye OEToolkits"  1.5.0  "C1(C(C(OC(C1O)O)C(=O)O)O)O"  
+ADA  InChI             InChI                 1.03   "InChI=1S/C6H10O7/c7-1-2(8)4(5(10)11)13-6(12)3(1)9/h1-4,6-9,12H,(H,10,11)/t1-,2+,3+,4-,6-/m0/s1"  
+ADA  InChIKey          InChI                 1.03   AEMOLEFTQBMNLQ-BKBMJHBISA-N  
+#   #
+loop_
+_pdbx_chem_comp_identifier.comp_id
+_pdbx_chem_comp_identifier.type
+_pdbx_chem_comp_identifier.program
+_pdbx_chem_comp_identifier.program_version
+_pdbx_chem_comp_identifier.identifier
+ADA  "SYSTEMATIC NAME"                      ACDLabs               10.04  "alpha-D-galactopyranuronic acid"  
+ADA  "SYSTEMATIC NAME"                      "OpenEye OEToolkits"  1.5.0  "(2S,3R,4S,5R,6S)-3,4,5,6-tetrahydroxyoxane-2-carboxylic acid"  
+ADA  "CONDENSED IUPAC CARBOHYDRATE SYMBOL"  GMML                  1.0    DGalpAa  
+ADA  "COMMON NAME"                          GMML                  1.0    "a-D-galactopyranuronic acid"  
+ADA  "IUPAC CARBOHYDRATE SYMBOL"            PDB-CARE              1.0    a-D-GalpA  
+ADA  "SNFG CARBOHYDRATE SYMBOL"             GMML                  1.0    GalA  
+#   #
+loop_
+_pdbx_chem_comp_feature.comp_id
+_pdbx_chem_comp_feature.type
+_pdbx_chem_comp_feature.value
+_pdbx_chem_comp_feature.source
+_pdbx_chem_comp_feature.support
+ADA  "CARBOHYDRATE ISOMER"                  D         PDB  ?  
+ADA  "CARBOHYDRATE RING"                    pyranose  PDB  ?  
+ADA  "CARBOHYDRATE ANOMER"                  alpha     PDB  ?  
+ADA  "CARBOHYDRATE PRIMARY CARBONYL GROUP"  aldose    PDB  ?  
+#   #
+loop_
+_pdbx_chem_comp_audit.comp_id
+_pdbx_chem_comp_audit.action_type
+_pdbx_chem_comp_audit.date
+_pdbx_chem_comp_audit.processing_site
+ADA  "Create component"          2002-04-08  EBI   
+ADA  "Modify descriptor"         2011-06-04  RCSB  
+ADA  "Other modification"        2019-08-12  RCSB  
+ADA  "Other modification"        2019-12-19  RCSB  
+ADA  "Other modification"        2020-07-03  RCSB  
+ADA  "Modify name"               2020-07-17  RCSB  
+ADA  "Modify synonyms"           2020-07-17  RCSB  
+ADA  "Modify atom id"            2020-07-17  RCSB  
+ADA  "Modify component atom id"  2020-07-17  RCSB  
+##

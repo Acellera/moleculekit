@@ -1,0 +1,182 @@
+data_BDP
+# 
+_chem_comp.id                                    BDP 
+_chem_comp.name                                  "beta-D-glucopyranuronic acid" 
+_chem_comp.type                                  "D-saccharide, beta linking" 
+_chem_comp.pdbx_type                             ATOMS 
+_chem_comp.formula                               "C6 H10 O7" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         "beta-D-glucuronic acid; D-glucuronic acid; glucuronic acid" 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     2001-11-26 
+_chem_comp.pdbx_modified_date                    2024-09-27 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        194.139 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     BDP 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        Corina 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        1GQK 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  EBI 
+_chem_comp.pdbx_pcm                              Y 
+# 
+loop_
+_pdbx_chem_comp_synonyms.ordinal 
+_pdbx_chem_comp_synonyms.comp_id 
+_pdbx_chem_comp_synonyms.name 
+_pdbx_chem_comp_synonyms.provenance 
+_pdbx_chem_comp_synonyms.type 
+1 BDP "beta-D-glucuronic acid" PDB ? 
+2 BDP "D-glucuronic acid"      PDB ? 
+3 BDP "glucuronic acid"        PDB ? 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+BDP C1   C1  C 0 1 N N R N N N 8.748  -11.725 3.342 -1.248 1.252  0.387  C1   BDP 1  
+BDP C2   C2  C 0 1 N N R N N N 9.125  -11.206 4.727 -1.851 -0.001 -0.255 C2   BDP 2  
+BDP C3   C3  C 0 1 N N S N N N 8.484  -11.996 5.851 -1.037 -1.226 0.173  C3   BDP 3  
+BDP C4   C4  C 0 1 N N S N N N 6.984  -12.052 5.582 0.427  -1.017 -0.224 C4   BDP 4  
+BDP C5   C5  C 0 1 N N S N N N 6.755  -12.709 4.238 0.942  0.275  0.417  C5   BDP 5  
+BDP C6   C6  C 0 1 N N N N N N 5.298  -12.692 3.781 2.364  0.519  -0.016 C6   BDP 6  
+BDP O2   O2  O 0 1 N N N N N N 10.540 -11.232 4.784 -3.205 -0.153 0.174  O2   BDP 7  
+BDP O3   O3  O 0 1 N N N N N N 8.730  -11.292 7.057 -1.548 -2.390 -0.480 O3   BDP 8  
+BDP O4   O4  O 0 1 N N N N N N 6.322  -12.815 6.554 1.209  -2.121 0.235  O4   BDP 9  
+BDP O5   O5  O 0 1 N N N N N N 7.382  -11.957 3.235 0.123  1.370  0.002  O5   BDP 10 
+BDP O6A  O6A O 0 1 N N N N N N 4.562  -13.559 4.253 2.632  1.482  -0.695 O6A  BDP 11 
+BDP O1   O1  O 0 1 N Y N N N N 8.947  -10.588 2.508 -1.968 2.406  -0.053 O1   BDP 12 
+BDP O6B  O6B O 0 1 N N N N N N 4.954  -11.847 2.932 3.334  -0.333 0.352  O6B  BDP 13 
+BDP H1   H1  H 0 1 N N N N N N 9.311  -12.642 3.111 -1.316 1.173  1.472  H1   BDP 14 
+BDP H2   H2  H 0 1 N N N N N N 8.743  -10.185 4.873 -1.820 0.096  -1.341 H2   BDP 15 
+BDP H3   H3  H 0 1 N N N N N N 8.887  -13.017 5.921 -1.108 -1.351 1.253  H3   BDP 16 
+BDP H4   H4  H 0 1 N N N N N N 6.591  -11.025 5.602 0.504  -0.941 -1.308 H4   BDP 17 
+BDP H5   H5  H 0 1 N N N N N N 7.127  -13.736 4.371 0.903  0.183  1.503  H5   BDP 18 
+BDP HO2  HB  H 0 1 N Y N N N N 10.829 -10.916 5.632 -3.778 0.591  -0.060 HO2  BDP 19 
+BDP HO3  HC  H 0 1 N Y N N N N 8.340  -11.763 7.784 -2.474 -2.579 -0.279 HO3  BDP 20 
+BDP HO4  HD  H 0 1 N Y N N N N 5.590  -13.271 6.155 2.149  -2.055 0.018  HO4  BDP 21 
+BDP HO1  HA  H 0 1 N Y N N N N 8.735  -10.813 1.610 -1.640 3.237  0.315  HO1  BDP 22 
+BDP HO6B H6B H 0 0 N N N N N N 4.040  -11.977 2.708 4.231  -0.135 0.050  HO6B BDP 23 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+BDP C1  C2   SING N N 1  
+BDP C1  O5   SING N N 2  
+BDP C1  O1   SING N N 3  
+BDP C1  H1   SING N N 4  
+BDP C2  C3   SING N N 5  
+BDP C2  O2   SING N N 6  
+BDP C2  H2   SING N N 7  
+BDP C3  C4   SING N N 8  
+BDP C3  O3   SING N N 9  
+BDP C3  H3   SING N N 10 
+BDP C4  C5   SING N N 11 
+BDP C4  O4   SING N N 12 
+BDP C4  H4   SING N N 13 
+BDP C5  C6   SING N N 14 
+BDP C5  O5   SING N N 15 
+BDP C5  H5   SING N N 16 
+BDP C6  O6A  DOUB N N 17 
+BDP C6  O6B  SING N N 18 
+BDP O2  HO2  SING N N 19 
+BDP O3  HO3  SING N N 20 
+BDP O4  HO4  SING N N 21 
+BDP O1  HO1  SING N N 22 
+BDP O6B HO6B SING N N 23 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+BDP SMILES           ACDLabs              12.01 "O=C(O)C1OC(O)C(O)C(O)C1O"                                                                       
+BDP SMILES_CANONICAL CACTVS               3.370 "O[C@@H]1O[C@@H]([C@@H](O)[C@H](O)[C@H]1O)C(O)=O"                                                
+BDP SMILES           CACTVS               3.370 "O[CH]1O[CH]([CH](O)[CH](O)[CH]1O)C(O)=O"                                                        
+BDP SMILES_CANONICAL "OpenEye OEToolkits" 1.7.0 "[C@@H]1([C@@H]([C@H](O[C@H]([C@@H]1O)O)C(=O)O)O)O"                                              
+BDP SMILES           "OpenEye OEToolkits" 1.7.0 "C1(C(C(OC(C1O)O)C(=O)O)O)O"                                                                     
+BDP InChI            InChI                1.03  "InChI=1S/C6H10O7/c7-1-2(8)4(5(10)11)13-6(12)3(1)9/h1-4,6-9,12H,(H,10,11)/t1-,2-,3+,4-,6+/m0/s1" 
+BDP InChIKey         InChI                1.03  AEMOLEFTQBMNLQ-QIUUJYRFSA-N                                                                      
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+BDP "SYSTEMATIC NAME"                     ACDLabs              12.01 "beta-D-glucopyranuronic acid"                                 
+BDP "SYSTEMATIC NAME"                     "OpenEye OEToolkits" 1.7.0 "(2S,3S,4S,5R,6R)-3,4,5,6-tetrahydroxyoxane-2-carboxylic acid" 
+BDP "CONDENSED IUPAC CARBOHYDRATE SYMBOL" GMML                 1.0   DGlcpAb                                                        
+BDP "COMMON NAME"                         GMML                 1.0   "b-D-glucopyranuronic acid"                                    
+BDP "IUPAC CARBOHYDRATE SYMBOL"           PDB-CARE             1.0   b-D-GlcpA                                                      
+BDP "SNFG CARBOHYDRATE SYMBOL"            GMML                 1.0   GlcA                                                           
+# 
+loop_
+_pdbx_chem_comp_feature.comp_id 
+_pdbx_chem_comp_feature.type 
+_pdbx_chem_comp_feature.value 
+_pdbx_chem_comp_feature.source 
+_pdbx_chem_comp_feature.support 
+BDP "CARBOHYDRATE ISOMER"                 D        PDB ? 
+BDP "CARBOHYDRATE RING"                   pyranose PDB ? 
+BDP "CARBOHYDRATE ANOMER"                 beta     PDB ? 
+BDP "CARBOHYDRATE PRIMARY CARBONYL GROUP" aldose   PDB ? 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+BDP "Create component"         2001-11-26 EBI  
+BDP "Modify descriptor"        2011-06-04 RCSB 
+BDP "Other modification"       2019-08-12 RCSB 
+BDP "Other modification"       2019-12-19 RCSB 
+BDP "Other modification"       2020-07-03 RCSB 
+BDP "Modify name"              2020-07-17 RCSB 
+BDP "Modify synonyms"          2020-07-17 RCSB 
+BDP "Modify atom id"           2020-07-17 RCSB 
+BDP "Modify component atom id" 2020-07-17 RCSB 
+BDP "Modify PCM"               2024-09-27 PDBE 
+# 
+_pdbx_chem_comp_pcm.pcm_id                             1 
+_pdbx_chem_comp_pcm.comp_id                            BDP 
+_pdbx_chem_comp_pcm.modified_residue_id                SER 
+_pdbx_chem_comp_pcm.type                               None 
+_pdbx_chem_comp_pcm.category                           Carbohydrate 
+_pdbx_chem_comp_pcm.position                           "Amino-acid side chain" 
+_pdbx_chem_comp_pcm.polypeptide_position               "Any position" 
+_pdbx_chem_comp_pcm.comp_id_linking_atom               C6 
+_pdbx_chem_comp_pcm.modified_residue_id_linking_atom   OG 
+_pdbx_chem_comp_pcm.uniprot_specific_ptm_accession     ? 
+_pdbx_chem_comp_pcm.uniprot_generic_ptm_accession      ? 
+# 

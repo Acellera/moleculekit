@@ -43,10 +43,17 @@ class SugarTemplate:
         or ``"B"`` for beta.
     anomeric_carbon : str
         Atom name of the anomeric carbon, ``"C1"`` for most sugars or
-        ``"C2"`` for sialic acids.
+        ``"C2"`` for sialic acid and fructose (both ketoses, with the
+        anomeric center one carbon further along the chain than an
+        aldose's).
     anomeric_oxygen : str
         Atom name of the anomeric hydroxyl oxygen, ``"O1"`` for most sugars
-        or ``"O2"`` for sialic acids.
+        or ``"O2"`` for sialic acid and fructose.
+    ring_oxygen : str
+        Atom name of the ring-closing oxygen, ``"O5"`` for most sugars
+        (including fructose, a furanose) or ``"O6"`` for sialic acid (a
+        pyranose whose two extra ring carbons push its ring oxygen one
+        position further along).
     atom_renames : dict
         Mapping from PDB atom name to the GLYCAM atom name it must be
         renamed to before building (e.g. the N-acetyl or N-glycolyl
@@ -57,6 +64,7 @@ class SugarTemplate:
     anomer: str
     anomeric_carbon: str
     anomeric_oxygen: str
+    ring_oxygen: str
     atom_renames: dict
 
 
@@ -69,22 +77,89 @@ _SIALIC_RENAMES = {"C10": "C5N", "O10": "O5N", "C11": "CME"}
 # GLYCAM identity of every PDB carbohydrate residue name this module supports.
 # Keyed by the 3-character PDB Chemical Component Dictionary resname.
 GLYCAM_SUGARS = {
-    "NAG": SugarTemplate("Y", "B", "C1", "O1", _ACETYL_RENAMES),
-    "NDG": SugarTemplate("Y", "A", "C1", "O1", _ACETYL_RENAMES),
-    "BMA": SugarTemplate("M", "B", "C1", "O1", {}),
-    "MAN": SugarTemplate("M", "A", "C1", "O1", {}),
-    "GAL": SugarTemplate("L", "B", "C1", "O1", {}),
-    "GLA": SugarTemplate("L", "A", "C1", "O1", {}),
-    "BGC": SugarTemplate("G", "B", "C1", "O1", {}),
-    "GLC": SugarTemplate("G", "A", "C1", "O1", {}),
-    "FUC": SugarTemplate("f", "A", "C1", "O1", {}),
-    "FUL": SugarTemplate("f", "B", "C1", "O1", {}),
-    "XYP": SugarTemplate("X", "B", "C1", "O1", {}),
-    "XYS": SugarTemplate("X", "A", "C1", "O1", {}),
-    "SIA": SugarTemplate("S", "A", "C2", "O2", _SIALIC_RENAMES),
-    "NGA": SugarTemplate("V", "B", "C1", "O1", _ACETYL_RENAMES),
-    "A2G": SugarTemplate("V", "A", "C1", "O1", _ACETYL_RENAMES),
+    "NAG": SugarTemplate("Y", "B", "C1", "O1", "O5", _ACETYL_RENAMES),
+    "NDG": SugarTemplate("Y", "A", "C1", "O1", "O5", _ACETYL_RENAMES),
+    "BMA": SugarTemplate("M", "B", "C1", "O1", "O5", {}),
+    "MAN": SugarTemplate("M", "A", "C1", "O1", "O5", {}),
+    "GAL": SugarTemplate("L", "B", "C1", "O1", "O5", {}),
+    "GLA": SugarTemplate("L", "A", "C1", "O1", "O5", {}),
+    "BGC": SugarTemplate("G", "B", "C1", "O1", "O5", {}),
+    "GLC": SugarTemplate("G", "A", "C1", "O1", "O5", {}),
+    "FUC": SugarTemplate("f", "A", "C1", "O1", "O5", {}),
+    "FUL": SugarTemplate("f", "B", "C1", "O1", "O5", {}),
+    "XYP": SugarTemplate("X", "B", "C1", "O1", "O5", {}),
+    "XYS": SugarTemplate("X", "A", "C1", "O1", "O5", {}),
+    "SIA": SugarTemplate("S", "A", "C2", "O2", "O6", _SIALIC_RENAMES),
+    "NGA": SugarTemplate("V", "B", "C1", "O1", "O5", _ACETYL_RENAMES),
+    "A2G": SugarTemplate("V", "A", "C1", "O1", "O5", _ACETYL_RENAMES),
+    # Beta-D-fructofuranose. Ketohexose: anomeric carbon C2, exocyclic C1
+    # and C6 hydroxymethyls, ring oxygen O5 (a furanose, not the O6 of
+    # sialic acid's pyranose ring despite sharing the C2/O2 anomeric
+    # atoms). Anomer characters D (alpha) / U (beta), not the usual A/B,
+    # established by comparing tleap-built 0CD/0CU against CCD FRU's
+    # signed volume at C2. atom_renames is empty: GLYCAM 0CU's heavy
+    # atoms (C1-C6, O1, O3, O4, O5, O6) already match CCD FRU's naming,
+    # which only adds the free anomeric hydroxyl O2 that the ROH split
+    # handles.
+    "FRU": SugarTemplate("C", "U", "C2", "O2", "O5", {}),
+    # Uronic acids: their C6 is a carboxylate (O6A/O6B) rather than a
+    # hydroxymethyl, but that is invisible to this table since it only
+    # tracks the anomeric carbon and ring oxygen, both ordinary C1/O5.
+    # GLYCAM 06j ships units for exactly three uronic acids, each in one
+    # configuration: GlcA (Z, D only), GalA (O, D only), IdoA (u, L only).
+    # It has no mannuronic or guluronic acid unit, so BEM and LGU are
+    # deliberately absent here (see test_glycam_resname_unsupported_uronic).
+    "BDP": SugarTemplate("Z", "B", "C1", "O1", "O5", {}),  # beta-D-GlcA
+    "GCU": SugarTemplate("Z", "A", "C1", "O1", "O5", {}),  # alpha-D-GlcA
+    "GTR": SugarTemplate("O", "B", "C1", "O1", "O5", {}),  # beta-D-GalA
+    "ADA": SugarTemplate("O", "A", "C1", "O1", "O5", {}),  # alpha-D-GalA
+    "IDR": SugarTemplate("u", "A", "C1", "O1", "O5", {}),  # alpha-L-IdoA
 }
+
+
+def _derive_letter_ring_atoms() -> dict:
+    """Derive the anomeric-carbon / ring-oxygen pair for each GLYCAM sugar
+    letter from :data:`GLYCAM_SUGARS`, so the sugar table stays the single
+    source of truth for it.
+
+    Asserts that every CCD code sharing a letter (e.g. ``NAG``/``NDG``,
+    both letter ``Y``) agrees on these two atoms, rather than silently
+    keeping whichever entry happened to be seen last while building the
+    table.
+
+    Returns
+    -------
+    table : dict
+        Maps a GLYCAM one-letter sugar code to its
+        ``(anomeric_carbon, ring_oxygen)`` atom-name pair.
+
+    Raises
+    ------
+    AssertionError
+        If two sugars sharing a GLYCAM letter disagree on their anomeric
+        carbon or ring oxygen atom name.
+    """
+    table: dict = {}
+    for resname, tmpl in GLYCAM_SUGARS.items():
+        pair = (tmpl.anomeric_carbon, tmpl.ring_oxygen)
+        if tmpl.letter in table and table[tmpl.letter] != pair:
+            raise AssertionError(
+                f"GLYCAM letter {tmpl.letter!r} disagrees on anomeric "
+                f"carbon / ring oxygen between sugars sharing it: "
+                f"{table[tmpl.letter]} vs {pair} from {resname!r}."
+            )
+        table[tmpl.letter] = pair
+    return table
+
+
+# GLYCAM one-letter sugar code -> (anomeric_carbon, ring_oxygen), derived
+# from GLYCAM_SUGARS above at import time. Keyed by letter rather than CCD
+# resname because glycamUnitMask and glycanBondsFromNames only ever see a
+# GLYCAM 3-character unit name (never the original CCD resname) and so
+# cannot look this up on a SugarTemplate directly. A letter absent from
+# this table (i.e. not yet covered by GLYCAM_SUGARS) defaults to
+# ("C1", "O5") at the call sites.
+_LETTER_RING_ATOMS = _derive_letter_ring_atoms()
 
 # Protein residues glycans may attach to: resname -> (GLYCAM unit, anchor atom,
 # hydrogen displaced by the glycosidic bond; None = pick the anchor-atom H
@@ -164,21 +239,36 @@ _LINKAGE_POSITIONS = {v: tuple(sorted(k)) for k, v in _LINKAGE_CHARS.items()}
 # All 3-char units in GLYCAM_06j-1.prep whose sugar letter is covered by
 # GLYCAM_SUGARS. Extracted from AmberTools 24.8; regenerate with:
 #   grep -E '^[0-9A-Za-z]{3,4} +INT' $AMBERHOME/dat/leap/prep/GLYCAM_06j-1.prep
+# then keep a unit whose first character is one of _LINKAGE_CHARS's values,
+# whose second character (the sugar letter) is a letter used in
+# GLYCAM_SUGARS, and whose third character is one of that letter's two
+# anomer characters: ("D", "U") for "C" (fructose's furanose ring; its
+# ("A", "B") pyranose forms are out of scope), ("A", "B") for every other
+# letter. This keeps both anomer forms of a letter even where GLYCAM_SUGARS
+# only has a CCD entry for one of them (e.g. sialic acid, letter "S", is
+# alpha-only in GLYCAM_SUGARS but both 0SA and 0SB are genuine units).
 GLYCAM_UNIT_NAMES = frozenset(
-    """0fA 0fB 0GA 0GB 0LA 0LB 0MA 0MB 0SA 0SB 0VA 0VB 0XA 0XB 0YA 0YB
-    1fA 1fB 1GA 1GB 1LA 1LB 1MA 1MB 1VA 1VB 1XA 1XB 1YA 1YB
-    2fA 2fB 2GA 2GB 2LA 2LB 2MA 2MB 2XA 2XB
-    3fA 3fB 3GA 3GB 3LA 3LB 3MA 3MB 3VA 3VB 3XA 3XB 3YA 3YB
-    4fA 4fB 4GA 4GB 4LA 4LB 4MA 4MB 4SA 4SB 4VA 4VB 4XA 4XB 4YA 4YB
-    6GA 6GB 6LA 6LB 6MA 6MB 6VA 6VB 6YA 6YB 7SA 7SB 8SA 8SB 9SA 9SB
-    PGA PGB PLA PLB PMA PMB QGA QGB QLA QLB QMA QMB QVA QVB QYA QYB
+    """0CD 0CU 0fA 0fB 0GA 0GB 0LA 0LB 0MA 0MB 0OA 0OB 0SA 0SB 0uA 0uB 0VA 0VB
+    0XA 0XB 0YA 0YB 0ZA 0ZB
+    1CD 1CU 1fA 1fB 1GA 1GB 1LA 1LB 1MA 1MB 1OA 1OB 1uA 1uB 1VA 1VB 1XA 1XB
+    1YA 1YB 1ZA 1ZB
+    2CD 2CU 2fA 2fB 2GA 2GB 2LA 2LB 2MA 2MB 2OA 2OB 2uA 2uB 2XA 2XB 2ZA 2ZB
+    3CD 3CU 3fA 3fB 3GA 3GB 3LA 3LB 3MA 3MB 3OA 3OB 3uA 3uB 3VA 3VB 3XA 3XB
+    3YA 3YB 3ZA 3ZB
+    4CD 4CU 4fA 4fB 4GA 4GB 4LA 4LB 4MA 4MB 4OA 4OB 4SA 4SB 4uA 4uB 4VA 4VB
+    4XA 4XB 4YA 4YB 4ZA 4ZB
+    6CD 6CU 6GA 6GB 6LA 6LB 6MA 6MB 6VA 6VB 6YA 6YB 7SA 7SB 8SA 8SB
+    9SA 9SB PGA PGB PLA PLB PMA PMB
+    QCD QCU QGA QGB QLA QLB QMA QMB QVA QVB QYA QYB
     RGA RGB RLA RLB RMA RMB SGA SGB SLA SLB SMA SMB
-    TfA TfB TGA TGB TLA TLB TMA TMB TXA TXB
-    UGA UGB ULA ULB UMA UMB UVA UVB UYA UYB
-    VGA VGB VLA VLB VMA VMB VVA VVB VYA VYB
-    WfA WfB WGA WGB WLA WLB WMA WMB WVA WVB WXA WXB WYA WYB
-    XGA XGB XLA XLB XMA XMB YfA YfB YGA YGB YLA YLB YMA YMB YXA YXB
-    ZfA ZfB ZGA ZGB ZLA ZLB ZMA ZMB ZXA ZXB""".split()
+    TfA TfB TGA TGB TLA TLB TMA TMB TOA TOB TuA TuB TXA TXB TZA TZB
+    UCD UCU UGA UGB ULA ULB UMA UMB UVA UVB UYA UYB
+    VCD VCU VGA VGB VLA VLB VMA VMB VVA VVB VYA VYB
+    WCD WCU WfA WfB WGA WGB WLA WLB WMA WMB WOA WOB WuA WuB WVA WVB WXA WXB
+    WYA WYB WZA WZB
+    XGA XGB XLA XLB XMA XMB YfA YfB YGA YGB YLA YLB YMA YMB YOA YOB YuA YuB
+    YXA YXB YZA YZB
+    ZfA ZfB ZGA ZGB ZLA ZLB ZMA ZMB ZOA ZOB ZuA ZuB ZXA ZXB ZZA ZZB""".split()
 )
 
 
@@ -272,11 +362,12 @@ def glycamUnitMask(mol: "Molecule") -> np.ndarray:
     pyromellitic acid, and others), and two more (``1MA``, ``2MA``) are
     also AMBER modrna08 modified-ribonucleotide names. This gates the
     resname match on the sugar-like composition every GLYCAM unit
-    template actually has: the anomeric carbon the code implies (``C2``
-    for a sialic-letter unit, i.e. the middle character of the code is
-    ``S`` or ``s``; ``C1`` otherwise) directly bonded to the ring oxygen
-    GLYCAM always numbers alongside it (``O6`` for sialic, ``O5``
-    otherwise) - see :func:`_has_glycam_ring_atoms`.
+    template actually has: the anomeric carbon directly bonded to the
+    ring oxygen GLYCAM always numbers alongside it, both looked up from
+    the code's own sugar letter (the middle character of the 3-character
+    code) in :data:`_LETTER_RING_ATOMS` (``C1``/``O5`` for most sugars,
+    ``C2``/``O6`` for sialic acid, ``C2``/``O5`` for fructose) - see
+    :func:`_has_glycam_ring_atoms`.
 
     For the two codes also claimed by modrna08 (``1MA``, ``2MA``), a
     residue is additionally required to carry no nitrogen atom. Both are
@@ -310,9 +401,7 @@ def glycamUnitMask(mol: "Molecule") -> np.ndarray:
 
     mask = np.zeros(mol.numAtoms, dtype=bool)
     for rmask, code in _candidate_residue_groups(mol, GLYCAM_UNIT_NAMES):
-        sialic = code[1] in "Ss"
-        anomeric_carbon = "C2" if sialic else "C1"
-        ring_oxygen = "O6" if sialic else "O5"
+        anomeric_carbon, ring_oxygen = _LETTER_RING_ATOMS.get(code[1], ("C1", "O5"))
         if not _has_glycam_ring_atoms(mol, rmask, anomeric_carbon, ring_oxygen):
             continue
         if code in MODIFIED_NUCLEIC_RESIDUE_NAMES and np.any(mol.element[rmask] == "N"):
@@ -348,8 +437,7 @@ def pdbSugarMask(mol: "Molecule") -> np.ndarray:
     mask = np.zeros(mol.numAtoms, dtype=bool)
     for rmask, code in _candidate_residue_groups(mol, GLYCAM_SUGARS):
         tmpl = GLYCAM_SUGARS[code]
-        ring_oxygen = "O6" if tmpl.letter in "Ss" else "O5"
-        if _has_glycam_ring_atoms(mol, rmask, tmpl.anomeric_carbon, ring_oxygen):
+        if _has_glycam_ring_atoms(mol, rmask, tmpl.anomeric_carbon, tmpl.ring_oxygen):
             mask |= rmask
     return mask
 
@@ -772,13 +860,14 @@ def glycanBondsFromNames(mol: "Molecule") -> list:
     uq = sequenceID((mol.resid, mol.insertion, mol.chain, mol.segid))
     unit_names = glycamUnitMask(mol)
 
-    # Anomeric carbon of every GLYCAM sugar unit: C2 for sialic-letter units
-    # (letter position of the 3-character code), C1 otherwise.
+    # Anomeric carbon of every GLYCAM sugar unit, looked up from its own
+    # sugar letter (the middle character of the 3-character code) in
+    # _LETTER_RING_ATOMS: C2 for sialic acid and fructose, C1 otherwise.
     anomeric = np.zeros(mol.numAtoms, dtype=bool)
     for rid in np.unique(uq[unit_names]):
         rmask = uq == rid
         code = str(mol.resname[rmask][0])
-        cname = "C2" if code[1] in "Ss" else "C1"
+        cname = _LETTER_RING_ATOMS.get(code[1], ("C1", "O5"))[0]
         anomeric |= rmask & (mol.name == cname)
     ano_idx = np.where(anomeric)[0]
     ano_res = uq[ano_idx]

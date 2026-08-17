@@ -19,11 +19,62 @@ def test_glycam_resname_construction():
     assert glycamResname("XYP", ()) == "0XB"
 
 
+def test_glycam_resname_fructose():
+    from moleculekit.tools.glycans import GLYCAM_UNIT_NAMES, glycamResname
+
+    cases = [((), "0CU"), ((1,), "1CU"), ((3, 6), "VCU")]
+    for linked_positions, expected in cases:
+        name = glycamResname("FRU", linked_positions)
+        assert name == expected
+        assert name in GLYCAM_UNIT_NAMES
+
+
+def test_glycam_resname_uronic_acids():
+    from moleculekit.tools.glycans import GLYCAM_UNIT_NAMES, glycamResname
+
+    assert glycamResname("BDP", ()) == "0ZB"  # beta-D-glucuronic acid
+    assert glycamResname("GCU", ()) == "0ZA"  # alpha-D-glucuronic acid
+    assert glycamResname("GTR", ()) == "0OB"  # beta-D-galacturonic acid
+    assert glycamResname("ADA", ()) == "0OA"  # alpha-D-galacturonic acid
+    assert glycamResname("IDR", ()) == "0uA"  # alpha-L-iduronic acid
+    name = glycamResname("BDP", (4,))
+    assert name == "4ZB"
+    assert name in GLYCAM_UNIT_NAMES
+    for resname, expected in [
+        ("BDP", "0ZB"),
+        ("GCU", "0ZA"),
+        ("GTR", "0OB"),
+        ("ADA", "0OA"),
+        ("IDR", "0uA"),
+    ]:
+        name = glycamResname(resname, ())
+        assert name == expected
+        assert name in GLYCAM_UNIT_NAMES
+
+
+def test_glycam_resname_unsupported_uronic_acids():
+    """GLYCAM 06j ships units for only three uronic acids (glucuronic,
+    galacturonic and L-iduronic), each in a single configuration. It has no
+    unit for mannuronic acid (PDB ``BEM``) or guluronic acid (PDB ``LGU``),
+    so these two stay unmapped in :data:`GLYCAM_SUGARS`. This is a
+    force-field coverage gap, not a missing table entry: inventing a letter
+    for them would silently build the wrong chemistry.
+    """
+    from moleculekit.tools.glycans import GLYCAM_SUGARS, glycamResname
+
+    assert "BEM" not in GLYCAM_SUGARS
+    assert "LGU" not in GLYCAM_SUGARS
+    with pytest.raises(RuntimeError, match="BEM"):
+        glycamResname("BEM", ())
+    with pytest.raises(RuntimeError, match="LGU"):
+        glycamResname("LGU", ())
+
+
 def test_glycam_resname_unknown_sugar():
     from moleculekit.tools.glycans import glycamResname
 
-    with pytest.raises(RuntimeError, match="BDP"):
-        glycamResname("BDP", (4,))
+    with pytest.raises(RuntimeError, match="XXX"):
+        glycamResname("XXX", (4,))
 
 
 def test_glycam_resname_invalid_linkage():
@@ -47,15 +98,26 @@ def test_linked_positions_roundtrip():
     assert linkedPositionsFromGlycamResname("4YB") == (4,)
     assert linkedPositionsFromGlycamResname("UYB") == (4, 6)
     assert linkedPositionsFromGlycamResname("VMA") == (3, 6)
-    assert "UYB" in GLYCAM_UNIT_NAMES and len(GLYCAM_UNIT_NAMES) == 184
+    assert linkedPositionsFromGlycamResname("0CU") == ()
+    assert linkedPositionsFromGlycamResname("1CU") == (1,)
+    assert linkedPositionsFromGlycamResname("VCU") == (3, 6)
+    # 184 -> 204: adding fructose's 20 furanose units (10 linkage positions,
+    # anomers D and U each) grew the table; 204 -> 258: adding the three
+    # uronic acid letters (Z, O, u), each with 9 linkage positions and
+    # anomers A and B, added 54 more; see the GLYCAM_UNIT_NAMES regeneration
+    # recipe in moleculekit/tools/glycans.py.
+    assert "UYB" in GLYCAM_UNIT_NAMES and len(GLYCAM_UNIT_NAMES) == 258
 
 
 def test_sugar_table_consistency():
     from moleculekit.tools.glycans import GLYCAM_SUGARS
 
     for resname, tmpl in GLYCAM_SUGARS.items():
-        assert tmpl.anomer in ("A", "B"), resname
+        # A/B (alpha/beta) for every sugar except fructose's furanose ring,
+        # which GLYCAM names D/U instead.
+        assert tmpl.anomer in ("A", "B", "D", "U"), resname
         assert tmpl.anomeric_carbon in ("C1", "C2"), resname
+        assert tmpl.ring_oxygen in ("O5", "O6"), resname
 
 
 import os
@@ -71,6 +133,46 @@ def _residue_groups(mol):
 
     uq = sequenceID((mol.resid, mol.insertion, mol.chain, mol.segid))
     return [np.where(uq == u)[0] for u in np.unique(uq)]
+
+
+def _single_residue_mol(resname, anomeric_carbon, ring_oxygen):
+    """Minimal 2-atom molecule for one GLYCAM unit residue, holding just its
+    anomeric carbon and ring oxygen 1.4 A apart (a real ring bond distance),
+    the only atoms glycamUnitMask's composition gate inspects.
+    """
+    mol = Molecule().empty(2)
+    mol.name[:] = [anomeric_carbon, ring_oxygen]
+    mol.element[:] = ["C", "O"]
+    mol.resname[:] = resname
+    mol.resid[:] = 1
+    mol.chain[:] = "X"
+    mol.segid[:] = "X"
+    mol.insertion[:] = ""
+    coords = np.array([[0.0, 0.0, 0.0], [1.4, 0.0, 0.0]])
+    mol.coords = coords.reshape(2, 3, 1).astype(Molecule._dtypes["coords"])
+    return mol
+
+
+def test_glycam_unit_mask_table_driven_ring_atoms():
+    """Composition-gate regression test for the anomeric-carbon /
+    ring-oxygen refactor: glycamUnitMask must recognize a fructose residue
+    via C2 + O5, while still recognizing sialic acid via C2 + O6 and an
+    ordinary sugar via C1 + O5.
+    """
+    from moleculekit.tools.glycans import glycamUnitMask
+
+    # fructose: C2 + O5 (the combination that breaks the old binary, since
+    # it is neither the C1+O5 nor the C2+O6 branch it hardcoded)
+    mol = _single_residue_mol("0CU", "C2", "O5")
+    assert glycamUnitMask(mol).all()
+
+    # regression: sialic acid via C2 + O6
+    mol = _single_residue_mol("0SA", "C2", "O6")
+    assert glycamUnitMask(mol).all()
+
+    # regression: an ordinary sugar via C1 + O5
+    mol = _single_residue_mol("0YB", "C1", "O5")
+    assert glycamUnitMask(mol).all()
 
 
 def test_analyze_3ave_branched_nglycan():
@@ -148,9 +250,9 @@ def test_analyze_unmapped_child_sugar():
     # instead of raising, since only the anomeric-carbon path was an
     # obvious place to check for an unmapped sugar.
     nag5 = (mol.resname == "NAG") & (mol.chain == "C") & (mol.resid == 5)
-    mol.resname[nag5] = "BDP"
+    mol.resname[nag5] = "XXX"
     groups = _residue_groups(mol)
-    with pytest.raises(RuntimeError, match="BDP"):
+    with pytest.raises(RuntimeError, match="XXX"):
         analyzeGlycanResidues(mol, mol.bonds, groups)
 
 
@@ -166,12 +268,12 @@ def test_analyze_unmapped_parent_sugar():
     # reported as an unmapped sugar, not as an unsupported anchor (NAG1 is
     # not a protein residue at all).
     nag1 = (mol.resname == "NAG") & (mol.chain == "C") & (mol.resid == 1)
-    mol.resname[nag1] = "BDP"
+    mol.resname[nag1] = "XXX"
     groups = _residue_groups(mol)
     with pytest.raises(RuntimeError) as excinfo:
         analyzeGlycanResidues(mol, mol.bonds, groups)
     message = str(excinfo.value)
-    assert "BDP" in message
+    assert "XXX" in message
     assert "supported GLYCAM sugar table" in message
     # must not be misreported as the (unrelated) unsupported-anchor path
     assert "does not support glycosylation of" not in message

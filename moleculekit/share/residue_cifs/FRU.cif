@@ -1,0 +1,166 @@
+data_FRU
+#
+
+_chem_comp.id                                   FRU
+_chem_comp.name                                 beta-D-fructofuranose
+_chem_comp.type                                 "D-saccharide, beta linking"
+_chem_comp.pdbx_type                            ATOMS
+_chem_comp.formula                              "C6 H12 O6"
+_chem_comp.mon_nstd_parent_comp_id              ?
+_chem_comp.pdbx_synonyms                        "beta-D-fructose; D-fructose; fructose"
+_chem_comp.pdbx_formal_charge                   0
+_chem_comp.pdbx_initial_date                    1999-07-08
+_chem_comp.pdbx_modified_date                   2020-07-17
+_chem_comp.pdbx_ambiguous_flag                  N
+_chem_comp.pdbx_release_status                  REL
+_chem_comp.pdbx_replaced_by                     ?
+_chem_comp.pdbx_replaces                        ?
+_chem_comp.formula_weight                       180.156
+_chem_comp.one_letter_code                      ?
+_chem_comp.three_letter_code                    FRU
+_chem_comp.pdbx_model_coordinates_details       ?
+_chem_comp.pdbx_model_coordinates_missing_flag  N
+_chem_comp.pdbx_ideal_coordinates_details       ?
+_chem_comp.pdbx_ideal_coordinates_missing_flag  N
+_chem_comp.pdbx_model_coordinates_db_code       1AF6
+_chem_comp.pdbx_subcomponent_list               ?
+_chem_comp.pdbx_processing_site                 EBI
+#   #
+loop_
+_pdbx_chem_comp_synonyms.ordinal
+_pdbx_chem_comp_synonyms.comp_id
+_pdbx_chem_comp_synonyms.name
+_pdbx_chem_comp_synonyms.provenance
+_pdbx_chem_comp_synonyms.type
+1  FRU  beta-D-fructose  PDB  ?  
+2  FRU  D-fructose       PDB  ?  
+3  FRU  fructose         PDB  ?  
+#   #
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.pdbx_align
+_chem_comp_atom.pdbx_aromatic_flag
+_chem_comp_atom.pdbx_leaving_atom_flag
+_chem_comp_atom.pdbx_stereo_config
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+_chem_comp_atom.pdbx_component_atom_id
+_chem_comp_atom.pdbx_component_comp_id
+_chem_comp_atom.pdbx_ordinal
+FRU  C1   C1   C  0  1  N  N  N  -6.763  20.037  85.842   0.791   1.055  -1.776  C1   FRU   1  
+FRU  C2   C2   C  0  1  N  N  R  -7.004  18.781  84.967   0.144  -0.149  -1.090  C2   FRU   2  
+FRU  C3   C3   C  0  1  N  N  S  -7.244  17.468  85.783  -1.304   0.188  -0.689  C3   FRU   3  
+FRU  C4   C4   C  0  1  N  N  S  -6.885  16.423  84.693  -1.307   0.081   0.857  C4   FRU   4  
+FRU  C5   C5   C  0  1  N  N  R  -5.586  17.071  84.173   0.198   0.230   1.193  C5   FRU   5  
+FRU  C6   C6   C  0  1  N  N  N  -5.172  16.631  82.793   0.518  -0.427   2.536  C6   FRU   6  
+FRU  O1   O1   O  0  1  N  N  N  -5.779  19.828  86.850   2.138   0.735  -2.130  O1   FRU   7  
+FRU  O2   O2   O  0  1  N  Y  N  -8.144  19.005  84.091   0.154  -1.273  -1.972  O2   FRU   8  
+FRU  O3   O3   O  0  1  N  N  N  -8.614  17.357  86.194  -2.215  -0.752  -1.261  O3   FRU   9  
+FRU  O4   O4   O  0  1  N  N  N  -6.688  15.124  85.236  -2.072   1.137   1.440  O4   FRU  10  
+FRU  O5   O5   O  0  1  N  N  N  -5.832  18.505  84.123   0.858  -0.467   0.115  O5   FRU  11  
+FRU  O6   O6   O  0  1  N  N  N  -3.807  16.950  82.588   1.919  -0.319   2.798  O6   FRU  12  
+FRU  H11  H11  H  0  1  N  N  N  -6.506  20.919  85.211   0.229   1.307  -2.675  H11  FRU  13  
+FRU  H12  H12  H  0  1  N  N  N  -7.717  20.403  86.286   0.787   1.906  -1.095  H12  FRU  14  
+FRU  H3   H3   H  0  1  N  N  N  -6.666  17.378  86.732  -1.560   1.202  -0.998  H3   FRU  15  
+FRU  H4   H4   H  0  1  N  N  N  -7.663  16.236  83.917  -1.680  -0.890   1.179  H4   FRU  16  
+FRU  H5   H5   H  0  1  N  N  N  -4.761  16.765  84.859   0.487   1.281   1.203  H5   FRU  17  
+FRU  H61  H61  H  0  1  N  N  N  -5.385  15.551  82.612   0.235  -1.479   2.503  H61  FRU  18  
+FRU  H62  H62  H  0  1  N  N  N  -5.828  17.057  81.999  -0.037   0.074   3.328  H62  FRU  19  
+FRU  HO1  HO1  H  0  1  N  Y  N  -5.631  20.598  87.386   2.508   1.518  -2.558  HO1  FRU  20  
+FRU  HO2  HO2  H  0  1  N  Y  N  -8.291  18.235  83.554   1.080  -1.452  -2.186  HO2  FRU  21  
+FRU  HO3  HO3  H  0  1  N  Y  N  -8.759  16.559  86.689  -3.101  -0.491  -0.977  HO3  FRU  22  
+FRU  HO4  HO4  H  0  1  N  Y  N  -6.468  14.484  84.568  -2.034   1.013   2.399  HO4  FRU  23  
+FRU  HO6  HO6  H  0  1  N  Y  N  -3.545  16.672  81.717   2.078  -0.745   3.651  HO6  FRU  24  
+#   #
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+_chem_comp_bond.pdbx_aromatic_flag
+_chem_comp_bond.pdbx_stereo_config
+_chem_comp_bond.pdbx_ordinal
+FRU  C1  C2   SING  N  N   1  
+FRU  C1  O1   SING  N  N   2  
+FRU  C1  H11  SING  N  N   3  
+FRU  C1  H12  SING  N  N   4  
+FRU  C2  C3   SING  N  N   5  
+FRU  C2  O2   SING  N  N   6  
+FRU  C2  O5   SING  N  N   7  
+FRU  C3  C4   SING  N  N   8  
+FRU  C3  O3   SING  N  N   9  
+FRU  C3  H3   SING  N  N  10  
+FRU  C4  C5   SING  N  N  11  
+FRU  C4  O4   SING  N  N  12  
+FRU  C4  H4   SING  N  N  13  
+FRU  C5  C6   SING  N  N  14  
+FRU  C5  O5   SING  N  N  15  
+FRU  C5  H5   SING  N  N  16  
+FRU  C6  O6   SING  N  N  17  
+FRU  C6  H61  SING  N  N  18  
+FRU  C6  H62  SING  N  N  19  
+FRU  O1  HO1  SING  N  N  20  
+FRU  O2  HO2  SING  N  N  21  
+FRU  O3  HO3  SING  N  N  22  
+FRU  O4  HO4  SING  N  N  23  
+FRU  O6  HO6  SING  N  N  24  
+#   #
+loop_
+_pdbx_chem_comp_descriptor.comp_id
+_pdbx_chem_comp_descriptor.type
+_pdbx_chem_comp_descriptor.program
+_pdbx_chem_comp_descriptor.program_version
+_pdbx_chem_comp_descriptor.descriptor
+FRU  SMILES            ACDLabs               10.04  "OC1C(O)C(OC1(O)CO)CO"  
+FRU  SMILES_CANONICAL  CACTVS                3.341  "OC[C@H]1O[C@](O)(CO)[C@@H](O)[C@@H]1O"  
+FRU  SMILES            CACTVS                3.341  "OC[CH]1O[C](O)(CO)[CH](O)[CH]1O"  
+FRU  SMILES_CANONICAL  "OpenEye OEToolkits"  1.5.0  "C([C@@H]1[C@H]([C@@H]([C@](O1)(CO)O)O)O)O"  
+FRU  SMILES            "OpenEye OEToolkits"  1.5.0  "C(C1C(C(C(O1)(CO)O)O)O)O"  
+FRU  InChI             InChI                 1.03   "InChI=1S/C6H12O6/c7-1-3-4(9)5(10)6(11,2-8)12-3/h3-5,7-11H,1-2H2/t3-,4-,5+,6-/m1/s1"  
+FRU  InChIKey          InChI                 1.03   RFSUNEUAIZKAJO-ARQDHWQXSA-N  
+#   #
+loop_
+_pdbx_chem_comp_identifier.comp_id
+_pdbx_chem_comp_identifier.type
+_pdbx_chem_comp_identifier.program
+_pdbx_chem_comp_identifier.program_version
+_pdbx_chem_comp_identifier.identifier
+FRU  "SYSTEMATIC NAME"                      ACDLabs               10.04  beta-D-fructofuranose  
+FRU  "SYSTEMATIC NAME"                      "OpenEye OEToolkits"  1.5.0  "(2R,3S,4S,5R)-2,5-bis(hydroxymethyl)oxolane-2,3,4-triol"  
+FRU  "CONDENSED IUPAC CARBOHYDRATE SYMBOL"  GMML                  1.0    DFrufb  
+FRU  "COMMON NAME"                          GMML                  1.0    b-D-fructofuranose  
+FRU  "IUPAC CARBOHYDRATE SYMBOL"            PDB-CARE              1.0    b-D-Fruf  
+FRU  "SNFG CARBOHYDRATE SYMBOL"             GMML                  1.0    Fru  
+#   #
+loop_
+_pdbx_chem_comp_feature.comp_id
+_pdbx_chem_comp_feature.type
+_pdbx_chem_comp_feature.value
+_pdbx_chem_comp_feature.source
+_pdbx_chem_comp_feature.support
+FRU  "CARBOHYDRATE ISOMER"                  D         PDB  ?  
+FRU  "CARBOHYDRATE RING"                    furanose  PDB  ?  
+FRU  "CARBOHYDRATE ANOMER"                  beta      PDB  ?  
+FRU  "CARBOHYDRATE PRIMARY CARBONYL GROUP"  ketose    PDB  ?  
+#   #
+loop_
+_pdbx_chem_comp_audit.comp_id
+_pdbx_chem_comp_audit.action_type
+_pdbx_chem_comp_audit.date
+_pdbx_chem_comp_audit.processing_site
+FRU  "Create component"    1999-07-08  EBI   
+FRU  "Modify descriptor"   2011-06-04  RCSB  
+FRU  "Other modification"  2019-08-12  RCSB  
+FRU  "Other modification"  2019-12-19  RCSB  
+FRU  "Other modification"  2020-07-03  RCSB  
+FRU  "Modify name"         2020-07-17  RCSB  
+FRU  "Modify synonyms"     2020-07-17  RCSB  
+##

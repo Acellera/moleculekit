@@ -1,0 +1,169 @@
+data_GTR
+#
+
+_chem_comp.id                                   GTR
+_chem_comp.name                                 "beta-D-galactopyranuronic acid"
+_chem_comp.type                                 "D-saccharide, beta linking"
+_chem_comp.pdbx_type                            ATOMS
+_chem_comp.formula                              "C6 H10 O7"
+_chem_comp.mon_nstd_parent_comp_id              ?
+_chem_comp.pdbx_synonyms                        "beta-D-galacturonic acid; D-galacturonic acid; galacturonic acid"
+_chem_comp.pdbx_formal_charge                   0
+_chem_comp.pdbx_initial_date                    2001-11-15
+_chem_comp.pdbx_modified_date                   2020-07-17
+_chem_comp.pdbx_ambiguous_flag                  N
+_chem_comp.pdbx_release_status                  REL
+_chem_comp.pdbx_replaced_by                     ?
+_chem_comp.pdbx_replaces                        ?
+_chem_comp.formula_weight                       194.139
+_chem_comp.one_letter_code                      ?
+_chem_comp.three_letter_code                    GTR
+_chem_comp.pdbx_model_coordinates_details       ?
+_chem_comp.pdbx_model_coordinates_missing_flag  N
+_chem_comp.pdbx_ideal_coordinates_details       Corina
+_chem_comp.pdbx_ideal_coordinates_missing_flag  N
+_chem_comp.pdbx_model_coordinates_db_code       1KCC
+_chem_comp.pdbx_subcomponent_list               ?
+_chem_comp.pdbx_processing_site                 PDBJ
+#   #
+loop_
+_pdbx_chem_comp_synonyms.ordinal
+_pdbx_chem_comp_synonyms.comp_id
+_pdbx_chem_comp_synonyms.name
+_pdbx_chem_comp_synonyms.provenance
+_pdbx_chem_comp_synonyms.type
+1  GTR  "beta-D-galacturonic acid"  PDB  ?  
+2  GTR  "D-galacturonic acid"       PDB  ?  
+3  GTR  "galacturonic acid"         PDB  ?  
+#   #
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.pdbx_align
+_chem_comp_atom.pdbx_aromatic_flag
+_chem_comp_atom.pdbx_leaving_atom_flag
+_chem_comp_atom.pdbx_stereo_config
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+_chem_comp_atom.pdbx_component_atom_id
+_chem_comp_atom.pdbx_component_comp_id
+_chem_comp_atom.pdbx_ordinal
+GTR  C1    C1   C  0  1  N  N  R  17.771  46.226  -4.721   1.106   1.303  -0.342  C1    GTR   1  
+GTR  C2    C2   C  0  1  N  N  R  18.574  46.641  -5.943   1.793   0.027   0.152  C2    GTR   2  
+GTR  C3    C3   C  0  1  N  N  S  19.030  45.471  -6.656   1.096  -1.189  -0.464  C3    GTR   3  
+GTR  C4    C4   C  0  1  N  N  R  19.890  44.533  -5.756  -0.392  -1.151  -0.101  C4    GTR   4  
+GTR  C5    C5   C  0  1  N  N  S  19.018  44.243  -4.519  -0.994   0.171  -0.585  C5    GTR   5  
+GTR  C6    C6   C  0  1  N  N  N  19.792  43.426  -3.504  -2.443   0.242  -0.179  C6    GTR   6  
+GTR  O1    O1   O  0  1  N  Y  N  17.334  47.338  -4.000   1.715   2.441   0.272  O1    GTR   7  
+GTR  O2    O2   O  0  1  N  N  N  17.743  47.469  -6.782   3.166   0.041  -0.241  O2    GTR   8  
+GTR  O3    O3   O  0  1  N  N  N  19.865  45.897  -7.815   1.682  -2.387   0.049  O3    GTR   9  
+GTR  O4    O4   O  0  1  N  N  N  21.126  45.178  -5.414  -0.539  -1.251   1.317  O4    GTR  10  
+GTR  O5    O5   O  0  1  N  N  N  18.600  45.458  -3.858  -0.280   1.261   0.002  O5    GTR  11  
+GTR  O6A   O61  O  0  1  N  N  N  20.156  43.888  -2.401  -2.809   1.081   0.610  O6A   GTR  12  
+GTR  O6B   O62  O  0  1  N  N  N  20.015  42.260  -3.851  -3.328  -0.627  -0.693  O6B   GTR  13  
+GTR  H1    H1   H  0  1  N  N  N  16.913  45.623  -5.052   1.211   1.376  -1.425  H1    GTR  14  
+GTR  H2    H2   H  0  1  N  N  N  19.444  47.223  -5.604   1.724  -0.025   1.239  H2    GTR  15  
+GTR  H3    H3   H  0  1  N  N  N  18.166  44.899  -7.025   1.207  -1.163  -1.548  H3    GTR  16  
+GTR  H4    H4   H  0  1  N  N  N  20.078  43.593  -6.295  -0.906  -1.983  -0.581  H4    GTR  17  
+GTR  H5    H5   H  0  1  N  N  N  18.136  43.670  -4.839  -0.917   0.228  -1.671  H5    GTR  18  
+GTR  HO1   HO1  H  0  1  N  Y  N  16.836  47.050  -3.244   1.330   3.286   0.005  HO1   GTR  19  
+GTR  HO2   HO2  H  0  1  N  Y  N  18.234  47.735  -7.550   3.669   0.789   0.110  HO2   GTR  20  
+GTR  HO3   HO3  H  0  1  N  Y  N  20.167  45.130  -8.287   2.627  -2.474  -0.140  HO3   GTR  21  
+GTR  HO4   HO4  H  0  1  N  Y  N  21.644  44.600  -4.866  -1.458  -1.233   1.620  HO4   GTR  22  
+GTR  HO6B  HO6  H  0  0  N  N  N  20.487  41.809  -3.161  -4.246  -0.542  -0.402  HO6B  GTR  23  
+#   #
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+_chem_comp_bond.pdbx_aromatic_flag
+_chem_comp_bond.pdbx_stereo_config
+_chem_comp_bond.pdbx_ordinal
+GTR  C1   C2    SING  N  N   1  
+GTR  C1   O1    SING  N  N   2  
+GTR  C1   O5    SING  N  N   3  
+GTR  C1   H1    SING  N  N   4  
+GTR  C2   C3    SING  N  N   5  
+GTR  C2   O2    SING  N  N   6  
+GTR  C2   H2    SING  N  N   7  
+GTR  C3   C4    SING  N  N   8  
+GTR  C3   O3    SING  N  N   9  
+GTR  C3   H3    SING  N  N  10  
+GTR  C4   C5    SING  N  N  11  
+GTR  C4   O4    SING  N  N  12  
+GTR  C4   H4    SING  N  N  13  
+GTR  C5   C6    SING  N  N  14  
+GTR  C5   O5    SING  N  N  15  
+GTR  C5   H5    SING  N  N  16  
+GTR  C6   O6A   DOUB  N  N  17  
+GTR  C6   O6B   SING  N  N  18  
+GTR  O1   HO1   SING  N  N  19  
+GTR  O2   HO2   SING  N  N  20  
+GTR  O3   HO3   SING  N  N  21  
+GTR  O4   HO4   SING  N  N  22  
+GTR  O6B  HO6B  SING  N  N  23  
+#   #
+loop_
+_pdbx_chem_comp_descriptor.comp_id
+_pdbx_chem_comp_descriptor.type
+_pdbx_chem_comp_descriptor.program
+_pdbx_chem_comp_descriptor.program_version
+_pdbx_chem_comp_descriptor.descriptor
+GTR  SMILES            ACDLabs               12.01  "C1(C(C(C(C(C(=O)O)O1)O)O)O)O"  
+GTR  InChI             InChI                 1.03   "InChI=1S/C6H10O7/c7-1-2(8)4(5(10)11)13-6(12)3(1)9/h1-4,6-9,12H,(H,10,11)/t1-,2+,3+,4-,6+/m0/s1"  
+GTR  InChIKey          InChI                 1.03   AEMOLEFTQBMNLQ-DTEWXJGMSA-N  
+GTR  SMILES_CANONICAL  CACTVS                3.385  "O[C@@H]1O[C@@H]([C@H](O)[C@H](O)[C@H]1O)C(O)=O"  
+GTR  SMILES            CACTVS                3.385  "O[CH]1O[CH]([CH](O)[CH](O)[CH]1O)C(O)=O"  
+GTR  SMILES_CANONICAL  "OpenEye OEToolkits"  1.7.6  "[C@@H]1([C@H]([C@H](O[C@H]([C@@H]1O)O)C(=O)O)O)O"  
+GTR  SMILES            "OpenEye OEToolkits"  1.7.6  "C1(C(C(OC(C1O)O)C(=O)O)O)O"  
+#   #
+loop_
+_pdbx_chem_comp_identifier.comp_id
+_pdbx_chem_comp_identifier.type
+_pdbx_chem_comp_identifier.program
+_pdbx_chem_comp_identifier.program_version
+_pdbx_chem_comp_identifier.identifier
+GTR  "SYSTEMATIC NAME"                      ACDLabs               12.01  "beta-D-galactopyranuronic acid"  
+GTR  "SYSTEMATIC NAME"                      "OpenEye OEToolkits"  1.7.6  "(2S,3R,4S,5R,6R)-3,4,5,6-tetrakis(oxidanyl)oxane-2-carboxylic acid"  
+GTR  "CONDENSED IUPAC CARBOHYDRATE SYMBOL"  GMML                  1.0    DGalpAb  
+GTR  "COMMON NAME"                          GMML                  1.0    "b-D-galactopyranuronic acid"  
+GTR  "IUPAC CARBOHYDRATE SYMBOL"            PDB-CARE              1.0    b-D-GalpA  
+GTR  "SNFG CARBOHYDRATE SYMBOL"             GMML                  1.0    GalA  
+#   #
+loop_
+_pdbx_chem_comp_feature.comp_id
+_pdbx_chem_comp_feature.type
+_pdbx_chem_comp_feature.value
+_pdbx_chem_comp_feature.source
+_pdbx_chem_comp_feature.support
+GTR  "CARBOHYDRATE ISOMER"                  D         PDB  ?  
+GTR  "CARBOHYDRATE RING"                    pyranose  PDB  ?  
+GTR  "CARBOHYDRATE ANOMER"                  beta      PDB  ?  
+GTR  "CARBOHYDRATE PRIMARY CARBONYL GROUP"  aldose    PDB  ?  
+#   #
+loop_
+_pdbx_chem_comp_audit.comp_id
+_pdbx_chem_comp_audit.action_type
+_pdbx_chem_comp_audit.date
+_pdbx_chem_comp_audit.processing_site
+GTR  "Create component"          2001-11-15  RCSB  
+GTR  "Modify descriptor"         2011-06-04  RCSB  
+GTR  "Modify descriptor"         2012-01-05  RCSB  
+GTR  "Modify coordinates"        2012-01-05  RCSB  
+GTR  "Modify name"               2015-10-06  PDBJ  
+GTR  "Other modification"        2019-08-12  RCSB  
+GTR  "Other modification"        2019-12-19  RCSB  
+GTR  "Other modification"        2020-07-03  RCSB  
+GTR  "Modify name"               2020-07-17  RCSB  
+GTR  "Modify synonyms"           2020-07-17  RCSB  
+GTR  "Modify atom id"            2020-07-17  RCSB  
+GTR  "Modify component atom id"  2020-07-17  RCSB  
+##
