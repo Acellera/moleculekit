@@ -422,3 +422,45 @@ def test_systemprepare_1g1s_olinked():
     olt = pmol.resname == "OLT"
     assert np.sum(olt & (pmol.name == "HG1")) == 0
     assert np.sum(olt & (pmol.name == "OG1")) == 1
+
+
+def test_detect_is_idempotent_over_its_own_renames():
+    """Detection must be stable across a prepare cycle. systemPrepare renames
+    sugars to their GLYCAM unit names and the glycosylated anchor to NLN, so a
+    second detect pass sees those names rather than the original CCD ones. They
+    are all provided by GLYCAM and need no user parameterization, so the second
+    pass must report nothing for them. Otherwise the sugars come back as
+    covalent-ligand / scaffold specs that get routed to antechamber, and the
+    anchor as an untemplated chain residue."""
+    from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
+    from moleculekit.tools.preparation import systemPrepare
+
+    mol = Molecule(os.path.join(GLYCAN_DIR, "3AVE_frag.pdb"))
+    first = detectNonStandardResidues(mol)
+    assert any(type(s).__name__ == "GlycanSpec" for s in first)
+
+    pmol, _ = systemPrepare(mol)
+    # The prepared structure carries GLYCAM names, not the input CCD ones.
+    assert "0YB" in pmol.resname and "NLN" in pmol.resname
+    assert "NAG" not in pmol.resname
+
+    second = detectNonStandardResidues(pmol)
+    offenders = sorted({str(s.resname) for s in second})
+    assert not offenders, (
+        f"re-detecting an already-prepared structure reported {offenders}; "
+        "GLYCAM residues must be recognized as force-field-provided"
+    )
+
+
+def test_glycam_residues_are_canonical():
+    """Every GLYCAM sugar unit, the ROH reducing-end cap and the four
+    glycosylated-amino-acid anchors are parameterized by GLYCAM itself, so they
+    must count as canonical (no template, no antechamber)."""
+    from moleculekit.tools.nonstandard_residues import _CANONICAL_RESNAMES
+    from moleculekit.tools.glycans import GLYCAM_ANCHOR_UNITS, GLYCAM_UNIT_NAMES
+
+    missing = sorted(
+        (set(GLYCAM_UNIT_NAMES) | set(GLYCAM_ANCHOR_UNITS) | {"ROH"})
+        - set(_CANONICAL_RESNAMES)
+    )
+    assert not missing, f"GLYCAM-provided residues missing from canonical set: {missing}"
