@@ -582,6 +582,31 @@ def _restore_trimmed_canonical_sidechains(mol, detect_specs):
             )
 
 
+def _anchor_bond_order(mol, res_atom_idxs, anchor_atom):
+    """Order of the covalent link that leaves the residue at ``anchor_atom``.
+
+    The anchor's protonation state depends on it: a single bond to a LYS NZ
+    leaves a neutral secondary amine, while a double bond is a retinylidene
+    Schiff base, which is protonated and keeps the lysine's +1. Orders the
+    deposition left unspecified are filled from the curated table in
+    :func:`moleculekit.rdkittools.resolveInterResidueBondtype`.
+    """
+    from moleculekit.rdkittools import _BONDTYPE_ORDER, resolveInterResidueBondtype
+
+    residue = {int(i) for i in res_atom_idxs}
+    anchors = {i for i in residue if str(mol.name[i]) == str(anchor_atom)}
+    order = 1
+    for bidx in range(len(mol.bonds)):
+        a, b = int(mol.bonds[bidx, 0]), int(mol.bonds[bidx, 1])
+        if (a in residue) == (b in residue):
+            continue  # intra-residue, or nothing to do with this residue
+        if a not in anchors and b not in anchors:
+            continue
+        bt = resolveInterResidueBondtype(mol, bidx)
+        order = max(order, _BONDTYPE_ORDER.get(bt, 1))
+    return order
+
+
 def _template_renamed_canonical_residues(mol, specs):
     """Rename + re-template every ChainResidueSpec whose
     ``resname`` is a canonical AA (or a crosslinked known modified
@@ -670,7 +695,11 @@ def _template_renamed_canonical_residues(mol, specs):
                     f"re-templated. Add its SMILES there."
                 )
         else:
-            smiles = canonical_anchor_smiles(spec.resname, spec.anchor_atom)
+            smiles = canonical_anchor_smiles(
+                spec.resname,
+                spec.anchor_atom,
+                bond_order=_anchor_bond_order(mol, res_atom_idxs, spec.anchor_atom),
+            )
 
         # res_mask was computed against the original resname and the
         # atoms still live at the same indices after the rename above,

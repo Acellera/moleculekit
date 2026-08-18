@@ -968,6 +968,26 @@ def test_canonical_anchor_smiles():
         canonical_anchor_smiles("MET", "SD")
 
 
+def test_canonical_anchor_smiles_is_bond_order_aware():
+    """A double bond at the anchor selects a different protonation variant.
+
+    Rhodopsin's retinal binds Lys296 as a protonated Schiff base, C15=NZ(H)+,
+    and forming it conserves the lysine's charge: -NH3+ plus an aldehyde gives
+    -N+(H)= plus water. The neutral LYN template carries 2 H on NZ, so the
+    double bond leaves 2 - 2 = 0 H and no charge, a neutral imine. The charged
+    LYS template carries 3, leaving 3 - 2 = 1 H and the +1 that Glu113
+    balances.
+    """
+    from moleculekit.residues import RESIDUE_SMILES
+    from moleculekit.tools._anchor_variants import canonical_anchor_smiles
+
+    assert canonical_anchor_smiles("LYS", "NZ", bond_order=2) == RESIDUE_SMILES["LYS"]
+    assert canonical_anchor_smiles("LYS", "NZ", bond_order=1) == RESIDUE_SMILES["LYN"]
+    assert canonical_anchor_smiles("LYN", "NZ", bond_order=2) == RESIDUE_SMILES["LYS"]
+    # An anchor with no double-bond entry keeps its single-bond variant.
+    assert canonical_anchor_smiles("CYS", "SG", bond_order=2) == RESIDUE_SMILES["CYS"]
+
+
 def test_5vbl_glu_lys_isopeptide_emits_chain_residue_specs():
     """5VBL has an isopeptide bond between GLU A 10 CD and LYS A 13 NZ.
     The detector emits a ChainResidueSpec for each end with auto-

@@ -309,6 +309,114 @@ def test_incomplete_sidechain_gives_clear_error():
     assert "incompletely modeled" in msg, msg
 
 
+def test_retinal_schiff_base_lysine_stays_a_cation():
+    """1GZM's Lys296 binds retinal as a protonated Schiff base: C15=NZ(H)+.
+
+    Forming a Schiff base conserves the lysine's charge (-NH3+ plus the C15
+    aldehyde gives -N+(H)= plus water), so re-templating the anchor must leave
+    NZ with one hydrogen and formalcharge +1. Templating it from the neutral
+    LYN variant instead subtracted the double bond's order from LYN's 2
+    hydrogens and produced a neutral imine, silently neutralizing a residue
+    that was positive and dropping the counter-ion Glu113 balances.
+    """
+    from moleculekit.tools.preparation import _template_renamed_canonical_residues
+    from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
+
+    mol = Molecule("1gzm")
+    mol.filter("chain A", _logger=False)
+    mol.remove("element H", _logger=False)
+    ret_mask = mol.atomselect("resname RET")
+    mol.templateResidueFromSmiles(
+        ret_mask, "CC1=C(/C=C/C(C)=C/C=C/C(C)=C/C=O)C(C)(C)CCC1", addHs=True
+    )
+
+    specs = detectNonStandardResidues(mol)
+    _template_renamed_canonical_residues(mol, specs)
+
+    nz = np.where((mol.resid == 296) & (mol.name == "NZ"))[0]
+    assert len(nz) == 1, f"expected one Lys296 NZ, got {nz}"
+    nz = int(nz[0])
+    assert int(mol.formalcharge[nz]) == 1, "the Schiff base nitrogen is an iminium"
+
+    hydrogens = sum(
+        1
+        for a, b in mol.bonds
+        if nz in (int(a), int(b))
+        and str(mol.element[int(b) if int(a) == nz else int(a)]) == "H"
+    )
+    assert hydrogens == 1, f"a protonated Schiff base keeps one H on N, got {hydrogens}"
+
+
+def test_retinal_schiff_base_survives_systemprepare():
+    """The iminium must still be one after the full PDB2PQR roundtrip.
+
+    systemPrepare rebuilds the molecule from PDB2PQR's own topology, so the +1,
+    the single N-hydrogen and the C15=NZ order each have to survive that
+    roundtrip rather than only being right at templating time. Nothing here
+    asserts Glu113's protonation: the lysine reaches PROPKA renamed to a
+    junction bucket, so the cation is invisible to the pKa calculation and
+    Glu113 still comes out as GLH.
+    """
+    from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
+
+    mol = Molecule("1gzm")
+    mol.filter("chain A", _logger=False)
+    mol.remove("element H", _logger=False)
+    specs = detectNonStandardResidues(mol)
+    mol.templateResidueFromSmiles(
+        mol.atomselect("resname RET"),
+        "CC1=C(/C=C/C(C)=C/C=C/C(C)=C/C=O)C(C)(C)CCC1",
+        addHs=True,
+    )
+    mol.templateResidueFromSmiles(
+        mol.atomselect("resname PLM"), "CCCCCCCCCCCCCCCC(=O)O", addHs=True
+    )
+
+    pmol, _ = systemPrepare(mol, detect_specs=specs)
+
+    nz = np.where((pmol.resid == 296) & (pmol.name == "NZ"))[0]
+    assert len(nz) == 1, f"expected one Lys296 NZ, got {nz}"
+    nz = int(nz[0])
+    assert int(pmol.formalcharge[nz]) == 1, "the +1 was lost across PDB2PQR"
+
+    neighbors = [
+        int(b) if int(a) == nz else int(a)
+        for a, b in pmol.bonds
+        if nz in (int(a), int(b))
+    ]
+    hydrogens = [i for i in neighbors if str(pmol.element[i]) == "H"]
+    assert len(hydrogens) == 1, (
+        f"a protonated Schiff base keeps one H on N, got "
+        f"{[str(pmol.name[i]) for i in hydrogens]}"
+    )
+
+    c15 = next(
+        i for i in neighbors if str(pmol.resname[i]) == "RET" and str(pmol.name[i]) == "C15"
+    )
+    bond = next(
+        i
+        for i, (a, b) in enumerate(pmol.bonds)
+        if {int(a), int(b)} == {nz, c15}
+    )
+    assert str(pmol.bondtype[bond]) == "2", "the Schiff base lost its double bond"
+
+
+def test_anchor_bond_order_resolves_an_unspecified_deposited_link():
+    """1GZM leaves ``_struct_conn.pdbx_value_order`` empty on every covalent
+    link, so the Schiff base arrives as ``un``. The anchor's protonation variant
+    is picked whether or not the retinal side was templated first, so the order
+    has to be resolved from the curated table here too, not only read back from
+    a bondtype an earlier template wrote.
+    """
+    from moleculekit.tools.preparation import _anchor_bond_order
+
+    mol = Molecule("1gzm")
+    mol.filter("chain A", _logger=False)
+    lys = np.where((mol.resid == 296) & (mol.resname == "LYS"))[0]
+    assert len(lys), "expected Lys296 in chain A"
+    assert _anchor_bond_order(mol, lys, "NZ") == 2
+
+
 def _beta_amino_acid_residue():
     """A synthetic beta-amino-acid residue whose backbone N->C shortest path is
     N-CA-C18-C (length 4, one carbon longer than a standard alpha amino acid),

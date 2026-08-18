@@ -15,6 +15,12 @@ Keys are ``(resname, atom_name)``. Values are dicts with these fields:
   state so rdkit's valence math gives the correct H count at the junction
   (e.g. ``"LYN"`` for LYS NZ -> neutral secondary amide; ``"HID"`` /
   ``"HIE"`` for HIS).
+- ``smiles_variant_by_order``: optional ``{bond_order: variant}`` override for
+  crosslinks whose bond order changes the anchor's protonation state, read by
+  :func:`canonical_anchor_smiles` and falling back to ``smiles_variant``. Only
+  LYS NZ needs one so far: a double bond there is a retinylidene Schiff base,
+  which is protonated, so it templates from charged ``"LYS"`` rather than
+  neutral ``"LYN"``.
 - ``ff_variant``: the AMBER force-field variant resname this anchor renames
   to when treated via the "well-known FF variant" fast-path (CYS-SG ->
   ``"CYX"``, ASN-ND2 -> ``"NLN"``, LYS-NZ -> ``"LYN"``, ...). ``None`` when
@@ -50,6 +56,16 @@ ANCHOR_TABLE = {
     ("LYS", "NZ"): {
         "displaced_heavy": (),
         "smiles_variant": "LYN",
+        # A double bond at NZ is a retinylidene Schiff base (rhodopsin's
+        # Lys296, bacteriorhodopsin's Lys216), protonated in the dark / ground
+        # state. Forming it conserves the lysine's charge (-NH3+ plus the C15
+        # aldehyde gives -N+(H)= plus water), so the charged LYS template is the
+        # one whose valence math leaves 3 - 2 = 1 H and formalcharge +1; the
+        # neutral LYN template would leave 2 - 2 = 0 H and no charge, a neutral
+        # imine, which is the deprotonated Meta II / M state instead.
+        # ``drop_h`` below stays single-bond shaped: htmd reads it only on the
+        # no-specs path, which never sees this junction.
+        "smiles_variant_by_order": {2: "LYS"},
         "ff_variant": "LYN",
         "drop_h": ["HZ3"],
         "ff14sb_type": "N3",
@@ -192,11 +208,15 @@ def _backbone_n_anchor(base_resname, atom_name):
     }
 
 
-def canonical_anchor_smiles(resname, atom_name):
+def canonical_anchor_smiles(resname, atom_name, bond_order=1):
     """Return the canonical-residue SMILES (from
     :data:`moleculekit.residues.RESIDUE_SMILES`) to use when re-templating
     a residue whose ``atom_name`` participates in a sidechain crosslink.
-    Reads :data:`ANCHOR_TABLE`'s ``smiles_variant`` field for the anchor.
+    Reads :data:`ANCHOR_TABLE`'s ``smiles_variant`` field for the anchor, or its
+    ``smiles_variant_by_order`` override when the crosslink's ``bond_order``
+    changes the anchor's protonation state (a double bond to LYS NZ is a
+    protonated retinylidene Schiff base, so it templates from charged ``LYS``
+    and keeps the lysine's +1).
 
     Heavy atoms displaced by the crosslink are NOT removed from the
     SMILES here - they're auto-stripped by
@@ -220,7 +240,9 @@ def canonical_anchor_smiles(resname, atom_name):
             f"{resname}-{atom_name} anchor to "
             f"moleculekit.tools._anchor_variants.ANCHOR_TABLE."
         )
-    variant = entry["smiles_variant"]
+    variant = entry.get("smiles_variant_by_order", {}).get(
+        bond_order, entry["smiles_variant"]
+    )
     smiles = RESIDUE_SMILES.get(variant)
     if smiles is None:
         raise ValueError(
