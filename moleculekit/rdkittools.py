@@ -332,6 +332,50 @@ _BONDTYPE_ORDER = {
 }
 
 
+# Bond order for an inter-residue covalent link the deposition leaves
+# unspecified. Keyed ``(comp1, atom1, comp2, atom2)`` with the two ends sorted;
+# anything absent is a single bond.
+#
+# Curated, not derived, and deliberately so. mmCIF has a field for this --
+# ``_struct_conn.pdbx_value_order`` -- and depositions leave it empty: every
+# covalent link in 1GZM carries ``?``, retinal's included. Two alternatives were
+# considered and rejected:
+#
+# * The component's own reference bonds say ``RET C15 O1 doub`` while O1 is
+#   absent from the bound model. But that ``doub`` specifies *free retinal*, not
+#   what forms when C15 attaches to a lysine, and an atom missing from a model
+#   has not necessarily left in a reaction -- it may simply be unresolved.
+# * Bond length separates this one (1.32 A against 1.45 A for the same entry's
+#   single C-N), but needs a per-element-pair table to generalise and cannot
+#   tell an amide from an imine.
+#
+# So the value is written down where it can be reviewed. Mol* reached the same
+# conclusion: its ``InterBondOrderTable`` holds this one entry, which is where
+# RCSB's viewer gets the double bond it draws. Add an entry when a linkage is
+# known; never guess one.
+INTER_RESIDUE_BOND_ORDER = {
+    # Retinal's protonated Schiff base to Lys296 in rhodopsin: C15=NZ, the
+    # dark-state chromophore. Left single, C15 takes a second hydrogen and
+    # preparation reads a neutral amine, then protonates Glu113 as though there
+    # were no cation to balance -- inverting the counter-ion pair that defines
+    # the dark state.
+    ("LYS", "NZ", "RET", "C15"): "2",
+}
+
+
+def interResidueBondOrder(resname1, name1, resname2, name2, default="1"):
+    """Curated order for an inter-residue link the deposition did not specify.
+
+    Symmetric in its two ends. Returns ``default`` -- a single bond -- for any
+    pair absent from :data:`INTER_RESIDUE_BOND_ORDER`.
+    """
+    a = (str(resname1).upper(), str(name1).upper())
+    b = (str(resname2).upper(), str(name2).upper())
+    if a > b:
+        a, b = b, a
+    return INTER_RESIDUE_BOND_ORDER.get((a[0], a[1], b[0], b[1]), default)
+
+
 def _detect_interresidue_bonds(mol, selidx):
     """Return ``(cross_bonds, sel_start, sel_end)`` for covalent bonds linking
     the selected residue to the rest of ``mol``.
@@ -353,6 +397,16 @@ def _detect_interresidue_bonds(mol, selidx):
         for bidx in np.where(cross_mask)[0]:
             a, b = int(mol.bonds[bidx, 0]), int(mol.bonds[bidx, 1])
             bt = str(mol.bondtype[bidx]) if len(mol.bondtype) > bidx else "1"
+            # mmCIF has a field for this order and depositions leave it empty --
+            # every covalent link in 1GZM carries `?`. Unspecified reaches
+            # templating as a single bond, so rhodopsin's C15=NZ+ Schiff base
+            # became a neutral amine and preparation then protonated Glu113 as
+            # though there were no cation to balance. Consult the curated table
+            # for the pairs that are known; everything else stays single.
+            if bt in ("", "un", "0", "None"):
+                bt = interResidueBondOrder(
+                    mol.resname[a], mol.name[a], mol.resname[b], mol.name[b]
+                )
             if sel_start <= a <= sel_end:
                 cross_bonds.append((a - sel_start, b, bt))
             else:

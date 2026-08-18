@@ -894,3 +894,94 @@ def test_templateResidueFromSmiles_strips_a_double_bonded_leaving_atom():
         if (int(a) in ret and int(b) in prot) or (int(b) in ret and int(a) in prot)
     ]
     assert len(cross) == 1, f"expected the Schiff base to survive, got {cross}"
+
+
+def test_interResidueBondOrder_is_symmetric_and_defaults_to_single():
+    """A curated table, so the accessor must not care which end is named first."""
+    from moleculekit.rdkittools import interResidueBondOrder
+
+    assert interResidueBondOrder("LYS", "NZ", "RET", "C15") == "2"
+    assert interResidueBondOrder("RET", "C15", "LYS", "NZ") == "2"
+    assert interResidueBondOrder("lys", "nz", "ret", "c15") == "2"
+    # Everything not written down is a single bond: the palmitoyl thioester and
+    # the glycosidic link in this same entry both are.
+    assert interResidueBondOrder("CYS", "SG", "PLM", "C1") == "1"
+    assert interResidueBondOrder("ASN", "ND2", "NAG", "C1") == "1"
+
+
+def test_templateResidueFromSmiles_gives_the_schiff_base_its_double_bond():
+    """1GZM's retinal binds Lys296 as a protonated Schiff base: C15=NZ.
+
+    mmCIF has a field for the order -- ``_struct_conn.pdbx_value_order`` -- and
+    1GZM leaves it empty on every covalent link, so the bond arrived unspecified
+    and templating built a neutral amine: C15 took two hydrogens, and
+    preparation then protonated Glu113 as though no cation needed balancing.
+    """
+    import numpy as np
+
+    mol = Molecule("1gzm")
+    smiles = "CC1=C(/C=C/C(C)=C/C=C/C(C)=C/C=O)C(C)(C)CCC1"
+    mol.filter("chain A", _logger=False)
+
+    # The premise: the deposition really does not say.
+    ret = set(np.where(mol.atomselect("resname RET"))[0].tolist())
+    lys = set(np.where(mol.atomselect("resname LYS and resid 296"))[0].tolist())
+    deposited = [
+        str(mol.bondtype[i])
+        for i, (a, b) in enumerate(mol.bonds)
+        if (int(a) in ret and int(b) in lys) or (int(b) in ret and int(a) in lys)
+    ]
+    assert deposited == ["un"], f"expected an unspecified order, got {deposited}"
+
+    mol.templateResidueFromSmiles("resname RET and chain A", smiles, addHs=True)
+
+    sel = mol.atomselect("resname RET and chain A")
+    ret = set(np.where(sel)[0].tolist())
+    lys = set(np.where(mol.atomselect("resname LYS and resid 296"))[0].tolist())
+    linkage = [
+        (i, int(a), int(b))
+        for i, (a, b) in enumerate(mol.bonds)
+        if (int(a) in ret and int(b) in lys) or (int(b) in ret and int(a) in lys)
+    ]
+    assert len(linkage) == 1, f"expected one C15-NZ bond, got {linkage}"
+    i, a, b = linkage[0]
+    assert str(mol.bondtype[i]) == "2", "the Schiff base must be a double bond"
+
+    # sp2, so one hydrogen on C15 -- an amine would have taken two.
+    c15 = next(j for j in ret if str(mol.name[j]) == "C15")
+    hydrogens = sum(
+        1
+        for x, y in mol.bonds
+        if c15 in (int(x), int(y))
+        and str(mol.element[int(y) if int(x) == c15 else int(x)]) == "H"
+    )
+    assert hydrogens == 1, f"imine C15 takes one hydrogen, got {hydrogens}"
+
+
+def test_a_deposited_bond_order_is_not_overridden_by_the_table():
+    """The table fills a gap; it never argues with a file that has an answer."""
+    import numpy as np
+
+    mol = Molecule("1gzm")
+    mol.filter("chain A", _logger=False)
+    ret = set(np.where(mol.atomselect("resname RET"))[0].tolist())
+    lys = set(np.where(mol.atomselect("resname LYS and resid 296"))[0].tolist())
+    idx = next(
+        i
+        for i, (a, b) in enumerate(mol.bonds)
+        if (int(a) in ret and int(b) in lys) or (int(b) in ret and int(a) in lys)
+    )
+    mol.bondtype[idx] = "1"  # pretend the deposition said single
+
+    smiles = "CC1=C(/C=C/C(C)=C/C=C/C(C)=C/C=O)C(C)(C)CCC1"
+    mol.templateResidueFromSmiles("resname RET and chain A", smiles, addHs=True)
+
+    sel = mol.atomselect("resname RET and chain A")
+    ret = set(np.where(sel)[0].tolist())
+    lys = set(np.where(mol.atomselect("resname LYS and resid 296"))[0].tolist())
+    kept = [
+        str(mol.bondtype[i])
+        for i, (a, b) in enumerate(mol.bonds)
+        if (int(a) in ret and int(b) in lys) or (int(b) in ret and int(a) in lys)
+    ]
+    assert kept == ["1"], f"the file's own order must win, got {kept}"
