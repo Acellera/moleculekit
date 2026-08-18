@@ -13,6 +13,7 @@ from moleculekit.tools.residue_titration import (
     _cap_residue_smiles,
     _inter_residue_crosslinks,
     _isolated_residue_rdkit,
+    _relaxed_query,
     _uncapped_residue_smiles,
 )
 
@@ -1066,6 +1067,73 @@ def test_cyclosporin_1m63_roundtrip_yields_midchain_templates(cyclosporin_1m63):
         assert Chem.CanonSmiles(templates[resname]) == Chem.CanonSmiles(expected), (
             f"{resname}: got {templates[resname]!r}, expected {expected!r}"
         )
+
+
+@pytest.mark.parametrize(
+    "anchor,capped",
+    [
+        # 4EFP's 0AF (7-hydroxytryptophan): an indole [nH]
+        (
+            "N[C@H](C=O)Cc1c[nH]c2c(O)cccc12",
+            "CNC(=O)[C@H](Cc1c[nH]c2c(O)cccc12)NC(C)=O",
+        ),
+        # a methylhistidine: an imidazole [nH]
+        (
+            "N[C@H](C=O)Cc1c[nH]c(C)n1",
+            "CNC(=O)[C@H](Cc1c[nH]c(C)n1)NC(C)=O",
+        ),
+    ],
+)
+def test_relaxed_query_locates_aromatic_nh_sidechain(anchor, capped):
+    """An aromatic N-H's hydrogen is what donates the lone pair its ring needs
+    to kekulize, so the relaxed query has to keep it: clearing every atom's
+    hydrogen count left the five-membered ring unkekulizable and the query
+    failed to build at all. Only modified residues reach this path, which is
+    why canonical Trp and His never showed it."""
+    query = _relaxed_query(anchor)
+    match = Chem.MolFromSmiles(capped).GetSubstructMatch(query)
+    assert len(match) == query.GetNumAtoms()
+
+
+@pytest.fixture(scope="module")
+def hydroxytryptophan_4efp():
+    """The 4EFP structure (peptidylglycine alpha-hydroxylating monooxygenase),
+    waters removed, whose two 0AF residues are 7-hydroxytryptophan: a chain NCAA
+    carrying an indole [nH]. Fetched once from RCSB; the test skips if it is
+    unreachable, so it never fails on a network hiccup."""
+    try:
+        mol = Molecule("4EFP")
+    except Exception as e:
+        pytest.skip(f"could not fetch 4EFP from RCSB: {e}")
+    mol.remove("water", _logger=False)
+    return mol
+
+
+def test_hydroxytryptophan_4efp_roundtrip_yields_midchain_template(
+    hydroxytryptophan_4efp,
+):
+    """cap -> (echo) -> strip on 4EFP's 0AF residues, fed their neutral RCSB
+    SMILES, reproduces the mid-chain build template. The sidechain's phenol is
+    not ionizable at pH 7.4, so a real AcePka pass would echo the capped SMILES
+    back unchanged; echoing here exercises the strip half without running a pKa
+    job."""
+    from moleculekit.tools import residue_titration as rt
+
+    specs = [
+        s
+        for s in detectNonStandardResidues(hydroxytryptophan_4efp)
+        if s.resname == "0AF"
+    ]
+    base = {"0AF": "c1cc2c(c[nH]c2c(c1)O)C[C@@H](C(=O)O)N"}
+    capped = rt.capNonstandardResiduesForTitration(
+        hydroxytryptophan_4efp, specs, smiles=base
+    )
+    templates = rt.templatesFromTitration(
+        hydroxytryptophan_4efp, specs, dict(capped), smiles=base
+    )
+    assert Chem.CanonSmiles(templates["0AF"]) == Chem.CanonSmiles(
+        "N[C@H](C=O)Cc1c[nH]c2c(O)cccc12"
+    )
 
 
 def _leaving_group_amine_crosslink_mol():

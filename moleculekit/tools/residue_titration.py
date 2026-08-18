@@ -917,12 +917,16 @@ def _relaxed_query(smiles: str) -> "Mol":
     deprotonated carboxylate ``C(=O)-O^-``, which RDKit can represent with a
     different bond order on the two C-O bonds).
 
-    Hydrogen counts are made generic too. Stripping a crosslink atom's leaving
-    group and cap (see :func:`_uncapped_residue_smiles`) leaves that atom with a
-    different hydrogen count in the anchor than it has in the capped molecule
-    (its cap bond is gone), and a stereocentre's explicit ``[C@H]`` hydrogen is
-    frozen rather than re-derived from the reduced valence; matching on hydrogen
-    count would then fail to relocate the atom.
+    The under-valent atoms that stripping a crosslink atom's leaving group and
+    cap leaves behind (see :func:`_uncapped_residue_smiles`) are re-saturated
+    with implicit hydrogens: RDKit otherwise carries their missing valence as
+    radical electrons, and a radical query atom does not match the saturated
+    atom it stands for. Clearing the radicals alone is not enough, since
+    sanitization re-assigns them for as long as the atom is barred from taking
+    implicit hydrogens. Explicit hydrogen counts are left as parsed, since they
+    do not constrain the match and clearing them would strip an aromatic
+    ``[nH]`` of the hydrogen its ring needs to kekulize (Trp and His
+    derivatives).
 
     Parameters
     ----------
@@ -939,12 +943,11 @@ def _relaxed_query(smiles: str) -> "Mol":
     from rdkit.Chem import rdmolops
 
     q = Chem.MolFromSmiles(smiles)
-    # Drop baked-in hydrogen counts (from valence or from stereo ``[C@H]``) and
-    # the radical electrons an under-valent stripped atom parses with, so
-    # neither constrains the match; connectivity and element still do.
+    # Let an under-valent stripped atom fill its missing valence with implicit
+    # hydrogens instead of the radical electrons it parses with, so the valence
+    # does not constrain the match; connectivity and element still do.
     for atom in q.GetAtoms():
         atom.SetNoImplicit(False)
-        atom.SetNumExplicitHs(0)
         atom.SetNumRadicalElectrons(0)
     Chem.SanitizeMol(q)
     params = rdmolops.AdjustQueryParameters.NoAdjustments()
