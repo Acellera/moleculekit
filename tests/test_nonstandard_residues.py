@@ -20,6 +20,7 @@ curr_dir = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(curr_dir, "test_nonstandard_residues")
 QFZ_B_CIF = os.path.join(DATA_DIR, "8QFZ_B.cif")
 QU4_A_CIF = os.path.join(DATA_DIR, "8QU4_A.cif")
+HYDROXYTRP_4EFP_CIF = os.path.join(DATA_DIR, "hydroxytrp_4efp.cif")
 VBL_PDB = os.path.join(curr_dir, "pdb", "5vbl.pdb")
 R1J_PDB = os.path.join(curr_dir, "pdb", "1r1j.pdb")
 
@@ -1768,6 +1769,116 @@ def test_apply_residue_templates_prefixed_keys_applied_per_context():
     }
     # Should apply without raising and add hydrogens to both copies.
     applyResidueTemplates(mol, templates, specs)
+    assert (mol.element == "H").sum() > 0
+
+
+# Mid-chain 7-hydroxy-L-tryptophan (0AF): backbone carbonyl as C=O, backbone N bare.
+HYDROXYTRP_SMILES = "N[C@H](C=O)Cc1c[nH]c2c(O)cccc12"
+
+
+def _check_hydroxytryptophan(mol, chain):
+    """Assert one templated 0AF copy came out as 7-hydroxy-L-tryptophan: a phenol
+    on CZ2 and a clean fused-ring CE2, i.e. no CE2-O1 bond."""
+    mask = (mol.resname == "0AF") & (mol.chain == chain)
+    idx = set(np.where(mask)[0])
+    neighbours = {}
+    for a, b in mol.bonds:
+        if a in idx and b in idx:
+            neighbours.setdefault(str(mol.name[a]), []).append(int(b))
+            neighbours.setdefault(str(mol.name[b]), []).append(int(a))
+
+    def elements(name):
+        return sorted(str(mol.element[i]) for i in neighbours[name])
+
+    def names(name):
+        return sorted(str(mol.name[i]) for i in neighbours[name])
+
+    # O1 is a phenol on CZ2: one ring bond plus its hydroxyl hydrogen.
+    assert "CE2" not in names("O1")
+    assert names("CZ2") == ["CE2", "CH2", "O1"]
+    assert elements("O1") == ["C", "H"]
+    # CE2 is a fused-ring carbon: three heavy neighbours and no hydrogen.
+    assert names("CE2") == ["CD2", "CZ2", "NE1"]
+    assert mask.sum() == 25  # 15 heavy atoms + 10 hydrogens
+
+
+def _strip_residue_bonds(mol, mask):
+    """Drop every bond internal to ``mask``, as if the input never recorded them.
+
+    Bonds leaving the residue are deliberately kept: only intra-residue bonds
+    make a residue templatable, so a residue whose sole remaining bond is a
+    peptide bond to its neighbour still counts as having none of its own.
+    """
+    inside = set(np.where(mask)[0].tolist())
+    keep = [
+        k
+        for k, (a, b) in enumerate(mol.bonds)
+        if not (int(a) in inside and int(b) in inside)
+    ]
+    mol.bonds = mol.bonds[keep]
+    mol.bondtype = mol.bondtype[keep]
+
+
+def test_apply_residue_templates_prefers_input_bonds_over_distance_guessing():
+    """4EFP's 0AF has its phenol oxygen deposited 1.18 A from CZ2 and 1.81 A from
+    CE2. Distance-based guessing bonds O1 to both (its criterion is 0.6 times the
+    summed vdW radii, 1.93 A for C-O), leaving CE2 with four heavy neighbours; the
+    template then makes the indole aromatic and sanitization rejects the resulting
+    valence of 5. The structure ships the right connectivity, so templating has to
+    use it rather than re-guess it."""
+    mol = Molecule(HYDROXYTRP_4EFP_CIF)
+    specs = detectNonStandardResidues(mol)
+
+    applyResidueTemplates(mol, {"0AF": {"smiles": HYDROXYTRP_SMILES}}, specs)
+
+    _check_hydroxytryptophan(mol, "A")
+    _check_hydroxytryptophan(mol, "B")
+
+
+def test_apply_residue_templates_takes_missing_bonds_from_another_copy():
+    """A copy that arrived without bonds takes them by atom name from a copy that
+    has them, rather than falling back to geometry. 4EFP's 0AF is the case that
+    tells the two apart: guessing this geometry produces a spurious CE2-O1 bond
+    and an unsanitizable residue, so a templated chain B here proves the bonds
+    came from chain A. Chain-resident residues are templated one copy per call,
+    so the donor has to be found outside the templated residue's own mask."""
+    mol = Molecule(HYDROXYTRP_4EFP_CIF)
+    specs = detectNonStandardResidues(mol)
+    stripped = (mol.resname == "0AF") & (mol.chain == "B")
+    _strip_residue_bonds(mol, stripped)
+    # The residue is left with a peptide bond and nothing else, which is not
+    # enough to template it: an inter-residue bond says nothing about the
+    # residue's own connectivity.
+    inside = set(np.where(stripped)[0].tolist())
+    crossing = [
+        (a, b)
+        for a, b in mol.bonds
+        if (int(a) in inside) ^ (int(b) in inside)
+    ]
+    assert crossing
+    assert len(mol.copy(sel=np.where(stripped)[0]).bonds) == 0
+
+    applyResidueTemplates(mol, {"0AF": {"smiles": HYDROXYTRP_SMILES}}, specs)
+
+    _check_hydroxytryptophan(mol, "A")
+    _check_hydroxytryptophan(mol, "B")
+
+
+def test_apply_residue_templates_guesses_bonds_when_input_has_none():
+    """A structure with no explicit bonds (e.g. a PDB whose CONECT records only
+    cover HET groups) has nothing but geometry to go on, so templating still falls
+    back to distance-based guessing there."""
+    mol = _dual_context_mol()
+    mol.bonds = np.zeros((0, 2), dtype=np.uint32)
+    mol.bondtype = np.array([], dtype=object)
+    specs = detectNonStandardResidues(mol)
+    templates = {
+        "NLE": {"smiles": "CCCC[C@@H](C=O)N"},
+        "CNLE": {"smiles": "CCCC[C@@H](C(=O)O)N"},
+    }
+
+    applyResidueTemplates(mol, templates, specs)
+
     assert (mol.element == "H").sum() > 0
 
 

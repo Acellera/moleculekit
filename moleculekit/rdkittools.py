@@ -671,6 +671,86 @@ def _residue_bond_names(mol, mask):
     return tuple(sorted(pairs))
 
 
+def _residue_submol(mol, selidx, guessBonds, _logger=True):
+    """Copy the selected residue out of ``mol`` with its intra-residue bonds
+    resolved, ready to be matched against a template.
+
+    Bonds are taken from the first of these that has any:
+
+    1. The residue's own bonds as recorded in ``mol`` (mmCIF ``chem_comp``
+       bonds, PDB CONECT records, whatever the reader populated).
+    2. The bonds of another copy of the same residue elsewhere in ``mol``,
+       matched by atom name. Connectivity is a property of the compound rather
+       than of one copy of it, so a copy the input never recorded bonds for (a
+       PDB whose CONECT records cover only some of them, a residue appended
+       programmatically) can borrow them from a copy that has them.
+    3. A distance-based guess, when ``guessBonds`` is set.
+
+    The order matters because guessing is the only one of the three that can
+    invent a bond the compound does not have: 4EFP's 0AF (7-hydroxy-L-tryptophan)
+    has its phenol oxygen deposited 1.18 A from CZ2 and 1.81 A from CE2, and the
+    distance criterion (0.6 times the summed vdW radii, 1.93 A for C-O) bonds it
+    to both. CE2 is left with four heavy neighbours, the template makes the
+    indole aromatic on top of that, and sanitization rejects the valence of 5.
+    """
+    from moleculekit.molecule import Molecule
+    import numpy as np
+
+    residue = mol.copy(sel=selidx)
+    if len(residue.bonds):
+        return residue
+
+    names = [str(n) for n in mol.name[selidx]]
+    if len(set(names)) == len(names) and len(mol.bonds):
+        local_of = {name: i for i, name in enumerate(names)}
+        resname = str(mol.resname[int(selidx[0])])
+        start, end = int(selidx[0]), int(selidx[-1])
+        a2r, atom_idxs = mol.getResidues(
+            fields=("resname", "resid", "insertion", "segid", "chain"),
+            return_idx=True,
+        )
+        bonds = np.asarray(mol.bonds, dtype=np.int64).reshape(-1, 2)
+        rows_of = {}
+        for row in np.where(a2r[bonds[:, 0]] == a2r[bonds[:, 1]])[0]:
+            rows_of.setdefault(int(a2r[bonds[row, 0]]), []).append(int(row))
+
+        # The copy with the most bonds recorded, so a partially-connected sibling
+        # never wins over a fully-connected one.
+        donor, donor_rows = {}, []
+        for res_idx, rows in rows_of.items():
+            atoms = np.asarray(atom_idxs[res_idx], dtype=np.int64)
+            first = int(atoms[0])
+            if str(mol.resname[first]) != resname or start <= first <= end:
+                continue
+            donor_names = [str(mol.name[i]) for i in atoms]
+            if len(set(donor_names)) != len(donor_names):
+                continue
+            if len(rows) > len(donor_rows):
+                donor = dict(zip((int(i) for i in atoms), donor_names))
+                donor_rows = rows
+
+        new_bonds, new_types = [], []
+        for row in donor_rows:
+            n1, n2 = donor[int(bonds[row, 0])], donor[int(bonds[row, 1])]
+            if n1 in local_of and n2 in local_of:
+                new_bonds.append([local_of[n1], local_of[n2]])
+                new_types.append(str(mol.bondtype[row]))
+        if new_bonds:
+            residue.bonds = np.array(new_bonds, dtype=Molecule._dtypes["bonds"])
+            residue.bondtype = np.array(new_types, dtype=Molecule._dtypes["bondtype"])
+            if _logger:
+                logger.info(
+                    f"Residue {resname} has no bonds of its own; took "
+                    f"{len(new_bonds)} bond(s) by atom name from another copy of "
+                    "it in the molecule instead of guessing them by distance."
+                )
+            return residue
+
+    if guessBonds:
+        residue.guessBonds()
+    return residue
+
+
 def template_residue_from_smiles(
     mol: Molecule,
     sel: str,
@@ -711,8 +791,10 @@ def template_residue_from_smiles(
         VMD-style selection within the residue restricting which heavy
         atoms get hydrogens added. Only used when ``addHs=True``.
     guessBonds : bool
-        If True, run distance-based bond guessing on the residue before
-        templating. Use when ``mol.bonds`` is empty.
+        If True, fall back to distance-based bond guessing for a residue that
+        has no bonds of its own and no other copy of itself in ``mol`` to take
+        them from by atom name. A residue that already carries bonds keeps
+        them; guessing never overrides recorded connectivity.
 
     Raises
     ------
@@ -864,9 +946,7 @@ def template_residue_from_smiles(
 
     cross_bonds, sel_start, sel_end = _detect_interresidue_bonds(mol, selidx)
 
-    residue = mol.copy(sel=selidx)
-    if guessBonds:
-        residue.guessBonds()
+    residue = _residue_submol(mol, selidx, guessBonds, _logger)
     for field in ("resname", "chain", "segid", "resid", "insertion"):
         if len(set(getattr(residue, field))) != 1:
             raise RuntimeError(
@@ -1041,8 +1121,10 @@ def template_residue_from_molecule(
         VMD-style selection or boolean mask within the residue restricting which
         heavy atoms get hydrogens added. Only used when ``addHs=True``.
     guessBonds : bool
-        If True, run distance-based bond guessing on the residue before
-        templating. Use when ``mol.bonds`` is empty.
+        If True, fall back to distance-based bond guessing for a residue that
+        has no bonds of its own and no other copy of itself in ``mol`` to take
+        them from by atom name. A residue that already carries bonds keeps
+        them; guessing never overrides recorded connectivity.
 
     Raises
     ------
@@ -1131,9 +1213,7 @@ def template_residue_from_molecule(
 
     cross_bonds, sel_start, sel_end = _detect_interresidue_bonds(mol, selidx)
 
-    residue = mol.copy(sel=selidx)
-    if guessBonds:
-        residue.guessBonds()
+    residue = _residue_submol(mol, selidx, guessBonds, _logger)
     for field in ("resname", "chain", "segid", "resid", "insertion"):
         if len(set(getattr(residue, field))) != 1:
             raise RuntimeError(

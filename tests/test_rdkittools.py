@@ -985,3 +985,32 @@ def test_a_deposited_bond_order_is_not_overridden_by_the_table():
         if (int(a) in ret and int(b) in lys) or (int(b) in ret and int(a) in lys)
     ]
     assert kept == ["1"], f"the file's own order must win, got {kept}"
+
+
+def test_templating_does_not_reguess_recorded_bonds():
+    """``guessBonds=True`` is a fallback for a residue that has no bonds, not a
+    licence to replace the ones the input recorded. 4EFP's 0AF has its phenol
+    oxygen deposited 1.18 A from CZ2 and 1.81 A from CE2, so a distance guess
+    bonds O1 to both and leaves CE2 five-valent once the template makes the
+    indole aromatic - while the connectivity in the file is correct."""
+    import numpy as np
+
+    cif = os.path.join(curr_dir, "test_nonstandard_residues", "hydroxytrp_4efp.cif")
+    smiles = "N[C@H](C=O)Cc1c[nH]c2c(O)cccc12"
+    mol = Molecule(cif)
+
+    mol.templateResidueFromSmiles(
+        (mol.resname == "0AF") & (mol.chain == "A"), smiles, addHs=True, guessBonds=True
+    )
+
+    mask = (mol.resname == "0AF") & (mol.chain == "A")
+    idx = set(np.where(mask)[0].tolist())
+    ce2_o1 = [
+        (a, b)
+        for a, b in mol.bonds
+        if int(a) in idx
+        and int(b) in idx
+        and {str(mol.name[a]), str(mol.name[b])} == {"CE2", "O1"}
+    ]
+    assert not ce2_o1
+    assert mask.sum() == 25  # 15 heavy atoms + 10 hydrogens

@@ -1207,10 +1207,14 @@ def applyResidueTemplates(mol, residue_templates, specs):
     converted to SMILES internally and matched by graph); a ``smiles`` value is
     matched via ``templateResidueFromSmiles``. Either way the source supplies
     bonds, bond orders, formal charges and hydrogens and is never appended to the
-    structure. A spec with no matching template entry (after the fallback) is left
-    untouched. Conversely, any ``residue_templates`` key that never matched a spec
-    (typo'd or stale, e.g. naming a terminus context that was not actually
-    detected) logs a warning naming the key rather than being silently ignored.
+    structure. The residue's own connectivity is read from ``mol.bonds``, so a
+    structure that arrived with explicit bonds keeps them; a residue that has
+    none takes them by atom name from another copy of itself, and is bond-guessed
+    by distance only as a last resort. A spec with no matching template
+    entry (after the fallback) is left untouched. Conversely, any
+    ``residue_templates`` key that never matched a spec (typo'd or stale, e.g.
+    naming a terminus context that was not actually detected) logs a warning
+    naming the key rather than being silently ignored.
 
     Run this before :func:`moleculekit.tools.preparation.systemPrepare`, and pass
     it the same spec list you then hand to ``systemPrepare`` -- **do not re-detect
