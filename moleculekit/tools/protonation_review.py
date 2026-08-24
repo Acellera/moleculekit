@@ -1213,8 +1213,7 @@ def reviewProtonation(
     # keeps the residues the predictor was unsure about and discards the ones it
     # was confidently wrong about, which is the wrong half.
     # A monatomic cation is a group whose charge field records only a sign,
-    # on the positive side (branching on the flag rather than g.label text,
-    # so a rename cannot silently switch this off).
+    # on the positive side.
     metal_groups = [g for g in groups if g.sign_only and g.charge > 0]
     metal_keys = _charge_proximity_keys(mol, heavy_idx, metal_groups, metal_radius)
 
@@ -1281,11 +1280,8 @@ def reviewProtonation(
         reported_heavy_mask |= own_mask & heavy
         reported_residues.update(_subject_residues(mol, np.where(own_mask)[0]))
 
-        # Delegates the whole surroundings measurement to describeEnvironment
-        # rather than keeping a second copy of the two scans, which would
-        # drift apart. groups/unclassified and resolve_chain are passed
-        # through so each is computed once for the whole report, not once
-        # per reviewed residue.
+        # groups/unclassified and resolve_chain are passed through so each is
+        # computed once for the whole report, not once per reviewed residue.
         env = describeEnvironment(
             mol,
             own_mask,

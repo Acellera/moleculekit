@@ -252,9 +252,8 @@ def _terminus_groups(mol, idx, hydrogen_count):
     # an atom named N plus SMILES-style sequential hydrogens H1/H2/H3 would be
     # reported as a +1 ammonium it does not have.
     #
-    # Capping groups are deliberately NOT admitted here, and admitting them
-    # produced exactly the fabricated charge the gate exists to stop: NME in
-    # the tleap convention is N, H, C, H1, H2, H3, so four of its names are in
+    # Capping groups are NOT admitted here: NME in the tleap convention is
+    # N, H, C, H1, H2, H3, so four of its names are in
     # _NTERM_HYDROGENS, the >= 3 rule fires, and a neutral C-terminal amide cap
     # is reported as a +1 ammonium into the charge scan of every titratable
     # residue near it. The bond-count path disagrees (NME's N carries one
