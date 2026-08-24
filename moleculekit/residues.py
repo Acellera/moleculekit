@@ -477,6 +477,80 @@ N_TERMINAL_CAP_RESIDUE_NAMES = ("ACE",)
 C_TERMINAL_CAP_RESIDUE_NAMES = ("NME", "NMA", "NHE", "NH2")
 CAP_RESIDUE_NAMES = N_TERMINAL_CAP_RESIDUE_NAMES + C_TERMINAL_CAP_RESIDUE_NAMES
 
+# Which atoms of a residue carry its charge, for the canonical titratable
+# residues and every protonation-state variant systemPrepare can return.
+#   charge : net sidechain charge at the named state
+#   atoms  : every heavy atom carrying it, which is what a distance scan must
+#            measure to rather than the nearest atom of the residue
+#   center : one representative atom, the convention moleculekit.interactions
+#            uses for salt-bridge geometry
+# The zero entries are load-bearing: they distinguish "covered here and
+# neutral" from "not covered here", which is what lets chargedGroups report a
+# residue it could not classify instead of silently omitting it. HIS is 0
+# rather than absent, since an unprepared histidine has no decided state.
+ChargedResidue = namedtuple("ChargedResidue", ["charge", "atoms", "center"])
+
+CHARGED_RESIDUE_ATOMS = {
+    "ASP": ChargedResidue(-1, ("OD1", "OD2"), "CG"),
+    "GLU": ChargedResidue(-1, ("OE1", "OE2"), "CD"),
+    "CYM": ChargedResidue(-1, ("SG",), "SG"),
+    "TYM": ChargedResidue(-1, ("OH",), "OH"),
+    "LYS": ChargedResidue(1, ("NZ",), "NZ"),
+    "ARG": ChargedResidue(1, ("NE", "NH1", "NH2"), "CZ"),
+    "HIP": ChargedResidue(1, ("ND1", "NE2"), "CE1"),
+    "ASH": ChargedResidue(0, (), None),
+    "GLH": ChargedResidue(0, (), None),
+    "LYN": ChargedResidue(0, (), None),
+    "AR0": ChargedResidue(0, (), None),
+    "HIS": ChargedResidue(0, (), None),
+    "HID": ChargedResidue(0, (), None),
+    "HIE": ChargedResidue(0, (), None),
+    "CYS": ChargedResidue(0, (), None),
+    "CYX": ChargedResidue(0, (), None),
+    "TYR": ChargedResidue(0, (), None),
+    "HSD": ChargedResidue(0, (), None),
+    "HSE": ChargedResidue(0, (), None),
+    "HSP": ChargedResidue(1, ("ND1", "NE2"), "CE1"),
+    "LSN": ChargedResidue(0, (), None),
+}
+
+# The anionic codes in ION_RESIDUE_NAMES. Kept as an explicit set rather than
+# inferred: an ion code in neither this set nor METAL_ION_RESIDUE_NAMES is
+# reported as unclassified by chargedGroups rather than guessed as a cation,
+# and a guessed sign is how a wrong charge enters a report silently.
+ANIONIC_ION_RESIDUE_NAMES = frozenset(
+    {
+        "CL",
+        "CLA",
+        "IOD",
+        "MO4",
+        "WO4",
+    }
+)
+
+# Cationic ION_RESIDUE_NAMES codes that METAL_ION_RESIDUE_NAMES misses because
+# they are not element symbols: CAL, CES, POT and SOD are CHARMM's Ca2+, Cs+,
+# K+ and Na+; CU1 and MN3 are deposited codes for Cu(I) and Mn(III); ZN1 and
+# ZN2 are zinc with a suffix. Deliberately a separate set, since
+# METAL_ION_RESIDUE_NAMES is the element-symbol convention and autoSegment
+# classifies residues with it, so widening it would change segmentation.
+# Without these, chargedGroups yields no group at all, so a residue
+# coordinating one is never selected for review, which nothing discloses.
+# Apply the same single-atom guard: CAL and ZN1 also name polyatomic entries
+# in the chemical component dictionary.
+CATIONIC_ION_RESIDUE_NAMES = frozenset(
+    {
+        "CAL",
+        "CES",
+        "CU1",
+        "MN3",
+        "POT",
+        "SOD",
+        "ZN1",
+        "ZN2",
+    }
+)
+
 # PDB-v3 -> AMBER (modrna08) atom-name remap for each supported modified
 # nucleotide. The phosphate / sugar backbone normalisation (``OP1`` -> ``O1P``,
 # ...) is what PDB2PQR already applies to the canonical nucleotides it

@@ -294,14 +294,26 @@ def get_metal_charged(mol: "Molecule"):
 
 
 def get_protein_charged(mol: "Molecule"):
-    lys_n = (mol.resname == "LYS") & (mol.name == "NZ")
-    arg_c = (mol.resname == "ARG") & (mol.name == "CZ")
-    hip_c = (mol.resname == "HIP") & (mol.name == "CE1")
-    pos = lys_n | arg_c | hip_c
+    """Charge centers of the charged protein residues.
 
-    asp_c = (mol.resname == "ASP") & (mol.name == "CG")
-    glu_c = (mol.resname == "GLU") & (mol.name == "CD")
-    neg = asp_c | glu_c
+    Reads :data:`moleculekit.residues.CHARGED_RESIDUE_ATOMS`, which is the
+    library's single source of truth for which atoms carry a residue's charge,
+    so this cannot drift from the charge table the protonation review uses.
+    One representative atom per residue, which is the convention the
+    salt-bridge and cation-pi geometry below expects.
+    """
+    from moleculekit.residues import CHARGED_RESIDUE_ATOMS
+
+    pos = np.zeros(mol.numAtoms, dtype=bool)
+    neg = np.zeros(mol.numAtoms, dtype=bool)
+    for resname, entry in CHARGED_RESIDUE_ATOMS.items():
+        if entry.charge == 0:
+            continue
+        hit = (mol.resname == resname) & (mol.name == entry.center)
+        if entry.charge > 0:
+            pos |= hit
+        else:
+            neg |= hit
 
     return np.where(pos)[0].astype(np.uint32), np.where(neg)[0].astype(np.uint32)
 
