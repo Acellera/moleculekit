@@ -23,6 +23,7 @@ molpropmap = {
     "occupancy": "occupancy",
     "beta": "beta",
     "charge": "charge",
+    "formalcharge": "formalcharge",
 }
 
 

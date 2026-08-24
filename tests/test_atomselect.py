@@ -325,6 +325,12 @@ _PARSER_SELECTIONS = [
     "backbonetype proteinback or backbonetype nucleicback or backbonetype normal",
     "beta 2 3",
     "resid < 20",
+    "formalcharge 1",
+    "formalcharge -1",
+    "formalcharge \"-1\" 1",
+    "formalcharge > 0",
+    "formalcharge < 0",
+    "not formalcharge 0",
 ]
 
 
@@ -341,3 +347,75 @@ def test_parser(sel):
         except Exception:
             pass
         raise RuntimeError(f"Failed to parse selection '{sel}' with error {e}")
+
+
+def test_formalcharge_selection():
+    """formalcharge is a per-atom field but was absent from the selection
+    grammar, so callers hand-wrote substitutes. It belongs in the integer
+    family with resid and serial."""
+    mol = Molecule(os.path.join(curr_dir, "pdb", "3ptb.pdb"))
+    mol.remove("water", _logger=False)
+    assert np.all(mol.formalcharge == 0), "a freshly read structure has no charges"
+
+    idx = mol.atomselect("resname BEN", indexes=True)
+    mol.formalcharge[idx[0]] = 1
+    mol.formalcharge[idx[1]] = -1
+    both = sorted([int(idx[0]), int(idx[1])])
+
+    assert np.array_equal(mol.atomselect("formalcharge 1", indexes=True), [idx[0]])
+    assert np.array_equal(mol.atomselect("formalcharge -1", indexes=True), [idx[1]])
+    assert np.array_equal(mol.atomselect('formalcharge "-1"', indexes=True), [idx[1]])
+    assert np.array_equal(
+        mol.atomselect('formalcharge "-1" 1', indexes=True), both
+    )
+    assert np.array_equal(mol.atomselect("formalcharge > 0", indexes=True), [idx[0]])
+    assert np.array_equal(mol.atomselect("formalcharge < 0", indexes=True), [idx[1]])
+    assert np.array_equal(mol.atomselect("not formalcharge 0", indexes=True), both)
+
+    # Composable with the rest of the language
+    assert mol.atomselect("resname BEN and not formalcharge 0").sum() == 2
+    assert mol.atomselect("protein and not formalcharge 0").sum() == 0
+    assert mol.atomselect("same residue as formalcharge 1").sum() == len(idx)
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "{} 1",
+        "{} -1",
+        '{} "-1"',
+        '{} "-1" 1',
+        "{} > 0",
+        "{} < 0",
+        "{} >= 0",
+        "{} <= 0",
+        "{} > -1",
+        "not {} 0",
+        "{} != 0",
+        "{} -1 1",
+        "{} -1 to 1",
+    ],
+)
+def test_formalcharge_parses_exactly_like_resid(form):
+    """The design claim for this change is that formalcharge joined the INTEGER
+    property family, alongside resid and serial. So the test is parity: every
+    form must succeed or fail for formalcharge exactly as it does for resid.
+
+    This also pins the three forms the language does not support (`!=`, an
+    unquoted negative in a list, a negative in a range). They are pre-existing
+    limits shared with resid, not quirks of this field. If someone later teaches
+    the grammar one of them, this test fails for both fields at once and says so.
+    """
+    mol = Molecule(os.path.join(curr_dir, "pdb", "3ptb.pdb"))
+
+    def parses(sel):
+        try:
+            mol.atomselect(sel)
+            return True
+        except Exception:
+            return False
+
+    assert parses(form.format("formalcharge")) == parses(form.format("resid")), (
+        f"{form.format('formalcharge')!r} and {form.format('resid')!r} disagree, "
+        f"so formalcharge is not behaving as an integer property"
+    )

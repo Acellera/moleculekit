@@ -32,6 +32,7 @@ reserved += [
     "segid",
     "mass",
     "charge",
+    "formalcharge",
     "occupancy",
     "beta",
     "fragment",
@@ -381,6 +382,7 @@ def p_molprop_int(p):
                 | SERIAL
                 | RESID
                 | RESIDUE
+                | FORMALCHARGE
     """
     p[0] = p[1]
 
