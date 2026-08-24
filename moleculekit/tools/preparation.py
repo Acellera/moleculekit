@@ -957,6 +957,165 @@ def _stamp_pdblist_identity(pdblist, mol):
         rec.element = str(mol.element[i])
 
 
+def _pdb2pqr_terminus_decisions(biomolecule):
+    """Report what PDB2PQR's ``set_termini`` decided about each residue.
+
+    Returns ``(n_term, c_term, considered)``, sets of
+    ``(resid, chain, insertion)`` keys. ``considered`` holds the residues
+    ``set_termini`` actually judges: it only assigns termini to ``aa.Amino``
+    residues, so the absence of a flag on anything else is not a decision and
+    must not be read as one. A templated non-canonical residue reaches PDB2PQR
+    as an ``aa.Amino`` subclass and so is judged normally.
+    """
+    from pdb2pqr import aa
+
+    n_term = set()
+    c_term = set()
+    considered = set()
+    for residue in biomolecule.residues:
+        if not isinstance(residue, aa.Amino):
+            continue
+        key = (
+            int(residue.res_seq),
+            str(residue.chain_id),
+            str(residue.ins_code).strip(),
+        )
+        considered.add(key)
+        if getattr(residue, "is_n_term", 0):
+            n_term.add(key)
+        if getattr(residue, "is_c_term", 0):
+            c_term.add(key)
+    return n_term, c_term, considered
+
+
+def _clear_phantom_termini(molecule, biomolecule):
+    """Drop PROPKA terminus flags that PDB2PQR did not itself assign.
+
+    PROPKA infers termini textually from the PDB stream it is handed: the first
+    ``ATOM`` residue after a ``TER`` becomes ``N+`` and an ``OXT`` becomes
+    ``C-``. It therefore never sees ``set_termini``'s reasoning, neither its
+    cyclic-chain distance guard nor the ``n_term_blocked`` / ``c_term_blocked``
+    flags :func:`_stamp_non_termini` sets. Two consequences:
+
+    * a head-to-tail cyclic peptide gets a spurious ``N+`` (charge +1, model
+      pKa 8.0) on the very amide nitrogen that closes the ring;
+    * PROPKA matches the N-terminal residue on the residue *number* alone and
+      ignores the insertion code, so in chymotrypsin-numbered structures every
+      residue sharing that number gets an ``N+`` (in 1A4W both ``ASP1A:L`` and
+      the mid-chain ``CYS1:L``).
+
+    Either way a fictitious cation shifts the predicted pKa of every titratable
+    group near it. A terminus flag also makes PROPKA build ``NtermGroup`` /
+    ``CtermGroup`` in preference to the backbone group, so the flags have to be
+    reconciled before groups are extracted; clearing one lets PROPKA build the
+    normal backbone group for that atom instead.
+
+    Only clears, never adds: where PDB2PQR never judged a residue, PROPKA's own
+    call is left alone. Returns the number of flags cleared.
+    """
+    n_term, c_term, considered = _pdb2pqr_terminus_decisions(biomolecule)
+    cleared = 0
+    for conformation in molecule.conformations.values():
+        for atom in conformation.atoms:
+            if not atom.terminal:
+                continue
+            key = (
+                int(atom.res_num),
+                str(atom.chain_id),
+                str(atom.icode).strip(),
+            )
+            if key not in considered:
+                continue
+            allowed = n_term if atom.terminal == "N+" else c_term
+            if key not in allowed:
+                logger.debug(
+                    f"Clearing PROPKA {atom.terminal} flag on "
+                    f"{atom.res_name.strip()} {atom.res_num}{atom.chain_id}: "
+                    "PDB2PQR did not assign that terminus."
+                )
+                atom.terminal = None
+                cleared += 1
+    return cleared
+
+
+def _run_propka(propka_args, biomolecule):
+    """Run PROPKA on ``biomolecule`` and return its per-group pKa rows.
+
+    Replaces ``pdb2pqr.main.run_propka`` for two reasons. It reconciles
+    PROPKA's textually inferred termini against PDB2PQR's own decision
+    (:func:`_clear_phantom_termini`), which has to happen after the atoms are
+    read and before groups are extracted, and it skips the folding- and
+    charge-profile report that ``run_propka`` builds over a pH 0 to 14 window
+    and that this caller discards.
+
+    The read sequence mirrors the PDB branch of
+    ``propka.input.read_molecule_file``.
+    """
+    from io import StringIO
+
+    import propka.input as pk_in
+    import propka.lib
+    from propka.molecular_container import MolecularContainer
+    from propka.parameters import Parameters
+    from pdb2pqr import io as pqr_io
+
+    lines = pqr_io.print_biomolecule_atoms(
+        atomlist=biomolecule.atoms,
+        chainflag=propka_args.keep_chain,
+        pdbfile=True,
+    )
+    with StringIO() as fpdb:
+        fpdb.writelines(lines)
+        parameters = pk_in.read_parameter_file(propka_args.parameters, Parameters())
+        molecule = MolecularContainer(parameters, propka_args)
+        molecule.name = "input"
+        conformations, conformation_names = pk_in.read_pdb(
+            fpdb, molecule.version.parameters, molecule
+        )
+        if len(conformations) == 0:
+            raise RuntimeError(
+                "PROPKA found no molecular conformations in the structure "
+                "handed to it by PDB2PQR."
+            )
+        molecule.conformations = conformations
+        molecule.conformation_names = conformation_names
+        molecule.top_up_conformations()
+        propka.lib.protein_precheck(
+            molecule.conformations, molecule.conformation_names
+        )
+        _clear_phantom_termini(molecule, biomolecule)
+        molecule.version.setup_bonding_and_protonation(molecule)
+        molecule.extract_groups()
+        for name in molecule.conformation_names:
+            molecule.conformations[name].sort_atoms()
+        molecule.find_covalently_coupled_groups()
+
+    molecule.calculate_pka()
+
+    rows = []
+    for group in molecule.conformations["AVR"].groups:
+        atom = group.atom
+        rows.append(
+            {
+                "res_num": atom.res_num,
+                "ins_code": atom.icode,
+                "res_name": atom.res_name,
+                "chain_id": atom.chain_id,
+                "group_label": group.label,
+                "group_type": getattr(group, "type", None),
+                "pKa": group.pka_value,
+                "model_pKa": group.model_pka,
+                "buried": group.buried,
+                "coupled_group": (
+                    group.coupled_titrating_group.label
+                    if group.coupled_titrating_group
+                    else None
+                ),
+            }
+        )
+    return rows
+
+
 def _pdb2pqr(
     pdb_file,
     definition,
@@ -982,7 +1141,7 @@ def _pdb2pqr(
     from pdb2pqr.io import get_molecule
     from pdb2pqr import forcefield, hydrogens
     from pdb2pqr.debump import Debump
-    from pdb2pqr.main import is_repairable, run_propka, setup_molecule
+    from pdb2pqr.main import is_repairable, setup_molecule
     from pdb2pqr.main import drop_water as drop_water_func
     from propka.lib import build_parser
 
@@ -1055,7 +1214,7 @@ def _pdb2pqr(
                 raise ValueError(err)
         if titrate:
             biomolecule.remove_hydrogens()
-            pka_list, _ = run_propka(propka_args, biomolecule)
+            pka_list = _run_propka(propka_args, biomolecule)
             # Remove terminal pkas
             pka_list = [
                 row
