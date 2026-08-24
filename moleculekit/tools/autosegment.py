@@ -3,7 +3,7 @@
 # Distributed under HTMD Software License Agreement
 # No redistribution in whole or part
 #
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 import string
 import numpy as np
 import logging
@@ -211,8 +211,9 @@ def autoSegment(
     ca_fallback_cutoff: float = 5.0,
     nucleic_fallback_cutoff: float = 3.2,
     single_other_segment: bool = False,
+    return_chain_map: bool = False,
     _logger=True,
-) -> "Molecule":
+) -> "Any":
     """Segment a Molecule by physical backbone continuity.
 
     Walks the selected residues in file order and starts a new segment when the
@@ -250,15 +251,31 @@ def autoSegment(
         If True, all non-polymer, non-water, non-ion ("other") residues are
         placed into a single segment. If False (default), they are split into
         separate segments by bonded connected components (one per molecule).
+    return_chain_map : bool
+        If True, return a ``(newmol, chain_map)`` tuple instead of just
+        ``newmol``; see the dict format described under Returns.
 
     Returns
     -------
     newmol : :class:`Molecule <moleculekit.molecule.Molecule>`
-        A copy with the requested fields set.
+        A copy of ``mol`` with the requested fields set. This is the entire
+        return value when ``return_chain_map`` is False (the default).
+    chain_map : dict
+        Returned together with ``newmol``, as a ``(newmol, chain_map)``
+        tuple, only when ``return_chain_map`` is True. One entry per residue
+        covered by ``sel``, including water and ions: keyed by
+        ``"chain:resid:insertion:segid"`` built from ``newmol``'s own fields
+        (so ``insertion`` is often an empty field, e.g. ``"E:1::P4"``), and
+        valued by the deposited chain name as a plain string, for example
+        ``{"A:57::P0": "AP"}``. A residue whose key is absent from the map
+        was outside ``sel``.
 
     Example
     -------
     >>> newmol = autoSegment(mol, fields=("chain", "segid"))  # doctest: +SKIP
+    >>> newmol, chain_map = autoSegment(
+    ...     mol, fields=("chain", "segid"), return_chain_map=True
+    ... )  # doctest: +SKIP
     """
     import networkx as nx
 
@@ -266,10 +283,18 @@ def autoSegment(
         fields = (fields,)
 
     mol = mol.copy()
+    # The chain field is overwritten below, so every deposited chain name is
+    # snapshotted first. Copied unconditionally rather than only when
+    # return_chain_map is True: the array is only ever read from the
+    # return_chain_map branch far below, and always assigning it here (a
+    # trivial numAtoms-length copy either way) keeps its type a plain
+    # ndarray instead of an Optional whose non-None-ness a type checker
+    # cannot see across that distance.
+    deposited_chain = mol.chain.copy()
     sel_mask = mol.atomselect(sel)
     sel_idx = np.where(sel_mask)[0]
     if len(sel_idx) == 0:
-        return mol
+        return (mol, {}) if return_chain_map else mol
 
     cats, residue_idx = _classify_residues(mol, sel_mask)
 
@@ -403,7 +428,23 @@ def autoSegment(
                 mol.resid[residue_idx[i]] = new_resid
                 mol.insertion[residue_idx[i]] = ""
 
-    return mol
+    if not return_chain_map:
+        return mol
+
+    # Built here, after the ion renumbering above, so the keys match the
+    # molecule being returned. systemPrepare matches its input and output
+    # residues on (resid, insertion, chain, segid), so these keys still
+    # resolve against a prepared molecule. segid makes each key
+    # collision-free by construction: autoSegment assigns a unique segid per
+    # segment, so two residues can share (chain, resid, insertion) only when
+    # chain letters were reused past the alphabet, and segid always tells
+    # them apart.
+    chain_map = {}
+    for idx in residue_idx:
+        rep = idx[0]
+        key = f"{mol.chain[rep]}:{mol.resid[rep]}:{mol.insertion[rep]}:{mol.segid[rep]}"
+        chain_map[key] = str(deposited_chain[rep])
+    return mol, chain_map
 
 
 def autoSegment2(

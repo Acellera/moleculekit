@@ -1,5 +1,7 @@
 import numpy as np
 import os
+import pytest
+from os import path
 
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
@@ -377,3 +379,189 @@ def test_autoSegment_classifies_element_symbol_metal_ion():
     assert cat_by_resname["FE"] == "ion"  # element-symbol metal not in ion_resnames
     assert cat_by_resname["CA"] == "ion"  # in ion_resnames (sanity)
     assert cat_by_resname["NI"] != "ion"  # 2-atom residue excluded by single-atom guard
+
+
+def _chain_map_key(mol, i):
+    """The exact key format autoSegment's return_chain_map dict uses, built
+    from one atom's residue fields on the returned molecule."""
+    return f"{mol.chain[i]}:{mol.resid[i]}:{mol.insertion[i]}:{mol.segid[i]}"
+
+
+def test_autoSegment_return_chain_map_is_opt_in():
+    """Existing callers must be untouched: no second return value by default."""
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol = Molecule(path.join(curr_dir, "pdb", "1a25.pdb"))
+    out = autoSegment(mol, fields=("segid", "chain"), _logger=False)
+    from moleculekit.molecule import Molecule as _M
+
+    assert isinstance(out, _M), "default return must stay a bare Molecule"
+
+
+def test_chain_map_reports_a_merge_per_residue():
+    """autoSegment collapses ions into one chain. 1A25 has a CA in chain A and
+    another in chain B, so the merged chain came from two deposited chains and
+    each ion has to be attributable to its own. The idiom this replaces samples
+    one atom per new chain and mislabels every atom after the first."""
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol0 = Molecule(path.join(curr_dir, "pdb", "1a25.pdb"))
+    ca_before = {
+        (str(mol0.chain[i]), int(mol0.resid[i]))
+        for i in mol0.atomselect("resname CA and not protein", indexes=True)
+    }
+    assert {c for c, _ in ca_before} == {"A", "B"}, "fixture must have CA in A and B"
+
+    mol, cmap = autoSegment(
+        mol0, fields=("segid", "chain"), return_chain_map=True, _logger=False
+    )
+    assert isinstance(cmap, dict)
+
+    ca_after = mol.atomselect("resname CA and not protein", indexes=True)
+    merged_chains = {str(mol.chain[i]) for i in ca_after}
+    assert len(merged_chains) == 1, "ions should collapse into one chain"
+
+    # Each ion resolves to its OWN deposited chain: three from A, three from B
+    resolved = [cmap[_chain_map_key(mol, i)] for i in ca_after]
+    assert sorted(resolved) == ["A", "A", "A", "B", "B", "B"]
+
+
+def test_chain_map_reports_a_split():
+    """One deposited chain becoming two must be recoverable from the dict: a
+    comprehension grouping keys by their value finds more than one new chain
+    behind the same deposited one."""
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol0 = Molecule(path.join(curr_dir, "test_autosegment", "1gfl.pdb"))
+    mol, cmap = autoSegment(
+        mol0, fields=("segid", "chain"), return_chain_map=True, _logger=False
+    )
+    new_chains_by_deposited = {}
+    for key, deposited in cmap.items():
+        new_chains_by_deposited.setdefault(deposited, set()).add(key.split(":")[0])
+    split = {old: new for old, new in new_chains_by_deposited.items() if len(new) > 1}
+    assert split, "1gfl has a chain break, so some chain must split"
+
+
+def test_chain_map_covers_every_segmented_chain():
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol0 = Molecule(path.join(curr_dir, "pdb", "1a25.pdb"))
+    mol, cmap = autoSegment(
+        mol0, fields=("segid", "chain"), return_chain_map=True, _logger=False
+    )
+    named_chains = {key.split(":")[0] for key in cmap}
+    assert named_chains == set(mol.chain) - {""}
+
+
+def test_chain_map_is_json_serializable():
+    """The dict IS the serialized form: a JSON round trip must reproduce it
+    exactly, with nothing in between."""
+    import json
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol0 = Molecule(path.join(curr_dir, "pdb", "1a25.pdb"))
+    _, cmap = autoSegment(
+        mol0, fields=("segid", "chain"), return_chain_map=True, _logger=False
+    )
+    assert json.loads(json.dumps(cmap)) == cmap
+
+
+def test_chain_map_json_round_trip_names_each_merged_ion():
+    """A chain-level-only view would name all six of 1A25's calcium the same
+    merged label. The per-residue dict, read back through JSON, must still
+    name each one its own deposited chain."""
+    import json
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol0 = Molecule(path.join(curr_dir, "pdb", "1a25.pdb"))
+    mol0.remove("water", _logger=False)
+    mol, cmap = autoSegment(
+        mol0, fields=("segid", "chain"), return_chain_map=True, _logger=False
+    )
+    ca = mol.atomselect("resname CA and not protein", indexes=True)
+    assert len(ca) == 6, "1a25 must carry six calcium"
+    merged = {str(mol.chain[i]) for i in ca}
+    assert len(merged) == 1, "the six calcium must have merged into one chain"
+
+    direct = [cmap[_chain_map_key(mol, i)] for i in ca]
+    assert direct == ["A", "A", "A", "B", "B", "B"]
+
+    back = json.loads(json.dumps(cmap))
+    through_json = [back[_chain_map_key(mol, i)] for i in ca]
+    assert through_json == direct
+
+
+def test_chain_map_has_no_entry_for_an_unknown_residue():
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol0 = Molecule(path.join(curr_dir, "pdb", "1a25.pdb"))
+    _, cmap = autoSegment(
+        mol0, fields=("segid", "chain"), return_chain_map=True, _logger=False
+    )
+    assert "A:999999::P0" not in cmap
+
+
+def test_chain_map_names_a_multicharacter_deposited_chain():
+    """6ORV's deposited chain "AP" is what the user sees and what
+    systemPrepare rejects, which is the whole reason the mapping exists."""
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol0 = Molecule(path.join(curr_dir, "test_autosegment", "6orv.cif"))
+    multi = sorted({c for c in set(mol0.chain.tolist()) if len(c) > 1})
+    assert multi, "fixture must carry a multi-character chain"
+
+    mol, cmap = autoSegment(
+        mol0, fields=("segid", "chain"), return_chain_map=True, _logger=False
+    )
+    assert all(len(c) == 1 for c in set(mol.chain.tolist()) - {""})
+
+    # The multi-character deposited chain survives as a plain-string value
+    assert multi[0] in cmap.values()
+
+
+def test_chain_map_survives_the_ion_renumbering():
+    """7BTI's MG ions collide on (resid, insertion) once merged into one chain,
+    so autoSegment renumbers them. The map's keys must match the molecule it
+    returns, not the resids the input had."""
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol0 = Molecule(path.join(curr_dir, "test_autosegment", "7bti.pdb"))
+    before = {
+        str(mol0.chain[i]): int(mol0.resid[i])
+        for i in mol0.atomselect("resname MG", indexes=True)
+    }
+    assert len(before) > 1 and len(set(before.values())) == 1
+
+    mol, cmap = autoSegment(
+        mol0, fields=("segid", "chain"), return_chain_map=True, _logger=False
+    )
+    mg = mol.atomselect("resname MG", indexes=True)
+    # Every renumbered ion resolves, and they resolve to distinct origins
+    resolved = [cmap[_chain_map_key(mol, i)] for i in mg]
+    assert sorted(resolved) == sorted(before)
+
+
+def test_chain_map_split_on_1lv1():
+    """The handoff's split case: one deposited chain becomes two."""
+    from moleculekit.molecule import Molecule
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol0 = Molecule(path.join(curr_dir, "test_autosegment", "1lv1.pdb"))
+    mol, cmap = autoSegment(
+        mol0, fields=("segid", "chain"), return_chain_map=True, _logger=False
+    )
+    new_chains_by_deposited = {}
+    for key, deposited in cmap.items():
+        new_chains_by_deposited.setdefault(deposited, set()).add(key.split(":")[0])
+    split = {old: new for old, new in new_chains_by_deposited.items() if len(new) > 1}
+    assert split, "1lv1 is the split fixture; some deposited chain must split"
