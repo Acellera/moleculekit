@@ -1,11 +1,11 @@
 # The Molecule data model
 
-A {py:class}`~moleculekit.molecule.Molecule` in moleculekit is more than a container for atom coordinates. It
-holds the full **topology** of a molecular system — every per-atom field, the
-bond graph, periodic box information, and provenance metadata — together with
-any number of **trajectory frames**. Understanding the data layout lets you
-write efficient code, avoid pitfalls with in-place mutation, and trace data
-back to its source files.
+A {py:class}`~moleculekit.molecule.Molecule` in moleculekit holds the full
+**topology** of a molecular system (every per-atom field, the bond graph,
+periodic box information, and provenance metadata) together with any number of
+**trajectory frames**. Understanding the data layout lets you write efficient
+code, avoid pitfalls with in-place mutation, and trace data back to its source
+files.
 
 ## Per-atom arrays
 
@@ -40,7 +40,7 @@ print(mol.name.dtype)       # object
 print(mol.resid.dtype)      # int64
 print(mol.occupancy.dtype)  # float32
 
-# Vectorised field access — no loop needed
+# Vectorised field access, no loop needed
 ca_mask = mol.name == "CA"
 print(mol.resid[ca_mask])   # resids of all alpha-carbons
 ```
@@ -62,10 +62,10 @@ mol.numFrames      # third axis
 Indexing patterns you will use often:
 
 ```python
-# First frame, all atoms — shape (numAtoms, 3)
+# First frame, all atoms: shape (numAtoms, 3)
 frame0 = mol.coords[:, :, 0]
 
-# All frames for atom 42 — shape (3, numFrames)
+# All frames for atom 42: shape (3, numFrames)
 traj_atom42 = mol.coords[42, :, :]
 
 # x-coordinates of all atoms in the last frame
@@ -79,9 +79,9 @@ gives the familiar `(numAtoms, 3)` coordinate matrix.
 
 Bonding information is stored separately from atom fields:
 
-- `mol.bonds` — `uint32` array of shape `(numBonds, 2)`, where each row is a
+- `mol.bonds`: `uint32` array of shape `(numBonds, 2)`, where each row is a
   pair of atom indices `[i, j]`.
-- `mol.bondtype` — `object` array of shape `(numBonds,)`, holding a bond-order
+- `mol.bondtype`: `object` array of shape `(numBonds,)`, holding a bond-order
   or bond-type string (e.g. `"1"`, `"2"`, `"ar"`, `"un"`, `"mc"` for metal
   coordination) parallel to `mol.bonds`.
 
@@ -93,7 +93,7 @@ so the two parallel arrays stay consistent.
 
 ```python
 mol = Molecule("plain.pdb")   # a PDB with no CONECT records
-print(mol.bonds.shape[0])     # 0 — no connectivity loaded
+print(mol.bonds.shape[0])     # 0, no connectivity loaded
 mol.guessBonds()
 print(mol.bonds.shape[0])     # now populated
 print(mol.bondtype.shape[0])  # same length, kept in lockstep
@@ -111,9 +111,9 @@ filtered out, index pairs must be regenerated.
 
 For systems with periodic boundary conditions:
 
-- `mol.box` — `float32` array of shape `(3, numFrames)`, holding the box
+- `mol.box`: `float32` array of shape `(3, numFrames)`, holding the box
   **lengths** `[a, b, c]` in Ångström for each frame.
-- `mol.boxangles` — `float32` array of shape `(3, numFrames)`, holding the
+- `mol.boxangles`: `float32` array of shape `(3, numFrames)`, holding the
   box **angles** `[α, β, γ]` in degrees.
 
 Orthorhombic (rectangular) boxes have all angles equal to 90°. A non-periodic
@@ -130,12 +130,12 @@ all_ortho = (mol.boxangles[:, 0] == 90).all()
 
 Moleculekit uses a single distance unit throughout: **Ångström (Å)**. This applies to:
 
-- `mol.coords` — atomic positions.
-- `mol.box` — periodic-box lengths.
-- All readers and writers (regardless of the source format's native units — GROMACS' `.gro` / `.xtc` use nanometres on disk; moleculekit converts to Å on load and converts back on write).
+- `mol.coords`: atomic positions.
+- `mol.box`: periodic-box lengths.
+- All readers and writers (regardless of the source format's native units: GROMACS' `.gro` / `.xtc` use nanometres on disk, and moleculekit converts to Å on load and back on write).
 - All distance parameters in the library (`coldist`, `autoSegment`'s `protein_cutoff`, `find_clashes` thresholds, `within X of` selections, etc.).
 
-Angles — `mol.boxangles`, dihedrals returned by {py:meth}`~moleculekit.molecule.Molecule.getDihedral`, and rotation angles passed to {py:meth}`~moleculekit.molecule.Molecule.setDihedral` — are in **radians** for the function APIs, except `mol.boxangles` which is in degrees (matching the PDB convention).
+Dihedrals returned by {py:meth}`~moleculekit.molecule.Molecule.getDihedral` and rotation angles passed to {py:meth}`~moleculekit.molecule.Molecule.setDihedral` are in **radians**. The one exception is `mol.boxangles`, which is in degrees, matching the PDB convention.
 
 ## Provenance: `fileloc`
 
@@ -149,30 +149,30 @@ mol.fileloc[0]   # e.g. ['/data/run1/traj.xtc', 0]
 mol.fileloc[-1]  # last frame's provenance
 ```
 
-This is especially useful when you concatenate multiple trajectory files: you
-can trace any frame back to its exact source.
+When you concatenate multiple trajectory files, this lets you trace any frame
+back to its exact source.
 
 ## Mutation semantics
 
 Many {py:class}`~moleculekit.molecule.Molecule` methods mutate the object **in place**:
 
-- `mol.filter(sel)` — keeps only selected atoms; modifies `mol` directly.
-- `mol.remove(sel)` — removes selected atoms; modifies `mol` directly.
-- `mol.set(field, value, sel=...)` — assigns values to a field; modifies
+- `mol.filter(sel)`: keeps only selected atoms; modifies `mol` directly.
+- `mol.remove(sel)`: removes selected atoms; modifies `mol` directly.
+- `mol.set(field, value, sel=...)`: assigns values to a field; modifies
   `mol` directly.
-- `mol.wrap(...)` — re-images coordinates into the periodic box; modifies
+- `mol.wrap(...)`: re-images coordinates into the periodic box; modifies
   `mol` directly.
-- `mol.align(sel, refmol)` — superposes frames; modifies `mol` directly.
+- `mol.align(sel, refmol)`: superposes frames; modifies `mol` directly.
 
 If you need to preserve the original molecule, call `mol.copy()` first:
 
 ```python
 mol_orig = Molecule("3ptb")
 
-# Wrong — mol_orig is now the filtered result
+# Wrong: mol_orig is now the filtered result
 mol_orig.filter("protein")
 
-# Correct — keep the original, work on a copy
+# Correct: keep the original, work on a copy
 mol_orig = Molecule("3ptb")
 mol_protein = mol_orig.copy()
 mol_protein.filter("protein")
@@ -189,12 +189,12 @@ mol_lig = mol.copy(sel="resname BEN")
 
 A `Molecule` is built in two conceptual layers:
 
-1. **Topology layer** — the per-atom arrays (`name`, `resname`, `resid`,
+1. **Topology layer**: the per-atom arrays (`name`, `resname`, `resid`,
    `chain`, `segid`, `bonds`, ...) that describe what atoms exist and how
    they are connected. `numAtoms` is determined here. Typically read from a
    PDB, PSF, PRMTOP, or similar topology file.
 
-2. **Trajectory layer** — the `coords`, `box`, `boxangles`, `fileloc`,
+2. **Trajectory layer**: the `coords`, `box`, `boxangles`, `fileloc`,
    `step`, and `time` arrays that carry per-frame data. `numFrames` is
    determined here. Loaded from XTC, DCD, TRR, NetCDF, or similar trajectory
    files.
@@ -211,7 +211,7 @@ print(mol.numFrames)              # total frames from both trajectories
 
 Topology is stable across trajectory reads. Only frame-indexed arrays change
 when trajectories are appended. You cannot load a trajectory whose atom count
-differs from the topology — moleculekit will raise an error.
+differs from the topology; moleculekit will raise an error.
 
 ## Further reading
 

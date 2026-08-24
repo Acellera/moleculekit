@@ -6,7 +6,7 @@ Save a `Molecule` to disk in a chosen file format.
 
 ## Which format to use
 
-For a prepared / templated Molecule that carries bonds, bond orders, and formal charges, **prefer mmCIF (`.cif` or `.bcif`)** — it round-trips nearly all the data a `Molecule` holds. PDB is still fine for quick interchange with legacy tools, but you lose bond orders and the file is bound by fixed column widths. JSON is for application development where you need a lossless round-trip of the in-memory representation.
+For a prepared / templated Molecule that carries bonds, bond orders, and formal charges, **prefer mmCIF (`.cif` or `.bcif`)**, which round-trips nearly all the data a `Molecule` holds. PDB is still fine for quick interchange with legacy tools, but you lose bond orders and the file is bound by fixed column widths. JSON is for application development where you need a lossless round-trip of the in-memory representation.
 
 ## Minimal example
 
@@ -24,7 +24,7 @@ The signature is {py:meth}`~moleculekit.molecule.Molecule.write` with parameters
 | Parameter | Type | Default | What it does |
 |---|---|---|---|
 | `filename` | `str` | required | Output file path; the extension determines the format. |
-| `sel` | `str`, bool mask, or index array | `None` (all) | Atom selection — only the selected atoms are written. |
+| `sel` | `str`, bool mask, or index array | `None` (all) | Atom selection; only the selected atoms are written. |
 | `type` | `str` | `None` | Explicitly override the format (e.g. `"pdb"`) when the extension is ambiguous. |
 
 ## Supported formats
@@ -47,11 +47,11 @@ The signature is {py:meth}`~moleculekit.molecule.Molecule.write` with parameters
 | `netcdf`, `nc`, `ncdf` | AMBER NetCDF | Coordinates only, full precision. |
 | `binpos` | AMBER binpos | Coordinates only. |
 | `xsc` | NAMD extended system | Box / restart info. |
-| `coor`, `crd`, `inpcrd` | Coordinate files | Coordinates only — pair with a topology. |
+| `coor`, `crd`, `inpcrd` | Coordinate files | Coordinates only; pair with a topology. |
 | `h5`, `gro`, `mdcrd`, `lammpstrj`, `ncrst`, `rst7` | mdtraj-supported | Requires `mdtraj`. |
 | `json` | moleculekit JSON | Lossless round-trip of the in-memory Molecule. Useful in app development; rarely the right choice for tutorials. |
 
-For trajectory formats (`xtc`, `dcd`, `trr`, `netcdf`, `binpos`), only the coordinates are written — keep a topology file (PSF, PRMTOP, PDB) alongside.
+For trajectory formats (`xtc`, `dcd`, `trr`, `netcdf`, `binpos`), only the coordinates are written, so keep a topology file (PSF, PRMTOP, PDB) alongside.
 
 ## Common variations
 
@@ -73,7 +73,7 @@ roundtrip = Molecule("mol.json")
 
 ## Gotchas
 
-- PDB **cannot store explicit bond orders** (single/double/aromatic) — use mmCIF, MOL2, or SDF if those are needed downstream. PDB *can* store formal charges in columns 79–80, but many third-party PDB parsers ignore them.
+- PDB **cannot store explicit bond orders** (single/double/aromatic); use mmCIF, MOL2, or SDF if those are needed downstream. PDB *can* store formal charges in columns 79–80, but many third-party PDB parsers ignore them.
 - The `chain` field is written as a single character in PDB; `segid` (up to 4 characters) survives a PDB round-trip only in the SEGID column, which many programs ignore. mmCIF preserves both faithfully.
 
 ## See also

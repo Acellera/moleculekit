@@ -2,9 +2,8 @@
 
 {py:func}`~moleculekit.tools.preparation.systemPrepare` is moleculekit's all-in-one function for taking a raw PDB
 structure and producing a properly protonated, hydrogen-optimized molecule
-ready for MD parameterization. This page builds a mental model of what happens
-inside the function, why each step exists, and how the parameters map onto that
-process. For step-by-step worked examples, see the system-preparation tutorials
+ready for MD parameterization. This page describes what happens inside the
+function, why each step exists, and how the parameters map onto that process. For step-by-step worked examples, see the system-preparation tutorials
 linked at the bottom.
 
 ## The pipeline at a glance
@@ -20,23 +19,23 @@ flowchart TD
     G --> H[Prepared Molecule + details DataFrame]
 ```
 
-Every node above is an entry point you can call directly. Each step is optional — skip any that your input does not need. The internals of `systemPrepare` itself (rename, PDB2PQR, PROPKA, debump, bond restore, …) are covered step-by-step below; you do not invoke them directly.
+Every node above is an entry point you can call directly. Each step is optional; skip any that your input does not need. The internals of `systemPrepare` itself (rename, PDB2PQR, PROPKA, debump, bond restore, …) are covered step-by-step below; you do not invoke them directly.
 
-## Step 1 — Detect non-standard residues
+## Step 1: Detect non-standard residues
 
 {py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues` inspects `mol.bonds` (or guesses them by
 distance if `mol.bonds` is empty) and walks every residue. It emits one
 **spec** per residue that needs special handling:
 
-- **ChainResidueSpec** — a non-canonical amino acid embedded in a polypeptide,
+- **ChainResidueSpec**: a non-canonical amino acid embedded in a polypeptide,
   or a canonical AA whose sidechain makes a non-peptide covalent bond. Examples:
   selenomethionine; an ASN-ND2 glycosylated with NAG; a TYR coordinating a
   heme iron.
-- **CovalentLigandSpec** — a non-chain residue with exactly one non-peptide
+- **CovalentLigandSpec**: a non-chain residue with exactly one non-peptide
   bond (single-anchor covalent inhibitor, NAG stem of a glycan).
-- **ScaffoldSpec** — a non-chain residue with two or more non-peptide bonds
+- **ScaffoldSpec**: a non-chain residue with two or more non-peptide bonds
   (bicyclic-peptide scaffold, multi-anchor inhibitor).
-- **LigandSpec** — a non-chain residue with no covalent bonds to the protein
+- **LigandSpec**: a non-chain residue with no covalent bonds to the protein
   (free small-molecule, solvent molecule other than water, ion).
 
 Note: plain Cys–Cys disulfides are NOT returned by {py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues`.
@@ -45,13 +44,13 @@ cysteines are renamed `CYX` and the disulfide bonds are preserved across the
 PDB2PQR roundtrip. You don't need a spec to make this work.
 
 Metal-coordination bonds involving standalone metal ions (e.g. a Ca²⁺ ion
-coordinated by protein oxygens) are skipped — the protein residues are left
+coordinated by protein oxygens) are skipped and the protein residues are left
 unmodified. Coordinations where the metal lives *inside* a cofactor (e.g. Fe
 in a heme coordinated by a Cys-SG) are kept: the cofactor gets a
 `CovalentLigandSpec` and the donating residue becomes a `ChainResidueSpec` so
 its protonation state (Tyr-O⁻, Cys-S⁻) is handled correctly.
 
-## Step 2 — Rename residues for force-field compatibility
+## Step 2: Rename residues for force-field compatibility
 
 Based on the specs from step 1, canonical AAs at non-peptide junctions are
 renamed:
@@ -71,16 +70,17 @@ Non-canonical AAs (NCAAs) that have been pre-templated with
 {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromSmiles` are also handled here so that PDB2PQR's
 templates apply cleanly to their atoms.
 
-## Step 3 — Add hydrogens via PDB2PQR
+## Step 3: Add hydrogens via PDB2PQR
 
 PDB2PQR adds missing heavy atoms and all polar hydrogens using its internal
 force-field templates. The result is a fully hydrogenated structure at the
 default protonation for each residue's name.
 
-Residues in `no_prot` are excluded from hydrogen addition — useful when a
-known-good H-placement already exists and you want PDB2PQR to leave it alone.
+Residues in `no_prot` are excluded from hydrogen addition, which is what you
+want when a known-good H-placement already exists and PDB2PQR should leave it
+alone.
 
-## Step 4 — Predict pKa and titrate (optional)
+## Step 4: Predict pKa and titrate (optional)
 
 When `titration=True` (the default), PROPKA estimates the pKa of every
 titratable residue in the context of the folded structure. At the target `pH`,
@@ -93,7 +93,7 @@ each titratable group is set to its dominant protonation state:
 This step is skipped when `titration=False`. In that case, all residues keep
 their default protonation state (standard charge at pH 7 for canonical AAs).
 
-## Step 5 — Flip and debump
+## Step 5: Flip and debump
 
 PDB2PQR flips the amide groups of Asn and Gln, and the imidazole of His, to
 find the orientation that forms the best hydrogen-bond network. It then
@@ -103,12 +103,12 @@ Residues in `no_opt` are held fixed and not flipped. Use this for residues in
 a metal site or a known crystal-water network where the flip would break the
 geometry.
 
-## Step 6 — Hold residues at non-peptidic bonds
+## Step 6: Hold residues at non-peptidic bonds
 
 Standard protein residues that sit at a covalent junction to a non-protein
-partner — disulfides, glycosidic bonds, metal coordinations, stapled
-sidechain bonds, covalently bound ligands, etc. — need special handling so
-PDB2PQR/PROPKA do not disturb the linkage or over-protonate the junction.
+partner (disulfides, glycosidic bonds, metal coordinations, stapled sidechain
+bonds, covalently bound ligands) need special handling so PDB2PQR/PROPKA do not
+disturb the linkage or over-protonate the junction.
 
 When `hold_nonpeptidic_bonds=True` (the default), `systemPrepare` detects
 these junctions and, for each affected residue, adds it to the internal
@@ -127,7 +127,7 @@ Setting `hold_nonpeptidic_bonds=False` skips this special handling and lets
 PDB2PQR/PROPKA process the junction residues as if the non-peptide bond were
 not there. This option is rarely needed and should be used with care.
 
-## Step 7 — Restore formal charges and termini
+## Step 7: Restore formal charges and termini
 
 After the PDB2PQR roundtrip, the formal charges on non-standard residues and
 termini can be incorrect because PDB2PQR assigns charges via its own tables
@@ -139,7 +139,7 @@ This ensures that, for example, an N-terminal ammonium (formal charge +1) and
 a deprotonated Tyr-O⁻ in a metal site (formal charge -1) survive the pipeline
 with the correct charges for downstream force-field parameterization.
 
-## Step 8 — Restore missing sidechains (optional)
+## Step 8: Restore missing sidechains (optional)
 
 When `restore_missing_sidechains=True`, {py:func}`~moleculekit.tools.preparation.systemPrepare` uses moleculekit's
 Dunbrack-rotamer mutator to template back any canonical residues whose entire
@@ -164,7 +164,7 @@ structural change that should be made consciously.
 | `restore_missing_sidechains=True` | 8 | Template back absent canonical sidechains |
 | `hydrophobic_thickness` | 4 | Warn on buried titratable residues (membrane context) |
 | `detect_specs` | 1 | Supply a pre-computed spec list; bypass auto-detection |
-| `return_details=True` | — | Return per-residue pKa / protonation DataFrame |
+| `return_details=True` | n/a | Return per-residue pKa / protonation DataFrame |
 
 ## The larger pipeline
 

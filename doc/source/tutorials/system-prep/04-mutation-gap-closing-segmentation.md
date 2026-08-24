@@ -12,7 +12,7 @@ kernelspec:
 
 # Mutation, gap closing, and auto-segmentation
 
-**You will learn:** how to fix missing chain/segment IDs with {py:func}`~moleculekit.tools.autosegment.autoSegment`, mutate a residue using the Dunbrack rotamer library, and (with the ProMod3 Singularity image) close missing-residue gaps — the surrounding workflow you typically combine with {py:func}`~moleculekit.tools.preparation.systemPrepare`.
+**You will learn:** how to fix missing chain/segment IDs with {py:func}`~moleculekit.tools.autosegment.autoSegment`, mutate a residue using the Dunbrack rotamer library, and (with the ProMod3 Singularity image) close missing-residue gaps. These are the steps that typically surround a {py:func}`~moleculekit.tools.preparation.systemPrepare` call.
 
 **Prerequisites:**
 - The [Custom residues from SMILES](03-custom-residues-from-smiles.md) tutorial.
@@ -31,7 +31,7 @@ from moleculekit.tools.modelling import model_gaps
 from acellera_docs_theme.molstar import show3d
 ```
 
-## Step 1 — Auto-segment a structure with a chain break
+## Step 1: Auto-segment a structure with a chain break
 
 We use **1ITG**, an integrin headpiece that has 13 residues missing from the deposited structure (residues 141–153 are absent from the PDB file). After loading and filtering to protein only, the molecule carries a single chain letter but lacks meaningful segids:
 
@@ -45,18 +45,18 @@ mol.filter("protein")
 show3d(mol)
 ```
 
-Loading drops 67 non-protein atoms, leaving a single chain `A` and the deposited segid `1`. There's no need to reset those — {py:func}`~moleculekit.tools.autosegment.autoSegment` with `fields=("chain", "segid")` overwrites both fields from scratch based on backbone continuity, so any pre-existing chain/segid values are irrelevant.
+Loading drops 67 non-protein atoms, leaving a single chain `A` and the deposited segid `1`. There's no need to reset those: {py:func}`~moleculekit.tools.autosegment.autoSegment` with `fields=("chain", "segid")` overwrites both fields from scratch based on backbone continuity, so any pre-existing chain/segid values are irrelevant.
 
 ```{code-cell} python
 mol = autoSegment(mol, sel="protein", fields=("chain", "segid"))
 sorted(set(zip(mol.chain, mol.segid)))
 ```
 
-{py:func}`~moleculekit.tools.autosegment.autoSegment` detects that the backbone is broken between GLY 140 and MET 154 (the flanking residues of the gap) — their `C–N` distance far exceeds the peptide-bond cutoff (`protein_cutoff`, 2 Å by default) — and so it creates two independent segments: `P0` on chain A (residues 55–140) and `P1` on chain B (residues 154–209). Both the `chain` and `segid` fields are now consistent, which avoids warnings during {py:func}`~moleculekit.tools.preparation.systemPrepare`.
+{py:func}`~moleculekit.tools.autosegment.autoSegment` detects that the backbone is broken between GLY 140 and MET 154 (the flanking residues of the gap), since their `C–N` distance far exceeds the peptide-bond cutoff (`protein_cutoff`, 2 Å by default), and so it creates two independent segments: `P0` on chain A (residues 55–140) and `P1` on chain B (residues 154–209). Both the `chain` and `segid` fields are now consistent, which avoids warnings during {py:func}`~moleculekit.tools.preparation.systemPrepare`.
 
-## Step 2 — Mutate a residue with the "best" rotamer
+## Step 2: Mutate a residue with the "best" rotamer
 
-We mutate **GLN 95** (a surface-exposed glutamine in segment P0) to **tryptophan** — a bulky aromatic sidechain whose placement genuinely depends on the rotamer chosen (alanine, by contrast, has no rotameric freedom, so its `"best"` and `"random"` modes would be indistinguishable). The `"best"` rotamer mode queries the Dunbrack backbone-dependent rotamer library for the phi/psi bin of that residue and picks the rotamer with the lowest van der Waals clash energy against the surrounding atoms:
+We mutate **GLN 95** (a surface-exposed glutamine in segment P0) to **tryptophan**, a bulky aromatic sidechain whose placement genuinely depends on the rotamer chosen (alanine, by contrast, has no rotameric freedom, so its `"best"` and `"random"` modes would be indistinguishable). The `"best"` rotamer mode queries the Dunbrack backbone-dependent rotamer library for the phi/psi bin of that residue and picks the rotamer with the lowest van der Waals clash energy against the surrounding atoms:
 
 ```{code-cell} python
 mut = mol.copy()
@@ -73,9 +73,9 @@ print("after :", set(mut.resname[(mut.chain == "A") & (mut.resid == 95)]))
 show3d(mut, representations=[{"sel": "chain A and resid 95", "type": "ball_and_stick", "size_factor": 0.6}], focus="chain A and resid 95")
 ```
 
-`before: {'GLN'}` then `after: {'TRP'}` — the mutation flipped the residue identity. {py:meth}`~moleculekit.molecule.Molecule.mutateResidue` modifies the molecule in place: the old sidechain is stripped, an ideal TRP template is Kabsch-aligned onto the backbone (N, CA, C), and the new sidechain is placed. Notice that the two masks are recomputed against `mut` *after* the mutation, not reused from before — the mutation changes the size of the atom array (TRP's indole sidechain has more atoms than GLN's), and a precomputed mask would now be the wrong length (see the warning in the [Atom selection tutorial](../02-atom-selection.md#for-developers-bypass-the-parser-with-masks)).
+`before: {'GLN'}` then `after: {'TRP'}` confirms the residue identity flipped. {py:meth}`~moleculekit.molecule.Molecule.mutateResidue` modifies the molecule in place: the old sidechain is stripped, an ideal TRP template is Kabsch-aligned onto the backbone (N, CA, C), and the new sidechain is placed. Notice that the two masks are recomputed against `mut` *after* the mutation, not reused from before, because the mutation changes the size of the atom array (TRP's indole sidechain has more atoms than GLN's) and a precomputed mask would now be the wrong length (see the warning in the [Atom selection tutorial](../02-atom-selection.md#for-developers-bypass-the-parser-with-masks)).
 
-## Step 3 — Compare "random" vs "best", and add minimization
+## Step 3: Compare "random" vs "best", and add minimization
 
 `rotamer_mode="random"` samples a rotamer weighted by its library probability rather than scoring clash energy, which is faster but may leave residual steric strain:
 
@@ -105,7 +105,7 @@ show3d(mut_min, representations=[{"sel": "chain A and resid 95", "type": "ball_a
 
 `minimize=True` is the safest choice for downstream MD setup; without it the rotamer placement is still physically reasonable but may retain small clashes.
 
-## Step 4 — Close the gap with ProMod3
+## Step 4: Close the gap with ProMod3
 
 {py:func}`~moleculekit.tools.modelling.model_gaps` calls ProMod3 inside a Singularity/Apptainer container to reconstruct the missing loop. This cell is **skipped in CI** because it requires the ProMod3 image:
 
@@ -121,9 +121,9 @@ modeled_p0 = model_gaps(
 
 {py:func}`~moleculekit.tools.modelling.model_gaps` aligns `sequence` against the atoms present in segment `P0`, writes a temporary FASTA alignment, runs ProMod3's loop-modelling pipeline inside the container, and returns a new {py:class}`~moleculekit.molecule.Molecule` with the gap filled.
 
-ProMod3 is available as an Apptainer/Singularity image from the OpenStructure project — follow the instructions at <https://openstructure.org/promod3/> to obtain `promod3.sif`. If neither `apptainer` nor `singularity` is on the `PATH`, {py:func}`~moleculekit.tools.modelling.model_gaps` raises a `RuntimeError` immediately; there is no fallback gap-filling path.
+ProMod3 is available as an Apptainer/Singularity image from the OpenStructure project; follow the instructions at <https://openstructure.org/promod3/> to obtain `promod3.sif`. If neither `apptainer` nor `singularity` is on the `PATH`, {py:func}`~moleculekit.tools.modelling.model_gaps` raises a `RuntimeError` immediately; there is no fallback gap-filling path.
 
-## Step 5 — Wrap up with systemPrepare
+## Step 5: Wrap up with systemPrepare
 
 With segmentation and mutation done, pass the result through {py:func}`~moleculekit.tools.preparation.systemPrepare` to assign protonation states:
 
@@ -132,13 +132,13 @@ pmol, specs = systemPrepare(mut_min, verbose=False)
 pmol.numAtoms
 ```
 
-The full pipeline — segment, mutate, prepare — is now complete.
+The full pipeline (segment, mutate, prepare) is now complete.
 
 ## Recap
 
 - {py:func}`~moleculekit.tools.autosegment.autoSegment` detects backbone discontinuities from atomic coordinates and assigns a unique segid (and optionally chain letter) per backbone-continuous segment; use `fields=("chain", "segid")` to keep both fields consistent.
 - {py:meth}`~moleculekit.molecule.Molecule.mutateResidue` with `sel` and `newres` swaps a residue's sidechain using Dunbrack rotamer selection: `rotamer_mode="best"` minimises VdW clashes against neighbours, `rotamer_mode="random"` samples by probability for speed. Add `minimize=True` to relax residual strain with OpenMM.
-- {py:func}`~moleculekit.tools.modelling.model_gaps` fills missing residues by sequence using the ProMod3 loop-modelling engine — but it requires the ProMod3 Singularity image; there is no fallback.
+- {py:func}`~moleculekit.tools.modelling.model_gaps` fills missing residues by sequence using the ProMod3 loop-modelling engine, but it requires the ProMod3 Singularity image; there is no fallback.
 
 ## Next
 

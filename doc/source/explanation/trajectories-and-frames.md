@@ -12,17 +12,17 @@ memory interact with long trajectories.
 All atomic positions for all frames live in `mol.coords`, a `float32` NumPy
 array of shape `(numAtoms, 3, numFrames)`:
 
-- Axis 0 — atoms, indexed `0` to `mol.numAtoms - 1`.
-- Axis 1 — Cartesian coordinates `[x, y, z]`, in Ångström.
-- Axis 2 — frames, indexed `0` to `mol.numFrames - 1`.
+- Axis 0: atoms, indexed `0` to `mol.numAtoms - 1`.
+- Axis 1: Cartesian coordinates `[x, y, z]`, in Ångström.
+- Axis 2: frames, indexed `0` to `mol.numFrames - 1`.
 
 Common slicing patterns:
 
 ```python
 mol.coords.shape              # (numAtoms, 3, numFrames)
-mol.coords[:, :, 0]          # all atoms, frame 0 — shape (numAtoms, 3)
-mol.coords[42, :, :]         # all frames for atom 42 — shape (3, numFrames)
-mol.coords[:, 0, :]          # x-coords of all atoms, all frames — (numAtoms, numFrames)
+mol.coords[:, :, 0]          # all atoms, frame 0: shape (numAtoms, 3)
+mol.coords[42, :, :]         # all frames for atom 42: shape (3, numFrames)
+mol.coords[:, 0, :]          # x-coords of all atoms, all frames: (numAtoms, numFrames)
 mol.coords[:, :, -1]         # last frame
 ```
 
@@ -83,7 +83,7 @@ mol.read("run3.xtc", append=True)
 ```
 
 The second positional argument of {py:class}`~moleculekit.molecule.Molecule`
-is `name=`, **not** a trajectory file — passing trajectories there assigns
+is `name=`, **not** a trajectory file; passing trajectories there assigns
 them to `mol.name` and loads nothing. Always use a single list (as above) or
 the explicit `read(..., append=True)` form.
 
@@ -94,7 +94,7 @@ ordering mirrors the order the files were passed.
 
 `mol.fileloc` is a Python list of `[filename, frame_index]` pairs, one entry
 per frame. It records which file each frame came from and what index it had
-within that file. This is invaluable when debugging multi-trajectory analyses:
+within that file, which helps when debugging multi-trajectory analyses:
 
 ```python
 mol.fileloc[0]    # ['run1.xtc', 0]
@@ -105,9 +105,9 @@ mol.fileloc[999]  # ['run1.xtc', 999] or ['run2.xtc', 0] after the first file en
 
 Periodic MD simulations carry box geometry with every frame:
 
-- `mol.box` — `float32`, shape `(3, numFrames)`. Box **lengths** `[a, b, c]`
+- `mol.box`: `float32`, shape `(3, numFrames)`. Box **lengths** `[a, b, c]`
   in Ångström.
-- `mol.boxangles` — `float32`, shape `(3, numFrames)`. Box **angles**
+- `mol.boxangles`: `float32`, shape `(3, numFrames)`. Box **angles**
   `[α, β, γ]` in degrees.
 
 For a rectangular (orthorhombic) box all three angles equal 90°:

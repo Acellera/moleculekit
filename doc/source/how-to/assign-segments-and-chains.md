@@ -49,7 +49,7 @@ mol = autoSegment(mol, single_other_segment=True)
 ## Gotchas
 
 - {py:func}`~moleculekit.tools.autosegment.autoSegment` returns a new {py:class}`~moleculekit.molecule.Molecule`; it does not mutate the input.
-- Only coordinates and atom names are needed — explicit bonds are not required (they are guessed only for the "other" bucket).
+- Only coordinates and atom names are needed; explicit bonds are not required (they are guessed only for the "other" bucket).
 - `segid` can be up to 4 characters (MD force-field convention); `chain` is a single character (PDB convention).
 - When writing to PDB, only the `chain` field is stored in the standard CHAIN column; `segid` goes into the SEGID column, which many programs ignore.
 - `autoSegment2` is deprecated and forwards to {py:func}`~moleculekit.tools.autosegment.autoSegment` with a `DeprecationWarning`; use `autoSegment` directly.

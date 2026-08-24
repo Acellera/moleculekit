@@ -87,7 +87,7 @@ sequences = {ch: v["sequence"] for ch, v in resolved.items()}
 - RCSB downloads respect the server rate limits; avoid hammering the API in tight loops.
 - Set the `LOCAL_PDB_REPO` environment variable to a local PDB mirror directory to avoid repeated network downloads.
 - OPM membership requires a known PDB ID or a successful BLAST sequence alignment; when nothing matches, {py:func}`~moleculekit.opm.align_to_opm` returns an **empty list** (not `None`).
-- {py:func}`~moleculekit.opm.align_to_opm` returns a `list[dict]` — the aligned `Molecule` objects live under `hit["hsps"][j]["aligned_mol"]`, not at the top level.
+- {py:func}`~moleculekit.opm.align_to_opm` returns a `list[dict]`; the aligned `Molecule` objects live under `hit["hsps"][j]["aligned_mol"]`, not at the top level.
 - {py:func}`~moleculekit.opm.get_opm_pdb` with `keep=False` (default) strips the dummy membrane atoms that OPM adds; pass `keep=True` if you need them for visualization.
 
 ## See also

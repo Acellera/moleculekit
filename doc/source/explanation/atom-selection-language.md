@@ -2,14 +2,14 @@
 
 Moleculekit ships a VMD-inspired atom-selection language that lets you describe
 subsets of atoms in a {py:class}`~moleculekit.molecule.Molecule` using a concise, readable syntax. The same
-selection string is accepted wherever an atom selection is expected — by
+selection string is accepted wherever an atom selection is expected: by
 {py:meth}`~moleculekit.molecule.Molecule.atomselect`, {py:meth}`~moleculekit.molecule.Molecule.filter`, {py:meth}`~moleculekit.molecule.Molecule.remove`, {py:meth}`~moleculekit.molecule.Molecule.copy`, {py:meth}`~moleculekit.molecule.Molecule.set`, {py:meth}`~moleculekit.molecule.Molecule.wrap`, {py:meth}`~moleculekit.molecule.Molecule.align`, and every
 other method that takes a `sel` argument.
 
 ## What a selection produces
 
-Every selection evaluates to a **boolean mask** — a NumPy array of `bool` with
-length `mol.numAtoms`, where `True` marks selected atoms. You can also ask for
+Every selection evaluates to a **boolean mask**, a NumPy array of `bool` with
+length `mol.numAtoms` where `True` marks selected atoms. You can also ask for
 an array of integer indices instead:
 
 ```python
@@ -26,7 +26,7 @@ idx = mol.atomselect("resname BEN", indexes=True)
 print(idx)   # array of uint32 atom indices
 ```
 
-The mask can be used everywhere a string is accepted — pass it directly to
+The mask can be used everywhere a string is accepted; pass it directly to
 `filter`, `copy`, etc. to skip re-parsing (faster when reusing the same
 selection many times):
 
@@ -137,7 +137,7 @@ mol.atomselect("not water")
 mol.atomselect("(protein and backbone) or (resname BEN and not hydrogen)")
 ```
 
-`not` binds tighter than `and`/`or`. Crucially, `and` and `or` have
+`not` binds tighter than `and`/`or`. `and` and `or` themselves have
 **equal precedence** (they share one non-associative level), so a chain
 of mixed `and`/`or` is grouped left-to-right rather than `and` binding
 before `or`. For example:
@@ -205,9 +205,9 @@ work correctly, `mol.bonds` must be populated (see
 
 Any method that accepts a selection string also accepts:
 
-- A **boolean NumPy array** of length `mol.numAtoms` — passed through without
+- A **boolean NumPy array** of length `mol.numAtoms`, passed through without
   parsing, ideal for reusing expensive selections.
-- An **integer NumPy array** of atom indices — converted automatically.
+- An **integer NumPy array** of atom indices, converted automatically.
 
 ```python
 import numpy as np
@@ -224,15 +224,15 @@ Precomputed masks and index arrays are tied to a specific Molecule snapshot,
 and there is no runtime check that flags a stale one. They go stale in two ways:
 
 1. **The structure changes between computing the mask and using it.** Any
-   operation that changes the number or order of atoms — {py:meth}`~moleculekit.molecule.Molecule.filter`,
+   operation that changes the number or order of atoms ({py:meth}`~moleculekit.molecule.Molecule.filter`,
    {py:meth}`~moleculekit.molecule.Molecule.remove`, {py:meth}`~moleculekit.molecule.Molecule.append`,
    {py:meth}`~moleculekit.molecule.Molecule.insert`, {py:meth}`~moleculekit.molecule.Molecule.mutateResidue`,
-   or adding hydrogens — silently invalidates any mask computed beforehand (it
+   or adding hydrogens) silently invalidates any mask computed beforehand (it
    refers to the wrong atoms or runs off the end). Recompute the selection after
    such operations.
 2. **The mask was computed on a different Molecule.** Functions that take two
-   molecules — most importantly {py:meth}`~moleculekit.molecule.Molecule.align`,
-   which accepts `sel` for `mol` and `refsel` for `refmol` — require each
+   molecules, most importantly {py:meth}`~moleculekit.molecule.Molecule.align`
+   (which accepts `sel` for `mol` and `refsel` for `refmol`), require each
    selection to come from its own Molecule. A mask sized for `mol` is wrong as a
    `refsel` for `refmol`. Use a string for cross-Molecule calls, or compute each
    mask on the right Molecule.

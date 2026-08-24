@@ -1,6 +1,7 @@
 # Explanation
 
-Concept-oriented pages. Read these when you want the mental model, not a procedure.
+Concept-oriented pages explaining how moleculekit works. For step-by-step
+procedures, see the how-to guides.
 
 ```{toctree}
 :maxdepth: 1

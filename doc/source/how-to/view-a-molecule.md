@@ -2,7 +2,7 @@
 
 ## Goal
 
-Open a viewer on a {py:class}`~moleculekit.molecule.Molecule` object — overview of all supported backends.
+Open a viewer on a {py:class}`~moleculekit.molecule.Molecule` object using any of the supported backends.
 
 ## Minimal example
 
@@ -63,5 +63,5 @@ When `viewer=` is not given, moleculekit picks a backend in this order:
 
 - VMD and PyMOL must be on `$PATH` for their respective backends to work.
 - The molstar backend opens a tab in the default web browser; headless environments cannot open a browser tab automatically.
-- Restarting the Python process invalidates the existing molstar browser tab — the page will show a "Server restarted — refresh page" banner. Reload the tab to connect to the new server.
+- Restarting the Python process invalidates the existing molstar browser tab; the page will show a "Server restarted — refresh page" banner. Reload the tab to connect to the new server.
 - Trajectories are sent to molstar in full. For very large trajectories (>~100 MB of coordinates) consider striding the frames yourself before calling `.view()`.

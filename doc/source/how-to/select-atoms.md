@@ -11,7 +11,7 @@ from moleculekit.molecule import Molecule
 
 mol = Molecule("3PTB")
 
-# String selection — returns boolean mask
+# String selection: returns boolean mask
 mask = mol.atomselect("protein and name CA")
 
 # Same selection as integer indices
@@ -31,7 +31,7 @@ idx = mol.atomselect("protein and name CA", indexes=True)
 ## Common variations
 
 ```python
-# Build a mask directly from per-atom arrays — faster than re-parsing a string
+# Build a mask directly from per-atom arrays: faster than re-parsing a string
 mask = (mol.chain == "A") & (mol.resid > 100)
 ```
 

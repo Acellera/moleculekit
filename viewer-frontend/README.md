@@ -1,6 +1,6 @@
 # moleculekit viewer frontend
 
-Source for the mol*-based browser viewer driven by `Molecule.view(viewer="molstar")`. Built output lands in `../moleculekit/viewer/molstar/static/` and is committed alongside this source — installing moleculekit does **not** run `npm install`.
+Source for the mol*-based browser viewer driven by `Molecule.view(viewer="molstar")`. Built output lands in `../moleculekit/viewer/molstar/static/` and is committed alongside this source, because installing moleculekit does **not** run `npm install`.
 
 ## Build
 

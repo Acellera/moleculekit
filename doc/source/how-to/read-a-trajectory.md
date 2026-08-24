@@ -48,8 +48,8 @@ print(mol.numFrames)
 ## Gotchas
 
 - All frames are loaded into memory at once; for very long trajectories use `skip` or `frames=` to read a subset.
-- The atom count of the trajectory must exactly match the topology — a mismatch raises an error.
-- When reading **multiple** trajectories in one call (`mol.read([traj1, traj2], frames=...)`), `frames=` must have one entry per file — each entry being either an int (single frame from that file) or a list of ints.
+- The atom count of the trajectory must exactly match the topology; a mismatch raises an error.
+- When reading **multiple** trajectories in one call (`mol.read([traj1, traj2], frames=...)`), `frames=` must have one entry per file, each entry being either an int (single frame from that file) or a list of ints.
 - `skip` strides the final merged coordinate array; it applies independently of `frames`.
 - When `append=False` (default) a second `mol.read(traj)` call replaces the existing coordinates rather than extending them.
 

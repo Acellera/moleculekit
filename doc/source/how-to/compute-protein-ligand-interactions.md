@@ -71,9 +71,9 @@ rings = get_protein_rings(mol)
 
 ## Gotchas
 
-- Reasonable hydrogens must be present — run {py:func}`~moleculekit.tools.preparation.systemPrepare` (or pass `addHs=True` to {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromSmiles`) before this step.
+- Reasonable hydrogens must be present, so run {py:func}`~moleculekit.tools.preparation.systemPrepare` (or pass `addHs=True` to {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromSmiles`) before this step.
 - {py:func}`~moleculekit.interactions.interactions.get_ligand_donors_acceptors` returns donor *pairs* `[heavy, H]`, **not** lone heavy atoms. Building your own pairs as `(heavy, heavy)` silently produces wrong H-bond results because `hbonds_calculate` reads column 1 as the hydrogen index.
-- `start_idx` is critical when the ligand atoms do not start at index 0 in the parent molecule — the helper offsets every returned index by `start_idx`.
+- `start_idx` is critical when the ligand atoms do not start at index 0 in the parent molecule, because the helper offsets every returned index by `start_idx`.
 - For non-periodic structures set `mol.box` to a zero array before calling `hbonds_calculate`.
 
 ## See also

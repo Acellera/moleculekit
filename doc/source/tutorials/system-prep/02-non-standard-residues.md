@@ -39,7 +39,7 @@ from moleculekit.tools.nonstandard_residues import (
 from acellera_docs_theme.molstar import show3d
 ```
 
-## Step 1 — Detect non-standard residues on a representative structure
+## Step 1: Detect non-standard residues on a representative structure
 
 We use **1R1J**, a thermolysin-like protease that carries three N-glycosylation
 sites (NAG sugars covalently attached to Asn residues) and a non-covalent
@@ -68,11 +68,11 @@ is the whole-molecule shortcut.
 show3d(mol)
 ```
 
-{py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues` does **not** mutate `mol` — it just walks the bond
+{py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues` does **not** mutate `mol`; it just walks the bond
 graph and returns a list of spec objects ({py:class}`~moleculekit.tools.nonstandard_residues.ChainResidueSpec`, {py:class}`~moleculekit.tools.nonstandard_residues.CovalentLigandSpec`, {py:class}`~moleculekit.tools.nonstandard_residues.LigandSpec`, or {py:class}`~moleculekit.tools.nonstandard_residues.ScaffoldSpec`) describing every residue
 that needs special handling.
 
-> **Note:** Plain Cys–Cys disulfide bonds are **not** in this list —
+> **Note:** Plain Cys–Cys disulfide bonds are **not** in this list;
 > {py:func}`~moleculekit.tools.preparation.systemPrepare` handles those internally by renaming Cys to CYX.
 > {py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues` targets non-canonical residues, sidechain
 > crosslinks such as N-glycosylation or isopeptide bonds, and covalent or free
@@ -83,9 +83,9 @@ that needs special handling.
 show3d(mol, sel="not water", representations=[{"sel": "resname NAG OIR", "type": "ball_and_stick"}], focus="resname NAG OIR")
 ```
 
-## Step 2 — Walk through each spec subclass
+## Step 2: Walk through each spec subclass
 
-### ChainResidueSpec — chain-resident residue needing special handling
+### ChainResidueSpec: chain-resident residue needing special handling
 
 A {py:class}`~moleculekit.tools.nonstandard_residues.ChainResidueSpec` is emitted for every residue that sits inside a polypeptide
 chain and needs special parameterization. This includes:
@@ -93,7 +93,7 @@ chain and needs special parameterization. This includes:
 - **Non-canonical amino acids** embedded in a peptide chain (no inter-residue
   non-peptide bond).
 - **Canonical amino acids** whose sidechain is covalently bonded to something
-  outside the peptide backbone — an Asn N-glycosylated by a sugar, a Glu–Lys
+  outside the peptide backbone: an Asn N-glycosylated by a sugar, a Glu–Lys
   isopeptide bond, a Cys thioether to a scaffold.
 
 The 1R1J structure has three Asn residues each bonded to a NAG sugar at their
@@ -121,9 +121,9 @@ Each {py:class}`~moleculekit.tools.nonstandard_residues.ChainResidueSpec` expose
 | `anchor_atom` | Atom involved in the non-peptide bond (`None` for plain chain NCAAs) |
 | `is_n_term` / `is_c_term` | Whether this is at the N- or C-terminus of a chain |
 
-**Canonical amino acids that participate in a non-peptide bond get renamed too** — the parameterizer needs different atom names and missing-H counts than the standard residue. A cross-residue covalent bond between two canonical amino acids therefore produces **two** {py:class}`~moleculekit.tools.nonstandard_residues.ChainResidueSpec` entries, one per side of the bond.
+**Canonical amino acids that participate in a non-peptide bond get renamed too**, because the parameterizer needs different atom names and missing-H counts than the standard residue. A cross-residue covalent bond between two canonical amino acids therefore produces **two** {py:class}`~moleculekit.tools.nonstandard_residues.ChainResidueSpec` entries, one per side of the bond.
 
-5VBL's bound peptide is cyclized through an isopeptide bond. Loading it and filtering for canonical amino-acid {py:class}`~moleculekit.tools.nonstandard_residues.ChainResidueSpec` entries surfaces exactly the two endpoints — each with its own `new_resname` and its own `anchor_atom`:
+5VBL's bound peptide is cyclized through an isopeptide bond. Loading it and filtering for canonical amino-acid {py:class}`~moleculekit.tools.nonstandard_residues.ChainResidueSpec` entries surfaces exactly the two endpoints, each with its own `new_resname` and its own `anchor_atom`:
 
 ```{code-cell} python
 mol_5vbl = Molecule("5VBL")
@@ -147,7 +147,7 @@ for s in isopeptide_endpoints:
 
 Both partners have `new_resname` set; the unique names tell antechamber to build a separate prepi for each side.
 
-### CovalentLigandSpec — single-anchor covalent ligand
+### CovalentLigandSpec: single-anchor covalent ligand
 
 A {py:class}`~moleculekit.tools.nonstandard_residues.CovalentLigandSpec` is emitted for a free (non-chain-resident) residue with
 exactly one covalent bond to the rest of the structure. In 1R1J, the NAG
@@ -165,7 +165,7 @@ for s in cov_specs:
 
 {py:class}`~moleculekit.tools.nonstandard_residues.CovalentLigandSpec` has two public attributes: `resname` and `residue`.
 
-### LigandSpec — free non-covalent ligand
+### LigandSpec: free non-covalent ligand
 
 A {py:class}`~moleculekit.tools.nonstandard_residues.LigandSpec` covers non-chain-resident residues with **no** covalent bonds to
 any other residue. In 1R1J, the thiorphan-class inhibitor OIR coordinates the
@@ -183,10 +183,10 @@ for s in lig_specs:
 
 {py:class}`~moleculekit.tools.nonstandard_residues.LigandSpec` also has two public attributes: `resname` and `residue`.
 
-### ScaffoldSpec — multi-anchor covalent scaffold
+### ScaffoldSpec: multi-anchor covalent scaffold
 
 A {py:class}`~moleculekit.tools.nonstandard_residues.ScaffoldSpec` is emitted for a non-chain-resident residue with **two or more**
-covalent bonds going out to the polypeptide chain — typical of bicyclic peptide
+covalent bonds going out to the polypeptide chain, typical of bicyclic peptide
 scaffolds or multi-anchor covalent inhibitors.
 
 For a live example we load **8QFZ chain B**, a lasso-peptide scaffold (LFI)
@@ -210,7 +210,7 @@ carry different capping atoms in solution.
 
 {py:class}`~moleculekit.tools.nonstandard_residues.ScaffoldSpec` has two public attributes: `resname` and `residue`.
 
-## Step 3 — Apply specs through systemPrepare
+## Step 3: Apply specs through systemPrepare
 
 Pass the spec list to {py:func}`~moleculekit.tools.preparation.systemPrepare` via `detect_specs=` to apply the proposed
 renames and preserve the cross-residue bonds that protonation would otherwise
@@ -225,7 +225,7 @@ residues (Asn → shared auto-name so antechamber builds one prepi) and preserve
 the glycosidic C1-ND2 bonds that PDB2PQR's hydrogenation step would otherwise
 sever. `pmol` is a new {py:class}`~moleculekit.molecule.Molecule`; `mol` is unchanged.
 
-## Step 4 — Suppress a specific spec
+## Step 4: Suppress a specific spec
 
 You can filter the spec list before passing it in. For example, to skip
 preparation of the covalent NAG sugars (perhaps you will handle them in a
@@ -252,7 +252,7 @@ entries you provide.
 
 - {py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues` enumerates non-standard residues and covalent
   modifications without mutating `mol`.
-- Cys–Cys disulfides are **not** returned by it — {py:func}`~moleculekit.tools.preparation.systemPrepare` handles those
+- Cys–Cys disulfides are **not** returned by it; {py:func}`~moleculekit.tools.preparation.systemPrepare` handles those
   internally.
 - Four spec subclasses cover chain crosslinks ({py:class}`~moleculekit.tools.nonstandard_residues.ChainResidueSpec`), bicyclic
   scaffolds ({py:class}`~moleculekit.tools.nonstandard_residues.ScaffoldSpec`), covalent ligands ({py:class}`~moleculekit.tools.nonstandard_residues.CovalentLigandSpec`), and free

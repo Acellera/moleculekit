@@ -1,8 +1,8 @@
 # Segments, chains, and bonds
 
-Moleculekit inherits two parallel notions of molecular grouping — **chains**
-from the PDB world and **segments** from the MD world — and stores covalent
-connectivity in a separate **bond array**. Understanding why both exist, what
+Moleculekit inherits two parallel notions of molecular grouping: **chains**
+from the PDB world and **segments** from the MD world. Covalent connectivity
+lives in a separate **bond array**. Understanding why both exist, what
 populates them, and when each matters helps you avoid subtle bugs in
 downstream preparation and parameterization workflows.
 
@@ -41,8 +41,8 @@ identifier to group atoms into logical units that can receive independent
 force-field parameters.
 
 A freshly loaded PDB has **empty** segment identifiers (`""`). A PSF or
-PRMTOP file — which is written by tleap or similar — almost always has segment
-identifiers populated.
+PRMTOP file, written by tleap or similar, almost always has segment identifiers
+populated.
 
 ```python
 print(np.unique(mol.segid))   # [''] for a plain PDB
@@ -52,9 +52,9 @@ print(np.unique(mol.segid))   # [''] for a plain PDB
 
 PDB files were designed for structure deposition and exchange. Column 22 (one
 character, chain) is the only built-in grouping. MD topology formats needed
-more granularity — multiple segments per chain for long proteins split across
-multiple tleap units, separate segments for lipid tails vs. head-groups, etc.
-— so they introduced the segment concept independently.
+more granularity: multiple segments per chain for long proteins split across
+multiple tleap units, separate segments for lipid tails vs. head-groups, and so
+on. The MD formats therefore introduced the segment concept independently.
 
 In practice:
 - **Use `chain`** when reading PDB output, working with visualization tools, or
@@ -71,9 +71,9 @@ If you load a PDB and then hand it to a parameterizer without populating
 {py:func}`~moleculekit.tools.autosegment.autoSegment` assigns segments by
 following the **physical backbone** of each polymer. It walks the residues of a
 selection in file order and starts a new segment only where the backbone is
-actually broken — judged from atomic coordinates, not from residue numbering —
-so it is robust to structures where residues were deleted from the sequence
-while the chain stayed continuous.
+actually broken. Breaks are judged from atomic coordinates rather than residue
+numbering, so a structure whose residues were deleted from the sequence while
+the chain stayed continuous is still segmented correctly.
 
 ```python
 from moleculekit.tools.autosegment import autoSegment
@@ -85,7 +85,7 @@ print(np.unique(mol_seg.segid))   # e.g. ['P0', 'P1', 'P2']
 
 A new segment begins between two consecutive residues when **any** of these holds:
 
-- the backbone link distance exceeds the cutoff — for protein the `C(i)–N(i+1)`
+- the backbone link distance exceeds the cutoff: for protein the `C(i)–N(i+1)`
   peptide bond (default `protein_cutoff=2.0` Å, falling back to `CA–CA` when the
   carbonyl/amide atoms are missing), for nucleic acids the `O3'(i)–P(i+1)`
   phosphodiester bond (default `nucleic_cutoff=2.2` Å);
@@ -94,8 +94,8 @@ A new segment begins between two consecutive residues when **any** of these hold
 
 Because continuity is judged from coordinates, a gap in residue numbering with an
 intact backbone (for example residues mutated out of a sequence) stays a
-**single** segment, while a genuine spatial break — even one with continuous
-numbering — is split into two.
+**single** segment, while a genuine spatial break is split into two even when
+the numbering runs continuously across it.
 
 Non-polymer atoms are grouped separately: all **water** collapses into one
 segment, all **ions** into another, and the remaining molecules ("other") are
@@ -111,7 +111,7 @@ Run {py:func}`~moleculekit.tools.autosegment.autoSegment` before
 receives a populated, consistent `segid`.
 
 ```{note}
-The older `autoSegment2` — which segmented by the covalent bond graph — is
+The older `autoSegment2`, which segmented by the covalent bond graph, is
 deprecated. It now forwards to
 {py:func}`~moleculekit.tools.autosegment.autoSegment` and emits a
 `DeprecationWarning`; call `autoSegment` directly instead.
@@ -121,9 +121,9 @@ deprecated. It now forwards to
 
 Bonds live in two parallel arrays:
 
-- `mol.bonds` — `uint32`, shape `(numBonds, 2)`. Each row `[i, j]` is an
+- `mol.bonds`: `uint32`, shape `(numBonds, 2)`. Each row `[i, j]` is an
   atom-index pair.
-- `mol.bondtype` — `object`, shape `(numBonds,)`. Bond-order or type string,
+- `mol.bondtype`: `object`, shape `(numBonds,)`. Bond-order or type string,
   parallel to `mol.bonds`. Common values: `"1"` (single), `"2"` (double),
   `"ar"` (aromatic), `"un"` (unknown), `"mc"` (metal coordination).
 
@@ -141,11 +141,11 @@ Bonds are populated whenever the source file contains explicit connectivity:
 | PRMTOP (AMBER) | Yes | `BONDS_*` section |
 | MOL2 | Yes | `@<TRIPOS>BOND` section |
 | SDF / MOL | Yes | bond table |
-| Plain PDB (no `CONECT`) | No | — |
+| Plain PDB (no `CONECT`) | No | n/a |
 
 For plain PDB files, call {py:meth}`~moleculekit.molecule.Molecule.guessBonds`
 to infer bonds from inter-atomic distances and radii. It updates `mol.bonds` and
-`mol.bondtype` together so the two parallel arrays stay consistent — do not
+`mol.bondtype` together so the two parallel arrays stay consistent; do not
 assign `mol.bonds = guess_bonds(mol)` directly. See
 [The Molecule data model: Bonds](molecule-data-model.md#bonds-bonds-and-bondtype)
 for the full recipe.
@@ -173,12 +173,12 @@ print(mc_bonds)   # index pairs involving metal atoms
 
 ## Topology versus connectivity
 
-It helps to think of a `Molecule` as two orthogonal layers:
+A `Molecule` has two orthogonal layers:
 
-- **Topology** — atoms and their per-atom fields (`name`, `resname`, `resid`,
+- **Topology**: atoms and their per-atom fields (`name`, `resname`, `resid`,
   `chain`, `segid`, ...). This layer answers: "what atoms exist and what are
   their identities?"
-- **Connectivity** — bonds. This layer answers: "which atoms are covalently (or
+- **Connectivity**: bonds. This layer answers: "which atoms are covalently (or
   metal-coordination) bonded to which?"
 
 PDB files deliver topology but **typically not connectivity** (unless `CONECT`

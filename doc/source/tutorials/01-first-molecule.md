@@ -19,7 +19,7 @@ kernelspec:
 
 ## Setup
 
-Import {py:class}`~moleculekit.molecule.Molecule` — the central class for all structure manipulation in moleculekit.
+Import {py:class}`~moleculekit.molecule.Molecule`, the central class for all structure manipulation in moleculekit.
 
 ```{code-cell} python
 from moleculekit.molecule import Molecule
@@ -30,7 +30,7 @@ from moleculekit.molecule import Molecule
 from acellera_docs_theme.molstar import show3d
 ```
 
-## Step 1 — Load a structure
+## Step 1: Load a structure
 
 ```{code-cell} python
 mol = Molecule("3PTB")
@@ -42,20 +42,20 @@ show3d(mol)
 ```
 
 The {py:class}`~moleculekit.molecule.Molecule` constructor accepts either a
-local file path (PDB, mmCIF, MOL2, PRMTOP, PSF, ... — see [How to read a
+local file path (PDB, mmCIF, MOL2, PRMTOP, PSF, and more; see [How to read a
 structure](../how-to/read-a-structure.md) for the full list of supported
 formats) or a four-character RCSB PDB ID, which it downloads and parses
 on the fly. Here we use the PDB ID `3PTB`: bovine trypsin, 1701 atoms
 covering one protein chain, a shell of crystallographic water molecules,
 a calcium ion, and the benzamidine ligand in the active site.
 
-## Step 2 — Inspect basics
+## Step 2: Inspect basics
 
 ```{code-cell} python
 mol.numAtoms
 ```
 
-`numAtoms` is a single integer — the total number of atoms in the loaded structure.
+`numAtoms` is a single integer, the total number of atoms in the loaded structure.
 
 ```{code-cell} python
 mol.numFrames
@@ -71,10 +71,10 @@ sorted(set(mol.resname))
 the unique residue names present.  You should see standard amino-acid codes
 alongside `BEN` (benzamidine), `CA` (calcium), and `HOH` (water).
 
-## Step 3 — Inspect per-atom properties
+## Step 3: Inspect per-atom properties
 
 Every per-atom field on a `Molecule` is a NumPy array of length `mol.numAtoms`.
-The arrays are indexed in parallel — `mol.name[i]`, `mol.resname[i]`,
+The arrays are indexed in parallel: `mol.name[i]`, `mol.resname[i]`,
 `mol.resid[i]`, and `mol.chain[i]` all describe the same atom.
 
 ```{code-cell} python
@@ -108,11 +108,11 @@ Coordinates are stored as a single `(numAtoms, 3, numFrames)` array. For
 this static PDB the third dimension is 1.
 
 Because every field is a NumPy array, the usual NumPy operations work
-directly — masking, slicing, `np.unique`, comparisons, and so on. See
+directly: masking, slicing, `np.unique`, comparisons, and so on. See
 [The Molecule data model](../explanation/molecule-data-model.md) for the
 full per-atom field list and their dtypes.
 
-## Step 4 — Filter waters
+## Step 4: Filter waters
 
 ```{code-cell} python
 mol.filter("not water")
@@ -130,7 +130,7 @@ with {py:meth}`~moleculekit.molecule.Molecule.remove`, which takes atoms
 *out* by matching them.  After dropping the crystallographic waters you
 have 1639 atoms remaining (1701 − 62 water oxygens).
 
-## Step 5 — Write the prepared structure
+## Step 5: Write the prepared structure
 
 ```{code-cell} python
 mol.write("trypsin_dry.cif")

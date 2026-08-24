@@ -32,7 +32,7 @@ from acellera_docs_theme.molstar import show3d
 
 `3PTB` is bovine trypsin: 1701 atoms covering the protein, crystallographic waters, a calcium ion, and the benzamidine ligand (`BEN`) in the active site.
 
-## Step 1 — VMD-style selections
+## Step 1: VMD-style selections
 
 {py:meth}`~moleculekit.molecule.Molecule.atomselect` accepts a VMD-style selection string and returns a boolean NumPy array with one entry per atom.
 
@@ -56,7 +56,7 @@ mol.atomselect("name CA").sum()
 show3d(mol, representations=[{"sel": "name CA", "type": "ball_and_stick"}])
 ```
 
-224 alpha carbons — one per residue in the protein.
+224 alpha carbons, one per residue in the protein.
 
 Select a residue-id range:
 
@@ -95,9 +95,9 @@ mol.atomselect("same residue as within 5 of resname BEN").sum()
 show3d(mol, representations=[{"sel": "same residue as within 5 of resname BEN", "type": "ball_and_stick"}], focus="same residue as within 5 of resname BEN")
 ```
 
-131 atoms — once partial residues touching the 5 Å shell are completed, more atoms are included.
+131 atoms: completing the partial residues that touch the 5 Å shell pulls in more atoms.
 
-## Step 2 — Boolean composition
+## Step 2: Boolean composition
 
 Combine keywords with `and`, `or`, and `not` directly inside the selection string:
 
@@ -105,15 +105,15 @@ Combine keywords with `and`, `or`, and `not` directly inside the selection strin
 mol.atomselect("protein and name CA").sum()
 ```
 
-223 alpha carbons — one less than the raw `name CA` count because a single `CA` atom in this structure belongs to the calcium ion record, not a protein residue.
+223 alpha carbons, one less than the raw `name CA` count because a single `CA` atom in this structure belongs to the calcium ion record, not a protein residue.
 
 ```{code-cell} python
 mol.atomselect("(resid 40 to 60) and not water").sum()
 ```
 
-161 atoms — in 3PTB none of the resid 40–60 atoms are water, so the count is unchanged here; parentheses are allowed for grouping.
+161 atoms. In 3PTB none of the resid 40–60 atoms are water, so the count is unchanged here; parentheses are allowed for grouping.
 
-## Step 3 — Indices instead of masks
+## Step 3: Indices instead of masks
 
 Pass `indexes=True` to get an integer array of atom indices instead of a boolean mask:
 
@@ -138,14 +138,14 @@ The 9 benzamidine atom indices. This is the right shape when you want to index d
 
 ## For developers: bypass the parser with masks
 
-Everything below is an optimisation for tight loops and library code; casual scripting almost never needs it. If you are not sure whether you need this, **stay on the string form** — it is shorter, harder to break, and always re-parsed against whichever Molecule a call operates on.
+Everything below is an optimisation for tight loops and library code; casual scripting almost never needs it. If you are not sure whether you need this, **stay on the string form**: it is shorter, harder to break, and always re-parsed against whichever Molecule a call operates on.
 
 :::{warning}
 **Masks and index arrays are tied to a specific Molecule snapshot.** They go
 stale the moment the underlying atom array changes (after `filter`, `remove`,
 `append`, `insert`, `mutateResidue`, ...) and also cannot be reused across two
 different molecules (e.g. as `refsel` for `align`). There is no runtime check
-that flags either mistake. The string form is always safe — it is re-parsed
+that flags either mistake. The string form is always safe: it is re-parsed
 against whichever Molecule the call operates on.
 
 For the two failure modes in detail, see [The atom-selection language: Mask and index substitution](../explanation/atom-selection-language.md#mask-and-index-substitution).
@@ -160,16 +160,16 @@ ben_mask = mol.resname == "BEN"
 ben_mask.sum()
 ```
 
-9 atoms — identical to `mol.atomselect("resname BEN")`, but the string parser is never called. Compose masks with NumPy bitwise operators:
+9 atoms, identical to `mol.atomselect("resname BEN")`, but the string parser is never called. Compose masks with NumPy bitwise operators:
 
 ```{code-cell} python
 composite = (mol.chain == "A") & (mol.resid > 100)
 composite.sum()
 ```
 
-1076 atoms in chain A with resid above 100 — equivalent to `mol.atomselect("chain A and resid > 100")`.
+1076 atoms in chain A with resid above 100, equivalent to `mol.atomselect("chain A and resid > 100")`.
 
-### Why bother — the performance gap
+### The performance gap
 
 ```{code-cell} python
 import timeit
@@ -206,7 +206,7 @@ The trio (string / bool mask / index array) is accepted by:
 - {py:meth}`~moleculekit.molecule.Molecule.remove`, {py:meth}`~moleculekit.molecule.Molecule.filter`, {py:meth}`~moleculekit.molecule.Molecule.get`, {py:meth}`~moleculekit.molecule.Molecule.set`, {py:meth}`~moleculekit.molecule.Molecule.copy`
 - {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromSmiles` (documented as `str or numpy.ndarray`)
 - the `sel` parameter on `Metric*` projection classes
-- each per-residue entry in {py:func}`~moleculekit.tools.preparation.systemPrepare`'s `no_opt`, `no_prot`, `no_titr`, and `force_protonation` lists — each entry is forwarded to {py:meth}`~moleculekit.molecule.Molecule.atomselect`, so a bool mask or index array works in place of a string (each entry must resolve to exactly one residue)
+- each per-residue entry in {py:func}`~moleculekit.tools.preparation.systemPrepare`'s `no_opt`, `no_prot`, `no_titr`, and `force_protonation` lists; each entry is forwarded to {py:meth}`~moleculekit.molecule.Molecule.atomselect`, so a bool mask or index array works in place of a string (each entry must resolve to exactly one residue)
 
 ## Next
 

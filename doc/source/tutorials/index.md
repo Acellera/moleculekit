@@ -1,6 +1,6 @@
 # Tutorials
 
-Step-by-step lessons that take you from zero to a working result. Read these in order if you're new to moleculekit.
+Step-by-step lessons. Read these in order if you're new to moleculekit.
 
 ```{toctree}
 :maxdepth: 1

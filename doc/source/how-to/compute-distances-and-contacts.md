@@ -49,9 +49,9 @@ print(f"{len(clashes)} clash pairs found")
 
 ## Gotchas
 
-- {py:func}`~moleculekit.distance.cdist` and {py:func}`~moleculekit.distance.pdist` operate on raw coordinate slices, not {py:class}`~moleculekit.molecule.Molecule` objects — extract the coordinate array first with `mol.coords[idx, :, frame]`.
+- {py:func}`~moleculekit.distance.cdist` and {py:func}`~moleculekit.distance.pdist` operate on raw coordinate slices, not {py:class}`~moleculekit.molecule.Molecule` objects; extract the coordinate array first with `mol.coords[idx, :, frame]`.
 - Distance arrays are per-frame; loop over frames explicitly for multi-frame analysis.
-- Large selections produce large distance matrices — slice selections or frames before calling to avoid memory issues.
+- Large selections produce large distance matrices; slice selections or frames before calling to avoid memory issues.
 - `find_clashes` includes a distance-based bond guesser by default; pass `guess_bonds=False` when `mol.bonds` is already complete to avoid overhead.
 
 ## See also

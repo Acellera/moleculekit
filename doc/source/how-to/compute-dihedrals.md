@@ -39,7 +39,7 @@ print(f"psi(17) after : {np.degrees(mol.getDihedral(psi17)):.1f}°")
 ## Common variations
 
 ```python
-# The low-level function — useful when you have raw (4, 3) coords (e.g.
+# The low-level function, useful when you have raw (4, 3) coords (e.g.
 # from a numpy slice or a manually constructed array) and don't want to
 # go through a Molecule
 from moleculekit.dihedral import dihedralAngle
@@ -58,9 +58,9 @@ angles = np.array([
 ## Gotchas
 
 - Both `getDihedral` and `dihedralAngle` return angles in **radians**; convert with `np.degrees(angle)` if you want degrees.
-- `mol.getDihedral` operates on the current `mol.frame` — set `mol.frame = i` first if you want a specific frame.
-- `mol.setDihedral` rotates the downstream side of the dihedral in place; the upstream side is held fixed. If the topology is ambiguous (the rotation would split the molecule wrong), the call may fail — guard against this by passing an explicit `bonds=mol.bonds` array.
-- For computing many dihedrals at once across a trajectory, prefer {py:class}`~moleculekit.projections.metricdihedral.MetricDihedral` from `moleculekit.projections.metricdihedral` — it batches the work efficiently.
+- `mol.getDihedral` operates on the current `mol.frame`; set `mol.frame = i` first if you want a specific frame.
+- `mol.setDihedral` rotates the downstream side of the dihedral in place; the upstream side is held fixed. If the topology is ambiguous (the rotation would split the molecule wrong), the call may fail; guard against this by passing an explicit `bonds=mol.bonds` array.
+- For computing many dihedrals at once across a trajectory, prefer {py:class}`~moleculekit.projections.metricdihedral.MetricDihedral` from `moleculekit.projections.metricdihedral`, which batches the work efficiently.
 
 ## See also
 

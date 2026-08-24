@@ -35,18 +35,18 @@ The RMSD drops from several Ångström (random rotation) to essentially zero bec
 | `refmol` | {py:class}`~moleculekit.molecule.Molecule` | `None` (self) | Reference molecule; if `None`, align to `mol`'s first frame |
 | `refsel` | `str` or `np.ndarray` | same as `sel` | Atoms in `refmol` to align onto; must have the same count as `sel` |
 | `frames` | `list` or `range` | all frames | Which frames of `mol` to align |
-| `mode` | `str` | `"index"` | Atom-correspondence rule. `"index"` pairs `sel` and `refsel` in increasing atom-index order (the two selections must yield the same atom count). `"structure"` uses TM-align internally to find the best structural correspondence and is robust to mismatched sequences. |
+| `mode` | `str` | `"index"` | Atom-correspondence rule. `"index"` pairs `sel` and `refsel` in increasing atom-index order (the two selections must yield the same atom count). `"structure"` uses TM-align internally to find the best structural correspondence and tolerates mismatched sequences. |
 
 ## Common variations
 
 ```python
-# Structural alignment via TM-align — robust to mismatched sequences,
+# Structural alignment via TM-align: handles mismatched sequences and
 # does not require sel and refsel to have the same atom count
 mol.align("protein", refmol=ref, mode="structure")
 ```
 
 ```python
-# Sequence-based alignment — handles mismatched residue numbering
+# Sequence-based alignment: handles mismatched residue numbering
 # by first aligning sequences and then calling .align on matched residues
 mol.alignBySequence(ref)
 ```
@@ -54,7 +54,7 @@ mol.alignBySequence(ref)
 ## Gotchas
 
 - With `mode="index"` (the default), {py:meth}`~moleculekit.molecule.Molecule.align` requires the same number of atoms in `sel` and `refsel`; a mismatch raises an error.
-- With `mode="structure"`, the correspondence is found by TM-align internally — `sel` and `refsel` can have different atom counts and the routine is robust to large conformational differences.
+- With `mode="structure"`, the correspondence is found by TM-align internally, so `sel` and `refsel` can have different atom counts and large conformational differences are tolerated.
 - {py:meth}`~moleculekit.molecule.Molecule.alignBySequence` handles residue count mismatches by first finding a sequence alignment, then calling {py:meth}`~moleculekit.molecule.Molecule.align` (`mode="index"`) on the matched residues.
 - If `refmol` is `None`, `mol` is aligned to its own first frame, which removes rigid-body drift across frames.
 

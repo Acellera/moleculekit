@@ -40,7 +40,7 @@ from acellera_docs_theme.molstar import show3d
 show3d(mol)
 ```
 
-## Step 1 — Run systemPrepare at pH 7.4
+## Step 1: Run systemPrepare at pH 7.4
 
 ```{code-cell} python
 pmol, specs, details = systemPrepare(mol, pH=7.4, return_details=True)
@@ -51,9 +51,9 @@ pmol, specs, details = systemPrepare(mol, pH=7.4, return_details=True)
 show3d(pmol, representations=[{"sel": "protein", "type": "ball_and_stick", "size_factor": 0.6}])
 ```
 
-The call returns a 3-tuple: `pmol`, `specs`, `details`. `pmol` is a **new** {py:class}`~moleculekit.molecule.Molecule` — the input `mol` is not mutated. `specs` is the list of detected non-standard-residue specs that the call applied (same type as returned by {py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues`); pass it back to a later `systemPrepare` call if you need to repeat the run, or inspect it to audit which residues were renamed. `details` is a `pandas.DataFrame` with one row per titratable residue; columns include `resname`, `resid`, `chain`, `segid`, `pKa`, `protonation`, and `buried`. The function adds hydrogens, runs PROPKA to predict pKa values, and titrates each titratable residue accordingly.
+The call returns a 3-tuple: `pmol`, `specs`, `details`. `pmol` is a **new** {py:class}`~moleculekit.molecule.Molecule`; the input `mol` is not mutated. `specs` is the list of detected non-standard-residue specs that the call applied (same type as returned by {py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues`); pass it back to a later `systemPrepare` call if you need to repeat the run, or inspect it to audit which residues were renamed. `details` is a `pandas.DataFrame` with one row per titratable residue; columns include `resname`, `resid`, `chain`, `segid`, `pKa`, `protonation`, and `buried`. The function adds hydrogens, runs PROPKA to predict pKa values, and titrates each titratable residue accordingly.
 
-## Step 2 — Inspect protonation states
+## Step 2: Inspect protonation states
 
 ```{code-cell} python
 details[["resname", "resid", "protonation", "pKa"]].head(10)
@@ -61,7 +61,7 @@ details[["resname", "resid", "protonation", "pKa"]].head(10)
 
 Each row shows the assigned protonation form for one residue. Histidines appear as `HID`, `HIE`, or `HIP` depending on tautomer or charge; aspartates as `ASP` (deprotonated) or `ASH` (protonated); glutamates as `GLU` or `GLH`; cysteines as `CYS` or `CYM`; lysines as `LYS` or `LYN`.
 
-Residues whose predicted pKa falls within 2 units of the target pH are the most sensitive to the pH choice — flipping them would change their protonation state if pH moved a unit or two:
+Residues whose predicted pKa falls within 2 units of the target pH are the most sensitive to the pH choice:
 
 ```{code-cell} python
 import numpy as np
@@ -78,7 +78,7 @@ show3d(pmol, sel="not water", representations=[{"sel": "chain A and resid 39 57 
 
 These residues would flip protonation state if pH moved a unit or two from 7.4.
 
-## Step 3 — Skip titration entirely
+## Step 3: Skip titration entirely
 
 ```{code-cell} python
 pmol_no_titr, _ = systemPrepare(mol, titration=False)
@@ -86,7 +86,7 @@ pmol_no_titr, _ = systemPrepare(mol, titration=False)
 
 `titration=False` skips PROPKA. Hydrogens are still added by PDB2PQR, but every titratable residue gets the standard protonation form at default pH with no per-residue prediction. Use this when you already know the protonation states you want, or when you will set them yourself via `force_protonation`.
 
-## Step 4 — Write the prepared structure
+## Step 4: Write the prepared structure
 
 ```{code-cell} python
 pmol.write("trypsin_prepared.cif")

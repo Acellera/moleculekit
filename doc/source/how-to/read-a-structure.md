@@ -51,7 +51,7 @@ The reader picks a backend from the file extension. Trajectories are covered in 
 | `gjf` | Gaussian input | Coords + elements. |
 | `rtf` | CHARMM residue topology | Residue templates. |
 | `prepi` | AMBER prepi | Residue templates. |
-| `crd`, `coor`, `inpcrd` | Coordinate files | Coordinates only — load a topology first. |
+| `crd`, `coor`, `inpcrd` | Coordinate files | Coordinates only; load a topology first. |
 | `xtc`, `dcd`, `trr`, `netcdf`/`nc`/`ncdf`, `binpos`, `xsc` | Trajectory | See [How to read a trajectory](read-a-trajectory.md). |
 | `h5`, `lh5`, `hdf5`, `arc`, `hoomdxml` | mdtraj-supported | Requires the `mdtraj` package. |
 | `json` | moleculekit JSON | Lossless round-trip of a Molecule. |
@@ -79,7 +79,7 @@ mol.read("structure.mol2")
 ## Gotchas
 
 - PDB format has fixed column widths: residue names longer than 4 characters and atom names longer than 4 characters are silently truncated.
-- For PDB IDs that are not in the RCSB, {py:class}`~moleculekit.molecule.Molecule` raises a download error — check the spelling and network connectivity.
+- For PDB IDs that are not in the RCSB, {py:class}`~moleculekit.molecule.Molecule` raises a download error; check the spelling and network connectivity.
 - When `validateElements=True` (default) the reader raises on unknown element symbols; set `validateElements=False` if working with custom atom types.
 
 ## See also

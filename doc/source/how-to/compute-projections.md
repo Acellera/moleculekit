@@ -53,7 +53,7 @@ ss_data = ss_metric.project(mol)
 
 ## Gotchas
 
-- `Metric*` classes are configured once and can be applied to multiple trajectories in a loop — reuse the same object for efficiency.
+- `Metric*` classes are configured once and can be applied to multiple trajectories in a loop; reuse the same object for efficiency.
 - Output shape is always `(n_frames, n_features)`.
 - {py:class}`~moleculekit.projections.metricdistance.MetricDistance` with `metric="contacts"` returns binary values; with `metric="distances"` it returns float distances in Å.
 - For periodic-box trajectories make sure `mol.box` is populated; otherwise set `periodic=None`.

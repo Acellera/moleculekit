@@ -34,21 +34,21 @@ mol.wrap("resname LIG")
 ```
 
 ```python
-# Topology file is missing some bonds (e.g. small molecules in a plain PDB) —
+# Topology file is missing some bonds (e.g. small molecules in a plain PDB):
 # merge in distance-guessed bonds so the wrap groups stay intact
 mol.wrap("protein", guessBonds=True)
 ```
 
 ## Gotchas
 
-- **Always wrap, then align.** Never align — or otherwise rotate — a structure *before* wrapping; wrapping relies on the original box frame, so a prior rotation breaks the wrapping procedure.
-- Wrapping requires a valid `mol.box` array (one column per frame). If `mol.box` is all zeros, `wrap` logs a warning and returns without modifying coordinates — the original `mol` is unchanged.
-- Non-orthorhombic (triclinic) boxes use `mol.boxangles` in addition to `mol.box`; make sure both are read from the trajectory. For triclinic boxes you can also choose how the cell is wrapped with the `unitcell` parameter — `"rectangular"` (default, a parallelepiped), `"triclinic"`, or `"compact"` (minimum-volume shape, handy for visualizing truncated octahedra or rhombic dodecahedra).
+- **Always wrap, then align.** Never align (or otherwise rotate) a structure *before* wrapping; wrapping relies on the original box frame, so a prior rotation breaks the wrapping procedure.
+- Wrapping requires a valid `mol.box` array (one column per frame). If `mol.box` is all zeros, `wrap` logs a warning and returns without modifying coordinates, leaving the original `mol` unchanged.
+- Non-orthorhombic (triclinic) boxes use `mol.boxangles` in addition to `mol.box`; make sure both are read from the trajectory. For triclinic boxes you can also choose how the cell is wrapped with the `unitcell` parameter: `"rectangular"` (default, a parallelepiped), `"triclinic"`, or `"compact"` (minimum-volume shape, handy for visualizing truncated octahedra or rhombic dodecahedra).
 - `wrap` operates on all frames in place.
 - Molecules that are already centered in the box will be re-wrapped (the operation is applied regardless).
 
 ## See also
 
-- [Trajectories and frames: Wrapping](../explanation/wrapping.md) — why atoms appear to "leave the box" under periodic boundary conditions, and how to choose a good wrapping centre.
+- [Trajectories and frames: Wrapping](../explanation/wrapping.md): why atoms appear to "leave the box" under periodic boundary conditions, and how to choose a good wrapping centre.
 - [How to read a trajectory](read-a-trajectory.md)
 - [How to align structures](align-structures.md)

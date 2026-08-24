@@ -30,7 +30,7 @@ from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
 from acellera_docs_theme.molstar import show3d
 ```
 
-## Step 1 — Load a structure with several non-canonical residues
+## Step 1: Load a structure with several non-canonical residues
 
 We use **5VBL**, a zinc metalloprotease structure that carries a bound peptide inhibitor built from **five different non-canonical amino acids** (HRG, ALC, OIC, NLE, and 200), plus a free **OLC** monoacylglycerol lipid (monoolein) from lipidic-cubic-phase crystallization. The peptide is cyclized through an isopeptide bond, which makes this a good stress test for templating + bond preservation. A Zn²⁺ ion is also present but does not need templating.
 
@@ -45,7 +45,7 @@ mol = Molecule("5VBL")
 show3d(mol)
 ```
 
-## Step 2 — Find what needs templating
+## Step 2: Find what needs templating
 
 ```{code-cell} python
 specs = detectNonStandardResidues(mol)
@@ -54,7 +54,7 @@ sorted(set(s.resname for s in specs))
 
 Rather than eyeballing every residue name, {py:func}`~moleculekit.tools.nonstandard_residues.detectNonStandardResidues` walks the bond graph and returns a spec for each residue that needs special handling. Here it flags the five non-canonical amino acids (`HRG`, `ALC`, `OIC`, `NLE`, `200`), a free `OLC` residue, and the two canonical residues (`GLU`, `LYS`) that form the isopeptide cyclization bond.
 
-Rather than filtering the spec list yourself, you can ask directly which resnames still need a template:
+You can also ask directly which resnames still need a template:
 
 ```{code-cell} python
 from moleculekit.tools.nonstandard_residues import residuesRequiringTemplate
@@ -65,18 +65,18 @@ residuesRequiringTemplate(mol)
 
 {py:func}`~moleculekit.tools.nonstandard_residues.residuesRequiringTemplate` is the direct way to ask which residue names still need a template from you; it returns only the residues `systemPrepare` cannot handle on its own, so anything it omits (canonical crosslink partners, and modified residues the force field already knows) needs no action. Here it flags the same five NCAAs found above, plus the free `OLC` lipid; the isopeptide partners `GLU` and `LYS` are correctly left out because `systemPrepare` handles that crosslink natively.
 
-`OLC` is monoolein — a monoacylglycerol lipid from lipidic-cubic-phase crystallization, not part of the system we want to model. Drop it from both the structure and the spec list before going further:
+`OLC` is monoolein, a monoacylglycerol lipid from lipidic-cubic-phase crystallization that is not part of the system we want to model. Drop it from both the structure and the spec list before going further:
 
 ```{code-cell} python
 mol.remove("resname OLC")
 specs = [s for s in specs if s.resname != "OLC"]
 ```
 
-The five non-canonical amino acids each need a SMILES template so their bond orders, formal charges, and hydrogens come out right (next step); the canonical isopeptide partners (`GLU`, `LYS`) don't need a template — {py:func}`~moleculekit.tools.preparation.systemPrepare` simply preserves their crosslink.
+The five non-canonical amino acids each need a SMILES template so their bond orders, formal charges, and hydrogens come out right (next step). The canonical isopeptide partners (`GLU`, `LYS`) don't need one, since {py:func}`~moleculekit.tools.preparation.systemPrepare` simply preserves their crosslink.
 
-## Step 3 — Template every NCAA from its RCSB SMILES
+## Step 3: Template every NCAA from its RCSB SMILES
 
-The RCSB-style SMILES for a canonical amino acid is written as the free form (with N and C terminal groups). When the residue sits inside a peptide chain, `templateResidueFromSmiles` automatically strips the unmatched terminal heavy atoms (the OXT and one peptide-NH) before the MCS match — no manual trimming is required.
+The RCSB-style SMILES for a canonical amino acid is written as the free form (with N and C terminal groups). When the residue sits inside a peptide chain, `templateResidueFromSmiles` automatically strips the unmatched terminal heavy atoms (the OXT and one peptide-NH) before the MCS match, so no manual trimming is required.
 
 ```{code-cell} python
 smiles = {
@@ -93,7 +93,7 @@ for resname, smi in smiles.items():
         mol.templateResidueFromSmiles(mask, smiles=smi, addHs=True)
 ```
 
-Each call mutates `mol` in place. Cross-residue covalent bonds — the peptide bonds connecting the NCAAs to their neighbours and the isopeptide cyclization bond — are detected automatically from `mol.bonds`, and the boundary atoms' H counts are reduced so they are not over-protonated. When a residue appears multiple times in the structure, every copy is templated individually with the same SMILES.
+Each call mutates `mol` in place. Cross-residue covalent bonds (the peptide bonds connecting the NCAAs to their neighbours and the isopeptide cyclization bond) are detected automatically from `mol.bonds`, and the boundary atoms' H counts are reduced so they are not over-protonated. When a residue appears multiple times in the structure, every copy is templated individually with the same SMILES.
 
 ```{code-cell} python
 import numpy as np
@@ -105,7 +105,7 @@ import numpy as np
 show3d(mol, representations=[{"sel": "resname HRG ALC OIC NLE '200'", "type": "ball_and_stick"}], focus="resname HRG ALC OIC NLE '200'")
 ```
 
-The per-resname atom counts after templating — each NCAA now carries heavy atoms + the hydrogens the SMILES specified.
+The per-resname atom counts after templating: each NCAA now carries its heavy atoms plus the hydrogens the SMILES specified.
 
 ### Alternative: template from a reference Molecule
 
@@ -118,7 +118,7 @@ mol.templateResidueFromMolecule("resname HRG", ref, addHs=True)
 
 When the reference's heavy-atom names are unique and match the residue's, the reference is matched **by atom name** and its bond orders and formal charges are copied straight over. This is the unambiguous case for an RCSB component CIF, whose atom names already equal the deposited residue's. When the names do not match (for example a reference read from an SDF, whose atom names are only element symbols), the reference is matched by element and connectivity instead, as the SMILES variant does. Either way the bond orders and formal charges are taken verbatim from the reference, so they must already be correct in it: `templateResidueFromMolecule` transfers them and does not re-derive them. Everything else (`addHs`, `guessBonds`, automatic cross-residue bond handling, and per-copy templating) works exactly as in the SMILES variant.
 
-## Step 4 — Run systemPrepare
+## Step 4: Run systemPrepare
 
 ```{code-cell} python
 pmol, applied_specs = systemPrepare(mol, detect_specs=specs, verbose=False)
@@ -135,9 +135,9 @@ The five NCAAs all survive the preparation pipeline with their full heavy-atom t
 ## Recap
 
 - {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromSmiles` transfers bond orders, formal charges, and hydrogens from a SMILES template onto a residue's atoms by MCS matching.
-- It removes any hydrogens already on the matched residue and re-adds them from the SMILES (`addHs=True`), so the hydrogen pattern is deterministic — no manual pre-stripping needed.
+- It removes any hydrogens already on the matched residue and re-adds them from the SMILES (`addHs=True`), so the hydrogen pattern is deterministic and no manual pre-stripping is needed.
 - One SMILES per residue type; the templater handles every copy automatically and trims terminal atoms (OXT, terminal NH) for mid-chain residues.
-- Cross-residue covalent bonds — peptide bonds, glycosidic bonds, isopeptide bonds — are detected automatically; the boundary atom's H count is corrected so it is not over-protonated.
+- Cross-residue covalent bonds (peptide, glycosidic, isopeptide) are detected automatically; the boundary atom's H count is corrected so it is not over-protonated.
 - {py:meth}`~moleculekit.molecule.Molecule.templateResidueFromMolecule` is the same operation with a reference {py:class}`~moleculekit.molecule.Molecule` (e.g. a CIF) as the template instead of a SMILES string. It matches by atom name when the reference's names are unique and match the residue (ideal for a CIF), and falls back to element-and-connectivity matching otherwise (so an SDF works too); either way it copies the reference's bond orders and formal charges verbatim, so those must already be correct in the reference.
 
 ## Next

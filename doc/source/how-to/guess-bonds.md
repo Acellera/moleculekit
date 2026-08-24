@@ -12,19 +12,19 @@ from moleculekit.molecule import Molecule
 mol = Molecule("structure.pdb")
 mol.guessBonds()
 print(mol.bonds.shape)       # (N_bonds, 2)
-print(mol.bondtype[:5])      # parallel bond-type array — also populated
+print(mol.bondtype[:5])      # parallel bond-type array, also populated
 ```
 
 ## Parameters that matter
 
-`mol.guessBonds()` takes no required arguments. Connectivity is inferred from atomic coordinates and covalent radii, and the call updates `mol.bonds` *and* `mol.bondtype` together so the two parallel arrays stay consistent. Bond orders are not inferred — every entry in `mol.bondtype` is `"un"` (unknown).
+`mol.guessBonds()` takes no required arguments. Connectivity is inferred from atomic coordinates and covalent radii, and the call updates `mol.bonds` *and* `mol.bondtype` together so the two parallel arrays stay consistent. Bond orders are not inferred; every entry in `mol.bondtype` is `"un"` (unknown).
 
 ## Common variations
 
 ```python
 # Check that the bond count looks reasonable before proceeding
 mol.guessBonds()
-assert mol.bonds.shape[0] > 0, "No bonds guessed — check coordinates and elements"
+assert mol.bonds.shape[0] > 0, "No bonds guessed: check coordinates and elements"
 ```
 
 ## Gotchas

@@ -35,14 +35,14 @@ all_resnames = mol.get("resname")
 ```
 
 ```python
-# Read with a boolean mask — direct array indexing is equivalent to .get
+# Read with a boolean mask: direct array indexing is equivalent to .get
 ala_mask = mol.resname == "ALA"
 ala_names = mol.name[ala_mask]          # equivalent to mol.get("name", sel=ala_mask)
-ala_coords = mol.coords[ala_mask]       # full (n_ALA, 3, numFrames) — note .get returns one frame
+ala_coords = mol.coords[ala_mask]       # full (n_ALA, 3, numFrames); note .get returns one frame
 ```
 
 ```python
-# Write with a boolean mask — direct assignment is equivalent to .set
+# Write with a boolean mask: direct assignment is equivalent to .set
 mol.charge[ala_mask] = 0.0              # equivalent to mol.set("charge", 0.0, sel=ala_mask)
 ```
 
