@@ -167,7 +167,7 @@ def test_resolve_full_sequences_search_path():
 
 def test_resolve_full_sequences_search_keeps_entity_id():
     # The hit's polymer entity id is the only trace of WHICH deposited entry a
-    # file input matches; surveyStructure derives its candidate PDB id from it.
+    # file input matches; it is the only route to a candidate PDB id.
     m = _tiny_protein()
     with mock.patch(
         "moleculekit.rcsb.rcsbSequenceSearch",

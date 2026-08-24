@@ -485,7 +485,7 @@ CAP_RESIDUE_NAMES = N_TERMINAL_CAP_RESIDUE_NAMES + C_TERMINAL_CAP_RESIDUE_NAMES
 #   center : one representative atom, the convention moleculekit.interactions
 #            uses for salt-bridge geometry
 # The zero entries are load-bearing: they distinguish "covered here and
-# neutral" from "not covered here", which is what lets chargedGroups report a
+# neutral" from "not covered here", which is what lets a caller report a
 # residue it could not classify instead of silently omitting it. HIS is 0
 # rather than absent, since an unprepared histidine has no decided state.
 ChargedResidue = namedtuple("ChargedResidue", ["charge", "atoms", "center"])
@@ -516,8 +516,8 @@ CHARGED_RESIDUE_ATOMS = {
 
 # The anionic codes in ION_RESIDUE_NAMES. Kept as an explicit set rather than
 # inferred: an ion code in neither this set nor METAL_ION_RESIDUE_NAMES is
-# reported as unclassified by chargedGroups rather than guessed as a cation,
-# and a guessed sign is how a wrong charge enters a report silently.
+# left unclassified rather than guessed as a cation, and a guessed sign is
+# how a wrong charge enters a report silently.
 ANIONIC_ION_RESIDUE_NAMES = frozenset(
     {
         "CL",
@@ -534,8 +534,8 @@ ANIONIC_ION_RESIDUE_NAMES = frozenset(
 # ZN2 are zinc with a suffix. Deliberately a separate set, since
 # METAL_ION_RESIDUE_NAMES is the element-symbol convention and autoSegment
 # classifies residues with it, so widening it would change segmentation.
-# Without these, chargedGroups yields no group at all, so a residue
-# coordinating one is never selected for review, which nothing discloses.
+# Without these, such a code carries no charge at all, so a residue
+# coordinating one looks uncharged, which nothing discloses.
 # Apply the same single-atom guard: CAL and ZN1 also name polyatomic entries
 # in the chemical component dictionary.
 CATIONIC_ION_RESIDUE_NAMES = frozenset(
