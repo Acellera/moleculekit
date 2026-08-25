@@ -1259,3 +1259,86 @@ def test_detect_backbone_breaks_reports_missing_backbone_atom():
     assert [(b["after_resid"], b["before_resid"], b["distance"]) for b in breaks] == [
         (1, 2, None)
     ]
+
+
+# --- a partly filled gap must not read as a filled one ------------------------
+# A run is keyed by the resids flanking it, so a donor carrying one residue of a
+# four-residue gap matches exactly as one carrying all four. Without the count,
+# partial coverage is indistinguishable from complete coverage.
+
+def _slots(pattern, start=1):
+    """`pattern` is a string of 'o' (original) and 'n' (new) residues."""
+    slots, resid = [], start
+    for ch in pattern:
+        if ch == "o":
+            slots.append({"new": False, "resid": resid, "insertion": ""})
+            resid += 1
+        else:
+            slots.append({"new": True})
+    return slots
+
+
+def test_a_matched_run_reports_how_many_residues_it_supplied():
+    from moleculekit.tools.modelling import _select_requested_runs
+
+    # one new residue between deposited 1 and 2
+    _, matched = _select_requested_runs(_slots("ono"), "A", {("A", 1, 2)})
+    assert matched == {("A", 1, 2): 1}
+
+    # three new residues in the same slot
+    _, matched = _select_requested_runs(_slots("onnno"), "A", {("A", 1, 2)})
+    assert matched == {("A", 1, 2): 3}
+
+
+def test_an_unrequested_run_is_still_dropped():
+    from moleculekit.tools.modelling import _select_requested_runs
+
+    slots, matched = _select_requested_runs(_slots("onno"), "A", {("A", 9, 9)})
+    assert matched == {}
+    assert all(not s["new"] for s in slots)
+
+
+def test_a_terminal_run_is_keyed_with_none_on_the_open_side():
+    from moleculekit.tools.modelling import _select_requested_runs
+
+    _, matched = _select_requested_runs(_slots("nno"), "A", {("A", None, 1)})
+    assert matched == {("A", None, 1): 2}
+
+
+def test_splice_warns_when_a_donor_fills_only_part_of_a_gap(caplog):
+    """The donor carries residue 5 but not 4, so the run between deposited 3 and 6
+    is one residue where the caller asked for two. Matching is keyed on those two
+    flanking resids, so without this warning the gap reads as filled.
+    """
+    import logging
+
+    full = _bonded_chain_mol(_MERGE_FULL_RESNAMES, list(range(1, 12)), chain="A")
+    # donor missing residue 4: it can supply 5, and nothing for 4
+    keep = [r for r in range(1, 12) if r != 4]
+    donor = _bonded_chain_mol(
+        [_MERGE_FULL_RESNAMES[r - 1] for r in keep], keep, chain="A"
+    )
+    gapped = _bonded_chain_mol(_MERGE_OBS_RESNAMES, _MERGE_OBS_RESIDS, chain="A")
+
+    gaps = [{"chain": "A", "after_resid": 3, "before_resid": 6, "missing_seq": "PP"}]
+    with caplog.at_level(logging.WARNING, logger="moleculekit.tools.modelling"):
+        spliceMissingResidues(gapped, donor, {"A": "A"}, gaps=gaps)
+
+    partly = [r for r in caplog.messages if "only partly filled" in r]
+    assert partly, caplog.messages
+    assert "supplied 1 of 2" in partly[0]
+    assert "between resid 3 and 6" in partly[0]
+    assert full is not None  # the fully-covered donor is the contrast, below
+
+
+def test_splice_stays_quiet_when_the_donor_covers_the_whole_gap(caplog):
+    import logging
+
+    donor = _bonded_chain_mol(_MERGE_FULL_RESNAMES, list(range(1, 12)), chain="A")
+    gapped = _bonded_chain_mol(_MERGE_OBS_RESNAMES, _MERGE_OBS_RESIDS, chain="A")
+
+    gaps = [{"chain": "A", "after_resid": 3, "before_resid": 6, "missing_seq": "PP"}]
+    with caplog.at_level(logging.WARNING, logger="moleculekit.tools.modelling"):
+        spliceMissingResidues(gapped, donor, {"A": "A"}, gaps=gaps)
+
+    assert not [r for r in caplog.messages if "partly filled" in r], caplog.messages

@@ -1098,6 +1098,15 @@ def _superpose_and_graft_runs(
     return [s for k, s in enumerate(slots) if k not in skip]
 
 
+def _gap_location(after_resid, before_resid) -> str:
+    """Where a gap sits, for a message: the two warnings below share the phrasing."""
+    if after_resid is None:
+        return f"before resid {before_resid} at the N-terminus"
+    if before_resid is None:
+        return f"after resid {after_resid} at the C-terminus"
+    return f"between resid {after_resid} and {before_resid}"
+
+
 def _select_requested_runs(slots, chain, requested):
     """Drop the new residues of every inserted run the caller did not ask for.
 
@@ -1118,11 +1127,15 @@ def _select_requested_runs(slots, chain, requested):
     -------
     slots : list of dict
         ``slots`` without the dropped runs' new residues.
-    matched : set
-        The keys in ``requested`` that a run was found for.
+    matched : dict
+        ``key -> number of new residues in the run found for it``, for each key in
+        ``requested`` that a run was found for. The count is what lets the caller
+        tell a fully filled gap from a partly filled one: a run matches on its
+        flanking resids alone, so a donor supplying one residue of a four-residue
+        gap matches exactly as a donor supplying all four.
     """
     n = len(slots)
-    drop, matched = set(), set()
+    drop, matched = set(), {}
     i = 0
     while i < n:
         if not slots[i]["new"]:
@@ -1137,7 +1150,7 @@ def _select_requested_runs(slots, chain, requested):
             slots[j]["resid"] if j < n else None,
         )
         if key in requested:
-            matched.add(key)
+            matched[key] = j - i
         else:
             drop.update(range(i, j))
         i = j
@@ -1255,7 +1268,9 @@ def spliceMissingResidues(
         # of it.
         gaps = list(gaps)
         requested = {(g["chain"], g["after_resid"], g["before_resid"]) for g in gaps}
-    matched_keys = set()
+    # key -> residues the donor actually supplied there, so a partly filled gap
+    # can be told from a filled one.
+    matched_counts = {}
 
     modelled_orig_chains = list(pairing.keys())
     keep_mask = np.logical_not(
@@ -1318,7 +1333,7 @@ def spliceMissingResidues(
 
         if requested is not None:
             slots, matched = _select_requested_runs(slots, orig_chain, requested)
-            matched_keys |= matched
+            matched_counts.update(matched)
 
         # Take the residues flanking each inserted run from the model too, so the
         # junction backbone is continuous (the modeller moved those flanks to close
@@ -1348,18 +1363,30 @@ def spliceMissingResidues(
         reported = set()
         for g in gaps:
             key = (g["chain"], g["after_resid"], g["before_resid"])
-            if key in matched_keys or key in reported:
+            if key in reported:
                 continue
             reported.add(key)
             chain, after_resid, before_resid = key
-            if after_resid is None:
-                where = f"before resid {before_resid} at the N-terminus"
-            elif before_resid is None:
-                where = f"after resid {after_resid} at the C-terminus"
-            else:
-                where = f"between resid {after_resid} and {before_resid}"
+            if key in matched_counts:
+                # Matched, but possibly only in part: a run is keyed by the resids
+                # flanking it, so a donor carrying one residue of a four-residue
+                # gap matches exactly as one carrying all four. Silence here would
+                # read as "filled".
+                wanted = len(g.get("missing_seq") or "")
+                got = matched_counts[key]
+                if wanted and got < wanted:
+                    logger.warning(
+                        f"Requested gap in chain '{chain}' "
+                        + _gap_location(after_resid, before_resid)
+                        + f" was only partly filled: the donor supplied {got} of "
+                        f"{wanted} missing residues ({g['missing_seq']}). The "
+                        "residues it does not carry are still missing."
+                    )
+                continue
             logger.warning(
-                f"Requested gap in chain '{chain}' {where} was not filled: no "
+                f"Requested gap in chain '{chain}' "
+                + _gap_location(after_resid, before_resid)
+                + " was not filled: no "
                 "residues are missing there, the donor does not supply them, or "
                 "the resids do not match the deposited numbering."
             )
