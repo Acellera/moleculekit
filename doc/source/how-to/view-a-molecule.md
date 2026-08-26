@@ -65,3 +65,6 @@ When `viewer=` is not given, moleculekit picks a backend in this order:
 - The molstar backend opens a tab in the default web browser; headless environments cannot open a browser tab automatically.
 - Restarting the Python process invalidates the existing molstar browser tab; the page will show a "Server restarted — refresh page" banner. Reload the tab to connect to the new server.
 - Trajectories are sent to molstar in full. For very large trajectories (>~100 MB of coordinates) consider striding the frames yourself before calling `.view()`.
+
+To produce an image file instead of an interactive viewer, see
+[Render a molecule to an image file](render-an-image.md).

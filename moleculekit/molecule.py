@@ -2611,6 +2611,37 @@ class Molecule(object):
 
         molstar_server.register(self)
 
+    def render(self, output: str | None = None, **kwargs):
+        """Render the molecule to a PNG image without opening a viewer.
+
+        Uses a headless browser and the same Mol* scene ``view()`` builds, so the
+        image matches what the interactive viewer shows. Representations are
+        taken from ``mol.reps`` and the frame rendered is ``mol.frame``.
+
+        Parameters
+        ----------
+        output : str or None, optional
+            Path to write the PNG to. When None the PNG bytes are returned.
+        **kwargs
+            Passed to :func:`moleculekit.viewer.molstar.render.render`. Accepts
+            ``size``, ``quality``, ``center``, ``rotate``, ``zoom``,
+            ``background``, ``transparent`` and ``timeout``.
+
+        Returns
+        -------
+        result : bytes or str
+            The PNG bytes when ``output`` is None, otherwise ``output``.
+
+        Examples
+        --------
+        >>> mol = Molecule("3PTB")
+        >>> mol.reps.add(sel="protein", style="NewCartoon", color="SecondaryStructure")
+        >>> mol.render("trypsin.png", size=(1200, 900), rotate="top")  # doctest: +SKIP
+        """
+        from moleculekit.viewer.molstar import render as _render
+
+        return _render.render(self, output, **kwargs)
+
     def _viewPymol(self, name):
         from moleculekit.viewer import getCurrentPymolViewer, viewingMols
         import uuid

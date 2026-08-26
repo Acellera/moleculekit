@@ -31,6 +31,7 @@
 - [Compute protein-ligand interactions](how-to/compute-protein-ligand-interactions.md)
 - [Convert a Molecule to RDKit or OpenFF](how-to/convert-to-rdkit-and-openff.md)
 - [View a molecule](how-to/view-a-molecule.md)
+- [Render a molecule to an image file](how-to/render-an-image.md)
 - [Fetch from RCSB and OPM](how-to/fetch-from-rcsb-and-opm.md)
 
 ## Explanation

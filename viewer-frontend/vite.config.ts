@@ -26,5 +26,11 @@ export default defineConfig({
     outDir: path.resolve(__dirname, "../moleculekit/viewer/molstar/static"),
     emptyOutDir: true,
     sourcemap: false,
+    rollupOptions: {
+      input: {
+        app: path.resolve(__dirname, "index.html"),
+        headless: path.resolve(__dirname, "headless.html"),
+      },
+    },
   },
 });

@@ -67,6 +67,7 @@ convert-to-rdkit-and-openff
 :maxdepth: 1
 
 view-a-molecule
+render-an-image
 ```
 
 ## External resources

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>moleculekit headless renderer</title>
+    <style>
+      /* The canvas must sit in a container whose size does not depend on the
+         canvas. Without this the container is auto-height, so Mol*'s resize
+         grows the canvas, the canvas grows the container, and the drawing
+         buffer creeps upward on every render (measured 920 -> 1088 px over six
+         renders). The camera's fit is derived from the viewport, so that drift
+         silently rezooms every image. display:block on the canvas removes the
+         inline-element line box that feeds the loop. */
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+      }
+      #app {
+        position: absolute;
+        inset: 0;
+      }
+      #app canvas {
+        display: block;
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/headless-FwB8iV77.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/spec-Deq4lLJk.js">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

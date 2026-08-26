@@ -145,3 +145,43 @@ def test_multi_frame_no_files_left(tmp_path, monkeypatch):
     mol.coords = np.zeros((3, 3, 2), dtype=np.float32)
     inline.build_inline_view(mol, inline._scene_from_reps(mol, []), height=420)
     assert list(tmp_path.iterdir()) == []
+
+
+def test_bcifwrite_accepts_a_binary_file_object(tmp_path):
+    """BCIFwrite writes into any object with a write method, not only a path."""
+    import io
+
+    from moleculekit.writers import BCIFwrite
+
+    mol = _ala_mol()
+    path = tmp_path / "ref.bcif"
+    BCIFwrite(mol, str(path))
+
+    buf = io.BytesIO()
+    BCIFwrite(mol, buf)
+
+    assert buf.getvalue() == path.read_bytes()
+    assert len(buf.getvalue()) > 0
+
+
+def test_bcif_bytes_matches_a_disk_write(tmp_path):
+    """_bcif_bytes returns exactly what writing the file would have produced."""
+    mol = _ala_mol()
+    path = tmp_path / "ref.bcif"
+    mol.write(str(path))
+
+    assert inline._bcif_bytes(mol) == path.read_bytes()
+
+
+def test_bcif_bytes_creates_no_files(tmp_path, monkeypatch):
+    """_bcif_bytes leaves nothing on disk, so it must not reach for tempname."""
+    import moleculekit.util
+
+    def _forbidden(*args, **kwargs):
+        raise AssertionError("_bcif_bytes must not create a temp file")
+
+    monkeypatch.setattr(moleculekit.util, "tempname", _forbidden)
+    monkeypatch.chdir(tmp_path)
+
+    assert len(inline._bcif_bytes(_ala_mol())) > 0
+    assert list(tmp_path.iterdir()) == []

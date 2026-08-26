@@ -7,13 +7,11 @@ from __future__ import annotations
 import base64
 import html as _html
 import json
-import os
 import struct
 from typing import TYPE_CHECKING
 
 import numpy as np
 
-from moleculekit.util import tempname
 from moleculekit.viewer.molstar.mvs import build_mvs
 
 if TYPE_CHECKING:
@@ -74,16 +72,26 @@ _VIEWER_OPTIONS = {
 
 
 def _bcif_bytes(mol) -> bytes:
-    """Write the molecule to BinaryCIF and return the bytes (temp file is
-    created and removed; nothing is left on disk)."""
-    path = tempname(suffix=".bcif")
-    try:
-        mol.write(path)
-        with open(path, "rb") as fh:
-            return fh.read()
-    finally:
-        if os.path.exists(path):
-            os.remove(path)
+    """Serialize the molecule to BinaryCIF in memory and return the bytes.
+
+    Nothing is written to disk.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to serialize. The frame written is ``mol.frame``.
+
+    Returns
+    -------
+    bcif : bytes
+        The BinaryCIF representation of ``mol``.
+    """
+    import io
+    from moleculekit.writers import BCIFwrite
+
+    buf = io.BytesIO()
+    BCIFwrite(mol, buf)
+    return buf.getvalue()
 
 
 def _b64(data: bytes) -> str:

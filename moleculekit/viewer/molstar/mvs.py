@@ -73,6 +73,69 @@ STANDARD_POLYMER_RESNAMES = frozenset(
 )
 
 
+DEFAULT_DIRECTION = (0.0, 0.0, -1.0)
+DEFAULT_UP = (0.0, 1.0, 0.0)
+
+# `direction` points from the camera position to the target, so "top" (looking
+# down from above) is -y, which is Rx(-90) applied to DEFAULT_DIRECTION.
+ORIENTATION_PRESETS = {
+    "front": (0.0, 0.0, 0.0),
+    "back": (0.0, 180.0, 0.0),
+    "left": (0.0, -90.0, 0.0),
+    "right": (0.0, 90.0, 0.0),
+    "top": (-90.0, 0.0, 0.0),
+    "bottom": (90.0, 0.0, 0.0),
+}
+
+
+def rotation_to_direction_up(rotate):
+    """Resolve a rotation into the MVS ``direction`` and ``up`` vectors.
+
+    Parameters
+    ----------
+    rotate : str or tuple of float or None
+        A preset name from ``ORIENTATION_PRESETS``, a tuple of ``(rx, ry, rz)``
+        rotations in degrees applied about the x, y and z axes in that order, or
+        None for the default view.
+
+    Returns
+    -------
+    direction : tuple of float
+        Unit vector from the camera position toward the target.
+    up : tuple of float
+        Unit vector controlling the roll about ``direction``.
+
+    Raises
+    ------
+    ValueError
+        If ``rotate`` is a string that names no known preset.
+    """
+    if rotate is None:
+        return DEFAULT_DIRECTION, DEFAULT_UP
+
+    if isinstance(rotate, str):
+        key = rotate.lower()
+        if key not in ORIENTATION_PRESETS:
+            raise ValueError(
+                f"Unknown orientation {rotate!r}. Use one of "
+                f"{sorted(ORIENTATION_PRESETS)} or a (rx, ry, rz) tuple in degrees."
+            )
+        rotate = ORIENTATION_PRESETS[key]
+
+    rx, ry, rz = (np.deg2rad(float(angle)) for angle in rotate)
+    cx, sx = np.cos(rx), np.sin(rx)
+    cy, sy = np.cos(ry), np.sin(ry)
+    cz, sz = np.cos(rz), np.sin(rz)
+    rot_x = np.array([[1, 0, 0], [0, cx, -sx], [0, sx, cx]])
+    rot_y = np.array([[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]])
+    rot_z = np.array([[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]])
+    rot = rot_z @ rot_y @ rot_x
+
+    direction = rot @ np.array(DEFAULT_DIRECTION)
+    up = rot @ np.array(DEFAULT_UP)
+    return tuple(float(v) for v in direction), tuple(float(v) for v in up)
+
+
 def _import_mvs():
     try:
         import molviewspec as mvs
@@ -125,6 +188,9 @@ def build_mvs(
     representations: list[dict] | None = None,
     highlight_bonds: list[tuple[str, str]] | None = None,
     focus_sel: str | np.ndarray | None = None,
+    rotate: str | tuple[float, float, float] | None = None,
+    zoom: float | None = None,
+    background_color: str | None = None,
 ) -> str:
     """Build the MolViewSpec (mvsj) JSON string describing the scene for ``mol``.
 
@@ -158,6 +224,14 @@ def build_mvs(
     focus_sel : str or np.ndarray or None, optional
         An atom selection the camera is focused on. Ignored when it matches no
         atoms.
+    rotate : str or tuple of float or None, optional
+        Camera orientation, as a preset name from ``ORIENTATION_PRESETS`` or a
+        tuple of ``(rx, ry, rz)`` rotations in degrees.
+    zoom : float or None, optional
+        Camera tightness. Larger values move the camera closer. Emitted as the
+        reciprocal ``radius_factor``.
+    background_color : str or None, optional
+        Canvas background as an SVG colour name or hex string.
 
     Returns
     -------
@@ -167,7 +241,8 @@ def build_mvs(
     Raises
     ------
     ValueError
-        If any ``highlight_bonds`` selection does not pick exactly one atom.
+        If any ``highlight_bonds`` selection does not pick exactly one atom,
+        or if ``rotate`` is a string that names no known orientation preset.
     """
     mvs, ComponentExpression = _import_mvs()
 
@@ -234,21 +309,44 @@ def build_mvs(
                     f"atom; got {len(ia)} for {sel_a!r} and {len(ib)} for "
                     f"{sel_b!r}"
                 )
-            sa = mol.coords[int(ia[0]), :, 0]
-            sb = mol.coords[int(ib[0]), :, 0]
+            sa = mol.coords[int(ia[0]), :, mol.frame]
+            sb = mol.coords[int(ib[0]), :, mol.frame]
             bonds_group.tube(
                 start=(float(sa[0]), float(sa[1]), float(sa[2])),
                 end=(float(sb[0]), float(sb[1]), float(sb[2])),
                 radius=0.3,
             )
 
-    if focus_sel is not None:
-        mask = mol.atomselect(focus_sel)
-        if mask.any():
-            indices = [int(i) for i in mask.nonzero()[0]]
-            structure.component(
-                selector=[ComponentExpression(atom_index=int(i)) for i in indices]
-            ).focus()
+    has_camera = rotate is not None or zoom is not None
+    if focus_sel is not None or has_camera:
+        component = None
+        if focus_sel is not None:
+            mask = mol.atomselect(focus_sel)
+            if mask.any():
+                component = structure.component(
+                    selector=[
+                        ComponentExpression(atom_index=int(i))
+                        for i in mask.nonzero()[0]
+                    ]
+                )
+        if component is None and has_camera:
+            # focus_sel is None, or it matched nothing: still apply the
+            # requested orientation/zoom to the whole structure instead of
+            # silently dropping it. A focus_sel that matched nothing with no
+            # camera args stays a no-op (component stays None below).
+            component = structure.component(selector="all")
+        if component is not None:
+            focus_kwargs = {}
+            if has_camera:
+                direction, up = rotation_to_direction_up(rotate)
+                focus_kwargs["direction"] = direction
+                focus_kwargs["up"] = up
+            if zoom is not None:
+                focus_kwargs["radius_factor"] = 1.0 / float(zoom)
+            component.focus(**focus_kwargs)
+
+    if background_color is not None:
+        builder.canvas(background_color=background_color)
 
     _add_formal_charge_labels(builder, mol)
     return _serialize(builder.get_state())
@@ -257,6 +355,7 @@ def build_mvs(
 def _add_formal_charge_labels(builder, mol) -> None:
     charges = mol.formalcharge
     coords = mol.coords
+    frame = mol.frame
     charged = [i for i in range(len(charges)) if int(charges[i]) != 0]
     if not charged:
         return
@@ -274,9 +373,9 @@ def _add_formal_charge_labels(builder, mol) -> None:
         q = int(charges[i])
         text = f"+{q}" if q > 0 else f"{q}"
         position = [
-            float(coords[i, 0, 0]),
-            float(coords[i, 1, 0]),
-            float(coords[i, 2, 0]),
+            float(coords[i, 0, frame]),
+            float(coords[i, 1, frame]),
+            float(coords[i, 2, frame]),
         ]
         primitives.label(
             position=position,

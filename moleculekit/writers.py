@@ -1555,7 +1555,7 @@ def BCIFwrite(mol, filename, explicitbonds=None, chemcomp=None):
         useFloat64=False,
     )
 
-    if filename.endswith(".gz"):
+    if isinstance(filename, str) and filename.endswith(".gz"):
         with gzip.open(filename, "wb") as fh:
             bcw.serialize(fh, containerList)
     else:
