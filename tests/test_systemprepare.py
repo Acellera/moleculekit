@@ -2719,3 +2719,42 @@ def test_warn_metal_adjacent_titration(caplog):
     with caplog.at_level(logging.WARNING):
         _warn_metal_adjacent_titration(df, nometal, 7.4)
     assert not [r for r in caplog.records if "Metal-adjacent" in r.message]
+
+
+def test_phosphate_typing_keeps_a_catalytic_glutamate_charged():
+    """A phosphate's P=O is not an ionizable site, and missing that neutralizes
+    RNase T1's catalytic base.
+
+    1BVI is RNase T1 with 2'-GMP bound in all four chains. Glu58 is the general
+    base of the catalytic pair and its measured pKa is 3.96 (PKAD-2), so it is
+    charged at any pH a build cares about.
+
+    PROPKA perceives double bonds from a 1.3 A distance threshold calibrated for
+    carbon, which never fires at the ~1.5 A of a P=O, so every terminal oxygen of
+    the 2'-GMP phosphate becomes an independent titratable site and the group
+    carries one charge too many. Glu58 sits next to it and comes back near 10:
+    a neutral GLH in all four chains. AMBER has a GLH residue, so that builds
+    without complaint.
+
+    :func:`moleculekit.tools.sybyl.sybylTypes` reads one terminal oxygen per
+    phosphorus as the P=O instead, and all four copies come back charged.
+    """
+    mol = Molecule("1BVI")
+    mol.remove("element H", _logger=False)
+    mol.remove("resname HOH", _logger=False)
+
+    _, _, df = systemPrepare(mol, return_details=True)
+
+    glu58 = df[(df.resname == "GLU") & (df.resid == 58)]
+    assert len(glu58) == 4, f"expected Glu58 in four chains, got {len(glu58)}"
+    assert (glu58.protonation == "GLU").all(), (
+        "Glu58 must be charged; its measured pKa is 3.96. Without the P=O "
+        f"typing PROPKA puts it near 10 and returns GLH:\n"
+        f"{glu58[['resid', 'chain', 'protonation', 'pKa']]}"
+    )
+    # pH 7.4 is the decision boundary, so this is the same claim as above stated
+    # against the number rather than the state.
+    assert (glu58.pKa < 7.4).all(), (
+        f"every Glu58 pKa must fall below the build pH:\n"
+        f"{glu58[['resid', 'chain', 'pKa']]}"
+    )
