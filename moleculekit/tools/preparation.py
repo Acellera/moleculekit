@@ -10,6 +10,11 @@ import os
 import itertools
 from moleculekit.molecule import Molecule, UniqueResidueID
 from moleculekit.tools.backbone import check_backbone, _complete_free_cterm_carboxyls
+from moleculekit.tools.nonstandard_residues import (
+    _bonded_atom_indices,
+    _residue_is_templated,
+)
+from moleculekit.tools.preparation_propka import _run_propka
 from moleculekit.util import sequenceID
 
 logger = logging.getLogger(__name__)
@@ -792,6 +797,43 @@ def _canonicalize_ncaa_h_names(mol, detect_specs):
                 mol.name[h_neighbors[0]] = h_target
 
 
+def _pka_values_for_titration(pka_list, ph):
+    """PROPKA's pKas keyed the way ``apply_pka_values`` looks them up, minus
+    the arginines it would neutralize.
+
+    No AMBER library defines a neutral arginine: there is no ``AR0`` unit in
+    any of the leap ``amino*.lib`` files (they do ship ``ASH``, ``GLH``,
+    ``LYN``, ``CYM``, ``HID``/``HIE``/``HIP``) and no ``AR0`` block in PDB2PQR's
+    own ``AMBER.DAT``. PDB2PQR guards its patch on the ``parse`` force field for
+    that reason, and ``parse`` is what we run under, so the patch does fire
+    here. It strips ``HE`` without renaming the residue, and since nothing maps
+    ``AR0`` back the result is a residue still called ARG with a hydrogen
+    missing, which no builder can parameterize and which
+    :func:`_list_modifications` cannot report either, its resname being
+    unchanged.
+
+    Guanidinium's pKa is about 12.5, the most basic sidechain there is, so a
+    neutral arginine is vanishingly rare and is far more likely to mean the
+    prediction was pulled down by something the model handles badly - a nearby
+    metal centre entered as a formal charge, say. Keep it charged and say so.
+    """
+    values = {}
+    for row in pka_list:
+        if row["res_name"].strip() == "ARG" and ph >= row["pKa"]:
+            logger.warning(
+                "Keeping "
+                f"{_fmt_res(row['res_name'].strip(), int(row['res_num']), str(row['ins_code']), str(row['chain_id']))}"
+                f" charged: its predicted pKa ({row['pKa']:.2f}) is at or below pH "
+                f"{ph:.1f}, but no AMBER library defines a neutral arginine. "
+                "Review the prediction if the residue sits next to a metal or "
+                "another fixed charge."
+            )
+            continue
+        key = f"{row['res_name']} {row['res_num']} {row['chain_id']}"
+        values[key] = row["pKa"]
+    return values
+
+
 def _delete_no_titrate(pka_list, no_titr):
     pkas = []
     logged = set()
@@ -957,163 +999,6 @@ def _stamp_pdblist_identity(pdblist, mol):
         rec.element = str(mol.element[i])
 
 
-def _pdb2pqr_terminus_decisions(biomolecule):
-    """Report what PDB2PQR's ``set_termini`` decided about each residue.
-
-    Returns ``(n_term, c_term, considered)``, sets of
-    ``(resid, chain, insertion)`` keys. ``considered`` holds the residues
-    ``set_termini`` actually judges: it only assigns termini to ``aa.Amino``
-    residues, so the absence of a flag on anything else is not a decision and
-    must not be read as one. A templated non-canonical residue reaches PDB2PQR
-    as an ``aa.Amino`` subclass and so is judged normally.
-    """
-    from pdb2pqr import aa
-
-    n_term = set()
-    c_term = set()
-    considered = set()
-    for residue in biomolecule.residues:
-        if not isinstance(residue, aa.Amino):
-            continue
-        key = (
-            int(residue.res_seq),
-            str(residue.chain_id),
-            str(residue.ins_code).strip(),
-        )
-        considered.add(key)
-        if getattr(residue, "is_n_term", 0):
-            n_term.add(key)
-        if getattr(residue, "is_c_term", 0):
-            c_term.add(key)
-    return n_term, c_term, considered
-
-
-def _clear_phantom_termini(molecule, biomolecule):
-    """Drop PROPKA terminus flags that PDB2PQR did not itself assign.
-
-    PROPKA infers termini textually from the PDB stream it is handed: the first
-    ``ATOM`` residue after a ``TER`` becomes ``N+`` and an ``OXT`` becomes
-    ``C-``. It therefore never sees ``set_termini``'s reasoning, neither its
-    cyclic-chain distance guard nor the ``n_term_blocked`` / ``c_term_blocked``
-    flags :func:`_stamp_non_termini` sets. Two consequences:
-
-    * a head-to-tail cyclic peptide gets a spurious ``N+`` (charge +1, model
-      pKa 8.0) on the very amide nitrogen that closes the ring;
-    * PROPKA matches the N-terminal residue on the residue *number* alone and
-      ignores the insertion code, so in chymotrypsin-numbered structures every
-      residue sharing that number gets an ``N+`` (in 1A4W both ``ASP1A:L`` and
-      the mid-chain ``CYS1:L``).
-
-    Either way a fictitious cation shifts the predicted pKa of every titratable
-    group near it. A terminus flag also makes PROPKA build ``NtermGroup`` /
-    ``CtermGroup`` in preference to the backbone group, so the flags have to be
-    reconciled before groups are extracted; clearing one lets PROPKA build the
-    normal backbone group for that atom instead.
-
-    Only clears, never adds: where PDB2PQR never judged a residue, PROPKA's own
-    call is left alone. Returns the number of flags cleared.
-    """
-    n_term, c_term, considered = _pdb2pqr_terminus_decisions(biomolecule)
-    cleared = 0
-    for conformation in molecule.conformations.values():
-        for atom in conformation.atoms:
-            if not atom.terminal:
-                continue
-            key = (
-                int(atom.res_num),
-                str(atom.chain_id),
-                str(atom.icode).strip(),
-            )
-            if key not in considered:
-                continue
-            allowed = n_term if atom.terminal == "N+" else c_term
-            if key not in allowed:
-                logger.debug(
-                    f"Clearing PROPKA {atom.terminal} flag on "
-                    f"{atom.res_name.strip()} {atom.res_num}{atom.chain_id}: "
-                    "PDB2PQR did not assign that terminus."
-                )
-                atom.terminal = None
-                cleared += 1
-    return cleared
-
-
-def _run_propka(propka_args, biomolecule):
-    """Run PROPKA on ``biomolecule`` and return its per-group pKa rows.
-
-    Replaces ``pdb2pqr.main.run_propka`` for two reasons. It reconciles
-    PROPKA's textually inferred termini against PDB2PQR's own decision
-    (:func:`_clear_phantom_termini`), which has to happen after the atoms are
-    read and before groups are extracted, and it skips the folding- and
-    charge-profile report that ``run_propka`` builds over a pH 0 to 14 window
-    and that this caller discards.
-
-    The read sequence mirrors the PDB branch of
-    ``propka.input.read_molecule_file``.
-    """
-    from io import StringIO
-
-    import propka.input as pk_in
-    import propka.lib
-    from propka.molecular_container import MolecularContainer
-    from propka.parameters import Parameters
-    from pdb2pqr import io as pqr_io
-
-    lines = pqr_io.print_biomolecule_atoms(
-        atomlist=biomolecule.atoms,
-        chainflag=propka_args.keep_chain,
-        pdbfile=True,
-    )
-    with StringIO() as fpdb:
-        fpdb.writelines(lines)
-        parameters = pk_in.read_parameter_file(propka_args.parameters, Parameters())
-        molecule = MolecularContainer(parameters, propka_args)
-        molecule.name = "input"
-        conformations, conformation_names = pk_in.read_pdb(
-            fpdb, molecule.version.parameters, molecule
-        )
-        if len(conformations) == 0:
-            raise RuntimeError(
-                "PROPKA found no molecular conformations in the structure "
-                "handed to it by PDB2PQR."
-            )
-        molecule.conformations = conformations
-        molecule.conformation_names = conformation_names
-        molecule.top_up_conformations()
-        propka.lib.protein_precheck(
-            molecule.conformations, molecule.conformation_names
-        )
-        _clear_phantom_termini(molecule, biomolecule)
-        molecule.version.setup_bonding_and_protonation(molecule)
-        molecule.extract_groups()
-        for name in molecule.conformation_names:
-            molecule.conformations[name].sort_atoms()
-        molecule.find_covalently_coupled_groups()
-
-    molecule.calculate_pka()
-
-    rows = []
-    for group in molecule.conformations["AVR"].groups:
-        atom = group.atom
-        rows.append(
-            {
-                "res_num": atom.res_num,
-                "ins_code": atom.icode,
-                "res_name": atom.res_name,
-                "chain_id": atom.chain_id,
-                "group_label": group.label,
-                "group_type": getattr(group, "type", None),
-                "pKa": group.pka_value,
-                "model_pKa": group.model_pka,
-                "buried": group.buried,
-                "coupled_group": (
-                    group.coupled_titrating_group.label
-                    if group.coupled_titrating_group
-                    else None
-                ),
-            }
-        )
-    return rows
 
 
 def _pdb2pqr(
@@ -1137,6 +1022,7 @@ def _pdb2pqr(
     glycan_residues=None,
     propka_args=None,
     src_mol=None,
+    detect_specs=None,
 ):
     from pdb2pqr.io import get_molecule
     from pdb2pqr import forcefield, hydrogens
@@ -1214,7 +1100,10 @@ def _pdb2pqr(
                 raise ValueError(err)
         if titrate:
             biomolecule.remove_hydrogens()
-            pka_list = _run_propka(propka_args, biomolecule)
+            pka_list = _run_propka(
+                propka_args, biomolecule, src_mol=src_mol,
+                detect_specs=detect_specs,
+            )
             # Remove terminal pkas
             pka_list = [
                 row
@@ -1222,15 +1111,31 @@ def _pdb2pqr(
                 if row["group_label"].startswith(row["res_name"])
             ]
 
-            # STEFAN mod: Delete pka values for residues we should not titrate
-            pkas = _delete_no_titrate(pka_list, no_titr)
+            # STEFAN mod: A templated residue already states its protonation, so
+            # drop its rows outright rather than routing them through no_titr:
+            # that suppresses the titration decision but keeps reporting a pKa,
+            # and a pKa reported for a residue nothing titrated is misleading.
+            templated = _templated_spec_keys(detect_specs)
+            if templated:
+                pka_list = [
+                    row
+                    for row in pka_list
+                    if (
+                        row["res_num"],
+                        row["chain_id"].strip(),
+                        row["ins_code"].strip(),
+                    )
+                    not in templated
+                ]
+
+            # STEFAN mod: Delete pka values for residues we should not
+            # titrate. The filtered list is also what gets reported, so a pKa in
+            # the table always means "this state was decided by titration".
+            pka_list = _delete_no_titrate(pka_list, no_titr)
             biomolecule.apply_pka_values(
                 forcefield_.name,
                 ph,
-                {
-                    f"{row['res_name']} {row['res_num']} {row['chain_id']}": row["pKa"]
-                    for row in pkas
-                },
+                _pka_values_for_titration(pka_list, ph),
             )
 
         biomolecule.add_hydrogens(no_prot)  # STEFAN mod: Don't protonate residues
@@ -1458,6 +1363,32 @@ def _split_glycan_chains(biomolecule, glycan_residues):
             newchain.add_residue(residue)
         extra_chains.append(newchain)
     biomolecule.chains.extend(extra_chains)
+
+
+def _templated_spec_keys(detect_specs):
+    """``(resid, chain, insertion)`` keys of the chain-resident residues in
+    ``detect_specs``.
+
+    A ``ChainResidueSpec`` always arrives templated: the caller templates the
+    non-canonical ones (:func:`_assert_specs_templated` raises otherwise) and
+    the canonical residues at a junction are re-templated here
+    (:func:`_template_renamed_canonical_residues`). Explicit hydrogens *are* a
+    protonation state, so PROPKA has nothing to add and must not overrule it.
+
+    PDB2PQR reads these back as ``CustomResidue``, which subclasses its own
+    amino-acid class, so they are the one non-canonical kind that
+    ``apply_pka_values`` would otherwise act on - free ligands are skipped there
+    for not being amino acids at all.
+    """
+    from moleculekit.tools.nonstandard_residues import ChainResidueSpec
+
+    keys = set()
+    for spec in detect_specs or ():
+        if not isinstance(spec, ChainResidueSpec):
+            continue
+        rid = spec.residue
+        keys.add((int(rid.resid), str(rid.chain).strip(), str(rid.insertion).strip()))
+    return keys
 
 
 def _get_hold_residues(
@@ -1921,10 +1852,7 @@ def _restore_termini_bonds(mol):
     if mol.numAtoms == 0 or mol.element is None:
         return
 
-    if mol.bonds is None or len(mol.bonds) == 0:
-        bonded_atoms = set()
-    else:
-        bonded_atoms = set(int(i) for i in np.asarray(mol.bonds).ravel())
+    bonded_atoms = _bonded_atom_indices(mol)
 
     uqres = mol.getResidues(
         fields=("segid", "chain", "resid", "insertion"), return_idx=False
@@ -2155,10 +2083,7 @@ def _assert_specs_templated(mol, detect_specs):
         PROTEIN_RESNAMES,
     )
 
-    if mol.bonds is None or len(mol.bonds) == 0:
-        bonded = set()
-    else:
-        bonded = set(int(i) for i in np.asarray(mol.bonds).ravel())
+    bonded = _bonded_atom_indices(mol)
 
     bad = []
     for spec in detect_specs:
@@ -2174,12 +2099,9 @@ def _assert_specs_templated(mol, detect_specs):
             & (mol.resid == int(rid.resid))
             & (mol.insertion == str(rid.insertion))
         )
-        idxs = np.where(res_mask)[0]
-        if len(idxs) == 0:
+        if not res_mask.any():
             continue
-        has_h = bool((mol.element[idxs] == "H").any())
-        all_bonded = all(int(i) in bonded for i in idxs)
-        if not has_h or not all_bonded:
+        if not _residue_is_templated(mol, res_mask, bonded):
             bad.append(f"{spec.resname}{rid.resid}{rid.insertion}:{rid.chain}")
     if bad:
         raise RuntimeError(
@@ -2214,10 +2136,7 @@ def _assert_specs_bonded(mol, detect_specs):
     """
     from moleculekit.tools.nonstandard_residues import ChainResidueSpec
 
-    if mol.bonds is None or len(mol.bonds) == 0:
-        bonded = set()
-    else:
-        bonded = set(int(i) for i in np.asarray(mol.bonds).ravel())
+    bonded = _bonded_atom_indices(mol)
 
     bad = []
     for spec in detect_specs:
@@ -3079,6 +2998,7 @@ def systemPrepare(
             definition=definition,
             forcefield_=forcefield,
             src_mol=mol_in,
+            detect_specs=detect_specs,
         )
         mol_out = _biomolecule_to_molecule(biomolecule)
 
@@ -3151,6 +3071,7 @@ def systemPrepare(
             except Exception as e:
                 logger.error(f"Failed at generating pKa plot with error {e}")
         _warn_pk_close_to_ph(df, pH)
+        _warn_metal_adjacent_titration(df, mol_out, pH)
         if hydrophobic_thickness:
             # TODO: I think this only works if the protein is assumed aligned to the membrane and the membrane is centered at Z=0
             _warn_buried_residues(df, mol_out, hydrophobic_thickness)
@@ -3315,6 +3236,59 @@ def _warn_pk_close_to_ph(df, pH, tol=1.0):
             logger.warning(
                 f"Dubious protonation state:    {_fmt_res(dr.resname, dr.resid, dr.insertion, dr.chain)} (pKa={dr.pKa:5.2f})"
             )
+
+
+def _warn_metal_adjacent_titration(df, mol_out, pH, cutoff=6.0, tol=2.0):
+    """Flag titration calls made close to a metal, where PROPKA is least reliable.
+
+    A metal reaches PROPKA as a formal point charge - its own table lists
+    ``FE 3``, ``ZN 2`` and so on - and the Coulomb term is clamped no closer
+    than 4 A. That is calibrated for a free ion in solvent, where the formal
+    charge is close to the real one. For a metal chelated inside a cofactor it
+    is not: a heme iron carries nearer +1 of actual charge, the porphyrin having
+    donated the rest, so entering +3 overstates the field on whatever sits a few
+    Angstrom away. On 1U5U it drags a buried arginine down by 1.7 units.
+
+    The pH-proximity warning alone does not cover this. It fired at 1.0 units
+    while that arginine landed 1.07 away, and a state PDB2PQR applies by patch
+    rather than by rename is invisible to :func:`_list_modifications`. So widen
+    the window, but only where the cause is present, to keep the warning worth
+    reading.
+    """
+    from moleculekit.periodictable import METAL_ELEMENTS
+
+    elements = np.char.title(np.char.strip(mol_out.element.astype(str)))
+    metals = np.isin(elements, list(METAL_ELEMENTS))
+    if not metals.any():
+        return
+    metal_coords = mol_out.coords[metals, :, 0]
+    metal_names = mol_out.resname[metals]
+
+    for _, row in df[df.pKa.notna()].iterrows():
+        if abs(row.pKa - pH) >= tol:
+            continue
+        sel = (
+            (mol_out.chain == row.chain)
+            & (mol_out.resid == row.resid)
+            & (mol_out.insertion == row.insertion)
+            & (mol_out.resname == row.protonation)
+        )
+        if not sel.any():
+            continue
+        dists = np.linalg.norm(
+            metal_coords[None, :, :] - mol_out.coords[sel, :, 0][:, None, :], axis=-1
+        )
+        if dists.min() >= cutoff:
+            continue
+        nearest = metal_names[dists.min(axis=0).argmin()]
+        logger.warning(
+            "Metal-adjacent protonation state: "
+            f"{_fmt_res(row.resname, row.resid, row.insertion, row.chain)} "
+            f"(pKa={row.pKa:5.2f}) is {dists.min():.1f} A from "
+            f"{str(nearest).strip()}. PROPKA enters a metal as a formal point "
+            "charge, which overstates the field around a chelated one, so this "
+            "call is worth reviewing."
+        )
 
 
 def _warn_buried_residues(df, mol_out, hydrophobic_thickness, maxBuried=0.75):

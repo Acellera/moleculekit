@@ -189,159 +189,6 @@ def _two_cys_disulfide():
     return mol
 
 
-def _fake_biomolecule(residues):
-    """A stand-in exposing just the ``residues`` list the helpers walk."""
-
-    class _Biomolecule:
-        def __init__(self, residues):
-            self.residues = residues
-
-    return _Biomolecule(residues)
-
-
-def _fake_amino(resid, chain, insertion="", n_term=False, c_term=False):
-    """A PDB2PQR ``aa.Amino`` stand-in carrying only what the helpers read.
-
-    Subclassing is what matters: ``_pdb2pqr_terminus_decisions`` uses
-    ``isinstance(residue, aa.Amino)`` to tell "``set_termini`` judged this and
-    declined" apart from "``set_termini`` never looks at this kind of residue".
-    """
-    from pdb2pqr import aa
-
-    class _Amino(aa.Amino):
-        def __init__(self):
-            self.res_seq = resid
-            self.chain_id = chain
-            self.ins_code = insertion
-            self.is_n_term = 1 if n_term else 0
-            self.is_c_term = 1 if c_term else 0
-
-    return _Amino()
-
-
-def _fake_het(resid, chain, insertion=""):
-    """A non-``aa.Amino`` residue: one ``set_termini`` never judges."""
-
-    class _Het:
-        def __init__(self):
-            self.res_seq = resid
-            self.chain_id = chain
-            self.ins_code = insertion
-
-    return _Het()
-
-
-def _fake_propka_molecule(atoms):
-    """A PROPKA container stand-in with a single conformation."""
-
-    class _Conformation:
-        def __init__(self, atoms):
-            self.atoms = atoms
-
-    class _Molecule:
-        def __init__(self, atoms):
-            self.conformations = {"1A": _Conformation(atoms)}
-
-    return _Molecule(atoms)
-
-
-def _fake_propka_atom(terminal, resid, chain, insertion="", resname="ALA"):
-    """A PROPKA ``Atom`` stand-in; only ``terminal`` is ever written back."""
-
-    class _Atom:
-        def __init__(self):
-            self.terminal = terminal
-            self.res_num = resid
-            self.chain_id = chain
-            self.icode = insertion
-            self.res_name = resname
-
-    return _Atom()
-
-
-def test_clear_phantom_termini_drops_cyclic_ring_closure():
-    """PROPKA reads termini out of the PDB text it is handed - the first ATOM
-    residue after a TER becomes N+ - so a head-to-tail cyclic peptide gets a
-    spurious +1 ammonium on the amide nitrogen that closes the ring. PDB2PQR's
-    ``set_termini`` already declined that terminus (its cyclic distance guard),
-    so the flag must be cleared."""
-    from moleculekit.tools.preparation import _clear_phantom_termini
-
-    atom = _fake_propka_atom("N+", 1, "A", resname="DAL")
-    molecule = _fake_propka_molecule([atom])
-    biomolecule = _fake_biomolecule([_fake_amino(1, "A")])
-
-    assert _clear_phantom_termini(molecule, biomolecule) == 1
-    assert atom.terminal is None
-
-
-def test_clear_phantom_termini_keeps_a_real_terminus():
-    """A genuine chain N-terminus that PDB2PQR itself flagged is left alone -
-    the reconciliation only ever removes termini, never adds them."""
-    from moleculekit.tools.preparation import _clear_phantom_termini
-
-    atom = _fake_propka_atom("N+", 1, "A", resname="GLY")
-    molecule = _fake_propka_molecule([atom])
-    biomolecule = _fake_biomolecule([_fake_amino(1, "A", n_term=True)])
-
-    assert _clear_phantom_termini(molecule, biomolecule) == 0
-    assert atom.terminal == "N+"
-
-
-def test_clear_phantom_termini_drops_insertion_code_sibling():
-    """PROPKA matches the N-terminal residue on the residue NUMBER alone and
-    ignores the insertion code, so in chymotrypsin-numbered structures every
-    residue sharing that number is flagged. 1A4W's thrombin light chain has
-    both ASP1A (the real N-terminus) and a mid-chain CYS1; only the latter's
-    flag may be cleared."""
-    from moleculekit.tools.preparation import _clear_phantom_termini
-
-    real = _fake_propka_atom("N+", 1, "L", insertion="A", resname="ASP")
-    phantom = _fake_propka_atom("N+", 1, "L", resname="CYS")
-    molecule = _fake_propka_molecule([real, phantom])
-    biomolecule = _fake_biomolecule(
-        [
-            _fake_amino(1, "L", insertion="A", n_term=True),
-            _fake_amino(1, "L"),
-        ]
-    )
-
-    assert _clear_phantom_termini(molecule, biomolecule) == 1
-    assert real.terminal == "N+"
-    assert phantom.terminal is None
-
-
-def test_clear_phantom_termini_leaves_unjudged_residues_alone():
-    """``set_termini`` only assigns termini to ``aa.Amino`` residues, so its
-    silence about anything else is not a decision. PROPKA's own call stands."""
-    from moleculekit.tools.preparation import _clear_phantom_termini
-
-    atom = _fake_propka_atom("C-", 400, "B", resname="LIG")
-    molecule = _fake_propka_molecule([atom])
-    biomolecule = _fake_biomolecule([_fake_het(400, "B")])
-
-    assert _clear_phantom_termini(molecule, biomolecule) == 0
-    assert atom.terminal == "C-"
-
-
-def test_pdb2pqr_terminus_decisions_reports_only_judged_residues():
-    """The ``considered`` set is what separates a declined terminus from one
-    PDB2PQR never ruled on."""
-    from moleculekit.tools.preparation import _pdb2pqr_terminus_decisions
-
-    biomolecule = _fake_biomolecule(
-        [
-            _fake_amino(1, "A", n_term=True),
-            _fake_amino(9, "A", c_term=True),
-            _fake_amino(5, "A"),
-            _fake_het(400, "B"),
-        ]
-    )
-    n_term, c_term, considered = _pdb2pqr_terminus_decisions(biomolecule)
-
-    assert n_term == {(1, "A", "")}
-    assert c_term == {(9, "A", "")}
-    assert considered == {(1, "A", ""), (9, "A", ""), (5, "A", "")}
 
 
 def test_detect_non_termini_head_to_tail_closure_explicit_bond():
@@ -1006,15 +853,19 @@ def test_nonstandard_residues(tmp_path, system):
     )
 
     # RCSB-style carboxyl SMILES; ``_try_strip_unmatched_terminals`` in
-    # rdkittools drops the OXT -OH for mid-chain residues automatically.
+    # rdkittools drops the OXT -OH for mid-chain residues automatically. The
+    # backbone C(=O)O / N stand for the peptide backbone, so they stay neutral
+    # even for a mid-chain residue. Side chains and free ligands carry the
+    # charge state of pH 7.4 instead: TYS's aryl sulfate is a strong acid and
+    # SAH, being a free ligand, is a zwitterion.
     res_smiles = {
         "200": "c1cc(ccc1C[C@@H](C(=O)O)N)Cl",
         "ALC": "C1CCC(CC1)C[C@@H](C(=O)O)N",
-        "HRG": "C(CCNC(=N)N)C[C@@H](C(=O)O)N",
+        "HRG": "C(CCNC(=[NH2+])N)C[C@@H](C(=O)O)N",
         "NLE": "CCCC[C@@H](C(=O)O)N",
         "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C(=O)O",
-        "TYS": "c1cc(ccc1C[C@@H](C(=O)O)N)OS(=O)(=O)O",
-        "SAH": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CSCC[C@@H](C(=O)O)N)O)O)N",
+        "TYS": "c1cc(ccc1C[C@@H](C(=O)O)N)OS(=O)(=O)[O-]",
+        "SAH": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CSCC[C@@H](C(=O)[O-])[NH3+])O)O)N",
     }
     mol = Molecule(os.path.join(test_home, f"{system}.pdb"))
     if system == "2QRV":
@@ -1320,10 +1171,30 @@ def test_disabling_titration():
     assert df.protonation[df.resid == 69].iloc[0] == "HID"
     assert df.protonation[df.resid == 69].iloc[1] == "HID"
 
-    # Delete the resid 25 from both dataframes and compare
-    df_ref = df_ref[df_ref.resid != 25]
-    df = df[df.resid != 25]
-    assert df_ref.equals(df)
+    # Restricting titration changes the protonation of the residues it excludes,
+    # and drops the two columns PROPKA is the source of. Everything else about
+    # them is untouched.
+    reported = ["pKa", "buried"]
+    ref_rest = df_ref[df_ref.resid != 25].drop(columns=reported).reset_index(drop=True)
+    rest = df[df.resid != 25].drop(columns=reported).reset_index(drop=True)
+    assert ref_rest.equals(rest)
+
+    # A pKa in the table means "this state was decided by titration", so the
+    # residues taken out of titration stop reporting one. They still appear, and
+    # HIS - the one kind still being titrated - keeps its pKa. pKa and buried
+    # come from the same PROPKA row, so they are present or absent together.
+    assert df[df.resname == "HIS"].pKa.notna().any()
+    assert (df.pKa.isna() == df.buried.isna()).all()
+    for resn in ("ASP", "GLU", "LYS", "TYR", "ARG"):
+        excluded = df[df.resname == resn]
+        assert len(excluded), f"expected {resn} residues in 1AID"
+        assert excluded.pKa.isna().all(), (
+            f"{resn} was excluded from titration but still reports a pKa:\n"
+            f"{excluded[['resname', 'resid', 'chain', 'pKa']]}"
+        )
+        assert df_ref[df_ref.resname == resn].pKa.notna().any(), (
+            f"{resn} should report a pKa when everything is titrated"
+        )
 
     # Delete resid 25 from pmol_ref and pmol and compare
     pmol_ref.remove("resid 25")
@@ -1656,7 +1527,7 @@ def test_5vbl_templated_bonds_preserved():
     from moleculekit.tools.preparation import systemPrepare
 
     smiles = {
-        "HRG": "C(CCNC(=N)N)C[C@@H](C(=O)O)N",
+        "HRG": "C(CCNC(=[NH2+])N)C[C@@H](C(=O)O)N",
         "ALC": "C1CCC(CC1)CC(C(=O)O)N",
         "OIC": "C1CCC2C(C1)CC(N2)C(=O)O",
         "NLE": "CCCC[C@@H](C(=O)O)N",
@@ -1703,7 +1574,7 @@ def test_systemprepare_errors_on_untemplated_ncaa():
 
     # Template every NCAA in 5VBL EXCEPT ALC and NLE.
     smiles = {
-        "HRG": "C(CCNC(=N)N)C[C@@H](C(=O)O)N",
+        "HRG": "C(CCNC(=[NH2+])N)C[C@@H](C(=O)O)N",
         "OIC": "C1CCC2C(C1)CC(N2)C(=O)O",
         "200": "c1cc(ccc1CC(C(=O)O)N)Cl",
     }
@@ -1747,7 +1618,7 @@ def test_5vbl_restore_missing_sidechains():
 
     # NCAAs in 5VBL — same SMILES as the rest of the 5VBL suite.
     smiles = {
-        "HRG": "C(CCNC(=N)N)C[C@@H](C(=O)O)N",
+        "HRG": "C(CCNC(=[NH2+])N)C[C@@H](C(=O)O)N",
         "ALC": "C1CCC(CC1)CC(C(=O)O)N",
         "OIC": "C1CCC2C(C1)CC(N2)C(=O)O",
         "NLE": "CCCC[C@@H](C(=O)O)N",
@@ -2677,3 +2548,174 @@ def test_reference_prepared_pdbs_have_no_overvalent_atoms():
     assert not offenders, "Over-valent atom(s) in reference PDB(s):\n" + "\n".join(
         offenders
     )
+
+
+def test_templated_spec_keys_selects_only_chain_resident_specs():
+    """Only a ``ChainResidueSpec`` arrives templated, so only it is exempted.
+
+    A free ligand is not: nothing requires the caller to template one, and
+    PDB2PQR reads it back as a plain residue that ``apply_pka_values`` skips
+    for not being an amino acid.
+    """
+    from moleculekit.tools.preparation import _templated_spec_keys
+    from moleculekit.molecule import UniqueResidueID
+    from moleculekit.tools.nonstandard_residues import (
+        ChainResidueSpec,
+        LigandSpec,
+    )
+
+    def rid(resname, resid, chain, insertion=""):
+        return UniqueResidueID(
+            resname=resname, chain=chain, resid=resid, insertion=insertion, segid="0"
+        )
+
+    specs = [
+        ChainResidueSpec(resname="HRG", residue=rid("HRG", 8, "A")),
+        ChainResidueSpec(resname="NLE", residue=rid("NLE", 15, "A", "B")),
+        LigandSpec(resname="FAD", residue=rid("FAD", 300, "A")),
+    ]
+    assert _templated_spec_keys(specs) == {(8, "A", ""), (15, "A", "B")}
+    assert _templated_spec_keys([]) == set()
+    assert _templated_spec_keys(None) == set()
+
+
+def test_templated_residues_report_no_pka():
+    """A templated residue keeps its row but reports no pKa.
+
+    Explicit hydrogens are a protonation state, so the caller has already
+    decided one and PROPKA must not overrule it. Reporting a pKa anyway would
+    say the state came from titration when it did not. Its charge still reaches
+    PROPKA - the rows are dropped after the pKas are computed, so neighbouring
+    residues still see the sidechain.
+    """
+    from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
+
+    test_home = os.path.join(
+        curr_dir, "test_systemprepare", "test-nonstandard-residues", "5VBL"
+    )
+    res_smiles = {
+        "HRG": "C(CCNC(=[NH2+])N)C[C@@H](C(=O)O)N",
+        "200": "c1cc(ccc1C[C@@H](C(=O)O)N)Cl",
+        "ALC": "C1CCC(CC1)C[C@@H](C(=O)O)N",
+        "NLE": "CCCC[C@@H](C(=O)O)N",
+        "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C(=O)O",
+        "TYS": "c1cc(ccc1C[C@@H](C(=O)O)N)OS(=O)(=O)[O-]",
+    }
+    mol = Molecule(os.path.join(test_home, "5VBL.pdb"))
+    mol.remove("element H", _logger=False)
+    mol.set("chain", "W", sel="water")
+    specs = detectNonStandardResidues(mol)
+    templated = {s.resname for s in specs} & res_smiles.keys()
+    for resn in templated:
+        mol.templateResidueFromSmiles(
+            f"resname '{resn}'", res_smiles[resn], addHs=True, _logger=False
+        )
+
+    _, _, df = systemPrepare(
+        mol, return_details=True, hold_nonpeptidic_bonds=True, detect_specs=specs
+    )
+
+    ncaa = df[df.resname.isin(templated)]
+    assert len(ncaa), "the templated NCAAs must still appear in the table"
+    assert ncaa.pKa.isna().all(), (
+        f"templated residues must report no pKa, got:\n{ncaa[['resname', 'resid', 'pKa']]}"
+    )
+    # The guanidinium is what makes HRG worth templating; the row has to stay so
+    # the caller can see the state that was applied.
+    hrg = df[(df.resname == "HRG") & (df.resid == 8)]
+    assert len(hrg) == 1
+    assert hrg.protonation.iloc[0] == "HRG"
+
+    # A canonical residue is still titrated and still reports its pKa.
+    assert df[df.resname == "ASP"].pKa.notna().any()
+
+
+def _pka_row(resname, resnum, chain, pka, ins=""):
+    return {
+        "res_name": resname,
+        "res_num": resnum,
+        "chain_id": chain,
+        "ins_code": ins,
+        "pKa": pka,
+        "group_label": f"{resname} {resnum} {chain}",
+    }
+
+
+def test_arginine_is_never_neutralized():
+    """No AMBER library defines a neutral arginine, so we never ask for one.
+
+    PDB2PQR's AR0 patch strips HE without renaming the residue, which would
+    leave a residue still called ARG with a hydrogen missing.
+    """
+    from moleculekit.tools.preparation import _pka_values_for_titration
+
+    rows = [
+        _pka_row("ARG", 349, "A", 6.33),  # below pH: would be neutralized
+        _pka_row("ARG", 64, "A", 14.34),  # above pH: unaffected either way
+        _pka_row("LYS", 60, "A", 6.50),  # AMBER has LYN, so this one stands
+        _pka_row("ASP", 25, "A", 7.90),
+    ]
+    values = _pka_values_for_titration(rows, 7.4)
+
+    assert "ARG 349 A" not in values, "a neutralizable arginine must be withheld"
+    assert values["ARG 64 A"] == 14.34
+    assert values["LYS 60 A"] == 6.50
+    assert values["ASP 25 A"] == 7.90
+
+
+def test_arginine_guard_uses_the_working_ph():
+    """The cutoff is the build pH, not a constant."""
+    from moleculekit.tools.preparation import _pka_values_for_titration
+
+    rows = [_pka_row("ARG", 1, "A", 9.0)]
+    assert "ARG 1 A" in _pka_values_for_titration(rows, 7.4)
+    assert "ARG 1 A" not in _pka_values_for_titration(rows, 9.0)
+    assert "ARG 1 A" not in _pka_values_for_titration(rows, 10.5)
+
+
+def test_warn_metal_adjacent_titration(caplog):
+    """A titration call near a metal is flagged past the pH-proximity window.
+
+    PROPKA enters a metal as a formal point charge, so the field it reports a
+    few Angstrom out is overstated for a chelated one. The residue that first
+    exposed this sat 1.07 units from the pH, just outside the existing warning.
+    """
+    import logging
+    import pandas as pd
+    from moleculekit.tools.preparation import _warn_metal_adjacent_titration
+
+    mol = Molecule().empty(3)
+    mol.name[:] = ["NE", "NZ", "ZN"]
+    mol.element[:] = ["N", "N", "Zn"]
+    mol.resname[:] = ["ARG", "LYS", "ZN"]
+    mol.resid[:] = [1, 2, 3]
+    mol.chain[:] = "A"
+    mol.insertion[:] = ""
+    mol.coords = np.array(
+        [[0.0, 0.0, 0.0], [30.0, 0.0, 0.0], [4.0, 0.0, 0.0]], dtype=np.float32
+    ).reshape(3, 3, 1)
+
+    df = pd.DataFrame(
+        {
+            "resname": ["ARG", "LYS"],
+            "protonation": ["ARG", "LYS"],
+            "resid": [1, 2],
+            "insertion": ["", ""],
+            "chain": ["A", "A"],
+            "pKa": [6.33, 6.33],
+        }
+    )
+    with caplog.at_level(logging.WARNING):
+        _warn_metal_adjacent_titration(df, mol, 7.4)
+
+    flagged = [r.message for r in caplog.records if "Metal-adjacent" in r.message]
+    assert len(flagged) == 1, f"expected only the near residue, got {flagged}"
+    assert "ARG" in flagged[0] and "ZN" in flagged[0]
+
+    # Nothing to say when the structure has no metal at all.
+    caplog.clear()
+    nometal = mol.copy()
+    nometal.filter("not name ZN", _logger=False)
+    with caplog.at_level(logging.WARNING):
+        _warn_metal_adjacent_titration(df, nometal, 7.4)
+    assert not [r for r in caplog.records if "Metal-adjacent" in r.message]

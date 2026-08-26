@@ -1388,3 +1388,36 @@ def diagnoseTemplateMismatch(mol, resname: str, smiles: str) -> TemplateMismatch
         name=name,
         formula=formula,
     )
+
+
+def _bonded_atom_indices(mol):
+    """Set of atom indices appearing in ``mol.bonds``."""
+    if mol.bonds is None or len(mol.bonds) == 0:
+        return set()
+    return set(int(i) for i in np.asarray(mol.bonds).ravel())
+
+
+def _residue_is_templated(mol, res_mask, bonded_idx=None):
+    """Whether a residue carries what templating leaves behind.
+
+    A templated residue has explicit hydrogens *and* a fully bonded heavy-atom
+    skeleton. Both halves matter: the hydrogens catch a residue nothing was ever
+    applied to, and the bonding catches a partial input where hydrogens were
+    added by hand but bonds skipped.
+
+    This asks a narrower question than htmd's ``_check_specs_templated``, which
+    tests for bonds *and bond orders* because GAFF perceives a residue's
+    chemistry from connectivity. Explicit hydrogens are what matter here: a
+    protonation state *is* hydrogens, so a residue read from a CIF carries the
+    bond orders that check wants while saying nothing about the protonation
+    the input asserts.
+    """
+    if bonded_idx is None:
+        bonded_idx = _bonded_atom_indices(mol)
+    idxs = np.where(res_mask)[0]
+    if len(idxs) == 0:
+        return False
+    is_h = np.char.title(np.char.strip(mol.element[idxs].astype(str))) == "H"
+    if not is_h.any():
+        return False
+    return all(int(i) in bonded_idx for i in idxs[~is_h])
