@@ -65,7 +65,16 @@ export interface Scene {
 function colorOf(value: string): Color {
   const named = (ColorNames as Record<string, Color>)[value.toLowerCase()]
   if (named !== undefined) return named
-  return Color(parseInt(value.replace('#', ''), 16))
+  const parsed = parseInt(value.replace('#', ''), 16)
+  if (Number.isNaN(parsed)) {
+    // Every unrecognised colour used to reach Color(NaN) and draw the same
+    // wrong colour, so a mistyped name and a colour theme name that is not one
+    // of the mapped ones both produced a picture that looked deliberate.
+    throw new Error(
+      `Not a colour: ${value}. Use an SVG colour name or a hex string like #ff8800.`
+    )
+  }
+  return Color(parsed)
 }
 
 // These mirror MVS's own resolution of its static selectors, not the bare
@@ -171,6 +180,32 @@ function representationParams(representation: SceneComponent['representation']):
       return { type: 'line', typeParams: {}, size: 'uniform', sizeParams: { value } }
     case 'spacefill':
       return { type: 'spacefill', typeParams: {}, size: 'physical', sizeParams: { scale: value } }
+    // Surface and point sizes are pmview's, so a moleculekit render and a
+    // pmview session of the same structure come out the same thickness.
+    case 'molecular_surface':
+      return {
+        type: 'molecular-surface',
+        typeParams: {},
+        size: 'physical',
+        sizeParams: { scale: 1.5 * value },
+      }
+    case 'gaussian_surface':
+      return {
+        type: 'gaussian-surface',
+        typeParams: {},
+        size: 'physical',
+        sizeParams: { scale: 3.0 * value },
+      }
+    case 'point':
+      return { type: 'point', typeParams: {}, size: 'uniform', sizeParams: { value: 3.0 * value } }
+    case 'label':
+      // level 'element' labels each atom; Mol*'s own default is 'residue'.
+      return {
+        type: 'label',
+        typeParams: { level: 'element' },
+        size: 'physical',
+        sizeParams: { scale: value },
+      }
     default:
       throw new Error(`applyScene cannot render representation type: ${representation.type}`)
   }

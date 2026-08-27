@@ -206,6 +206,46 @@ def test_non_positive_clip_is_rejected(clip):
 
 
 @needs_chromium
+@pytest.mark.parametrize(
+    "style", ["Surf", "QuickSurf", "Points", "Labels", "FormalCharges"]
+)
+def test_added_representation_types_draw(style):
+    """Each style Mol* gained must actually draw something.
+
+    An unmapped style used to fall through to ball-and-stick, which drew a
+    plausible picture of the wrong representation.
+    """
+    import io
+
+    from PIL import Image
+
+    mol = _trypsin()
+    mol.filter("resid 100 to 103")
+    mol.formalcharge[0] = 1
+    if style == "FormalCharges":
+        # Labels alone draw nothing, so they go on top of a representation.
+        mol.reps.add("all", "Licorice", "Name")
+    mol.reps.add("all", style, "Name")
+    image = Image.open(io.BytesIO(render_mod.render(mol, size=(250, 250))))
+    assert (np.asarray(image.convert("L")) < 245).sum() > 100, f"{style} drew nothing"
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+def test_an_unusable_colour_is_an_error_not_a_wrong_colour():
+    """Every unrecognised colour used to reach Color(NaN) and draw alike.
+
+    A mistyped name and a Mol* theme name that is not one of the mapped ones
+    both rendered the same wrong colour, which looks deliberate.
+    """
+    mol = _trypsin()
+    mol.reps.add("all", "VDW", "notacolour")
+    with pytest.raises(RuntimeError, match="Not a colour"):
+        render_mod.render(mol, size=(60, 60))
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
 def test_clip_sets_the_slab_thickness_and_is_off_by_default():
     """Framing a selection must not silently cut geometry off.
 

@@ -6,6 +6,90 @@ if TYPE_CHECKING:
     from moleculekit.molecule import Molecule
 
 
+#: Representation styles, and the Mol* representation each one draws as. The
+#: names are VMD's, since that is the vocabulary ``mol.reps`` has always used.
+MOLSTAR_STYLES = {
+    "newcartoon": "cartoon",
+    "cartoon": "cartoon",
+    "licorice": "ball_and_stick",
+    "cpk": "ball_and_stick",
+    "vdw": "spacefill",
+    "lines": "line",
+    "surf": "molecular_surface",
+    "quicksurf": "gaussian_surface",
+    "points": "point",
+    "labels": "label",
+    "formalcharges": "formal_charge",
+    # Mol*'s own names for the same things, so a representation can be written
+    # in either vocabulary. Normalisation drops the hyphens, so "ball-and-stick"
+    # and "ballandstick" arrive here the same.
+    "ballandstick": "ball_and_stick",
+    "spacefill": "spacefill",
+    "line": "line",
+    "molecularsurface": "molecular_surface",
+    "gaussiansurface": "gaussian_surface",
+    "point": "point",
+    "label": "label",
+    "atomlabel": "label",
+}
+
+#: The VMD representation each Mol* style name corresponds to. VMD's own names
+#: are sent as written, so only the Mol* spellings need translating.
+VMD_STYLES = {
+    "ballandstick": "CPK",
+    "spacefill": "VDW",
+    "line": "Lines",
+    "molecularsurface": "Surf",
+    "gaussiansurface": "QuickSurf",
+    "point": "Points",
+}
+
+#: The VMD coloring method each colouring mode corresponds to. Modes VMD has no
+#: equivalent for (hydrophobicity, molecule type) are sent as written and VMD
+#: rejects them, which is what it did before any of these were accepted here.
+VMD_COLORS = {
+    "secondarystructure": "Structure",
+    "elementsymbol": "Name",
+    "chainid": "Chain",
+    "residuename": "ResName",
+    "sequenceid": "ResID",
+    "atomid": "Index",
+}
+
+#: Colouring modes, and the Mol* colour theme each one selects. Keys are
+#: matched with spaces, hyphens and underscores removed, so "Secondary
+#: Structure" and "SecondaryStructure" are the same mode. Our own docstrings
+#: used the second spelling, which fell through to being read as a colour name
+#: and drew a garbage uniform colour.
+MOLSTAR_THEMES = {
+    "name": "element-symbol",
+    "element": "element-symbol",
+    "chain": "chain-id",
+    "secondarystructure": "secondary-structure",
+    "resname": "residue-name",
+    # Not residue-id, which is no theme Mol* knows: it fell back to the
+    # default and coloured by chain instead, silently.
+    "index": "sequence-id",
+    "hydrophobicity": "hydrophobicity",
+    "moleculetype": "molecule-type",
+    "atomid": "atom-id",
+    # Mol*'s own theme names. Several already match after normalisation
+    # ("secondary-structure", "molecule-type", "atom-id"); these are the rest.
+    "elementsymbol": "element-symbol",
+    "chainid": "chain-id",
+    "residuename": "residue-name",
+    "sequenceid": "sequence-id",
+}
+
+#: Styles no viewer but Mol* draws, skipped rather than sent to the others.
+_MOLSTAR_ONLY_STYLES = ("labels", "label", "atomlabel", "formalcharges")
+
+
+def _normalize(name: str) -> str:
+    """Fold a style or colour name to its lookup key."""
+    return name.lower().replace(" ", "").replace("-", "").replace("_", "")
+
+
 class Representations:
     """Class that stores representations for Molecule.
 
@@ -55,6 +139,7 @@ class Representations:
         color: "str | int | None" = None,
         frames: list | None = None,
         opacity: float | None = None,
+        size: float | None = None,
     ):
         """Adds a new representation for Molecule.
 
@@ -64,16 +149,37 @@ class Representations:
             Atom selection (string, boolean mask, or integer index array) for the representation.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         style : str
-            Representation style. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node55.html>`__.
+            Representation style, in either vocabulary. VMD's ``NewCartoon``,
+            ``Cartoon``, ``Licorice``, ``CPK``, ``VDW``, ``Lines``, ``Surf``,
+            ``QuickSurf``, ``Points``, ``Labels`` and ``FormalCharges``, or
+            Mol*'s ``cartoon``, ``ball-and-stick``, ``spacefill``, ``line``,
+            ``molecular-surface``, ``gaussian-surface``, ``point`` and
+            ``atom-label`` (also ``label``) for the same things. Spacing, case
+            and hyphens are ignored, and anything else is rejected rather than
+            drawn as something it is not. ``Labels`` writes each atom's name
+            beside it and ``FormalCharges`` writes ``+1``/``-1`` on atoms
+            carrying one, both on top of another representation that draws the
+            atoms; neither reaches VMD or NGL. Any other VMD style still works
+            in VMD, which is sent the name as written. See more
+            `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node55.html>`__.
         color : str or int
-            Coloring mode (str) or ColorID (int).
-            See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
+            Coloring mode (str) or ColorID (int), in either vocabulary. VMD's
+            ``Name``, ``Element``, ``Chain``, ``ResName``, ``Index``,
+            ``Secondary Structure``, ``Hydrophobicity``, ``Molecule Type`` and
+            ``Atom ID``, or Mol*'s ``element-symbol``, ``chain-id``,
+            ``residue-name``, ``sequence-id``, ``secondary-structure``,
+            ``hydrophobicity``, ``molecule-type`` and ``atom-id``. Any SVG
+            colour name or ``#rrggbb`` string gives a uniform colour. See more
+            `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
         frames : list
             List of frames to visualize with this representation. If None it will visualize the current frame only.
         opacity : float
             Opacity of the representation. 0 is fully transparent and 1 is fully opaque.
+        size : float
+            Scales the drawn size: stick and sphere radius, surface probe, point
+            size, label text. Each style keeps its own sensible size at 1.
         """
-        self.replist.append(_Representation(sel, style, color, frames, opacity))
+        self.replist.append(_Representation(sel, style, color, frames, opacity, size))
 
     def addDefaults(self):
         """Add the representations a viewer draws when none are set.
@@ -124,18 +230,39 @@ class Representations:
         return s
 
     def _translateNGL(self, rep):
+        if _normalize(rep.style) in _MOLSTAR_ONLY_STYLES:
+            return None
         styletrans = {
             "newcartoon": "cartoon",
+            "cartoon": "cartoon",
             "licorice": "hyperball",
             "lines": "line",
+            "line": "line",
             "vdw": "spacefill",
+            "spacefill": "spacefill",
             "cpk": "ball+stick",
+            "ballandstick": "ball+stick",
+            "surf": "surface",
+            "molecularsurface": "surface",
+            "quicksurf": "surface",
+            "gaussiansurface": "surface",
+            "points": "point",
+            "point": "point",
         }
         colortrans = {
             "name": "element",
+            "element": "element",
+            "elementsymbol": "element",
             "index": "residueindex",
+            "sequenceid": "residueindex",
             "chain": "chainindex",
-            "secondary structure": "sstruc",
+            "chainid": "chainindex",
+            "resname": "resname",
+            "residuename": "resname",
+            "secondarystructure": "sstruc",
+            "hydrophobicity": "hydrophobicity",
+            "moleculetype": "moleculetype",
+            "atomid": "atomindex",
             "colorid": "color",
         }
         hexcolors = {
@@ -157,39 +284,20 @@ class Representations:
             )
         except Exception:
             return None
-        if rep.style.lower() in styletrans:
-            style = styletrans[rep.style.lower()]
-        else:
-            style = rep.style
+        style = styletrans.get(_normalize(rep.style), rep.style)
         if isinstance(rep.color, int):
             color = hexcolors[rep.color]
-        elif rep.color.lower() in colortrans:
-            color = colortrans[rep.color.lower()]
         else:
-            color = rep.color
-        return _Representation(sel=selidx, style=style, color=color)
+            color = colortrans.get(_normalize(rep.color), rep.color)
+        return _Representation(sel=selidx, style=style, color=color, size=rep.size)
 
     def _translateMolstar(self, rep):
         """Translate a VMD-flavored representation to a plain dict for the
         inline molstar scene IR: resolved atom indices, an MVS rep type, and a
         color (a {"theme": name} dict or a uniform hex/SVG string). Returns
         None if the selection matches no atoms."""
-        styletrans = {
-            "newcartoon": "cartoon",
-            "cartoon": "cartoon",
-            "licorice": "ball_and_stick",
-            "cpk": "ball_and_stick",
-            "vdw": "spacefill",
-            "lines": "line",
-        }
-        themetrans = {
-            "name": "element-symbol",
-            "element": "element-symbol",
-            "chain": "chain-id",
-            "secondary structure": "secondary-structure",
-            "resname": "residue-name",
-            "index": "residue-id",
-        }
+        styletrans = MOLSTAR_STYLES
+        themetrans = MOLSTAR_THEMES
         hexcolors = {
             0: "#0000ff",
             1: "#ff0000",
@@ -206,29 +314,46 @@ class Representations:
         indices = [int(i) for i in self._mol.atomselect(rep.sel, indexes=True)]
         if not indices:
             return None
-        style = styletrans.get(rep.style.lower(), "ball_and_stick")
+        style_key = _normalize(rep.style)
+        if style_key not in styletrans:
+            # Silently drawing something else is worse than not drawing: an
+            # unmapped style used to come out as ball-and-stick, so asking for
+            # a surface produced sticks and looked like the surface had simply
+            # not worked.
+            raise ValueError(
+                f"Unknown representation style {rep.style!r}. Use one of "
+                f"{sorted(s.title() for s in styletrans)}."
+            )
+        style = styletrans[style_key]
         if isinstance(rep.color, int):
             color = hexcolors.get(rep.color, "#808080")
-        elif rep.color.lower() in themetrans:
-            color = {"theme": themetrans[rep.color.lower()]}
+        elif _normalize(rep.color) in themetrans:
+            color = {"theme": themetrans[_normalize(rep.color)]}
         else:
             color = rep.color
         out = {"atom_indices": indices, "type": style, "color": color}
         if rep.opacity is not None and rep.opacity != 1:
             out["opacity"] = float(rep.opacity)
+        if rep.size is not None:
+            out["size_factor"] = float(rep.size)
         return out
 
     def _repsVMD(self, viewer):
-        colortrans = {"secondary structure": "Structure"}
         if len(self.replist) > 0:
             viewer.send("mol delrep 0 top")
             for rep in self.replist:
-                if isinstance(rep.color, str) and rep.color.lower() in colortrans:
-                    color = colortrans[rep.color.lower()]
+                if _normalize(rep.style) in _MOLSTAR_ONLY_STYLES:
+                    continue
+                if isinstance(rep.color, str):
+                    color = VMD_COLORS.get(_normalize(rep.color), rep.color)
                 else:
                     color = rep.color
+                style = VMD_STYLES.get(_normalize(rep.style), rep.style)
+                if rep.size is not None:
+                    # VMD takes the size as the representation's first argument.
+                    style = f"{style} {float(rep.size)}"
                 viewer.send(f"mol selection {rep.sel}")
-                viewer.send(f"mol representation {rep.style}")
+                viewer.send(f"mol representation {style}")
                 if isinstance(rep.color, str) and not rep.color.isnumeric():
                     viewer.send(f"mol color {color}")
                 else:
@@ -242,12 +367,10 @@ class Representations:
             for r in self.replist:
                 r2 = self._translateNGL(r)
                 if r2 is not None:
-                    reps.append(
-                        {
-                            "type": r2.style,
-                            "params": {"sele": r2.sel, "color": r2.color},
-                        }
-                    )
+                    params = {"sele": r2.sel, "color": r2.color}
+                    if r2.size is not None:
+                        params["radiusScale"] = float(r2.size)
+                    reps.append({"type": r2.style, "params": params})
             if reps != []:
                 viewer.representations = reps
 
@@ -265,6 +388,9 @@ class _Representation:
     color : str or int
         Coloring mode (str) or ColorID (int).
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
+    size : float
+        Scales the drawn size: stick and sphere radius, surface probe, point
+        size, label text.
     frames : list
         List of frames to visualize with this representation. If None it will visualize the current frame only.
     opacity : float
@@ -277,9 +403,12 @@ class _Representation:
     >>> r = _Representation(sel='ions', style='VDW', color=1)
     """
 
-    def __init__(self, sel=None, style=None, color=None, frames=None, opacity=None):
+    def __init__(
+        self, sel=None, style=None, color=None, frames=None, opacity=None, size=None
+    ):
         self.sel = "all" if sel is None else sel
         self.style = "Lines" if style is None else style
         self.color = "Name" if color is None else color
         self.frames = frames
         self.opacity = 1 if opacity is None else opacity
+        self.size = size

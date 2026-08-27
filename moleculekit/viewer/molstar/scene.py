@@ -210,11 +210,27 @@ def default_representations(mol) -> list[tuple]:
     return reps
 
 
-def _components_from_reps(mol, reps) -> list[dict]:
-    """Translate user representations, which replace the automatic scene."""
+def _components_from_reps(mol, reps) -> tuple[list[dict], list[dict]]:
+    """Translate user representations, which replace the automatic scene.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule the selections are resolved against.
+    reps : list
+        The representations to translate.
+
+    Returns
+    -------
+    components : list of dict
+        One scene component per drawable representation.
+    labels : list of dict
+        Formal charge labels contributed by ``FormalCharges`` representations.
+    """
     from moleculekit.representations import Representations
 
     components = []
+    labels = []
     dropped = []
     for rep in reps:
         translated = Representations(mol)._translateMolstar(rep)
@@ -223,6 +239,14 @@ def _components_from_reps(mol, reps) -> list[dict]:
             logger.warning(
                 "Representation selection %r matched no atoms and was dropped.",
                 rep.sel,
+            )
+            continue
+        if translated["type"] == "formal_charge":
+            # Not a component: this draws the same per-atom "+1"/"-1" text the
+            # automatic scene puts on charged atoms, restricted to the atoms
+            # this representation selected.
+            labels.extend(
+                _labels(mol, translated["atom_indices"], translated.get("size_factor", 1.0))
             )
             continue
         color = translated.get("color")
@@ -237,6 +261,8 @@ def _components_from_reps(mol, reps) -> list[dict]:
             # The size the automatic scene uses, so reps.addDefaults() draws
             # the same picture as setting no representations at all.
             representation["size_factor"] = BALL_AND_STICK_SIZE_FACTOR
+        if "size_factor" in translated:
+            representation["size_factor"] = translated["size_factor"]
         component = {
             "select": _atoms(translated["atom_indices"]),
             "representation": representation,
@@ -246,19 +272,20 @@ def _components_from_reps(mol, reps) -> list[dict]:
             component["opacity"] = translated["opacity"]
         components.append(component)
 
-    if not components:
+    if not components and not labels:
         raise ValueError(
             "Every representation selection matched no atoms "
             f"({', '.join(repr(s) for s in dropped)}), which would render an "
             "empty scene. Check the selections, or clear mol.reps to get the "
             "automatic scene."
         )
-    return components
+    return components, labels
 
 
-def _labels(mol) -> list[dict]:
+def _labels(mol, indices=None, size=1.0) -> list[dict]:
     charges = mol.formalcharge
-    charged = [i for i in range(len(charges)) if int(charges[i]) != 0]
+    within = range(len(charges)) if indices is None else indices
+    charged = [i for i in within if int(charges[i]) != 0]
     if not charged:
         return []
     if len(charged) > MAX_FORMAL_CHARGE_LABELS:
@@ -279,7 +306,7 @@ def _labels(mol) -> list[dict]:
                 "atom": int(i),
                 "position": [float(mol.coords[i, axis, frame]) for axis in range(3)],
                 "text": f"+{q}" if q > 0 else f"{q}",
-                "size": 0.7,
+                "size": 0.7 * size,
                 "color": "black",
                 "offset": 1.0,
             }
@@ -385,18 +412,31 @@ def build_scene(
     if clip is not None and float(clip) <= 0:
         raise ValueError(f"clip must be a positive distance, got {clip}")
     if reps:
-        components = _components_from_reps(mol, reps)
+        # Labels follow the same replace-the-automatic-scene rule as the
+        # components: with representations set, charges are labelled only
+        # where a FormalCharges representation asks for it.
+        components, labels = _components_from_reps(mol, reps)
     else:
         components = _automatic_components(mol)
+        labels = _labels(mol)
 
     if ball_and_stick_sel is not None:
         mask = mol.atomselect(ball_and_stick_sel)
         if mask.any():
             components.append(_ball_and_stick(_atoms(mask.nonzero()[0]), _ELEMENT))
 
+    if not components:
+        # Reachable through a FormalCharges representation, which contributes
+        # labels and nothing to draw. On its own it renders a blank image:
+        # there is no geometry, so nothing anchors the camera either.
+        raise ValueError(
+            "The representations draw nothing: a FormalCharges representation "
+            "labels atoms that another representation has to draw. Add one for "
+            "the atoms themselves."
+        )
+
     scene: dict = {"components": components}
 
-    labels = _labels(mol)
     if labels:
         scene["labels"] = labels
 
