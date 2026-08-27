@@ -75,6 +75,27 @@ class Representations:
         """
         self.replist.append(_Representation(sel, style, color, frames, opacity))
 
+    def addDefaults(self):
+        """Add the representations a viewer draws when none are set.
+
+        Adding any representation replaces the automatic scene wholesale, so
+        colouring one ligand otherwise costs the cartoon and everything else.
+        This writes that scene out as ordinary entries to edit, reorder or
+        remove. They describe the molecule as it is when this is called, so
+        call it again after adding or removing atoms.
+
+        Examples
+        --------
+        >>> mol = tryp.copy()
+        >>> mol.reps.addDefaults()
+        >>> mol.reps.remove(1)          # drop the waters, ligand and ions
+        >>> mol.reps.add("resname BEN", "VDW", color=0)
+        """
+        from moleculekit.viewer.molstar.scene import default_representations
+
+        for sel, style, color in default_representations(self._mol):
+            self.add(sel, style, color)
+
     def remove(self, index: int | None = None):
         """Removed one or all representations.
 

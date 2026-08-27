@@ -450,18 +450,18 @@ def test_render_shows_the_ligand_and_ion():
     mol = _trypsin()
     mol.reps.add(sel="protein", style="NewCartoon", color="secondary structure")
     mol.reps.add(sel="not protein", style="Licorice")
-    with_hetero = render_mod.render(mol, size=(200, 150), center="protein", zoom=0.7)
+    with_hetero = render_mod.render(mol, size=(400, 300), center="protein", zoom=0.7)
 
     protein_only = _trypsin()
     protein_only.reps.add(sel="protein", style="NewCartoon", color="secondary structure")
     without_hetero = render_mod.render(
-        protein_only, size=(200, 150), center="protein", zoom=0.7
+        protein_only, size=(400, 300), center="protein", zoom=0.7
     )
 
     img_with = Image.open(io.BytesIO(with_hetero)).convert("RGB")
     img_without = Image.open(io.BytesIO(without_hetero)).convert("RGB")
     diff = np.asarray(ImageChops.difference(img_with, img_without))
-    assert diff.sum() > 1000, "the ligand/ion must draw visibly distinct pixels"
+    assert diff.sum() > 2000, "the ligand/ion must draw visibly distinct pixels"
     render_mod.shutdown_for_tests()
 
 

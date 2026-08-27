@@ -178,6 +178,38 @@ def _automatic_components(mol) -> list[dict]:
     return components
 
 
+def default_representations(mol) -> list[tuple]:
+    """The automatic scene written as representations any viewer can draw.
+
+    The automatic scene selects with Mol*'s builtin classifiers, which VMD and
+    NGL have no equivalent of, so the split here is made with atom selection
+    strings instead. It is a faithful starting point rather than a mirror: a
+    residue moleculekit calls protein but that is spelled differently from the
+    names in ``STANDARD_POLYMER_RESNAMES`` lands in the cartoon here and in
+    ball-and-stick there.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule the scene would be built for.
+
+    Returns
+    -------
+    reps : list of tuple
+        ``(sel, style, color)`` triples in drawing order.
+    """
+    if _count_standard_polymer_residues(mol) < MIN_CARTOON_RESIDUES:
+        return [("all", "CPK", "Name")]
+
+    reps = [("protein or nucleic", "NewCartoon", "Secondary Structure")]
+    hetero = "not (protein or nucleic)"
+    # Skipped when it matches nothing, so a bare protein does not carry a
+    # representation that build_scene would only warn about and drop.
+    if mol.atomselect(hetero).any():
+        reps.append((hetero, "CPK", "Name"))
+    return reps
+
+
 def _components_from_reps(mol, reps) -> list[dict]:
     """Translate user representations, which replace the automatic scene."""
     from moleculekit.representations import Representations
@@ -200,9 +232,14 @@ def _components_from_reps(mol, reps) -> list[dict]:
             color_spec = color
         else:
             color_spec = {"uniform": color}
+        representation = {"type": translated["type"]}
+        if translated["type"] == "ball_and_stick":
+            # The size the automatic scene uses, so reps.addDefaults() draws
+            # the same picture as setting no representations at all.
+            representation["size_factor"] = BALL_AND_STICK_SIZE_FACTOR
         component = {
             "select": _atoms(translated["atom_indices"]),
-            "representation": {"type": translated["type"]},
+            "representation": representation,
             "color": color_spec,
         }
         if "opacity" in translated:
