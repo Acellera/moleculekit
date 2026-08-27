@@ -15,9 +15,14 @@ import { Structure, StructureSelection } from 'molstar/lib/mol-model/structure'
 import { Loci } from 'molstar/lib/mol-model/loci'
 import { Vec3 } from 'molstar/lib/mol-math/linear-algebra'
 import { Color } from 'molstar/lib/mol-util/color'
+import { ParamDefinition as PD } from 'molstar/lib/mol-util/param-definition'
+import { CameraFogParams } from 'molstar/lib/mol-canvas3d/canvas3d'
 import { ColorNames } from 'molstar/lib/mol-util/color/names'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 import type { StateBuilder, StateObjectSelector } from 'molstar/lib/mol-state'
+
+/** Mol*'s own fog strength, read from its params so it cannot drift from them. */
+const MOLSTAR_DEFAULT_FOG = PD.getDefaultValues(CameraFogParams).intensity
 
 export interface SceneSelect {
   kind: 'builtin' | 'resname' | 'atoms'
@@ -46,8 +51,14 @@ export interface Scene {
   components: SceneComponent[]
   labels?: SceneLabel[]
   tubes?: { start: number[]; end: number[]; radius: number; color: string }[]
-  camera?: { direction?: number[]; up?: number[]; radius_factor?: number; focus?: SceneSelect }
-  canvas?: { background?: string }
+  camera?: {
+    direction?: number[]
+    up?: number[]
+    radius_factor?: number
+    focus?: SceneSelect
+    clip?: number
+  }
+  canvas?: { background?: string; fog?: number }
 }
 
 /** Translate an SVG colour name or hex string into a Mol* packed colour. */
@@ -277,6 +288,22 @@ async function applyCamera(
     snapshot.position = Vec3.sub(Vec3.zero(), snapshot.target!, offset)
   }
   if (up) snapshot.up = Vec3.clone(up)
+  // Mol* takes both clipping planes from the camera's radius: near is
+  // distance - radius and far is distance + radius. So radius is the clipping
+  // distance, and leaving it at the focus radius kept only a slab around
+  // whatever `center` picked, cutting the protein around a focused ligand
+  // away entirely. No amount of fog brings back geometry never drawn. The
+  // framing is already fixed by the distance getFocus computed above, and
+  // radius feeds nothing but the clipping, so the two are set apart here:
+  // `clip` when given, otherwise the whole structure, which draws everything.
+  if (camera.clip !== undefined) {
+    snapshot.radius = camera.clip
+  } else {
+    const whole = Loci.getBoundingSphere(
+      Structure.toStructureElementLoci(structure.data as Structure)
+    )!
+    snapshot.radius = Math.max(radius, whole.radius)
+  }
   // Go through the pending-reset mechanism instead of camera.setState
   // directly: committing new representations (just above, in applyScene)
   // schedules Mol*'s own automatic camera-fit-to-scene reset
@@ -328,6 +355,15 @@ export async function applyScene(
   if (scene.canvas?.background && plugin.canvas3d) {
     const hex = scene.canvas.background
     plugin.canvas3d.setProps({ renderer: { backgroundColor: colorOf(hex) } })
+  }
+  if (plugin.canvas3d) {
+    // Always set, never left alone: render() reuses one browser across calls,
+    // so a scene that said nothing about fog would silently inherit whatever
+    // the previous render set. MOLSTAR_DEFAULT_FOG is Mol*'s own default.
+    const fog = scene.canvas?.fog ?? MOLSTAR_DEFAULT_FOG
+    plugin.canvas3d.setProps({
+      cameraFog: fog > 0 ? { name: 'on', params: { intensity: fog } } : { name: 'off', params: {} },
+    })
   }
 
   if (scene.camera) {

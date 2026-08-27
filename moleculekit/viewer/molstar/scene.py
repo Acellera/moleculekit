@@ -319,6 +319,8 @@ def build_scene(
     rotate: "str | tuple[float, float, float] | None" = None,
     zoom: float | None = None,
     background_color: str | None = None,
+    fog: float | None = None,
+    clip: float | None = None,
 ) -> dict:
     """Describe the scene for ``mol`` as a plain dict.
 
@@ -354,6 +356,14 @@ def build_scene(
         Camera tightness. Larger values move the camera closer.
     background_color : str or None, optional
         Canvas background as an SVG colour name or hex string.
+    fog : float or None, optional
+        Depth cueing strength, from 0 for none to 100 for the strongest. Fog
+        fades distant geometry into the background colour. None leaves Mol*'s
+        own strength.
+    clip : float or None, optional
+        Half-thickness in Angstrom of the slab drawn around what the camera
+        frames. Geometry nearer to or further from the camera than this is cut
+        away. None draws the whole structure.
 
     Returns
     -------
@@ -366,9 +376,14 @@ def build_scene(
     ------
     ValueError
         If every representation selection matches no atoms, if a
-        ``highlight_bonds`` selection does not pick exactly one atom, or if
-        ``rotate`` names no known orientation preset.
+        ``highlight_bonds`` selection does not pick exactly one atom, if
+        ``rotate`` names no known orientation preset, if ``fog`` falls outside
+        0 to 100, or if ``clip`` is not positive.
     """
+    if fog is not None and not 0 <= float(fog) <= 100:
+        raise ValueError(f"fog must be between 0 and 100, got {fog}")
+    if clip is not None and float(clip) <= 0:
+        raise ValueError(f"clip must be a positive distance, got {clip}")
     if reps:
         components = _components_from_reps(mol, reps)
     else:
@@ -403,9 +418,18 @@ def build_scene(
             if mask.any():
                 camera["focus"] = _atoms(mask.nonzero()[0])
         if camera:
+            # Only alongside a camera: with none, Mol*'s own fit sets the
+            # radius from the whole scene and nothing is clipped anyway.
+            if clip is not None:
+                camera["clip"] = float(clip)
             scene["camera"] = camera
 
+    canvas: dict = {}
     if background_color is not None:
-        scene["canvas"] = {"background": background_color}
+        canvas["background"] = background_color
+    if fog is not None:
+        canvas["fog"] = float(fog)
+    if canvas:
+        scene["canvas"] = canvas
 
     return scene

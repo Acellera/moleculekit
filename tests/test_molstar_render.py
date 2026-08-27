@@ -193,6 +193,65 @@ def test_render_returns_png_bytes_of_the_requested_size():
     render_mod.shutdown_for_tests()
 
 
+@pytest.mark.parametrize("fog", [-1, 101])
+def test_out_of_range_fog_is_rejected(fog):
+    with pytest.raises(ValueError, match="fog must be between 0 and 100"):
+        render_mod._scene_description(_trypsin(), fog=fog)
+
+
+@pytest.mark.parametrize("clip", [0, -5])
+def test_non_positive_clip_is_rejected(clip):
+    with pytest.raises(ValueError, match="clip must be a positive distance"):
+        render_mod._scene_description(_trypsin(), clip=clip)
+
+
+@needs_chromium
+def test_clip_sets_the_slab_thickness_and_is_off_by_default():
+    """Framing a selection must not silently cut geometry off.
+
+    Mol* takes both clipping planes from the camera's radius, near at
+    distance - radius and far at distance + radius, so leaving that at the
+    focus radius left only a slab around whatever ``center`` picked: focusing
+    a ligand cut away the protein around it, flat sliced faces and all, and no
+    amount of fog brings back geometry that was never drawn. The framing
+    distance and the clipping radius are set apart now, so the default draws
+    everything and ``clip`` asks for a slab of a chosen thickness, which is
+    how you see into a buried pocket.
+    """
+    import io
+
+    from PIL import Image
+
+    def drawn(png):
+        return int((np.asarray(Image.open(io.BytesIO(png)).convert("L")) < 245).sum())
+
+    mol = _trypsin()
+    opts = dict(size=(300, 300), center="resid 100", zoom=0.3)
+    whole = drawn(render_mod.render(mol, **opts))
+    wide = drawn(render_mod.render(mol, clip=15, **opts))
+    thin = drawn(render_mod.render(mol, clip=5, **opts))
+    assert whole > wide > thin, f"clip did not thin the slab: {whole}, {wide}, {thin}"
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+def test_fog_changes_the_image_and_does_not_carry_over():
+    """Fog must be settable, and must not leak from one render to the next.
+
+    One browser is reused across render() calls, so a scene saying nothing
+    about fog would inherit whatever the previous render set. Mol*'s own
+    default strength is applied explicitly instead, which is why the default
+    render equals fog=15 and still equals it after other strengths have been
+    rendered in between.
+    """
+    mol = _trypsin()
+    default = render_mod.render(mol, size=(300, 300))
+    assert render_mod.render(mol, size=(300, 300), fog=0) != default
+    assert render_mod.render(mol, size=(300, 300), fog=100) != default
+    assert render_mod.render(mol, size=(300, 300)) == default
+    render_mod.shutdown_for_tests()
+
+
 @needs_chromium
 def test_opposite_orientations_are_not_the_same_image():
     """`rotate` must honour the sign of its direction.
@@ -326,8 +385,24 @@ def test_render_high_quality_survives_and_does_not_wedge_the_render_loop():
     render_mod.shutdown_for_tests()
 
 
+def test_molecule_render_options_match_the_render_function():
+    """Molecule.render spells its options out rather than pointing at render().
+
+    That makes its docstring self-contained, at the cost of duplicating the
+    signature, so the defaults are compared here to keep the two from drifting.
+    """
+    import inspect
+
+    skip = {"self", "mol", "output"}
+    method = inspect.signature(Molecule.render).parameters
+    function = inspect.signature(render_mod.render).parameters
+    assert {k: v.default for k, v in method.items() if k not in skip} == {
+        k: v.default for k, v in function.items() if k not in skip
+    }
+
+
 def test_molecule_render_delegates_with_its_arguments(monkeypatch):
-    """Molecule.render is a thin pass-through, so nothing can drift between them."""
+    """Molecule.render forwards every option by name, so none can be dropped."""
     captured = {}
 
     def _fake_render(mol, output=None, **kwargs):
@@ -343,7 +418,13 @@ def test_molecule_render_delegates_with_its_arguments(monkeypatch):
     assert mol.render("out.png", size=(640, 480), rotate="top") == b"png"
     assert captured["mol"] is mol
     assert captured["output"] == "out.png"
-    assert captured["kwargs"] == {"size": (640, 480), "rotate": "top"}
+    assert captured["kwargs"]["size"] == (640, 480)
+    assert captured["kwargs"]["rotate"] == "top"
+
+    import inspect
+
+    expected = set(inspect.signature(Molecule.render).parameters) - {"self", "output"}
+    assert set(captured["kwargs"]) == expected
 
 
 @needs_chromium

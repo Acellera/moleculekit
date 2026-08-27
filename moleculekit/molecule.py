@@ -2618,37 +2618,107 @@ class Molecule(object):
         # above, so clearing stops the server reusing it on later rebuilds.
         self._tempreps.remove()
 
-    def render(self, output: str | None = None, **kwargs):
+    def render(
+        self,
+        output: str | None = None,
+        *,
+        size: tuple[int, int] = (1200, 900),
+        quality: str = "fast",
+        center: "str | np.ndarray | None" = None,
+        rotate=None,
+        zoom: float | None = None,
+        background: str = "white",
+        transparent: bool = False,
+        fog: float | None = None,
+        clip: float | None = None,
+        timeout: float = 300.0,
+    ):
         """Render the molecule to a PNG image without opening a viewer.
 
         Uses a headless browser and the same Mol* scene ``view()`` builds, so the
         image matches what the interactive viewer shows. Representations are
         taken from ``mol.reps`` and the frame rendered is ``mol.frame``.
 
-        Keyword arguments are passed through to
-        :func:`moleculekit.viewer.molstar.render.render`, which accepts ``size``,
-        ``quality``, ``center``, ``rotate``, ``zoom``, ``background``,
-        ``transparent`` and ``timeout``.
-
         Parameters
         ----------
         output : str or None, optional
             Path to write the PNG to. When None the PNG bytes are returned.
+        size : tuple of int, optional
+            Image width and height in pixels. The camera frames the structure
+            for this size, so a wider image shows more around it rather than
+            the same picture stretched.
+        quality : str, optional
+            Either ``"fast"`` or ``"high"``. ``"high"`` enables ambient
+            occlusion, which is close to free on a GPU and costs roughly three
+            times the render time on the software fallback.
+        center : str or np.ndarray or None, optional
+            Atom selection, boolean mask or index array to frame the camera on,
+            which is also the point ``rotate`` orbits and the extent ``zoom``
+            scales. None frames the whole structure.
+        rotate : str or tuple of float or None, optional
+            Camera orientation, either one of ``"front"``, ``"back"``,
+            ``"left"``, ``"right"``, ``"top"`` and ``"bottom"``, or
+            ``(rx, ry, rz)`` degrees about the x, y and z axes in that order.
+            This orbits the camera, it does not move the molecule.
+        zoom : float or None, optional
+            Camera tightness. Larger values move the camera closer.
+        background : str, optional
+            Background colour as an SVG colour name or hex string.
+        transparent : bool, optional
+            Render onto a transparent background, ignoring ``background``.
+        fog : float or None, optional
+            Depth cueing strength, from 0 for none to 100 for the strongest.
+            Fog fades distant geometry into the background colour, so on a
+            light background it washes out rather than darkens. None uses
+            Mol*'s own strength.
+        clip : float or None, optional
+            Half-thickness in Angstrom of the slab drawn around what the camera
+            frames: geometry nearer to or further from the camera than this is
+            cut away, which is how you see into a buried pocket. None draws the
+            whole structure.
+        timeout : float, optional
+            Seconds to allow for a single render before giving up.
 
         Returns
         -------
         result : bytes or str
             The PNG bytes when ``output`` is None, otherwise ``output``.
 
+        Raises
+        ------
+        ValueError
+            If ``quality`` names no known preset, if ``size`` is not at least
+            one pixel in each dimension, if ``center`` matches no atoms, if
+            ``zoom`` is not positive, if ``rotate`` is a string naming no known
+            orientation preset, if ``fog`` falls outside 0 to 100, or if
+            ``clip`` is not positive.
+        RuntimeError
+            If no browser is found, if WebGL is unavailable, if the page fails,
+            or if the rendered image does not match the requested size.
+
         Examples
         --------
         >>> mol = Molecule("3PTB")
         >>> mol.reps.add(sel="protein", style="NewCartoon", color="SecondaryStructure")
         >>> mol.render("trypsin.png", size=(1200, 900), rotate="top")  # doctest: +SKIP
+        >>> mol.render("ligand.png", center="resname BEN", zoom=0.25)  # doctest: +SKIP
         """
         from moleculekit.viewer.molstar import render as _render
 
-        return _render.render(self, output, **kwargs)
+        return _render.render(
+            self,
+            output,
+            size=size,
+            quality=quality,
+            center=center,
+            rotate=rotate,
+            zoom=zoom,
+            background=background,
+            transparent=transparent,
+            fog=fog,
+            clip=clip,
+            timeout=timeout,
+        )
 
     def _viewPymol(self, name):
         from moleculekit.viewer import getCurrentPymolViewer, viewingMols

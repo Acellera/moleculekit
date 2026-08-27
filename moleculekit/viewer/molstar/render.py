@@ -461,6 +461,8 @@ def _scene_description(
     zoom: float | None = None,
     background: str = "white",
     transparent: bool = False,
+    fog: float | None = None,
+    clip: float | None = None,
 ) -> dict:
     """Build the scene description ``render()`` sends to the browser.
 
@@ -483,6 +485,11 @@ def _scene_description(
         Background colour as an SVG colour name or hex string.
     transparent : bool, optional
         Ignore ``background`` and render onto a transparent background.
+    fog : float or None, optional
+        Depth cueing strength, from 0 for none to 100 for the strongest.
+    clip : float or None, optional
+        Half-thickness in Angstrom of the slab drawn around what the camera
+        frames. None draws the whole structure.
 
     Returns
     -------
@@ -499,6 +506,8 @@ def _scene_description(
         rotate=rotate,
         zoom=zoom,
         background_color=None if transparent else background,
+        fog=fog,
+        clip=clip,
     )
 
 
@@ -513,6 +522,8 @@ def render(
     zoom: float | None = None,
     background: str = "white",
     transparent: bool = False,
+    fog: float | None = None,
+    clip: float | None = None,
     timeout: float = 300.0,
 ) -> bytes | str:
     """Render ``mol`` to a PNG with no display and no browser window.
@@ -542,6 +553,15 @@ def render(
         Background colour as an SVG colour name or hex string.
     transparent : bool, optional
         Render onto a transparent background, ignoring ``background``.
+    fog : float or None, optional
+        Depth cueing strength, from 0 for none to 100 for the strongest. Fog
+        fades distant geometry into the background colour, which reads as
+        depth on a crowded structure. None uses Mol*'s own strength.
+    clip : float or None, optional
+        Half-thickness in Angstrom of the slab drawn around what the camera
+        frames: geometry nearer to or further from the camera than this is cut
+        away, which is how you see into a buried pocket. None draws the whole
+        structure.
     timeout : float, optional
         Seconds to allow for a single render before giving up.
 
@@ -555,8 +575,9 @@ def render(
     ValueError
         If ``quality`` names no known preset, if ``size`` is not at least one
         pixel in each dimension, if ``center`` matches no atoms, if ``zoom``
-        is not positive, or if ``rotate`` is a string that names no known
-        orientation preset.
+        is not positive, if ``rotate`` is a string that names no known
+        orientation preset, if ``fog`` falls outside 0 to 100, or if ``clip``
+        is not positive.
     RuntimeError
         If no browser is found, if WebGL is unavailable, if the page fails,
         or if the rendered image does not match the requested size.
@@ -590,6 +611,8 @@ def render(
         zoom=zoom,
         background=background,
         transparent=transparent,
+        fog=fog,
+        clip=clip,
     )
     bcif_b64 = _b64(_bcif_bytes(mol))
 
