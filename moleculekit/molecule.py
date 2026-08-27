@@ -2509,9 +2509,9 @@ class Molecule(object):
         style : str
             Representation style, in either vocabulary. VMD's ``NewCartoon``,
             ``Cartoon``, ``Licorice``, ``CPK``, ``VDW``, ``Lines``, ``Surf``,
-            ``QuickSurf``, ``Points``, ``Labels`` and ``FormalCharges``, or
+            ``QuickSurf``, ``Points``, ``Putty``, ``Labels`` and ``FormalCharges``, or
             Mol*'s ``cartoon``, ``ball-and-stick``, ``spacefill``, ``line``,
-            ``molecular-surface``, ``gaussian-surface``, ``point`` and
+            ``molecular-surface``, ``gaussian-surface``, ``point``, ``putty`` and
             ``atom-label`` (also ``label``) for the same things. Spacing, case
             and hyphens are ignored, and anything else is rejected rather than
             drawn as something it is not. ``Labels`` writes each atom's name
@@ -2523,10 +2523,12 @@ class Molecule(object):
         color : str or int
             Coloring mode (str) or ColorID (int), in either vocabulary. VMD's
             ``Name``, ``Element``, ``Chain``, ``ResName``, ``Index``,
-            ``Secondary Structure``, ``Hydrophobicity``, ``Molecule Type`` and
-            ``Atom ID``, or Mol*'s ``element-symbol``, ``chain-id``,
-            ``residue-name``, ``sequence-id``, ``secondary-structure``,
-            ``hydrophobicity``, ``molecule-type`` and ``atom-id``. Any SVG
+            ``Secondary Structure``, ``Hydrophobicity``, ``Molecule Type``,
+            ``Atom ID``, ``Beta`` and ``Occupancy``, or Mol*'s
+            ``element-symbol``, ``chain-id``, ``residue-name``,
+            ``sequence-id``, ``secondary-structure``, ``hydrophobicity``,
+            ``molecule-type``, ``atom-id``, ``uncertainty`` (the B factor,
+            which VMD calls ``Beta``) and ``occupancy``. Any SVG
             colour name or ``#rrggbb`` string gives a uniform colour. See more
             `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
         guessBonds : bool

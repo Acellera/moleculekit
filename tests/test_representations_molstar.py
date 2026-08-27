@@ -2,7 +2,11 @@ import numpy as np
 import pytest
 
 from moleculekit.molecule import Molecule
-from moleculekit.representations import _Representation
+from moleculekit.representations import (
+    VMD_COLORS,
+    _Representation,
+    _normalize,
+)
 
 
 def _mol():
@@ -217,6 +221,7 @@ VOCABULARY = [
     ("QuickSurf", "gaussian-surface", "gaussian_surface"),
     ("Points", "point", "point"),
     ("Labels", "atom-label", "label"),
+    ("Putty", "putty", "putty"),
 ]
 
 
@@ -236,6 +241,7 @@ def test_vmd_and_molstar_style_names_are_interchangeable(vmd, molstar, expected)
         ("ResName", "residue-name"),
         ("Index", "sequence-id"),
         ("Secondary Structure", "secondary-structure"),
+        ("Beta", "uncertainty"),
     ],
 )
 def test_vmd_and_molstar_colour_names_are_interchangeable(vmd, molstar):
@@ -281,3 +287,19 @@ def test_size_scales_formal_charge_label_text():
 
     scaled = build_scene(mol, mol.reps.replist)["labels"][0]["size"]
     assert scaled == 2.0 * build_scene(plain, plain.reps.replist)["labels"][0]["size"]
+
+
+def test_b_factor_and_occupancy_colouring_reach_every_viewer():
+    """VMD calls the B factor Beta, Mol* calls it uncertainty, NGL bfactor."""
+    mol = _mol()
+    for name in ("Beta", "uncertainty"):
+        rep = _Representation("all", "NewCartoon", name)
+        assert mol.reps._translateMolstar(rep)["color"] == {"theme": "uncertainty"}
+        assert mol.reps._translateNGL(rep).color == "bfactor"
+    # Mol*'s spelling is translated for VMD; VMD's own is sent as written.
+    assert VMD_COLORS[_normalize("uncertainty")] == "Beta"
+    assert _normalize("Beta") not in VMD_COLORS
+
+    rep = _Representation("all", "NewCartoon", "Occupancy")
+    assert mol.reps._translateMolstar(rep)["color"] == {"theme": "occupancy"}
+    assert mol.reps._translateNGL(rep).color == "occupancy"

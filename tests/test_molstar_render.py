@@ -207,7 +207,7 @@ def test_non_positive_clip_is_rejected(clip):
 
 @needs_chromium
 @pytest.mark.parametrize(
-    "style", ["Surf", "QuickSurf", "Points", "Labels", "FormalCharges"]
+    "style", ["Surf", "QuickSurf", "Points", "Putty", "Labels", "FormalCharges"]
 )
 def test_added_representation_types_draw(style):
     """Each style Mol* gained must actually draw something.

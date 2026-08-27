@@ -31,6 +31,7 @@ MOLSTAR_STYLES = {
     "point": "point",
     "label": "label",
     "atomlabel": "label",
+    "putty": "putty",
 }
 
 #: The VMD representation each Mol* style name corresponds to. VMD's own names
@@ -54,6 +55,7 @@ VMD_COLORS = {
     "residuename": "ResName",
     "sequenceid": "ResID",
     "atomid": "Index",
+    "uncertainty": "Beta",
 }
 
 #: Colouring modes, and the Mol* colour theme each one selects. Keys are
@@ -79,10 +81,15 @@ MOLSTAR_THEMES = {
     "chainid": "chain-id",
     "residuename": "residue-name",
     "sequenceid": "sequence-id",
+    # B factor. Mol* calls it uncertainty (it doubles as pLDDT for predicted
+    # structures), VMD calls it Beta.
+    "beta": "uncertainty",
+    "uncertainty": "uncertainty",
+    "occupancy": "occupancy",
 }
 
 #: Styles no viewer but Mol* draws, skipped rather than sent to the others.
-_MOLSTAR_ONLY_STYLES = ("labels", "label", "atomlabel", "formalcharges")
+_MOLSTAR_ONLY_STYLES = ("labels", "label", "atomlabel", "formalcharges", "putty")
 
 
 def _normalize(name: str) -> str:
@@ -151,9 +158,9 @@ class Representations:
         style : str
             Representation style, in either vocabulary. VMD's ``NewCartoon``,
             ``Cartoon``, ``Licorice``, ``CPK``, ``VDW``, ``Lines``, ``Surf``,
-            ``QuickSurf``, ``Points``, ``Labels`` and ``FormalCharges``, or
+            ``QuickSurf``, ``Points``, ``Putty``, ``Labels`` and ``FormalCharges``, or
             Mol*'s ``cartoon``, ``ball-and-stick``, ``spacefill``, ``line``,
-            ``molecular-surface``, ``gaussian-surface``, ``point`` and
+            ``molecular-surface``, ``gaussian-surface``, ``point``, ``putty`` and
             ``atom-label`` (also ``label``) for the same things. Spacing, case
             and hyphens are ignored, and anything else is rejected rather than
             drawn as something it is not. ``Labels`` writes each atom's name
@@ -165,10 +172,12 @@ class Representations:
         color : str or int
             Coloring mode (str) or ColorID (int), in either vocabulary. VMD's
             ``Name``, ``Element``, ``Chain``, ``ResName``, ``Index``,
-            ``Secondary Structure``, ``Hydrophobicity``, ``Molecule Type`` and
-            ``Atom ID``, or Mol*'s ``element-symbol``, ``chain-id``,
-            ``residue-name``, ``sequence-id``, ``secondary-structure``,
-            ``hydrophobicity``, ``molecule-type`` and ``atom-id``. Any SVG
+            ``Secondary Structure``, ``Hydrophobicity``, ``Molecule Type``,
+            ``Atom ID``, ``Beta`` and ``Occupancy``, or Mol*'s
+            ``element-symbol``, ``chain-id``, ``residue-name``,
+            ``sequence-id``, ``secondary-structure``, ``hydrophobicity``,
+            ``molecule-type``, ``atom-id``, ``uncertainty`` (the B factor,
+            which VMD calls ``Beta``) and ``occupancy``. Any SVG
             colour name or ``#rrggbb`` string gives a uniform colour. See more
             `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
         frames : list
@@ -263,6 +272,9 @@ class Representations:
             "hydrophobicity": "hydrophobicity",
             "moleculetype": "moleculetype",
             "atomid": "atomindex",
+            "beta": "bfactor",
+            "uncertainty": "bfactor",
+            "occupancy": "occupancy",
             "colorid": "color",
         }
         hexcolors = {

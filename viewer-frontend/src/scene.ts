@@ -198,6 +198,15 @@ function representationParams(representation: SceneComponent['representation']):
       }
     case 'point':
       return { type: 'point', typeParams: {}, size: 'uniform', sizeParams: { value: 3.0 * value } }
+    case 'putty':
+      // Sized by B factor rather than uniformly, which is the point of it, so
+      // `size_factor` scales that base rather than replacing the theme.
+      return {
+        type: 'putty',
+        typeParams: {},
+        size: 'uncertainty',
+        sizeParams: { baseSize: 0.2 * value },
+      }
     case 'label':
       // level 'element' labels each atom; Mol*'s own default is 'residue'.
       return {
