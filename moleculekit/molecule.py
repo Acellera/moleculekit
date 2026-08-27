@@ -2605,11 +2605,18 @@ class Molecule(object):
 
             reps = self._tempreps.replist + self.reps.replist
             scene = _scene_from_reps(self, reps)
-            return build_inline_view(self, scene)
+            view = build_inline_view(self, scene)
+            # One-shot, like _repsVMD/_repsNGL: already consumed into `view`
+            # above, so clearing stops it narrowing every later view()/render().
+            self._tempreps.remove()
+            return view
 
         from moleculekit.viewer.molstar import server as molstar_server
 
         molstar_server.register(self)
+        # Same one-shot semantics: register() broadcast the scene synchronously
+        # above, so clearing stops the server reusing it on later rebuilds.
+        self._tempreps.remove()
 
     def render(self, output: str | None = None, **kwargs):
         """Render the molecule to a PNG image without opening a viewer.
@@ -2618,14 +2625,15 @@ class Molecule(object):
         image matches what the interactive viewer shows. Representations are
         taken from ``mol.reps`` and the frame rendered is ``mol.frame``.
 
+        Keyword arguments are passed through to
+        :func:`moleculekit.viewer.molstar.render.render`, which accepts ``size``,
+        ``quality``, ``center``, ``rotate``, ``zoom``, ``background``,
+        ``transparent`` and ``timeout``.
+
         Parameters
         ----------
         output : str or None, optional
             Path to write the PNG to. When None the PNG bytes are returned.
-        **kwargs
-            Passed to :func:`moleculekit.viewer.molstar.render.render`. Accepts
-            ``size``, ``quality``, ``center``, ``rotate``, ``zoom``,
-            ``background``, ``transparent`` and ``timeout``.
 
         Returns
         -------

@@ -5,18 +5,16 @@ import { renderReact18 } from 'molstar/lib/mol-plugin-ui/react18'
 import { DefaultPluginUISpec } from 'molstar/lib/mol-plugin-ui/spec'
 import { PluginConfig } from 'molstar/lib/mol-plugin/config'
 import { setSubtreeVisibility } from 'molstar/lib/mol-plugin/behavior/static/state'
-import { StructureElement } from 'molstar/lib/mol-model/structure'
-import { OrderedSet } from 'molstar/lib/mol-data/int'
-import { PluginStateObject } from 'molstar/lib/mol-plugin-state/objects'
 import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms'
 import { TrajectoryFromMoleculeKit } from './moleculeToCIF'
+import { applyScene, type Scene } from './scene'
 import type { MoleculeKitDict } from './types'
-import 'molstar/build/viewer/theme/dark.css'
+import 'molstar/build/viewer/theme/light.css'
 
 export type MolstarViewerHandle = {
   hasSlot: (slotId: string) => boolean
-  addSlot: (slotId: string, mol: MoleculeKitDict) => Promise<void>
-  updateSlotTopology: (slotId: string, mol: MoleculeKitDict) => Promise<void>
+  addSlot: (slotId: string, mol: MoleculeKitDict, scene: Scene) => Promise<void>
+  updateSlotTopology: (slotId: string, mol: MoleculeKitDict, scene: Scene) => Promise<void>
   updateSlotCoords: (slotId: string, mol: MoleculeKitDict) => Promise<void>
   removeSlot: (slotId: string) => Promise<void>
   setSlotVisibility: (slotId: string, visible: boolean) => void
@@ -26,10 +24,11 @@ type SlotRefs = {
   // The TrajectoryFromMoleculeKit transform cell ref (string).
   // Root of the slot's subtree; deleting this deletes everything below.
   trajRef: string
-  // Label transform refs created by applyFormalChargeLabelsForSlot.
+  // Label transform refs applyScene created for this slot (see
+  // collectLabelRefs), so removeSlot/setSlotVisibility can find them.
   labelRefs: string[]
-  // Last mol dict applied — used to repaint labels on coord-only updates
-  // (labels live at the state root and don't follow the trajectory update).
+  // Last mol dict applied. Currently unused: written in four places below,
+  // read nowhere.
   lastMol: MoleculeKitDict
 }
 
@@ -57,7 +56,7 @@ const MolstarViewer = forwardRef<MolstarViewerHandle, {}>((_props, ref) => {
       }
       spec.canvas3d = {
         renderer: {
-          backgroundColor: 0x000000 as any,
+          backgroundColor: 0xffffff as any,
         },
       }
       spec.components = {
@@ -107,94 +106,62 @@ const MolstarViewer = forwardRef<MolstarViewerHandle, {}>((_props, ref) => {
     return pluginRef.current
   }
 
-  const applyFormalChargeLabelsForSlot = async (slotId: string, mol: MoleculeKitDict) => {
+  // applyScene (scene.ts) creates formal-charge-style labels rooted at the
+  // state root (see its applyLabel), not under the slot's trajectory
+  // subtree, so deleting the trajectory does not delete them. Find the refs
+  // it just created for `structureRef` so removeSlot and setSlotVisibility
+  // can still find and clean up the label nodes.
+  const collectLabelRefs = (structureRef: string): string[] => {
     const plugin = pluginRef.current
-    const refs = slotsRef.current.get(slotId)
-    if (!plugin || !refs) return
-
-    // Drop previous labels for this slot.
-    if (refs.labelRefs.length > 0) {
-      const build = plugin.build()
-      for (const r of refs.labelRefs) build.delete(r)
-      await build.commit()
-      refs.labelRefs = []
-    }
-
-    const chargedAtoms: { idx: number; q: number }[] = []
-    for (let i = 0; i < mol.numAtoms; i++) {
-      const q = mol.formalcharge[i]
-      if (q) chargedAtoms.push({ idx: i, q })
-    }
-    if (chargedAtoms.length === 0) return
-
-    // Resolve the slot's structure (one Trajectory → one Model → one Structure
-    // when the auto preset has been applied). We scan structures and pick the
-    // one whose source trajectory matches our slot's trajRef.
-    const structures = plugin.managers.structure.hierarchy.current.structures
+    if (!plugin) return []
     const tree = plugin.state.data.tree
-    const inSlotSubtree = new Set<string>()
-    const collect = (r: string) => {
-      inSlotSubtree.add(r)
-      const c = tree.children.get(r)
-      if (c) c.forEach((ch: string) => collect(ch))
-    }
-    collect(refs.trajRef)
-
-    let structureCell: any = null
-    for (const s of structures) {
-      if (inSlotSubtree.has(s.cell.transform.ref)) {
-        structureCell = s.cell
-        break
+    const rootChildren = tree.children.get(tree.root.ref)
+    const found: string[] = []
+    rootChildren?.forEach((r: string) => {
+      const transform = plugin.state.data.cells.get(r)?.transform
+      if (
+        transform?.transformer === StateTransforms.Model.MultiStructureSelectionFromExpression &&
+        transform.dependsOn?.includes(structureRef)
+      ) {
+        found.push(r)
       }
-    }
-    if (!structureCell) return
-    const structure = structureCell.obj?.data
-    const structureRef = structureCell.transform.ref
-    if (!structure || !structureRef) return
+    })
+    return found
+  }
 
-    const atomToUnit = new Map<number, { unit: any; unitIdx: number }>()
-    for (const unit of structure.units) {
-      if (unit.kind !== 0) continue
-      for (let i = 0; i < unit.elements.length; i++) {
-        atomToUnit.set(unit.elements[i], { unit, unitIdx: i })
-      }
-    }
+  // Delete whatever structure/representation/label subtree currently hangs
+  // off `refs.trajRef` (none, the first time a slot is built) and rebuild it
+  // fresh from `scene`. The set of components and their colours/types are
+  // fixed params baked into each representation node when applyScene runs;
+  // recomputing an existing node against a new structure (a plain trajectory
+  // update, e.g. on a topology change) keeps those params unchanged, so a
+  // rep edit such as a different colour would never show up on a later
+  // view() call without rebuilding the nodes themselves. `refs.trajRef`
+  // itself is left alone: updateSlotCoords and the trajectory/animation
+  // controls depend on that ref staying stable.
+  const rebuildSceneForSlot = async (
+    plugin: PluginUIContext,
+    refs: SlotRefs,
+    scene: Scene
+  ): Promise<void> => {
+    const teardown = plugin.build()
+    for (const r of refs.labelRefs) teardown.delete(r)
+    plugin.state.data.tree.children.get(refs.trajRef)?.forEach((child: string) => {
+      teardown.delete(child)
+    })
+    await teardown.commit()
 
-    const build = plugin.state.data.build()
-    const pendingRefs: string[] = []
-    for (const { idx, q } of chargedAtoms) {
-      const hit = atomToUnit.get(idx)
-      if (!hit) continue
-      const elements = [{ unit: hit.unit, indices: OrderedSet.ofSingleton(hit.unitIdx) }]
-      const loci = StructureElement.Loci(structure, elements as any)
-      const bundle = StructureElement.Bundle.fromLoci(loci)
-      const text = q > 0 ? `+${q}` : `${q}`
-      const node = build.toRoot()
-        .apply(StateTransforms.Model.MultiStructureSelectionFromBundle, {
-          selections: [{ key: `fc-${slotId}-${idx}`, ref: structureRef, groupId: '', bundle }],
-          isTransitive: true,
-          label: `Formal charge ${text}`,
-        } as any, { dependsOn: [structureRef] })
-        .apply(StateTransforms.Representation.StructureSelectionsLabel3D, {
-          customText: text,
-          textColor: 0x000000,
-          textSize: 0.4,
-          borderColor: 0xffffff,
-          borderWidth: 0.25,
-          background: false,
-          offsetZ: 0.6,
-          scaleByRadius: false,
-        } as any)
-      pendingRefs.push(node.ref)
-    }
-    await build.commit()
-    refs.labelRefs = pendingRefs
+    const structure = await plugin.builders.structure.createStructure(
+      await plugin.builders.structure.createModel(refs.trajRef)
+    )
+    await applyScene(plugin, structure, scene)
+    refs.labelRefs = collectLabelRefs(structure.ref)
   }
 
   useImperativeHandle(ref, () => ({
     hasSlot: (slotId) => slotsRef.current.has(slotId),
 
-    addSlot: async (slotId, mol) => {
+    addSlot: async (slotId, mol, scene) => {
       const plugin = await waitReady()
       if (!plugin) return
       if (slotsRef.current.has(slotId)) {
@@ -203,7 +170,7 @@ const MolstarViewer = forwardRef<MolstarViewerHandle, {}>((_props, ref) => {
         const refs = slotsRef.current.get(slotId)!
         await plugin.build().to(refs.trajRef).update({ mol, name: 'Structure' }).commit()
         refs.lastMol = mol
-        await applyFormalChargeLabelsForSlot(slotId, mol)
+        await rebuildSceneForSlot(plugin, refs, scene)
         return
       }
 
@@ -213,58 +180,13 @@ const MolstarViewer = forwardRef<MolstarViewerHandle, {}>((_props, ref) => {
         .commit()
       const trajRef = trajectory.ref
 
-      slotsRef.current.set(slotId, { trajRef, labelRefs: [], lastMol: mol })
+      const refs: SlotRefs = { trajRef, labelRefs: [], lastMol: mol }
+      slotsRef.current.set(slotId, refs)
 
-      // 'auto' preset for the full hierarchy (cartoon for protein,
-      // ball-and-stick for ligands/sugars, etc.).
-      await plugin.builders.structure.hierarchy.applyPreset(
-        trajectory,
-        'default',
-        {
-          representationPreset: 'auto',
-          representationPresetParams: {
-            ignoreHydrogens: false,
-            theme: { globalName: 'element-symbol', carbonColor: 'chain-id' },
-          },
-        } as never
-      )
-
-      // Drop the carbohydrate (SNFG) reps; bump branched ball-and-stick to
-      // full alpha (the auto preset dims sugars expecting SNFG to be primary).
-      // Also enable double/aromatic bond rendering on ball-and-stick.
-      const repCells = plugin.state.data.selectQ((q: any) =>
-        q.ofType(PluginStateObject.Molecule.Structure.Representation3D))
-      const build = plugin.state.data.build()
-      let dirty = false
-      for (const cell of repCells) {
-        const params = cell.transform?.params
-        if (!params?.type) continue
-        if (params.type.name === 'carbohydrate') {
-          build.delete(cell.transform.ref)
-          dirty = true
-        } else if (params.type.params?.alpha != null && params.type.params.alpha < 1) {
-          build.to(cell).update({
-            ...params,
-            type: { ...params.type, params: { ...params.type.params, alpha: 1 } },
-          })
-          dirty = true
-        } else if (params.type.name === 'ball-and-stick') {
-          build.to(cell).update({
-            ...params,
-            type: {
-              ...params.type,
-              params: { ...params.type.params, multipleBonds: 'symmetric', aromaticBonds: false },
-            },
-          })
-          dirty = true
-        }
-      }
-      if (dirty) await build.commit()
-
-      await applyFormalChargeLabelsForSlot(slotId, mol)
+      await rebuildSceneForSlot(plugin, refs, scene)
     },
 
-    updateSlotTopology: async (slotId, mol) => {
+    updateSlotTopology: async (slotId, mol, scene) => {
       const plugin = await waitReady()
       if (!plugin) return
       const refs = slotsRef.current.get(slotId)
@@ -272,7 +194,7 @@ const MolstarViewer = forwardRef<MolstarViewerHandle, {}>((_props, ref) => {
       plugin.canvas3d?.setProps({ camera: { manualReset: true } })
       await plugin.build().to(refs.trajRef).update({ mol, name: 'Structure' }).commit()
       refs.lastMol = mol
-      await applyFormalChargeLabelsForSlot(slotId, mol)
+      await rebuildSceneForSlot(plugin, refs, scene)
       setTimeout(() => plugin.canvas3d?.setProps({ camera: { manualReset: false } }), 500)
     },
 
@@ -314,7 +236,7 @@ const MolstarViewer = forwardRef<MolstarViewerHandle, {}>((_props, ref) => {
   return (
     <div
       ref={containerRef}
-      style={{ position: 'absolute', inset: 0, background: '#101015' }}
+      style={{ position: 'absolute', inset: 0, background: '#ffffff' }}
     />
   )
 })

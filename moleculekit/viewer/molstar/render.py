@@ -1,8 +1,10 @@
 """Headless Mol* rendering: turn a Molecule into a PNG with no display.
 
 A singleton chromium is started on first use and reused, driven over the
-devtools protocol (see cdp.py). The scene comes from build_mvs, the same
-builder the interactive viewers use, so a render matches what view() shows.
+devtools protocol (see cdp.py). The scene comes from build_scene (see
+scene.py), the same description the interactive viewer builds from, and the
+browser applies it with applyScene (see viewer-frontend/src/scene.ts) so a
+render matches what view() shows. This path never imports molviewspec.
 
 Rendering runs on the GPU when one is reachable and falls back to a software
 rasteriser when it is not, which is what lets the same code work inside
@@ -451,6 +453,55 @@ def _png_dimensions(png: bytes) -> tuple[int, int]:
     return width, height
 
 
+def _scene_description(
+    mol: "Molecule",
+    *,
+    center: "str | np.ndarray | None" = None,
+    rotate=None,
+    zoom: float | None = None,
+    background: str = "white",
+    transparent: bool = False,
+) -> dict:
+    """Build the scene description ``render()`` sends to the browser.
+
+    Representations come from ``mol.reps`` together with any one-off
+    representation added by ``view()``'s ``sel``/``style``/``color``
+    arguments, exactly as the interactive viewer's ``_topology_event``
+    builds its scene, so the two stay in lockstep.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to describe.
+    center : str or np.ndarray or None, optional
+        Atom selection to frame the camera on. None frames the whole structure.
+    rotate : str or tuple of float or None, optional
+        Camera orientation, as a preset name or ``(rx, ry, rz)`` in degrees.
+    zoom : float or None, optional
+        Camera tightness. Larger values move the camera closer.
+    background : str, optional
+        Background colour as an SVG colour name or hex string.
+    transparent : bool, optional
+        Ignore ``background`` and render onto a transparent background.
+
+    Returns
+    -------
+    description : dict
+        The scene description, as produced by
+        :func:`moleculekit.viewer.molstar.scene.build_scene`.
+    """
+    from moleculekit.viewer.molstar.scene import build_scene
+
+    return build_scene(
+        mol,
+        mol.reps.replist + mol._tempreps.replist,
+        focus_sel=center,
+        rotate=rotate,
+        zoom=zoom,
+        background_color=None if transparent else background,
+    )
+
+
 def render(
     mol: "Molecule",
     output: str | None = None,
@@ -524,30 +575,23 @@ def render(
     if zoom is not None and zoom <= 0:
         raise ValueError(f"zoom must be positive, got {zoom!r}.")
     if center is not None and not mol.atomselect(center).any():
-        # build_mvs treats a non-matching focus_sel as a no-op, which is the
+        # build_scene treats a non-matching focus_sel as a no-op, which is the
         # right contract for that lower-level, permissive builder. render()
         # is public API though, so a center that silently produces a
         # default-orientation image instead of the requested one must raise.
         raise ValueError(f"center selection matched no atoms: {center!r}")
 
-    from moleculekit.viewer.molstar.inline import (
-        _b64,
-        _bcif_bytes,
-        _scene_from_reps,
-    )
-    from moleculekit.viewer.molstar.mvs import build_mvs
+    from moleculekit.viewer.molstar.inline import _b64, _bcif_bytes
 
-    scene = _scene_from_reps(mol, mol.reps.replist + mol._tempreps.replist)
-    structure_url = "data:application/octet-stream;base64," + _b64(_bcif_bytes(mol))
-    mvsj = build_mvs(
+    description = _scene_description(
         mol,
-        structure_url=structure_url,
-        representations=scene.get("representations") or None,
-        focus_sel=center,
+        center=center,
         rotate=rotate,
         zoom=zoom,
-        background_color=None if transparent else background,
+        background=background,
+        transparent=transparent,
     )
+    bcif_b64 = _b64(_bcif_bytes(mol))
 
     state = _get_or_start(width, height)
     # The devtools session's own read timeout was fixed at 300s when the
@@ -559,7 +603,18 @@ def render(
     timeout_ms = int(timeout * 1000)
     try:
         state.ws.evaluate(
-            f"window.mkHeadless.load({json.dumps(mvsj)})", timeout_ms=timeout_ms
+            f"window.mkHeadless.loadStructure({json.dumps(bcif_b64)})",
+            timeout_ms=timeout_ms,
+        )
+        # Before the scene, so the camera fit (auto or from `rotate`/`zoom`)
+        # is computed against this image's aspect rather than the window's.
+        state.ws.evaluate(
+            f"window.mkHeadless.setViewport({width}, {height})",
+            timeout_ms=timeout_ms,
+        )
+        state.ws.evaluate(
+            f"window.mkHeadless.applyScene({json.dumps(description)})",
+            timeout_ms=timeout_ms,
         )
         options = {
             "width": width,

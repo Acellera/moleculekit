@@ -213,21 +213,40 @@ def _monitor_loop(
             slot = registry.slots.get(uid)
             if slot is None:
                 continue
-            if kind == "topology":
-                ev = _topology_event(slot)
-            else:
-                ev = _coords_event(slot)
-            _broadcast_to(subscribers, subscribers_lock, ev)
+            try:
+                if kind == "topology":
+                    ev = _topology_event(slot)
+                else:
+                    ev = _coords_event(slot)
+                _broadcast_to(subscribers, subscribers_lock, ev)
+            except Exception:
+                # A single slot's build_scene() (e.g. a rep selection that
+                # now matches no atoms) must not take down the monitor
+                # thread and stop broadcasting for every other slot.
+                logger.exception(
+                    "molstar monitor failed to build/broadcast a %s event "
+                    "for slot %s; skipping this slot",
+                    kind,
+                    uid,
+                )
 
 
 def _topology_event(slot) -> dict:
+    from moleculekit.viewer.molstar.scene import build_scene
+
+    mol = slot.mol_ref
     return {
         "type": "topology",
         "slot": slot.uuid,
         "label": slot.label,
-        "mol": molecule_to_dict(slot.mol_ref),
+        "mol": molecule_to_dict(mol),
+        "scene": build_scene(
+            mol,
+            mol.reps.replist + mol._tempreps.replist,
+            background_color="white",
+        ),
         "coords_url": f"/coords/{slot.uuid}/{slot.topo_hash}",
-        "numFrames": int(slot.mol_ref.coords.shape[2]),
+        "numFrames": int(mol.coords.shape[2]),
     }
 
 
@@ -333,6 +352,15 @@ def _make_handler_class(
                     q.put_nowait(json.dumps(_topology_event(slot)))
                 except queue.Full:
                     pass
+                except Exception:
+                    # One slot's build_scene() failing (e.g. a rep selection
+                    # that now matches no atoms) must not stop this new
+                    # connection's replay from reaching every other slot.
+                    logger.exception(
+                        "molstar SSE replay failed to build a topology "
+                        "event for slot %s; skipping this slot",
+                        slot.uuid,
+                    )
             try:
                 while not stop_event.is_set():
                     try:

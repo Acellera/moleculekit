@@ -70,8 +70,14 @@ reproducing what a GPU-less machine will produce.
 
 ## Gotchas
 
-- **Representations come from `mol.reps`**, the same ones `view()` uses. Set them
-  before calling `render()`.
+- **Representations come from `mol.reps`**, the same ones `view()` uses, and
+  they replace the automatic scene rather than adding to it. Setting any
+  representation means you are describing the whole picture, which matches how
+  the VMD backend behaves. Leave `mol.reps` empty to get the automatic scene of
+  a cartoon polymer with ball-and-stick ligands.
+- **A representation whose selection matches no atoms is dropped with a
+  warning.** If every representation matches nothing, `render()` raises rather
+  than writing an empty image.
 - **A representation's `frames` argument is ignored.** `mol.reps.add(..., frames=...)`
   selects frames for the interactive viewer's trajectory playback; a render is a
   single still, so `frames` has nothing to act on.

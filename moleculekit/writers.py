@@ -1042,6 +1042,50 @@ def MDTRAJwrite(mol, filename):
         raise ValueError(f'MDtraj writer failed for file {filename} with error "{e}"')
 
 
+def _label_seq_ids(mol):
+    """Sequence positions that stay unique when insertion codes reuse a resid.
+
+    ``label_seq_id`` identifies a residue's position in its entity, so it has
+    to be unique within a chain, while ``auth_seq_id`` carries the author
+    numbering and ``pdbx_PDB_ins_code`` the insertion code. Writing resid into
+    both collapses 184 and 184A into one residue: readers merge their atoms,
+    the polymer trace breaks and the pair renders as half a residue. Numbering
+    follows the author's until an insertion forces it apart, so a structure
+    without insertion codes is written exactly as before.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule being written.
+
+    Returns
+    -------
+    label_seq_ids : np.ndarray
+        One sequence position per atom.
+    """
+    resid, insertion, chain = mol.resid, mol.insertion, mol.chain
+    starts = np.r_[
+        True,
+        (resid[1:] != resid[:-1])
+        | (insertion[1:] != insertion[:-1])
+        | (chain[1:] != chain[:-1]),
+    ]
+    res_resid, res_chain = resid[starts], chain[starts]
+    labels = np.empty(len(res_resid), dtype=int)
+    labels[0] = current = res_resid[0]
+    for k in range(1, len(res_resid)):
+        if res_chain[k] != res_chain[k - 1]:
+            current = res_resid[k]
+        elif res_resid[k] != res_resid[k - 1]:
+            # Keep following the author numbering while it has not drifted.
+            current = res_resid[k] if current == res_resid[k - 1] else current + 1
+        else:
+            # Same resid, so this is the insertion-coded partner.
+            current += 1
+        labels[k] = current
+    return labels[np.cumsum(starts) - 1]
+
+
 def CIFwrite(
     mol,
     filename,
@@ -1280,6 +1324,8 @@ def CIFwrite(
             if pCat.getRowCount():
                 curContainer.append(pCat)
 
+    label_seq_ids = _label_seq_ids(mol) if "label_seq_id" in mapping else None
+
     aCat = DataCategory(atom_block)
     for at in mapping:
         aCat.appendAttribute(at)
@@ -1295,6 +1341,8 @@ def CIFwrite(
                 data.append(
                     float(coord) if return_data else f"{coord:.{fp_precision}f}"
                 )
+            elif at == "label_seq_id":
+                data.append(int(label_seq_ids[i]))
             elif mapping[at] == "frame":
                 data.append(1)
             elif mapping[at] == "name":

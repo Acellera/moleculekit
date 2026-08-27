@@ -12,8 +12,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from moleculekit.viewer.molstar.mvs import build_mvs
-
 if TYPE_CHECKING:
     from moleculekit.molecule import Molecule
 
@@ -89,6 +87,17 @@ def _bcif_bytes(mol) -> bytes:
     import io
     from moleculekit.writers import BCIFwrite
 
+    # segid is written as label_entity_id, and Mol* starts a new chain at
+    # every entity boundary, so a segid that subdivides a chain (autoSegment
+    # at a break, a prepared system's P1/P2) breaks the cartoon there: giving
+    # three interior residues their own segid collapsed a whole beta strand
+    # into a coil. Worse, a molecule mixing blank and non-blank segids writes
+    # atoms into an entity that no _entity row declares, which throws inside
+    # createModel and fails the render outright. Dropping segid lets Mol*
+    # infer entities itself, which is what the interactive viewer's own CIF
+    # builder does; nothing in a scene description selects on segid.
+    mol = mol.copy()
+    mol.segid[:] = ""
     buf = io.BytesIO()
     BCIFwrite(mol, buf)
     return buf.getvalue()
@@ -256,8 +265,11 @@ def build_inline_view(
 ) -> "MolstarInlineView":
     """Build a MolstarInlineView for ``mol``.
 
-    A single-frame molecule takes the MVS path (custom representations from
-    ``scene`` are applied); a multi-frame molecule takes the trajectory path.
+    A single-frame molecule takes the MVS path, built from the shared scene
+    rule: ``mol.reps``, together with any one-off representation added by
+    ``view()``'s ``sel``, ``style`` and ``color`` arguments, replace the
+    automatic scene when set, matching the VMD and NGL backends. A
+    multi-frame molecule takes the trajectory path instead.
 
     Parameters
     ----------
@@ -265,7 +277,11 @@ def build_inline_view(
         The molecule to render.
     scene : dict
         Scene description with a ``representations`` list (as produced for the
-        viewer). Used only on the single-frame path.
+        viewer). Currently unused: the single-frame path builds its own
+        description from ``mol`` directly, and the trajectory path never
+        looks at it either (Mol*'s public UMD applies its default preset for
+        trajectories; see ``_build_trajectory_view``). Still accepted because
+        ``molecule.py``'s ``_viewMolstar`` passes it.
     height : int, optional
         Height of the rendered iframe in pixels. Defaults to ``DEFAULT_HEIGHT``.
 
@@ -275,17 +291,22 @@ def build_inline_view(
         A notebook cell output rendering the inline viewer.
     """
     if mol.numFrames == 1:
+        from moleculekit.viewer.molstar.mvs import mvs_from_scene
+        from moleculekit.viewer.molstar.scene import build_scene
+
         data_url = "data:application/octet-stream;base64," + _b64(_bcif_bytes(mol))
-        rep_kwargs = {"representations": scene.get("representations") or None}
-        mvsj = build_mvs(mol, structure_url=data_url, **rep_kwargs)
-        return MolstarInlineView(height=height, mvsj=mvsj)
+        description = build_scene(mol, mol.reps.replist + mol._tempreps.replist)
+        return MolstarInlineView(
+            height=height,
+            mvsj=mvs_from_scene(description, structure_url=data_url),
+        )
     return _build_trajectory_view(mol, scene, height)  # implemented in Phase 2
 
 
 def _build_trajectory_view(mol, scene, height):
-    # `scene` (custom reps) is intentionally unused on the trajectory path:
-    # Mol*'s public UMD applies its default preset + playback for trajectories.
-    # See "Known limitations" in the design spec.
+    # `scene` (custom reps) is unused here, same as build_inline_view's own
+    # `scene` argument above: Mol*'s public UMD applies its default preset +
+    # playback for trajectories. See "Known limitations" in the design spec.
     payload = {
         "topo": _b64(_bcif_bytes(mol)),
         "dcd": _b64(coords_to_dcd_bytes(mol)),

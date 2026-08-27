@@ -442,3 +442,36 @@ def test_non_square_box():
 
     assert np.allclose(mol.box, mol2.box, atol=1e-2)
     assert np.allclose(mol.boxangles, mol2.boxangles, atol=1e-2)
+
+
+def test_label_seq_ids_separate_insertion_coded_residues():
+    """A residue and its insertion-coded partner must not share a position.
+
+    ``label_seq_id`` is a residue's position in its entity and has to be
+    unique within a chain, so writing resid into it collapsed 184 and 184A
+    into one residue: readers merged their atoms and the polymer trace broke,
+    which drew trypsin's three insertion sites as half a residue each.
+    """
+    from moleculekit.writers import _label_seq_ids
+
+    mol = Molecule().empty(6)
+    mol.chain[:] = "A"
+    mol.resid[:] = [183, 184, 184, 185, 186, 187]
+    mol.insertion[:] = ["", "", "A", "", "", ""]
+
+    labels = _label_seq_ids(mol)
+    assert len(set(labels)) == 6, f"positions are not unique: {labels}"
+    # Author numbering is followed until the insertion forces it apart.
+    assert list(labels) == [183, 184, 185, 186, 187, 188]
+
+
+def test_label_seq_ids_are_the_resids_without_insertion_codes():
+    """The common case must be written exactly as before."""
+    from moleculekit.writers import _label_seq_ids
+
+    mol = Molecule().empty(5)
+    mol.chain[:] = ["A", "A", "A", "B", "B"]
+    mol.resid[:] = [10, 11, 12, 4, 5]
+    mol.insertion[:] = ""
+
+    assert list(_label_seq_ids(mol)) == [10, 11, 12, 4, 5]

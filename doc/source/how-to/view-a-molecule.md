@@ -58,6 +58,15 @@ When `viewer=` is not given, moleculekit picks a backend in this order:
 - Topology changes (mutation, filtering, bond edits) trigger a full rebuild in the viewer. Coordinate-only changes update in place without resetting the camera.
 - Multiple registered molecules appear in the slot sidebar at the bottom-right of the viewer with an eye icon (show/hide) and an × button (remove). Closing a slot removes it from the viewer; the Python `Molecule` object is unaffected.
 - Bond orders and per-atom formal charges are always rendered.
+- Representations set with `mol.reps` apply to the molstar viewer as they do to
+  VMD: they replace the automatic scene. The viewer and
+  [Render a molecule to an image file](render-an-image.md) build their scene from
+  the same description, so an image matches what you see on screen.
+- A representation whose selection matches no atoms is dropped with a warning.
+  If every representation matches nothing, `view()` raises rather than showing
+  an empty scene, the same contract `render()` uses.
+- The viewer canvas is white with a light UI theme, chosen so the viewer and
+  `render()` produce the same picture.
 
 ## Gotchas
 

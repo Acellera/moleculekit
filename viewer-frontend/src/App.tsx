@@ -37,9 +37,9 @@ export default function App() {
           const mol: MoleculeKitDict = { ...ev.mol, coords: allCoords, numFrames: ev.numFrames }
           molByUuid.set(ev.slot, mol)
           if (v.hasSlot(ev.slot)) {
-            await v.updateSlotTopology(ev.slot, mol)
+            await v.updateSlotTopology(ev.slot, mol, ev.scene)
           } else {
-            await v.addSlot(ev.slot, mol)
+            await v.addSlot(ev.slot, mol, ev.scene)
           }
           setSlots((prev) => {
             if (prev.some((s) => s.uuid === ev.slot)) {

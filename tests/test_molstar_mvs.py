@@ -6,7 +6,11 @@ import pytest
 molviewspec = pytest.importorskip("molviewspec")
 
 from moleculekit.molecule import Molecule
-from moleculekit.viewer.molstar.mvs import build_mvs, rotation_to_direction_up
+from moleculekit.viewer.molstar.mvs import (
+    MIN_CARTOON_RESIDUES,
+    build_mvs,
+    rotation_to_direction_up,
+)
 
 
 @pytest.fixture
@@ -221,3 +225,83 @@ def test_build_mvs_focus_sel_non_matching_with_camera_still_applies_camera(
     assert any(d == pytest.approx([0.0, -1.0, 0.0], abs=1e-9) for d in directions)
     assert 0.5 in factors
     assert "focus" in blob
+
+
+from moleculekit.viewer.molstar.mvs import mvs_from_scene
+from moleculekit.viewer.molstar.scene import build_scene
+
+
+def test_mvs_from_scene_emits_the_described_components(ligand_mol):
+    scene = build_scene(ligand_mol)
+    blob = mvs_from_scene(scene, structure_url="data:,")
+    parsed = json.loads(blob)
+    assert "ball_and_stick" in blob
+    assert "data:," in blob
+    assert parsed  # parses as MVS JSON
+
+
+def test_mvs_from_scene_matches_build_mvs_for_the_automatic_scene(ligand_mol):
+    """The two encodings of one description must agree.
+
+    Each call stamps its own wall-clock ``metadata.timestamp`` (molviewspec's
+    ``GlobalMetadata.timestamp`` default factory), so that field is dropped
+    before comparing; it is serialization noise, not part of either encoding
+    of the scene description.
+    """
+    from_scene = json.loads(
+        mvs_from_scene(build_scene(ligand_mol), structure_url="data:,")
+    )
+    from_builder = json.loads(build_mvs(ligand_mol, structure_url="data:,"))
+    from_scene["metadata"].pop("timestamp", None)
+    from_builder["metadata"].pop("timestamp", None)
+    assert from_scene == from_builder
+
+
+@pytest.fixture
+def protein_mol():
+    """Standard-residue polymer at or above MIN_CARTOON_RESIDUES, so the
+    cartoon branch fires instead of ball-and-stick-everything."""
+    n = MIN_CARTOON_RESIDUES + 2
+    mol = Molecule().empty(n)
+    mol.element[:] = "C"
+    mol.name[:] = "CA"
+    mol.resname[:] = "GLY"
+    mol.resid[:] = np.arange(1, n + 1)
+    mol.chain[:] = "A"
+    mol.segid[:] = "P"
+    mol.record[:] = "ATOM"
+    mol.serial[:] = np.arange(1, n + 1)
+    mol.coords = np.zeros((n, 3, 1), dtype=np.float32)
+    mol.coords[:, 0, 0] = np.arange(n, dtype=np.float32) * 3.8
+    return mol
+
+
+def test_mvs_from_scene_matches_build_mvs_for_the_cartoon_scene(protein_mol):
+    """The two encodings must also agree on the cartoon branch: what a
+    protein actually renders, and otherwise exercised only indirectly through
+    headless render tests elsewhere.
+
+    Each call stamps its own wall-clock ``metadata.timestamp`` (molviewspec's
+    ``GlobalMetadata.timestamp`` default factory), so that field is dropped
+    before comparing; it is serialization noise, not part of either encoding
+    of the scene description.
+    """
+    from_scene = json.loads(
+        mvs_from_scene(build_scene(protein_mol), structure_url="data:,")
+    )
+    from_builder = json.loads(build_mvs(protein_mol, structure_url="data:,"))
+    from_scene["metadata"].pop("timestamp", None)
+    from_builder["metadata"].pop("timestamp", None)
+    assert from_scene == from_builder
+
+
+def test_build_mvs_representations_stay_additive(ligand_mol):
+    """The docs theme depends on this: its highlights layer over the
+    automatic scene rather than replacing it."""
+    blob = build_mvs(
+        ligand_mol,
+        structure_url="data:,",
+        representations=[{"sel": "name C1", "type": "spacefill"}],
+    )
+    assert "spacefill" in blob
+    assert "ball_and_stick" in blob, "the automatic scene must survive"

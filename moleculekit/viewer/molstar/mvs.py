@@ -1,139 +1,34 @@
-"""Pure MolViewSpec scene builder shared by the Sphinx docs theme and the
-inline notebook viewer. Builds the same protein/nucleic + hetero scene
-moleculekit's viewer shows. The structure data URL is supplied by the caller
-(a published .bcif URL in docs, an inlined data: URL in notebooks)."""
+"""Translate the shared scene description (see scene.py) into MolViewSpec.
+
+``mvs_from_scene`` encodes an already-built scene dict and is what the inline
+notebook viewer calls (see inline.py's ``build_inline_view``). ``build_mvs``
+builds the automatic protein/nucleic + hetero scene from a ``Molecule``
+directly (calling ``build_scene`` itself, then ``mvs_from_scene``); it has no
+caller left inside this repository, but do not delete it as dead code: it is
+the entry point the out-of-repo Acellera Sphinx docs theme depends on to
+render structures with no live viewer. The structure data URL is supplied by
+the caller in both cases (a published .bcif URL in docs, an inlined data: URL
+in notebooks)."""
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
 
-if TYPE_CHECKING:
-    from moleculekit.molecule import Molecule
-
-logger = logging.getLogger(__name__)
-
-MAX_FORMAL_CHARGE_LABELS = 200
-BALL_AND_STICK_SIZE_FACTOR = 0.6
-MIN_CARTOON_RESIDUES = 6
-_BALL_AND_STICK_SELECTORS = ("ligand", "ion", "water", "branched")
-
-STANDARD_POLYMER_RESNAMES = frozenset(
-    {
-        "ALA",
-        "ARG",
-        "ASN",
-        "ASP",
-        "CYS",
-        "GLN",
-        "GLU",
-        "GLY",
-        "HIS",
-        "ILE",
-        "LEU",
-        "LYS",
-        "MET",
-        "PHE",
-        "PRO",
-        "SER",
-        "THR",
-        "TRP",
-        "TYR",
-        "VAL",
-        "HID",
-        "HIE",
-        "HIP",
-        "HSD",
-        "HSE",
-        "HSP",
-        "CYX",
-        "CYM",
-        "ASH",
-        "GLH",
-        "LYN",
-        "ARN",
-        "TYM",
-        "A",
-        "U",
-        "G",
-        "C",
-        "T",
-        "DA",
-        "DT",
-        "DG",
-        "DC",
-        "DU",
-        "RA",
-        "RU",
-        "RG",
-        "RC",
-    }
+from moleculekit.viewer.molstar.scene import (  # noqa: F401  (re-exported)
+    BALL_AND_STICK_SIZE_FACTOR,
+    DEFAULT_DIRECTION,
+    DEFAULT_UP,
+    MAX_FORMAL_CHARGE_LABELS,
+    MIN_CARTOON_RESIDUES,
+    ORIENTATION_PRESETS,
+    STANDARD_POLYMER_RESNAMES,
+    rotation_to_direction_up,
 )
 
-
-DEFAULT_DIRECTION = (0.0, 0.0, -1.0)
-DEFAULT_UP = (0.0, 1.0, 0.0)
-
-# `direction` points from the camera position to the target, so "top" (looking
-# down from above) is -y, which is Rx(-90) applied to DEFAULT_DIRECTION.
-ORIENTATION_PRESETS = {
-    "front": (0.0, 0.0, 0.0),
-    "back": (0.0, 180.0, 0.0),
-    "left": (0.0, -90.0, 0.0),
-    "right": (0.0, 90.0, 0.0),
-    "top": (-90.0, 0.0, 0.0),
-    "bottom": (90.0, 0.0, 0.0),
-}
-
-
-def rotation_to_direction_up(rotate):
-    """Resolve a rotation into the MVS ``direction`` and ``up`` vectors.
-
-    Parameters
-    ----------
-    rotate : str or tuple of float or None
-        A preset name from ``ORIENTATION_PRESETS``, a tuple of ``(rx, ry, rz)``
-        rotations in degrees applied about the x, y and z axes in that order, or
-        None for the default view.
-
-    Returns
-    -------
-    direction : tuple of float
-        Unit vector from the camera position toward the target.
-    up : tuple of float
-        Unit vector controlling the roll about ``direction``.
-
-    Raises
-    ------
-    ValueError
-        If ``rotate`` is a string that names no known preset.
-    """
-    if rotate is None:
-        return DEFAULT_DIRECTION, DEFAULT_UP
-
-    if isinstance(rotate, str):
-        key = rotate.lower()
-        if key not in ORIENTATION_PRESETS:
-            raise ValueError(
-                f"Unknown orientation {rotate!r}. Use one of "
-                f"{sorted(ORIENTATION_PRESETS)} or a (rx, ry, rz) tuple in degrees."
-            )
-        rotate = ORIENTATION_PRESETS[key]
-
-    rx, ry, rz = (np.deg2rad(float(angle)) for angle in rotate)
-    cx, sx = np.cos(rx), np.sin(rx)
-    cy, sy = np.cos(ry), np.sin(ry)
-    cz, sz = np.cos(rz), np.sin(rz)
-    rot_x = np.array([[1, 0, 0], [0, cx, -sx], [0, sx, cx]])
-    rot_y = np.array([[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]])
-    rot_z = np.array([[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]])
-    rot = rot_z @ rot_y @ rot_x
-
-    direction = rot @ np.array(DEFAULT_DIRECTION)
-    up = rot @ np.array(DEFAULT_UP)
-    return tuple(float(v) for v in direction), tuple(float(v) for v in up)
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
 
 
 def _import_mvs():
@@ -156,28 +51,90 @@ def _serialize(state) -> str:
     )
 
 
-def _count_standard_polymer_residues(mol) -> int:
-    seen: dict = {}
-    for resid, ins, chain, segid, resname in zip(
-        mol.resid.tolist(),
-        mol.insertion.tolist(),
-        mol.chain.tolist(),
-        mol.segid.tolist(),
-        mol.resname.tolist(),
-    ):
-        seen[(resid, ins, chain, segid)] = resname
-    return sum(1 for rn in seen.values() if rn in STANDARD_POLYMER_RESNAMES)
+def _selector(select: dict, ComponentExpression):
+    """Turn a description selector into an MVS component selector."""
+    kind = select["kind"]
+    if kind == "builtin":
+        return select["name"]
+    if kind == "resname":
+        return [ComponentExpression(label_comp_id=rn) for rn in select["names"]]
+    return [ComponentExpression(atom_index=int(i)) for i in select["indices"]]
 
 
-def _apply_color(component, color):
-    """color is None (element theme), a {"theme": name} dict, or an
-    SVG/hex string (uniform)."""
-    if color is None:
-        component.color(custom={"molstar_color_theme_name": "element-symbol"})
-    elif isinstance(color, dict) and "theme" in color:
-        component.color(custom={"molstar_color_theme_name": color["theme"]})
-    else:
-        component.color(color=color)
+def mvs_from_scene(scene: dict, *, structure_url: str) -> str:
+    """Encode a scene description as a MolViewSpec (mvsj) JSON string.
+
+    Parameters
+    ----------
+    scene : dict
+        A description as produced by
+        :func:`moleculekit.viewer.molstar.scene.build_scene`.
+    structure_url : str
+        The href the viewer downloads and parses as BinaryCIF.
+
+    Returns
+    -------
+    mvsj : str
+        The serialized MolViewSpec scene as a JSON string.
+    """
+    mvs, ComponentExpression = _import_mvs()
+
+    builder = mvs.create_builder()
+    structure = (
+        builder.download(url=structure_url).parse(format="bcif").model_structure()
+    )
+
+    for comp in scene["components"]:
+        selector = _selector(comp["select"], ComponentExpression)
+        rep_kwargs = dict(comp["representation"])
+        component = structure.component(selector=selector).representation(**rep_kwargs)
+        color = comp.get("color") or {}
+        if "theme" in color:
+            component.color(custom={"molstar_color_theme_name": color["theme"]})
+        elif "uniform" in color:
+            component.color(color=color["uniform"])
+        if "opacity" in comp:
+            component.opacity(opacity=comp["opacity"])
+
+    for tube in scene.get("tubes", []):
+        group = structure.primitives(color=tube["color"])
+        group.tube(
+            start=tuple(tube["start"]),
+            end=tuple(tube["end"]),
+            radius=tube["radius"],
+        )
+
+    camera = scene.get("camera")
+    if camera:
+        focus = camera.get("focus")
+        selector = (
+            _selector(focus, ComponentExpression) if focus is not None else "all"
+        )
+        focus_kwargs = {}
+        if "direction" in camera:
+            focus_kwargs["direction"] = tuple(camera["direction"])
+            focus_kwargs["up"] = tuple(camera["up"])
+        if "radius_factor" in camera:
+            focus_kwargs["radius_factor"] = camera["radius_factor"]
+        structure.component(selector=selector).focus(**focus_kwargs)
+
+    labels = scene.get("labels", [])
+    if labels:
+        primitives = builder.primitives()
+        for label in labels:
+            primitives.label(
+                position=list(label["position"]),
+                text=label["text"],
+                label_size=label["size"],
+                label_color=label["color"],
+                label_offset=label["offset"],
+            )
+
+    canvas = scene.get("canvas")
+    if canvas and canvas.get("background") is not None:
+        builder.canvas(background_color=canvas["background"])
+
+    return _serialize(builder.get_state())
 
 
 def build_mvs(
@@ -244,40 +201,21 @@ def build_mvs(
         If any ``highlight_bonds`` selection does not pick exactly one atom,
         or if ``rotate`` is a string that names no known orientation preset.
     """
-    mvs, ComponentExpression = _import_mvs()
+    from moleculekit.viewer.molstar.scene import build_scene
 
-    builder = mvs.create_builder()
-    structure = (
-        builder.download(url=structure_url).parse(format="bcif").model_structure()
+    scene = build_scene(
+        mol,
+        None,  # the automatic scene: this entry point never takes mol.reps
+        ball_and_stick_sel=ball_and_stick_sel,
+        highlight_bonds=highlight_bonds,
+        focus_sel=focus_sel,
+        rotate=rotate,
+        zoom=zoom,
+        background_color=background_color,
     )
-    if _count_standard_polymer_residues(mol) >= MIN_CARTOON_RESIDUES:
-        structure.component(selector="polymer").representation(type="cartoon").color(
-            custom={"molstar_color_theme_name": "secondary-structure"}
-        )
-        for selector in _BALL_AND_STICK_SELECTORS:
-            structure.component(selector=selector).representation(
-                type="ball_and_stick", size_factor=BALL_AND_STICK_SIZE_FACTOR
-            ).color(custom={"molstar_color_theme_name": "element-symbol"})
-        other_resnames = sorted(set(mol.resname.tolist()) - STANDARD_POLYMER_RESNAMES)
-        if other_resnames:
-            extra = [ComponentExpression(label_comp_id=rn) for rn in other_resnames]
-            structure.component(selector=extra).representation(
-                type="ball_and_stick", size_factor=BALL_AND_STICK_SIZE_FACTOR
-            ).color(custom={"molstar_color_theme_name": "element-symbol"})
-    else:
-        structure.component(selector="all").representation(
-            type="ball_and_stick", size_factor=BALL_AND_STICK_SIZE_FACTOR
-        ).color(custom={"molstar_color_theme_name": "element-symbol"})
-
-    if ball_and_stick_sel is not None:
-        mask = mol.atomselect(ball_and_stick_sel)
-        if mask.any():
-            indices = [int(i) for i in mask.nonzero()[0]]
-            extra = [ComponentExpression(atom_index=i) for i in indices]
-            structure.component(selector=extra).representation(
-                type="ball_and_stick", size_factor=BALL_AND_STICK_SIZE_FACTOR
-            ).color(custom={"molstar_color_theme_name": "element-symbol"})
-
+    # representations= is additive on purpose: the out-of-repo docs theme layers
+    # highlights over the automatic scene and must keep doing so. mol.reps gets
+    # replace semantics, but that decision belongs to build_scene's callers.
     for rep in representations or []:
         spec = dict(rep)
         indices = spec.pop("atom_indices", None)
@@ -292,95 +230,15 @@ def build_mvs(
             indices = [int(i) for i in mask.nonzero()[0]]
         if not indices:
             continue
-        extra = [ComponentExpression(atom_index=int(i)) for i in indices]
-        component = structure.component(selector=extra).representation(**spec)
-        _apply_color(component, color)
+        component = {
+            "select": {"kind": "atoms", "indices": [int(i) for i in indices]},
+            "representation": spec,
+            "color": {"theme": "element-symbol"}
+            if color is None
+            else (color if isinstance(color, dict) else {"uniform": color}),
+        }
         if opacity is not None:
-            component.opacity(opacity=opacity)
+            component["opacity"] = float(opacity)
+        scene["components"].append(component)
 
-    if highlight_bonds:
-        bonds_group = structure.primitives(color="orange")
-        for sel_a, sel_b in highlight_bonds:
-            ia = mol.atomselect(sel_a, indexes=True)
-            ib = mol.atomselect(sel_b, indexes=True)
-            if len(ia) != 1 or len(ib) != 1:
-                raise ValueError(
-                    "highlight_bonds selections must each pick exactly one "
-                    f"atom; got {len(ia)} for {sel_a!r} and {len(ib)} for "
-                    f"{sel_b!r}"
-                )
-            sa = mol.coords[int(ia[0]), :, mol.frame]
-            sb = mol.coords[int(ib[0]), :, mol.frame]
-            bonds_group.tube(
-                start=(float(sa[0]), float(sa[1]), float(sa[2])),
-                end=(float(sb[0]), float(sb[1]), float(sb[2])),
-                radius=0.3,
-            )
-
-    has_camera = rotate is not None or zoom is not None
-    if focus_sel is not None or has_camera:
-        component = None
-        if focus_sel is not None:
-            mask = mol.atomselect(focus_sel)
-            if mask.any():
-                component = structure.component(
-                    selector=[
-                        ComponentExpression(atom_index=int(i))
-                        for i in mask.nonzero()[0]
-                    ]
-                )
-        if component is None and has_camera:
-            # focus_sel is None, or it matched nothing: still apply the
-            # requested orientation/zoom to the whole structure instead of
-            # silently dropping it. A focus_sel that matched nothing with no
-            # camera args stays a no-op (component stays None below).
-            component = structure.component(selector="all")
-        if component is not None:
-            focus_kwargs = {}
-            if has_camera:
-                direction, up = rotation_to_direction_up(rotate)
-                focus_kwargs["direction"] = direction
-                focus_kwargs["up"] = up
-            if zoom is not None:
-                focus_kwargs["radius_factor"] = 1.0 / float(zoom)
-            component.focus(**focus_kwargs)
-
-    if background_color is not None:
-        builder.canvas(background_color=background_color)
-
-    _add_formal_charge_labels(builder, mol)
-    return _serialize(builder.get_state())
-
-
-def _add_formal_charge_labels(builder, mol) -> None:
-    charges = mol.formalcharge
-    coords = mol.coords
-    frame = mol.frame
-    charged = [i for i in range(len(charges)) if int(charges[i]) != 0]
-    if not charged:
-        return
-    if len(charged) > MAX_FORMAL_CHARGE_LABELS:
-        logger.warning(
-            "Skipping formal charge labels: %d charged atoms exceeds cap %d "
-            "(likely a solvated/ionised system; show a prepared structure to "
-            "keep labels meaningful).",
-            len(charged),
-            MAX_FORMAL_CHARGE_LABELS,
-        )
-        return
-    primitives = builder.primitives()
-    for i in charged:
-        q = int(charges[i])
-        text = f"+{q}" if q > 0 else f"{q}"
-        position = [
-            float(coords[i, 0, frame]),
-            float(coords[i, 1, frame]),
-            float(coords[i, 2, frame]),
-        ]
-        primitives.label(
-            position=position,
-            text=text,
-            label_size=0.7,
-            label_color="black",
-            label_offset=1.0,
-        )
+    return mvs_from_scene(scene, structure_url=structure_url)

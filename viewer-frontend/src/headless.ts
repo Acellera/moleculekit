@@ -1,15 +1,15 @@
 /**
  * Headless render entry point. Driven from Python over CDP by
  * moleculekit/viewer/molstar/render.py. No UI, no user input: a plugin, a
- * canvas, an MVS scene and an ImagePass screenshot.
+ * canvas, a scene applied through applyScene (see scene.ts) and an
+ * ImagePass screenshot.
  */
 import { PluginContext } from 'molstar/lib/mol-plugin/context'
-import { DefaultPluginSpec, PluginSpec } from 'molstar/lib/mol-plugin/spec'
-import { loadMVS } from 'molstar/lib/extensions/mvs/load'
-import { MVSData } from 'molstar/lib/extensions/mvs/mvs-data'
-import { MolViewSpec } from 'molstar/lib/extensions/mvs/behavior'
+import { DefaultPluginSpec } from 'molstar/lib/mol-plugin/spec'
 import { ParamDefinition as PD } from 'molstar/lib/mol-util/param-definition'
 import { SsaoParams } from 'molstar/lib/mol-canvas3d/passes/ssao'
+import type { StateObjectSelector } from 'molstar/lib/mol-state'
+import { applyScene, type Scene } from './scene'
 
 let plugin: PluginContext | null = null
 
@@ -34,10 +34,7 @@ async function init(width: number, height: number): Promise<string> {
   canvas.height = height
   container.appendChild(canvas)
 
-  // loadMVS refuses to run unless the MolViewSpec behavior is registered:
-  // DefaultPluginSpec() alone does not include it.
   const spec = DefaultPluginSpec()
-  spec.behaviors.push(PluginSpec.Behavior(MolViewSpec))
   plugin = new PluginContext(spec)
   await plugin.init()
   // initViewer is async in this Mol* version: it wraps the private,
@@ -72,19 +69,60 @@ async function warmScreenshotPass(): Promise<void> {
 }
 
 
-async function load(mvsj: string): Promise<void> {
-  if (!plugin) throw new Error('init() must run before load()')
+/**
+ * Size the canvas to the image about to be rendered.
+ *
+ * The camera's fit distance comes from the canvas viewport, so without this it
+ * is computed once against whatever the first render made the canvas and never
+ * changes: every later size only cropped or padded that framing. A 1200x900
+ * and a 900x900 request both drew the structure 516x473, and which framing you
+ * got depended on the first render in the process.
+ *
+ * Only the aspect actually reaches the image (ImagePass renders the real
+ * resolution offscreen, and 2400x1800 is byte-identical whether the canvas is
+ * 2400x1800 or 1009x757), but matching the size outright gets the aspect exact
+ * where scaling to a fixed height rounds it: 757 * 600/900 is 379, an aspect
+ * of 0.5007 rather than 0.5, and those pixels differ.
+ */
+async function setViewport(width: number, height: number): Promise<void> {
+  if (!plugin) throw new Error('init() must run before setViewport()')
+  const container = document.getElementById('app') as HTMLDivElement
+  container.style.height = `${height}px`
+  container.style.width = `${width}px`
+  // plugin.handleResize, not canvas3d.handleResize: only the plugin's resizes
+  // the canvas from the container (resizeCanvas reads container.offsetWidth).
+  // canvas3d's just re-reads the drawing buffer, so on its own the buffer
+  // stays whatever init() set it to for the first render, forever.
+  plugin.handleResize()
+}
+
+let structureRef: StateObjectSelector | null = null
+
+/** Parse a base64 BinaryCIF structure and make it the current one. */
+async function loadStructure(bcifBase64: string): Promise<void> {
+  if (!plugin) throw new Error('init() must run before loadStructure()')
+  await plugin.clear()
+  const bytes = Uint8Array.from(atob(bcifBase64), (c) => c.charCodeAt(0))
+  const data = await plugin.builders.data.rawData({ data: bytes })
+  // Mol*'s trajectory format registry keys BinaryCIF under 'mmcif', which
+  // parses binary CIF transparently; the same quirk moleculeToCIF.ts's
+  // DCD path documents.
+  const trajectory = await plugin.builders.structure.parseTrajectory(data, 'mmcif')
+  const model = await plugin.builders.structure.createModel(trajectory)
+  structureRef = await plugin.builders.structure.createStructure(model)
+}
+
+async function applySceneAndDraw(scene: Scene): Promise<void> {
+  if (!plugin || !structureRef) throw new Error('loadStructure() must run first')
   const canvas3d = plugin.canvas3d!
   // didDraw is a BehaviorSubject: subscribing to it always replays whatever
-  // value it last held, even if that draw predates this load. Capture the
-  // baseline before loading and wait for a strictly later draw, so we do
-  // not resolve on a stale replay of a draw from init() or a prior load().
+  // value it last held, even if that draw predates this call. Capture the
+  // baseline before applying and wait for a strictly later draw, so we do
+  // not resolve on a stale replay of a draw from init() or a prior scene.
   const baseline = canvas3d.didDraw.value
-  // appendSnapshots defaults to false, which already replaces the existing
-  // scene; spelled out here because that is exactly the behavior we need.
-  await loadMVS(plugin, MVSData.fromMVSJ(mvsj), { appendSnapshots: false })
-  // Resolve only once something has actually been drawn after this load.
-  // Without this the screenshot can be taken against an empty scene.
+  await applyScene(plugin, structureRef, scene)
+  // Resolve only once something has actually been drawn after this. Without
+  // this the screenshot can be taken against an empty or half-built scene.
   await new Promise<void>((resolve) => {
     const sub = canvas3d.didDraw.subscribe((t) => {
       if (t > baseline) {
@@ -132,4 +170,11 @@ async function screenshot(opts: {
 
 
 
-;(window as any).mkHeadless = { init, load, screenshot, glInfo }
+;(window as any).mkHeadless = {
+  init,
+  setViewport,
+  loadStructure,
+  applyScene: applySceneAndDraw,
+  screenshot,
+  glInfo,
+}

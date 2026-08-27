@@ -1,4 +1,3 @@
-import importlib.util
 import shutil
 from pathlib import Path
 
@@ -44,10 +43,6 @@ def test_interactive_viewer_page_still_ships():
     assert (STATIC / "index.html").is_file()
 
 
-needs_molviewspec = pytest.mark.skipif(
-    importlib.util.find_spec("molviewspec") is None,
-    reason="molviewspec not installed (optional 'notebook' dependency)",
-)
 needs_chromium = pytest.mark.skipif(
     render_mod._find_chromium_or_none() is None,
     reason="no chromium binary found; set MOLECULEKIT_CHROMIUM to enable",
@@ -187,7 +182,6 @@ def test_env_var_pointing_at_nothing_is_rejected(monkeypatch):
         render_mod.find_chromium()
 
 
-@needs_molviewspec
 @needs_chromium
 def test_render_returns_png_bytes_of_the_requested_size():
     png = render_mod.render(_trypsin(), size=(400, 300))
@@ -199,7 +193,70 @@ def test_render_returns_png_bytes_of_the_requested_size():
     render_mod.shutdown_for_tests()
 
 
-@needs_molviewspec
+@needs_chromium
+def test_opposite_orientations_are_not_the_same_image():
+    """`rotate` must honour the sign of its direction.
+
+    Mol*'s getFocus puts the direction and up vectors through
+    Vec3.matchDirection, which flips them into the hemisphere the camera
+    already looks along, so front and back, left and right, and top and
+    bottom each rendered one identical image until the camera position was
+    computed from the direction here instead.
+    """
+    mol = _trypsin()
+    names = ("front", "back", "left", "right", "top", "bottom")
+    images = {n: render_mod.render(mol, size=(300, 300), rotate=n) for n in names}
+    collapsed = [n for n in names if list(images.values()).count(images[n]) > 1]
+    assert not collapsed, f"orientations render identically: {collapsed}"
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+@pytest.mark.parametrize("segid", ["X", ""])
+def test_segids_do_not_change_the_render(segid):
+    """A segid must not redraw the structure.
+
+    It is written as label_entity_id and Mol* starts a new chain at every
+    entity boundary, so a segid subdividing a chain used to break the cartoon
+    there: three interior residues given their own segid collapsed a whole
+    beta strand into a coil. Mixing blank and non-blank segids was worse, the
+    atoms landed in an entity no _entity row declared and createModel threw.
+    """
+    mol = _trypsin()
+    plain = render_mod.render(mol, size=(400, 400))
+
+    split = mol.copy()
+    split.segid[:] = "S"
+    split.segid[np.isin(split.resid, [100, 101, 102])] = segid
+    assert render_mod.render(split, size=(400, 400)) == plain
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+def test_framing_follows_the_requested_size():
+    """The camera must fit the image being rendered, not the first one.
+
+    Mol* sizes the canvas from its container and the camera's fit distance
+    comes from that canvas, so without a resize per render the framing was
+    decided once, by whichever size opened the browser, and every later size
+    only cropped or padded it. A 600x1200 render taken after a 1200x900 one
+    drew the structure 574 pixels wide in a 600 pixel image, all but touching
+    both edges; a 900x900 and a 1200x900 render drew it identically at 516x473.
+    """
+    from PIL import Image
+    import io
+
+    mol = _trypsin()
+    for size in [(1200, 900), (600, 1200)]:
+        image = Image.open(io.BytesIO(render_mod.render(mol, size=size)))
+        box = image.convert("RGB").point(lambda v: 255 if v < 245 else 0)
+        box = box.convert("L").getbbox()
+        # Fraction of whichever dimension the fit binds on.
+        fill = max((box[2] - box[0]) / size[0], (box[3] - box[1]) / size[1])
+        assert 0.4 < fill < 0.7, f"{size} drew {box}, filling {fill:.2f}"
+    render_mod.shutdown_for_tests()
+
+
 @needs_chromium
 def test_render_is_not_a_blank_frame(tmp_path):
     """The failure mode that matters: WebGL dies and every pixel is identical."""
@@ -215,7 +272,6 @@ def test_render_is_not_a_blank_frame(tmp_path):
     render_mod.shutdown_for_tests()
 
 
-@needs_molviewspec
 @needs_chromium
 def test_render_reuses_one_browser_across_calls():
     mol = _trypsin()
@@ -226,7 +282,6 @@ def test_render_reuses_one_browser_across_calls():
     render_mod.shutdown_for_tests()
 
 
-@needs_molviewspec
 @needs_chromium
 def test_repeated_renders_are_byte_identical():
     """The same molecule rendered repeatedly must produce the same image.
@@ -243,7 +298,6 @@ def test_repeated_renders_are_byte_identical():
     render_mod.shutdown_for_tests()
 
 
-@needs_molviewspec
 @needs_chromium
 def test_render_transparent_has_an_alpha_channel():
     """mode == "RGBA" alone proves nothing: canvas.toDataURL always emits an
@@ -259,7 +313,6 @@ def test_render_transparent_has_an_alpha_channel():
     render_mod.shutdown_for_tests()
 
 
-@needs_molviewspec
 @needs_chromium
 def test_render_high_quality_survives_and_does_not_wedge_the_render_loop():
     """Exercise the occlusion path (quality="high"), the one path task 5
@@ -293,10 +346,163 @@ def test_molecule_render_delegates_with_its_arguments(monkeypatch):
     assert captured["kwargs"] == {"size": (640, 480), "rotate": "top"}
 
 
-@needs_molviewspec
 @needs_chromium
 def test_molecule_render_writes_a_file(tmp_path):
     out = tmp_path / "mol.png"
     _trypsin().render(str(out), size=(200, 150))
     assert out.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+def test_render_needs_no_molviewspec(monkeypatch):
+    """The render path must not import molviewspec: the sandbox image does not
+    ship it, and dropping that requirement is a goal of this design."""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def _forbid(name, *args, **kwargs):
+        if name.startswith("molviewspec"):
+            raise AssertionError("render() must not import molviewspec")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _forbid)
+    png = render_mod.render(_trypsin(), size=(200, 150))
+    assert png[:8] == b"\x89PNG\r\n\x1a\n"
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+def test_render_rotate_changes_the_image():
+    """The camera step of applyScene must actually move the camera: a render
+    with rotate="top" must differ from the default orientation."""
+    mol = _trypsin()
+    default = render_mod.render(mol, size=(200, 150))
+    rotated = render_mod.render(mol, size=(200, 150), rotate="top")
+    assert default != rotated
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+def test_render_formal_charge_changes_the_image():
+    """The labels step of applyScene must actually draw something: a molecule
+    with a formal charge must render differently from the same molecule with
+    every charge zeroed."""
+    mol = _trypsin()
+    mol.formalcharge[:] = 0
+    neutral = render_mod.render(mol, size=(200, 150))
+    mol.formalcharge[0] = 1
+    charged = render_mod.render(mol, size=(200, 150))
+    assert neutral != charged
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+def test_render_zoom_changes_the_image():
+    """applyCamera's snapshot must survive Mol*'s automatic camera-fit reset
+    triggered by newly committed representations, not be overwritten by it."""
+    mol = _trypsin()
+    default = render_mod.render(mol, size=(200, 150))
+    zoomed = render_mod.render(mol, size=(200, 150), zoom=3.0)
+    assert default != zoomed
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+def test_render_center_changes_the_image():
+    """Same as zoom: the camera's focus target must survive the automatic
+    camera-fit reset rather than being silently replaced by it."""
+    mol = _trypsin()
+    default = render_mod.render(mol, size=(200, 150))
+    centered = render_mod.render(mol, size=(200, 150), center="resid 50 to 60")
+    assert default != centered
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+def test_render_shows_the_ligand_and_ion():
+    """Explicit hetero representations (Licorice on ``not protein``) must
+    actually draw, not silently resolve to Mol*'s registry default
+    representation. A representation-type mismatch once made every
+    non-cartoon component resolve to that default, which drew barely
+    anything for a ligand/ion selection: measured through the built bundle,
+    a fixed camera that keeps the ligand and ion in frame showed only a
+    ~270-unit total pixel difference against a cartoon-only render (noise: a
+    formal-charge label), against ~2200 once the representation type is
+    translated correctly.
+
+    This exercises explicit ``mol.reps`` entries, not the automatic scene's
+    builtin ligand/ion/water/branched components; see
+    ``test_automatic_scene_shows_the_ligand_and_ion`` for those.
+
+    ``center``/``zoom`` are pinned identically in both renders (same
+    underlying atom coordinates too) so an auto-fit framing change cannot be
+    mistaken for the ligand/ion actually being visible: without pinning,
+    simply dropping the ligand/ion components already changes the auto-fit
+    crop regardless of whether they ever drew a pixel, which would make a
+    pixel-difference assertion pass for the wrong reason.
+    """
+    import io
+
+    from PIL import Image, ImageChops
+
+    mol = _trypsin()
+    mol.reps.add(sel="protein", style="NewCartoon", color="secondary structure")
+    mol.reps.add(sel="not protein", style="Licorice")
+    with_hetero = render_mod.render(mol, size=(200, 150), center="protein", zoom=0.7)
+
+    protein_only = _trypsin()
+    protein_only.reps.add(sel="protein", style="NewCartoon", color="secondary structure")
+    without_hetero = render_mod.render(
+        protein_only, size=(200, 150), center="protein", zoom=0.7
+    )
+
+    img_with = Image.open(io.BytesIO(with_hetero)).convert("RGB")
+    img_without = Image.open(io.BytesIO(without_hetero)).convert("RGB")
+    diff = np.asarray(ImageChops.difference(img_with, img_without))
+    assert diff.sum() > 1000, "the ligand/ion must draw visibly distinct pixels"
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+def test_automatic_scene_shows_the_ligand_and_ion():
+    """The automatic scene, the one an empty ``mol.reps`` gives every plain
+    ``mol.render()``/``mol.view()`` call, must draw hetero atoms too, not
+    just the cartoon.
+
+    Unlike ``test_render_shows_the_ligand_and_ion`` above, ``mol.reps`` is
+    left empty here so ``build_scene`` takes its ``_automatic_components``
+    path and emits the builtin ``ligand``/``ion``/``water``/``branched``
+    components. Those four currently draw nothing (``_bcif_bytes`` writes no
+    ``entity``/``chem_comp``/``struct_conn`` categories, so Mol* classifies
+    every atom as polymer); hetero atoms survive solely through the
+    non-standard-resname component built alongside them (see the comment at
+    ``scene.py``'s ``_automatic_components``). This pins that survival so a
+    future change to those four builtins does not silently empty every
+    default render of its ligand and ion.
+    """
+    import io
+
+    from PIL import Image, ImageChops
+
+    # Larger than the 200x150 used elsewhere in this file: the ligand/ion are
+    # a small fraction of the frame at "center=protein", so a small render
+    # leaves too little margin above noise (measured diff sum 915 at 200x150
+    # against 2031 at 300x220 for the same two molecules/camera).
+    mol = _trypsin()  # protein + MOL (ligand) + Cl- (ion), mol.reps empty
+    with_hetero = render_mod.render(mol, size=(300, 220), center="protein", zoom=0.7)
+
+    protein_only = _trypsin()
+    protein_only.filter("protein")
+    without_hetero = render_mod.render(
+        protein_only, size=(300, 220), center="protein", zoom=0.7
+    )
+
+    img_with = Image.open(io.BytesIO(with_hetero)).convert("RGB")
+    img_without = Image.open(io.BytesIO(without_hetero)).convert("RGB")
+    diff = np.asarray(ImageChops.difference(img_with, img_without))
+    assert diff.sum() > 1000, (
+        "the automatic scene must draw the ligand/ion, not just the cartoon"
+    )
     render_mod.shutdown_for_tests()

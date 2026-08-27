@@ -1,3 +1,5 @@
+import type { Scene } from './scene'
+
 // Mirrors moleculekit/viewer/molstar/serialize.py output.
 export type MoleculeKitDict = {
   altloc: string[]
@@ -29,6 +31,7 @@ export type SSETopology = {
   slot: string
   label: string
   mol: MoleculeKitDict
+  scene: Scene
   coords_url: string
   numFrames: number
 }

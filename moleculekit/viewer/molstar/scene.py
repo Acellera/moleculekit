@@ -1,0 +1,374 @@
+"""The rule that decides what a Mol* scene looks like, as plain data.
+
+Both the interactive viewer and the headless renderer consume the dict this
+module produces, so they cannot drift: one decides, one applies. MolViewSpec is
+one possible encoding of the same description (see mvs.py) and is used by the
+notebook viewer and the docs theme, which cannot reach the shared bundle.
+
+The vocabulary is MolViewSpec's: selector names, representation type names and
+Mol* colour theme names are spelled exactly as MVS spells them, so translating
+in either direction is mechanical.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+from moleculekit.residues import (
+    NUCLEIC_RESIDUE_NAMES_WITH_VARIANTS,
+    PROTEIN_RESIDUE_NAMES_WITH_VARIANTS,
+)
+
+if TYPE_CHECKING:
+    from moleculekit.molecule import Molecule
+
+logger = logging.getLogger(__name__)
+
+# These moved here from mvs.py: scene.py owns the rule, mvs.py re-exports them.
+MIN_CARTOON_RESIDUES = 6
+BALL_AND_STICK_SIZE_FACTOR = 0.6
+MAX_FORMAL_CHARGE_LABELS = 200
+_BALL_AND_STICK_SELECTORS = ("ligand", "ion", "water", "branched")
+
+# Which resnames count as canonical polymer, deciding cartoon versus
+# ball-and-stick. Derived from residues.py so the two cannot drift: the
+# WITH_VARIANTS sets are exactly "canonical residue, including force-field
+# renames" (HIS -> HID/HIE/HIP, CYS -> CYX/CYM, and so on).
+STANDARD_POLYMER_RESNAMES = (
+    PROTEIN_RESIDUE_NAMES_WITH_VARIANTS
+    | NUCLEIC_RESIDUE_NAMES_WITH_VARIANTS
+    # Spellings residues.py does not carry: ARN is the neutral-arginine name
+    # some force fields use (residues.py spells it AR0), and these RNA and
+    # deoxyuridine names appear in older PDB-derived files. Dropping them would
+    # push those residues out of the cartoon into ball-and-stick.
+    | {"ARN", "DU", "RA", "RC", "RG", "RU"}
+)
+
+DEFAULT_DIRECTION = (0.0, 0.0, -1.0)
+DEFAULT_UP = (0.0, 1.0, 0.0)
+
+# `direction` points from the camera position to the target, so "top" (looking
+# down from above) is -y, which is Rx(-90) applied to DEFAULT_DIRECTION.
+ORIENTATION_PRESETS = {
+    "front": (0.0, 0.0, 0.0),
+    "back": (0.0, 180.0, 0.0),
+    "left": (0.0, -90.0, 0.0),
+    "right": (0.0, 90.0, 0.0),
+    "top": (-90.0, 0.0, 0.0),
+    "bottom": (90.0, 0.0, 0.0),
+}
+
+
+def _count_standard_polymer_residues(mol) -> int:
+    seen: dict = {}
+    for resid, ins, chain, segid, resname in zip(
+        mol.resid.tolist(),
+        mol.insertion.tolist(),
+        mol.chain.tolist(),
+        mol.segid.tolist(),
+        mol.resname.tolist(),
+    ):
+        seen[(resid, ins, chain, segid)] = resname
+    return sum(1 for rn in seen.values() if rn in STANDARD_POLYMER_RESNAMES)
+
+
+def rotation_to_direction_up(rotate):
+    """Resolve a rotation into the MVS ``direction`` and ``up`` vectors.
+
+    Parameters
+    ----------
+    rotate : str or tuple of float or None
+        A preset name from ``ORIENTATION_PRESETS``, a tuple of ``(rx, ry, rz)``
+        rotations in degrees applied about the x, y and z axes in that order, or
+        None for the default view.
+
+    Returns
+    -------
+    direction : tuple of float
+        Unit vector from the camera position toward the target.
+    up : tuple of float
+        Unit vector controlling the roll about ``direction``.
+
+    Raises
+    ------
+    ValueError
+        If ``rotate`` is a string that names no known preset.
+    """
+    if rotate is None:
+        return DEFAULT_DIRECTION, DEFAULT_UP
+
+    if isinstance(rotate, str):
+        key = rotate.lower()
+        if key not in ORIENTATION_PRESETS:
+            raise ValueError(
+                f"Unknown orientation {rotate!r}. Use one of "
+                f"{sorted(ORIENTATION_PRESETS)} or a (rx, ry, rz) tuple in degrees."
+            )
+        rotate = ORIENTATION_PRESETS[key]
+
+    rx, ry, rz = (np.deg2rad(float(angle)) for angle in rotate)
+    cx, sx = np.cos(rx), np.sin(rx)
+    cy, sy = np.cos(ry), np.sin(ry)
+    cz, sz = np.cos(rz), np.sin(rz)
+    rot_x = np.array([[1, 0, 0], [0, cx, -sx], [0, sx, cx]])
+    rot_y = np.array([[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]])
+    rot_z = np.array([[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]])
+    rot = rot_z @ rot_y @ rot_x
+
+    direction = rot @ np.array(DEFAULT_DIRECTION)
+    up = rot @ np.array(DEFAULT_UP)
+    return tuple(float(v) for v in direction), tuple(float(v) for v in up)
+
+
+_ELEMENT = {"theme": "element-symbol"}
+
+
+def _builtin(name: str) -> dict:
+    return {"kind": "builtin", "name": name}
+
+
+def _atoms(indices) -> dict:
+    return {"kind": "atoms", "indices": [int(i) for i in indices]}
+
+
+def _ball_and_stick(select: dict, color: dict) -> dict:
+    return {
+        "select": select,
+        "representation": {
+            "type": "ball_and_stick",
+            "size_factor": BALL_AND_STICK_SIZE_FACTOR,
+        },
+        "color": color,
+    }
+
+
+def _automatic_components(mol) -> list[dict]:
+    """The scene shown when the user has set no representations."""
+    if _count_standard_polymer_residues(mol) < MIN_CARTOON_RESIDUES:
+        return [_ball_and_stick(_builtin("all"), _ELEMENT)]
+
+    components = [
+        {
+            "select": _builtin("polymer"),
+            "representation": {"type": "cartoon"},
+            "color": {"theme": "secondary-structure"},
+        }
+    ]
+    components += [
+        _ball_and_stick(_builtin(name), _ELEMENT) for name in _BALL_AND_STICK_SELECTORS
+    ]
+    # Not redundant with the ligand/ion/water/branched builtins just above:
+    # _bcif_bytes() (inline.py) writes only _atom_site, with no entity,
+    # chem_comp or struct_conn categories. With none of those present, Mol*
+    # cannot classify any atom as ligand, ion, water or branched, so all four
+    # of those components draw nothing on every render; this resname-based
+    # component is what actually keeps hetero atoms visible in the automatic
+    # scene. Do not remove it as a believed-redundant cleanup without first
+    # adding those mmCIF categories to the BinaryCIF writer and re-checking
+    # coverage (see tests/test_molstar_render.py's automatic-scene
+    # ligand/ion test).
+    other = sorted(set(mol.resname.tolist()) - STANDARD_POLYMER_RESNAMES)
+    if other:
+        components.append(
+            _ball_and_stick({"kind": "resname", "names": other}, _ELEMENT)
+        )
+    return components
+
+
+def _components_from_reps(mol, reps) -> list[dict]:
+    """Translate user representations, which replace the automatic scene."""
+    from moleculekit.representations import Representations
+
+    components = []
+    dropped = []
+    for rep in reps:
+        translated = Representations(mol)._translateMolstar(rep)
+        if translated is None:
+            dropped.append(rep.sel)
+            logger.warning(
+                "Representation selection %r matched no atoms and was dropped.",
+                rep.sel,
+            )
+            continue
+        color = translated.get("color")
+        if color is None:
+            color_spec = _ELEMENT
+        elif isinstance(color, dict):
+            color_spec = color
+        else:
+            color_spec = {"uniform": color}
+        component = {
+            "select": _atoms(translated["atom_indices"]),
+            "representation": {"type": translated["type"]},
+            "color": color_spec,
+        }
+        if "opacity" in translated:
+            component["opacity"] = translated["opacity"]
+        components.append(component)
+
+    if not components:
+        raise ValueError(
+            "Every representation selection matched no atoms "
+            f"({', '.join(repr(s) for s in dropped)}), which would render an "
+            "empty scene. Check the selections, or clear mol.reps to get the "
+            "automatic scene."
+        )
+    return components
+
+
+def _labels(mol) -> list[dict]:
+    charges = mol.formalcharge
+    charged = [i for i in range(len(charges)) if int(charges[i]) != 0]
+    if not charged:
+        return []
+    if len(charged) > MAX_FORMAL_CHARGE_LABELS:
+        logger.warning(
+            "Skipping formal charge labels: %d charged atoms exceeds cap %d "
+            "(likely a solvated/ionised system; show a prepared structure to "
+            "keep labels meaningful).",
+            len(charged),
+            MAX_FORMAL_CHARGE_LABELS,
+        )
+        return []
+    frame = mol.frame
+    labels = []
+    for i in charged:
+        q = int(charges[i])
+        labels.append(
+            {
+                "atom": int(i),
+                "position": [float(mol.coords[i, axis, frame]) for axis in range(3)],
+                "text": f"+{q}" if q > 0 else f"{q}",
+                "size": 0.7,
+                "color": "black",
+                "offset": 1.0,
+            }
+        )
+    return labels
+
+
+def _tubes(mol, highlight_bonds) -> list[dict]:
+    tubes = []
+    frame = mol.frame
+    for sel_a, sel_b in highlight_bonds or []:
+        ia = mol.atomselect(sel_a, indexes=True)
+        ib = mol.atomselect(sel_b, indexes=True)
+        if len(ia) != 1 or len(ib) != 1:
+            raise ValueError(
+                "highlight_bonds selections must each pick exactly one atom; "
+                f"got {len(ia)} for {sel_a!r} and {len(ib)} for {sel_b!r}"
+            )
+        tubes.append(
+            {
+                "start": [float(v) for v in mol.coords[int(ia[0]), :, frame]],
+                "end": [float(v) for v in mol.coords[int(ib[0]), :, frame]],
+                "radius": 0.3,
+                "color": "orange",
+            }
+        )
+    return tubes
+
+
+def build_scene(
+    mol: "Molecule",
+    reps=None,
+    *,
+    ball_and_stick_sel: "str | np.ndarray | None" = None,
+    highlight_bonds: "list[tuple[str, str]] | None" = None,
+    focus_sel: "str | np.ndarray | None" = None,
+    rotate: "str | tuple[float, float, float] | None" = None,
+    zoom: float | None = None,
+    background_color: str | None = None,
+) -> dict:
+    """Describe the scene for ``mol`` as a plain dict.
+
+    When ``reps`` is empty a cartoon is used for the polymer if ``mol`` has at
+    least ``MIN_CARTOON_RESIDUES`` standard polymer residues, with ligands,
+    ions, water, branched entities and non-standard residues as ball-and-stick,
+    and ball-and-stick throughout otherwise. When ``reps`` is non-empty those
+    representations are the whole scene, matching how the VMD and NGL backends
+    treat ``mol.reps``.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule whose topology and coordinates drive the scene. The frame
+        used for label and tube positions is ``mol.frame``.
+    reps : list or None, optional
+        Representations to render: normally the ones held in ``mol.reps``,
+        together with any one-off representation added by ``view()``'s
+        ``sel``, ``style`` and ``color`` arguments. An empty list or None
+        gives the automatic scene.
+    ball_and_stick_sel : str or np.ndarray or None, optional
+        An extra atom selection to additionally draw as ball-and-stick. Ignored
+        when it matches no atoms.
+    highlight_bonds : list of tuple of (str, str) or None, optional
+        Pairs of atom selections, each of which must pick exactly one atom. An
+        orange tube is drawn between the two atoms of each pair.
+    focus_sel : str or np.ndarray or None, optional
+        An atom selection the camera frames on. Ignored when it matches no
+        atoms.
+    rotate : str or tuple of float or None, optional
+        Camera orientation, as a preset name or ``(rx, ry, rz)`` in degrees.
+    zoom : float or None, optional
+        Camera tightness. Larger values move the camera closer.
+    background_color : str or None, optional
+        Canvas background as an SVG colour name or hex string.
+
+    Returns
+    -------
+    scene : dict
+        The scene description, with ``components`` always present and
+        ``labels``, ``tubes``, ``camera`` and ``canvas`` present when they
+        carry anything.
+
+    Raises
+    ------
+    ValueError
+        If every representation selection matches no atoms, if a
+        ``highlight_bonds`` selection does not pick exactly one atom, or if
+        ``rotate`` names no known orientation preset.
+    """
+    if reps:
+        components = _components_from_reps(mol, reps)
+    else:
+        components = _automatic_components(mol)
+
+    if ball_and_stick_sel is not None:
+        mask = mol.atomselect(ball_and_stick_sel)
+        if mask.any():
+            components.append(_ball_and_stick(_atoms(mask.nonzero()[0]), _ELEMENT))
+
+    scene: dict = {"components": components}
+
+    labels = _labels(mol)
+    if labels:
+        scene["labels"] = labels
+
+    tubes = _tubes(mol, highlight_bonds)
+    if tubes:
+        scene["tubes"] = tubes
+
+    has_camera = rotate is not None or zoom is not None
+    if focus_sel is not None or has_camera:
+        camera: dict = {}
+        if has_camera:
+            direction, up = rotation_to_direction_up(rotate)
+            camera["direction"] = list(direction)
+            camera["up"] = list(up)
+        if zoom is not None:
+            camera["radius_factor"] = 1.0 / float(zoom)
+        if focus_sel is not None:
+            mask = mol.atomselect(focus_sel)
+            if mask.any():
+                camera["focus"] = _atoms(mask.nonzero()[0])
+        if camera:
+            scene["camera"] = camera
+
+    if background_color is not None:
+        scene["canvas"] = {"background": background_color}
+
+    return scene
