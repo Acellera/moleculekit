@@ -166,9 +166,9 @@ class Representations:
             drawn as something it is not. ``Labels`` writes each atom's name
             beside it and ``FormalCharges`` writes ``+1``/``-1`` on atoms
             carrying one, both on top of another representation that draws the
-            atoms; neither reaches VMD or NGL. Any other VMD style still works
-            in VMD, which is sent the name as written. See more
-            `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node55.html>`__.
+            atoms; neither reaches VMD or NGL. A name from neither list is passed
+            to the VMD backend as written, so VMD's own styles still work
+            there.
         color : str or int
             Coloring mode (str) or ColorID (int), in either vocabulary. VMD's
             ``Name``, ``Element``, ``Chain``, ``ResName``, ``Index``,
@@ -177,9 +177,8 @@ class Representations:
             ``element-symbol``, ``chain-id``, ``residue-name``,
             ``sequence-id``, ``secondary-structure``, ``hydrophobicity``,
             ``molecule-type``, ``atom-id``, ``uncertainty`` (the B factor,
-            which VMD calls ``Beta``) and ``occupancy``. Any SVG
-            colour name or ``#rrggbb`` string gives a uniform colour. See more
-            `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
+            which VMD calls ``Beta``) and ``occupancy``. Any SVG colour name or
+            ``#rrggbb`` string gives a uniform colour, as does a VMD ColorID.
         frames : list
             List of frames to visualize with this representation. If None it will visualize the current frame only.
         opacity : float
@@ -396,10 +395,10 @@ class _Representation:
         Atom selection for the representation.
         See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
     style : str
-        Representation style. See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node55.html>`__.
+        Representation style. See :meth:`Representations.add` for the names.
     color : str or int
-        Coloring mode (str) or ColorID (int).
-        See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node85.html>`__.
+        Coloring mode (str) or ColorID (int). See :meth:`Representations.add`
+        for the names.
     size : float
         Scales the drawn size: stick and sphere radius, surface probe, point
         size, label text.

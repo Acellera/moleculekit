@@ -32,6 +32,8 @@ png = mol.render(size=(800, 600))
 | `center` | Atom selection to frame the camera on. |
 | `rotate` | `"front"`, `"back"`, `"left"`, `"right"`, `"top"`, `"bottom"`, or `(rx, ry, rz)` in degrees. |
 | `zoom` | Larger values move the camera closer. |
+| `clip` | Half-thickness in Angstrom of the slab drawn around what the camera frames, cutting away what is in front of and behind it. Omit to draw the whole structure. |
+| `fog` | Depth cueing strength, `0` to `100`. Fog fades distant geometry into the background colour. Omit for Mol\*'s own strength. |
 | `background` | Colour name or hex string. Ignored when `transparent=True`. |
 | `transparent` | Render onto a transparent background, ignoring `background`. |
 | `timeout` | Seconds allowed for one render. |
@@ -74,7 +76,10 @@ reproducing what a GPU-less machine will produce.
   they replace the automatic scene rather than adding to it. Setting any
   representation means you are describing the whole picture, which matches how
   the VMD backend behaves. Leave `mol.reps` empty to get the automatic scene of
-  a cartoon polymer with ball-and-stick ligands.
+  a cartoon polymer with ball-and-stick ligands, or call `mol.reps.addDefaults()`
+  to start from it and edit. See
+  [Choose representations and colours](choose-representations.md) for the
+  styles, colour modes, size and transparency.
 - **A representation whose selection matches no atoms is dropped with a
   warning.** If every representation matches nothing, `render()` raises rather
   than writing an empty image.
@@ -85,6 +90,10 @@ reproducing what a GPU-less machine will produce.
   first. `render()` produces a single still, not a movie.
 - **`center` must match at least one atom.** A selection that matches nothing
   raises `ValueError`, rather than silently falling back to the default view.
+- **`center` is also what `rotate` orbits and what `zoom` scales.** Framing a
+  ligand and stepping `rotate` through angles gives a turntable around it.
+- **The framing follows the requested `size`.** A wider image shows more around
+  the structure rather than the same picture stretched.
 - **The first call is slower** because it starts the browser. Later calls reuse
   it, so rendering many images in one process costs the startup once.
 - **Speed depends on whether a GPU is available.** With one, a 1200x900 render

@@ -67,6 +67,7 @@ convert-to-rdkit-and-openff
 :maxdepth: 1
 
 view-a-molecule
+choose-representations
 render-an-image
 ```
 

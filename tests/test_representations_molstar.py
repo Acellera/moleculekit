@@ -196,6 +196,8 @@ def test_docstrings_list_every_style_and_colour():
 
     Before this, both docstrings only linked to VMD's manual, which covers
     neither the Mol*-only styles nor the colour modes Mol* actually takes.
+    The how-to page enumerates the same vocabulary and can go stale the same
+    way, so it is checked here too.
     """
     import re
 
@@ -206,8 +208,14 @@ def test_docstrings_list_every_style_and_colour():
         _normalize,
     )
 
-    for doc in (Representations.add.__doc__, Molecule.view.__doc__):
-        listed = {_normalize(t) for t in re.findall(r"``([^`]+)``", doc)}
+    from pathlib import Path
+
+    page = Path(__file__).parents[1] / "doc/source/how-to/choose-representations.md"
+    docs = [Representations.add.__doc__, Molecule.view.__doc__, page.read_text()]
+    for doc in docs:
+        # One or more backticks, no newline inside: matches RST's ``name``
+        # and Markdown's `name` alike.
+        listed = {_normalize(t) for t in re.findall(r"`+([^`\n]+)`+", doc)}
         assert not set(MOLSTAR_STYLES) - listed, set(MOLSTAR_STYLES) - listed
         assert not set(MOLSTAR_THEMES) - listed, set(MOLSTAR_THEMES) - listed
 
