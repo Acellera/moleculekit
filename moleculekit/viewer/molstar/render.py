@@ -9,8 +9,9 @@ render matches what view() shows. This path never imports molviewspec.
 Rendering runs on the GPU when one is reachable and falls back to a software
 rasteriser when it is not, which is what lets the same code work inside
 containers that expose no graphics device. MOLECULEKIT_RENDER_GL pins the
-choice. The fallback is not free: a 1200x900 render measured 0.5s on a GPU
-against 6.9s in software.
+choice. The fallback is not free: a 1200x900 "fast" render measured 0.16s on a
+GPU against 1.2s on a 20-core software rasteriser, and software time scales
+with pixels and with how many cores it has.
 
 This module is not thread-safe: the singleton browser's devtools session has
 one socket and one frame reader, so concurrent render() calls from different
@@ -51,9 +52,13 @@ _PAGE_READY_POLL_INTERVAL = 0.05
 _PAGE_READY_TIMEOUT = 30.0
 _POSIX = os.name == "posix"
 
+# sample_level is the anti-aliasing work: the scene is drawn 2**level times
+# and accumulated. Mol*'s own screenshot helper hardcodes 4, so 16 renders,
+# which costs nothing on a GPU and dominates the time on the software
+# rasteriser. "fast" spends 2 renders on it instead.
 QUALITY_PRESETS = {
-    "fast": {"occlusion": False},
-    "high": {"occlusion": True},
+    "fast": {"occlusion": False, "sample_level": 1},
+    "high": {"occlusion": True, "sample_level": 4},
 }
 
 _CHROMIUM_FLAGS = (
@@ -85,12 +90,25 @@ _CHROMIUM_FLAGS = (
     "--mute-audio",
 )
 
-# How chromium is told to reach OpenGL. The choice is worth roughly 15x on
-# render time: a 1200x900 "fast" render measured 0.43s on an NVIDIA GPU and
-# 6.9s on the software rasteriser, because SwiftShader fills every pixel on
-# the CPU.
+# How chromium is told to reach OpenGL. The choice is worth roughly 7x on
+# render time: a 1200x900 "fast" render measured 0.16s on an NVIDIA GPU and
+# 1.2s on the software rasteriser, because SwiftShader fills every pixel on
+# the CPU, across as many cores as it has.
 _GL_BACKENDS = {
     "hardware": ("--use-gl=angle", "--use-angle=gl"),
+    # Mesa's software Vulkan (lavapipe). Measured about 30% faster than
+    # SwiftShader on the same GPU-less container: 1M63 at 1000x750 took a
+    # median 1.7s against 2.4s. Only the Vulkan path works headless, because
+    # ANGLE's GL backend wants an X display and says so ("Could not open the
+    # default X display"), so llvmpipe cannot be reached through OpenGL here.
+    "software-vulkan": (
+        "--use-gl=angle",
+        "--use-angle=vulkan",
+        # Chromium refuses a software Vulkan device without these, and then
+        # reports no WebGL context at all rather than falling back.
+        "--ignore-gpu-blocklist",
+        "--enable-features=Vulkan",
+    ),
     "software": (
         "--use-gl=angle",
         "--use-angle=swiftshader",
@@ -102,6 +120,8 @@ _GL_BACKENDS = {
 _GL_ENV_VAR = "MOLECULEKIT_RENDER_GL"
 # A GPU chromium can reach appears here as a DRM render node.
 _DRM_DIR = Path("/dev/dri")
+# Where Linux advertises Vulkan drivers; Mesa's software one is lvp.
+_VULKAN_ICD_DIR = Path("/usr/share/vulkan/icd.d")
 
 
 @dataclass
@@ -136,12 +156,35 @@ def _hardware_gl_present() -> bool:
     return any(node.name.startswith("renderD") for node in _DRM_DIR.iterdir())
 
 
+def _lavapipe_icd() -> str | None:
+    """Mesa's software Vulkan driver, when the machine has one installed.
+
+    Linux only, which is where this matters: the GPU-less containers that pay
+    for software rendering are Linux, while Windows registers Vulkan drivers in
+    the registry and macOS puts them elsewhere. On those the lookup simply
+    finds nothing and rendering falls back to SwiftShader, which needs no
+    driver installed.
+
+    Returns
+    -------
+    icd : str or None
+        Path to the lavapipe ICD manifest, or None when Mesa's Vulkan drivers
+        are not installed (Debian and Ubuntu ship them in mesa-vulkan-drivers).
+    """
+    if not _VULKAN_ICD_DIR.is_dir():
+        return None
+    for icd in sorted(_VULKAN_ICD_DIR.glob("lvp_icd*.json")):
+        return str(icd)
+    return None
+
+
 def _gl_backend_order() -> list[str]:
     """The GL backends to try, in order, until one yields a WebGL context.
 
-    ``MOLECULEKIT_RENDER_GL`` pins the choice to ``hardware`` or ``software``.
-    Unset (or ``auto``) picks hardware first when a GPU looks reachable, and
-    always keeps software as the fallback.
+    ``MOLECULEKIT_RENDER_GL`` pins the choice to one of ``_GL_BACKENDS``.
+    Unset (or ``auto``) picks hardware first when a GPU looks reachable, then
+    Mesa's software Vulkan where it is installed, and always keeps SwiftShader
+    as the fallback since it needs nothing installed.
 
     Returns
     -------
@@ -161,9 +204,12 @@ def _gl_backend_order() -> list[str]:
             f"{_GL_ENV_VAR}={requested!r} is not a known GL backend. Use one of "
             f"{sorted(_GL_BACKENDS)}, or 'auto'."
         )
-    if _hardware_gl_present():
-        return ["hardware", "software"]
-    return ["software"]
+    order = ["hardware"] if _hardware_gl_present() else []
+    if _lavapipe_icd() is not None:
+        order.append("software-vulkan")
+    # SwiftShader last and always: it needs nothing installed.
+    order.append("software")
+    return order
 
 
 def _usable_gl(gl_renderer: str | None) -> bool:
@@ -402,6 +448,12 @@ def _start_with_backend(
     """Start the browser on one GL backend. None when it yields no context."""
     binary = find_chromium()
     profile_dir = tempfile.mkdtemp(prefix="moleculekit-render-")
+    env = None
+    if backend == "software-vulkan":
+        # Pin the driver: with hardware ICDs also present, ANGLE would
+        # otherwise be free to pick one, and this backend is only ever chosen
+        # to render in software.
+        env = {**os.environ, "VK_ICD_FILENAMES": _lavapipe_icd() or ""}
     process = subprocess.Popen(
         [
             binary,
@@ -415,6 +467,7 @@ def _start_with_backend(
         ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        env=env,
         # New session (POSIX only) so this process is its own process group
         # leader: _stop() kills the whole group, taking chromium's helper
         # processes down with it instead of leaving them to linger.
@@ -677,6 +730,7 @@ def render(
             "width": width,
             "height": height,
             "occlusion": QUALITY_PRESETS[quality]["occlusion"],
+            "sampleLevel": QUALITY_PRESETS[quality]["sample_level"],
             "transparent": bool(transparent),
         }
         data_uri = state.ws.evaluate(

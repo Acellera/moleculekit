@@ -139,6 +139,7 @@ async function screenshot(opts: {
   height: number
   occlusion: boolean
   transparent: boolean
+  sampleLevel: number
 }): Promise<string> {
   if (!plugin) throw new Error('init() must run before screenshot()')
   // The 'on' variant's params is SsaoParams (samples, multiScale, radius,
@@ -164,6 +165,16 @@ async function screenshot(opts: {
     },
     transparent: opts.transparent,
     axes: { name: 'off', params: {} },
+  })
+  // The screenshot helper hardcodes sampleLevel 4, which is 16 full renders of
+  // the scene accumulated for anti-aliasing. That is invisible on a GPU and
+  // ruinous on the software rasteriser, and it is why a render took far longer
+  // than the interactive viewer feels: the viewer multi-samples temporally,
+  // one pass per frame, refining only once it goes idle. The helper re-applies
+  // only a few props on each access and multiSample is not among them, so it
+  // is set on the pass itself, after the getter has run.
+  helper.imagePass.setProps({
+    multiSample: { mode: 'on', sampleLevel: opts.sampleLevel, reuseOcclusion: false },
   })
   return await helper.getImageDataUri()
 }

@@ -99,6 +99,7 @@ def test_non_positive_zoom_is_rejected(zoom):
 def test_gl_backend_order_prefers_hardware_when_a_gpu_is_present(monkeypatch):
     monkeypatch.delenv(render_mod._GL_ENV_VAR, raising=False)
     monkeypatch.setattr(render_mod, "_hardware_gl_present", lambda: True)
+    monkeypatch.setattr(render_mod, "_lavapipe_icd", lambda: None)
     assert render_mod._gl_backend_order() == ["hardware", "software"]
 
 
@@ -106,10 +107,33 @@ def test_gl_backend_order_skips_hardware_without_a_gpu(monkeypatch):
     """A GPU-less container must not pay for a browser start that cannot work."""
     monkeypatch.delenv(render_mod._GL_ENV_VAR, raising=False)
     monkeypatch.setattr(render_mod, "_hardware_gl_present", lambda: False)
+    monkeypatch.setattr(render_mod, "_lavapipe_icd", lambda: None)
     assert render_mod._gl_backend_order() == ["software"]
 
 
-@pytest.mark.parametrize("backend", ["hardware", "software"])
+def test_gl_backend_order_prefers_mesa_over_swiftshader(monkeypatch):
+    """Mesa's software Vulkan is the faster software path where it exists.
+
+    Measured on the GPU-less sandbox image, 1M63 at 1000x750: a median 1.7s
+    against SwiftShader's 2.4s. SwiftShader stays last as the fallback that
+    needs nothing installed.
+    """
+    monkeypatch.delenv(render_mod._GL_ENV_VAR, raising=False)
+    monkeypatch.setattr(render_mod, "_hardware_gl_present", lambda: False)
+    monkeypatch.setattr(render_mod, "_lavapipe_icd", lambda: "/icd/lvp_icd.json")
+    assert render_mod._gl_backend_order() == ["software-vulkan", "software"]
+
+
+def test_lavapipe_is_found_only_when_mesa_ships_it(monkeypatch, tmp_path):
+    monkeypatch.setattr(render_mod, "_VULKAN_ICD_DIR", tmp_path)
+    assert render_mod._lavapipe_icd() is None
+    (tmp_path / "radeon_icd.x86_64.json").touch()
+    assert render_mod._lavapipe_icd() is None
+    (tmp_path / "lvp_icd.x86_64.json").touch()
+    assert render_mod._lavapipe_icd().endswith("lvp_icd.x86_64.json")
+
+
+@pytest.mark.parametrize("backend", ["hardware", "software", "software-vulkan"])
 def test_gl_backend_order_honours_the_env_var(monkeypatch, backend):
     monkeypatch.setenv(render_mod._GL_ENV_VAR, backend)
     monkeypatch.setattr(render_mod, "_hardware_gl_present", lambda: True)
@@ -509,8 +533,17 @@ def test_render_rotate_changes_the_image():
 def test_render_formal_charge_changes_the_image():
     """The labels step of applyScene must actually draw something: a molecule
     with a formal charge must render differently from the same molecule with
-    every charge zeroed."""
+    every charge zeroed.
+
+    A few residues rather than the whole protein: one label on a whole trypsin
+    at this size is smaller than a pixel, so whether it survives is down to
+    where it lands on the pixel grid. It showed only under the 16-pass
+    anti-aliasing the screenshot helper used to force, and at 300x225 and
+    600x450 but not 400x300, which pins pixel-grid luck rather than the labels
+    step this is meant to guard.
+    """
     mol = _trypsin()
+    mol.filter("resid 100 to 103")
     mol.formalcharge[:] = 0
     neutral = render_mod.render(mol, size=(200, 150))
     mol.formalcharge[0] = 1
@@ -642,3 +675,16 @@ def test_the_devtools_port_is_chromiums_own_choice():
     source = Path(render_mod.__file__).read_text()
     assert "--remote-debugging-port=0" in source
     assert "DevToolsActivePort" in source
+
+
+def test_backend_order_falls_back_where_vulkan_drivers_are_not_listed(monkeypatch):
+    """Windows and macOS do not advertise Vulkan drivers in a directory.
+
+    The lookup finds nothing there, which has to leave SwiftShader in place
+    rather than break the ordering.
+    """
+    monkeypatch.delenv(render_mod._GL_ENV_VAR, raising=False)
+    monkeypatch.setattr(render_mod, "_POSIX", False)
+    monkeypatch.setattr(render_mod, "_VULKAN_ICD_DIR", Path("/no/such/dir"))
+    assert render_mod._lavapipe_icd() is None
+    assert render_mod._gl_backend_order() == ["hardware", "software"]
