@@ -627,3 +627,18 @@ def test_automatic_scene_shows_the_ligand_and_ion():
         "the automatic scene must draw the ligand/ion, not just the cartoon"
     )
     render_mod.shutdown_for_tests()
+
+
+def test_the_devtools_port_is_chromiums_own_choice():
+    """The renderer must not pick the devtools port itself.
+
+    A port probed here has to be released before chromium can bind it, so two
+    processes starting a renderer at once both saw the same port free and the
+    second attached to the first one's browser. They then cleared each other's
+    Mol* state ("Could not find node") and closed each other's browser
+    ("websocket closed by peer"), which is how the suite failed under
+    pytest-xdist while passing when run alone.
+    """
+    source = Path(render_mod.__file__).read_text()
+    assert "--remote-debugging-port=0" in source
+    assert "DevToolsActivePort" in source

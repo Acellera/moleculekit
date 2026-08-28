@@ -27,7 +27,6 @@ import logging
 import os
 import shutil
 import signal
-import socket
 import struct
 import subprocess
 import tempfile
@@ -47,7 +46,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _HEADLESS_PAGE = Path(__file__).parent / "static" / "headless.html"
-_PORT_RANGE = range(9222, 9233)
 _CHROMIUM_NAMES = ("chromium", "chromium-browser", "google-chrome", "chrome")
 _PAGE_READY_POLL_INTERVAL = 0.05
 _PAGE_READY_TIMEOUT = 30.0
@@ -216,19 +214,54 @@ def find_chromium() -> str:
     return found
 
 
-def _free_port() -> int:
-    for port in _PORT_RANGE:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def _devtools_port(profile_dir: str, process: subprocess.Popen) -> int:
+    """Read the devtools port chromium chose, from its profile directory.
+
+    Picking a free port here instead and passing it in cannot be done safely:
+    the probe socket has to be closed before chromium can bind it, so two
+    processes starting a renderer at the same time both see the same port
+    free and the second one connects to the first one's browser. They then
+    clear each other's Mol* state ("Could not find node") and close each
+    other's browser ("websocket closed by peer"), which is what running the
+    test suite under pytest-xdist did. Letting chromium bind port 0 and
+    reporting back removes the window entirely, and the profile directory is
+    already unique per process.
+
+    Parameters
+    ----------
+    profile_dir : str
+        The ``--user-data-dir`` chromium was started with.
+    process : subprocess.Popen
+        The chromium process, watched so a crash is reported as one.
+
+    Returns
+    -------
+    port : int
+        The port chromium is listening on.
+
+    Raises
+    ------
+    RuntimeError
+        If chromium exits, or does not report a port in time.
+    """
+    port_file = Path(profile_dir) / "DevToolsActivePort"
+    deadline = time.time() + _PAGE_READY_TIMEOUT
+    while time.time() < deadline:
+        if process.poll() is not None:
+            raise RuntimeError(
+                f"The headless browser exited with code {process.returncode} "
+                "before reporting a devtools port."
+            )
         try:
-            sock.bind(("127.0.0.1", port))
-        except OSError:
+            # First line is the port, second the browser's websocket path.
+            first = port_file.read_text().splitlines()[0]
+        except (OSError, IndexError):
+            time.sleep(_PAGE_READY_POLL_INTERVAL)
             continue
-        finally:
-            sock.close()
-        return port
+        return int(first)
     raise RuntimeError(
-        f"No free port in {_PORT_RANGE.start}..{_PORT_RANGE.stop - 1} for the "
-        "headless renderer devtools connection."
+        f"The headless browser did not report a devtools port within "
+        f"{_PAGE_READY_TIMEOUT} seconds."
     )
 
 
@@ -368,14 +401,14 @@ def _start_with_backend(
 ) -> _RendererState | None:
     """Start the browser on one GL backend. None when it yields no context."""
     binary = find_chromium()
-    port = _free_port()
     profile_dir = tempfile.mkdtemp(prefix="moleculekit-render-")
     process = subprocess.Popen(
         [
             binary,
             *_CHROMIUM_FLAGS,
             *_GL_BACKENDS[backend],
-            f"--remote-debugging-port={port}",
+            # 0 means "pick a free port and write it to DevToolsActivePort".
+            "--remote-debugging-port=0",
             f"--user-data-dir={profile_dir}",
             f"--window-size={width},{height}",
             _HEADLESS_PAGE.as_uri(),
@@ -389,6 +422,7 @@ def _start_with_backend(
     )
     ws: WS | None = None
     try:
+        port = _devtools_port(profile_dir, process)
         ws = WS(page_target_url(port))
         ws.call("Runtime.enable")
         _wait_for_page_ready(ws)
