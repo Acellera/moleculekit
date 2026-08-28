@@ -1,7 +1,7 @@
 # Render a molecule to an image file
 
 **Goal:** produce a PNG of a molecule with no viewer window, for a script, a
-report, or an agent that cannot look at a screen.
+report, or an agent that cannot look at a screen, using {py:meth}`~moleculekit.molecule.Molecule.render`.
 
 ## Example
 
@@ -72,18 +72,18 @@ reproducing what a GPU-less machine will produce.
 
 ## Gotchas
 
-- **Representations come from `mol.reps`**, the same ones `view()` uses, and
+- **Representations come from `mol.reps`**, the same ones {py:meth}`~moleculekit.molecule.Molecule.view` uses, and
   they replace the automatic scene rather than adding to it. Setting any
   representation means you are describing the whole picture, which matches how
   the VMD backend behaves. Leave `mol.reps` empty to get the automatic scene of
-  a cartoon polymer with ball-and-stick ligands, or call `mol.reps.addDefaults()`
-  to start from it and edit. See
+  a cartoon polymer with ball-and-stick ligands, or call {py:meth}`~moleculekit.representations.Representations.addDefaults` to start
+  from it and edit. See
   [Choose representations and colours](choose-representations.md) for the
   styles, colour modes, size and transparency.
 - **A representation whose selection matches no atoms is dropped with a
   warning.** If every representation matches nothing, `render()` raises rather
   than writing an empty image.
-- **A representation's `frames` argument is ignored.** `mol.reps.add(..., frames=...)`
+- **A representation's `frames` argument is ignored.** {py:meth}`~moleculekit.representations.Representations.add`'s `frames`
   selects frames for the interactive viewer's trajectory playback; a render is a
   single still, so `frames` has nothing to act on.
 - **The frame rendered is `mol.frame`.** For a trajectory, set `mol.frame = n`
@@ -101,7 +101,7 @@ reproducing what a GPU-less machine will produce.
   rasteriser that fills every pixel on the CPU, which costs several seconds and
   scales with pixel count, so a 4K image costs roughly four times a 1080p one.
   See "Choosing the graphics backend" below.
-- **Call `render()` from one thread at a time.** The headless browser is a
+- **Call {py:meth}`~moleculekit.molecule.Molecule.render` from one thread at a time.** The headless browser is a
   singleton with a single devtools connection, so concurrent calls from
   different threads (a multi-threaded service handling several requests at
   once, for example) can read each other's responses. Serialise calls to

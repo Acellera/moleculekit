@@ -1,7 +1,7 @@
 # Choose representations and colours
 
-**Goal:** control how a molecule is drawn, by `view()` and by `render()`, using
-`mol.reps`.
+**Goal:** control how a molecule is drawn, by {py:meth}`~moleculekit.molecule.Molecule.view` and by {py:meth}`~moleculekit.molecule.Molecule.render`, using
+`mol.reps`, a {py:class}`~moleculekit.representations.Representations` object.
 
 ## Example
 
@@ -21,10 +21,9 @@ mol.reps.add("resname BEN", "Labels", "black", size=1.6)
 mol.render("pocket.png", center="resname BEN", zoom=0.3)
 ```
 
-`mol.reps.addDefaults()` writes the automatic scene out as ordinary entries you
-can edit, reorder or remove. Without it, adding any representation replaces the
-automatic scene entirely, so colouring one ligand costs you the cartoon and
-everything else.
+{py:meth}`~moleculekit.representations.Representations.addDefaults` writes the automatic scene out as ordinary entries you can edit,
+reorder or {py:meth}`~moleculekit.representations.Representations.remove`. Without it, {py:meth}`~moleculekit.representations.Representations.add` replaces the automatic scene entirely, so
+colouring one ligand costs you the cartoon and everything else.
 
 ## Styles
 
@@ -85,8 +84,8 @@ selection gives sticks inside a ghost surface.
 ## Gotchas
 
 - **Representations replace the automatic scene, they do not add to it.** This
-  matches the VMD backend. Use `mol.reps.addDefaults()` to start from the
-  automatic scene, or leave `mol.reps` empty to get it.
+  matches the VMD backend. Use {py:meth}`~moleculekit.representations.Representations.addDefaults` to start from the automatic scene, or
+  leave `mol.reps` empty to get it.
 - **Formal charge labels follow the same rule.** With no representations they
   are drawn automatically on charged atoms; once you set any, add a
   `FormalCharges` representation to keep them.
@@ -100,7 +99,7 @@ selection gives sticks inside a ghost surface.
   backends skip them rather than being sent a style they have no
   representation for.
 - **`frames` only applies to the interactive viewer.** A render is a single
-  still, so `mol.reps.add(..., frames=...)` has nothing to act on there.
+  still, so {py:meth}`~moleculekit.representations.Representations.add`'s `frames` argument has nothing to act on there.
 
 ## See also
 

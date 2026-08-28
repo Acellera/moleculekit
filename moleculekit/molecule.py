@@ -1845,9 +1845,8 @@ class Molecule(object):
             self.__dict__[field] = self.__dict__[field][order]
 
         # Change indexes to match order
-        inverseorder = np.array(
-            [np.where(order == i)[0][0] for i in np.arange(len(order))]
-        )
+        inverseorder = np.empty(len(order), dtype=int)
+        inverseorder[order] = np.arange(len(order))
         for field in Molecule._connectivity_fields:
             if len(self.__dict__[field]) == 0:
                 continue
