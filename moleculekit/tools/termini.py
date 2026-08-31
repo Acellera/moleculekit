@@ -157,10 +157,8 @@ def _segments(mol, residue_idx, chain_gaps):
     """Runs of residues with no unmodelled gap between them.
 
     A chain is one segment only when every gap in it was filled. Leave an internal
-    gap unmodelled and the built system has two pieces, each with its own pair of
-    ends -- 1LV1's GGSSG linker is never modelled, so its single chain arrives at
-    the builder as two protease copies with four termini between them, and the
-    builder caps whichever it is not told about.
+    gap unmodelled and the built system has two pieces rather than one chain, each
+    with its own pair of ends, and the builder caps whichever it is not told about.
     """
     breaks = {
         (g["after_resid"], g["before_resid"])
