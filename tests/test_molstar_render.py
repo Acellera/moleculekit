@@ -164,13 +164,13 @@ def test_one_vulkan_driver_is_pinned_and_it_matches_the_gpu(tmp_path, monkeypatc
     monkeypatch.setattr(render_mod, "_DRM_DIR", drm)
     monkeypatch.setattr(render_mod, "_DRM_CLASS_DIR", sysfs)
 
-    assert render_mod._software_vulkan_icd().endswith("lvp_icd.x86_64.json")
-    assert [i.split("/")[-1] for i in render_mod._hardware_vulkan_icds()] == [
+    assert Path(render_mod._software_vulkan_icd()).name == "lvp_icd.x86_64.json"
+    assert [Path(i).name for i in render_mod._hardware_vulkan_icds()] == [
         "nvidia_icd.json"
     ]
 
     (sysfs / "renderD128" / "device" / "vendor").write_text("0x1002\n")
-    assert [i.split("/")[-1] for i in render_mod._hardware_vulkan_icds()] == [
+    assert [Path(i).name for i in render_mod._hardware_vulkan_icds()] == [
         "radeon_icd.x86_64.json"
     ]
 
@@ -183,7 +183,7 @@ def test_one_vulkan_driver_is_pinned_and_it_matches_the_gpu(tmp_path, monkeypatc
         (drm / node).touch()
     (icds / "intel_hasvk_icd.x86_64.json").touch()
     (icds / "intel_icd.x86_64.json").touch()
-    assert [i.split("/")[-1] for i in render_mod._hardware_vulkan_icds()] == [
+    assert [Path(i).name for i in render_mod._hardware_vulkan_icds()] == [
         "nvidia_icd.json",
         "radeon_icd.x86_64.json",
         "intel_icd.x86_64.json",
