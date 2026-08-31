@@ -118,6 +118,9 @@ _GL_BACKENDS = {
     ),
 }
 _GL_ENV_VAR = "MOLECULEKIT_RENDER_GL"
+# Points render() at a render server instead of a local browser, so a machine
+# with no GPU (or no chromium at all) can still render.
+_SERVER_ENV_VAR = "MOLECULEKIT_RENDER_SERVER"
 # A GPU chromium can reach appears here as a DRM render node.
 _DRM_DIR = Path("/dev/dri")
 # Where Linux advertises Vulkan drivers; Mesa's software one is lvp.
@@ -482,8 +485,18 @@ def _start_with_backend(
         gl_renderer = ws.evaluate(
             f"window.mkHeadless.init({int(width)}, {int(height)})"
         )
-    except Exception:
+    except Exception as exc:
         _stop(process, ws, profile_dir)
+        # A backend that cannot make a WebGL context is a backend to skip, not
+        # a failed render. init() reports that by throwing rather than by
+        # returning a renderer string, so without this a machine that looks
+        # like it has a GPU but cannot reach it never falls back to software:
+        # mounting an NVIDIA GPU into a headless container puts a render node
+        # in /dev/dri, which is all _hardware_gl_present() looks for, while
+        # ANGLE still has no display to draw through.
+        if "NO WEBGL" in str(exc) or "could not initialise" in str(exc).lower():
+            logger.debug("%s GL yielded no WebGL context, trying the next", backend)
+            return None
         raise
     if not _usable_gl(gl_renderer):
         _stop(process, ws, profile_dir)
@@ -611,6 +624,7 @@ def render(
     transparent: bool = False,
     fog: float | None = None,
     clip: float | None = None,
+    server: str | None = None,
     timeout: float = 300.0,
 ) -> bytes | str:
     """Render ``mol`` to a PNG with no display and no browser window.
@@ -649,6 +663,11 @@ def render(
         frames: geometry nearer to or further from the camera than this is cut
         away, which is how you see into a buried pocket. None draws the whole
         structure.
+    server : str or None, optional
+        Base URL of a render server, such as ``"http://gpuhost:8080"``, to draw
+        the image on instead of starting a browser here. None falls back to the
+        ``MOLECULEKIT_RENDER_SERVER`` environment variable, and then to
+        rendering locally.
     timeout : float, optional
         Seconds to allow for a single render before giving up.
 
@@ -703,6 +722,155 @@ def render(
     )
     bcif_b64 = _b64(_bcif_bytes(mol))
 
+    if server is None:
+        server = os.environ.get(_SERVER_ENV_VAR) or None
+    if server:
+        png = _render_remote(
+            server,
+            bcif_b64,
+            description,
+            width=width,
+            height=height,
+            quality=quality,
+            transparent=transparent,
+            timeout=timeout,
+        )
+    else:
+        png = render_png(
+            bcif_b64,
+            description,
+            width=width,
+            height=height,
+            quality=quality,
+            transparent=transparent,
+            timeout=timeout,
+        )
+    if output is None:
+        return png
+    with open(output, "wb") as fh:
+        fh.write(png)
+    return output
+
+
+def _render_remote(
+    server: str,
+    bcif_b64: str,
+    description: dict,
+    *,
+    width: int,
+    height: int,
+    quality: str,
+    transparent: bool,
+    timeout: float,
+) -> bytes:
+    """Ask a render server for the image instead of drawing it here.
+
+    Parameters
+    ----------
+    server : str
+        Base URL of the render server.
+    bcif_b64 : str
+        The structure, BinaryCIF encoded as base64.
+    description : dict
+        The scene description.
+    width : int
+        Image width in pixels.
+    height : int
+        Image height in pixels.
+    quality : str
+        One of the keys of ``QUALITY_PRESETS``.
+    transparent : bool
+        Whether to render onto a transparent background.
+    timeout : float
+        Seconds to allow before giving up.
+
+    Returns
+    -------
+    png : bytes
+        The rendered image.
+
+    Raises
+    ------
+    RuntimeError
+        If the server rejects the request or fails to render it.
+    """
+    import urllib.error
+    import urllib.request
+
+    payload = json.dumps(
+        {
+            "structure": bcif_b64,
+            "scene": description,
+            "width": width,
+            "height": height,
+            "quality": quality,
+            "transparent": bool(transparent),
+            "timeout": timeout,
+        }
+    ).encode()
+    request = urllib.request.Request(
+        server.rstrip("/") + "/render",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        # The server has to finish the render before it answers, so allow it
+        # the caller's own budget plus a little for the round trip.
+        with urllib.request.urlopen(request, timeout=timeout + 30) as response:
+            return response.read()
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(
+            f"Render server {server} refused the render: {exc.read().decode()[:400]}"
+        ) from exc
+    except OSError as exc:
+        raise RuntimeError(f"Cannot reach render server {server}: {exc}") from exc
+
+
+def render_png(
+    bcif_b64: str,
+    description: dict,
+    *,
+    width: int,
+    height: int,
+    quality: str = "fast",
+    transparent: bool = False,
+    timeout: float = 300.0,
+) -> bytes:
+    """Draw one already-built scene in the local browser.
+
+    This is the half of :func:`render` that needs a browser. Everything above
+    it, turning a Molecule into a structure and a scene description, is plain
+    Python, which is what lets a render run on another machine: the render
+    server (see renderserver.py) calls this with what a client sent it.
+
+    Parameters
+    ----------
+    bcif_b64 : str
+        The structure, BinaryCIF encoded as base64.
+    description : dict
+        The scene, as built by
+        :func:`moleculekit.viewer.molstar.scene.build_scene`.
+    width : int
+        Image width in pixels.
+    height : int
+        Image height in pixels.
+    quality : str, optional
+        One of the keys of ``QUALITY_PRESETS``.
+    transparent : bool, optional
+        Render onto a transparent background.
+    timeout : float, optional
+        Seconds to allow before giving up.
+
+    Returns
+    -------
+    png : bytes
+        The rendered image.
+
+    Raises
+    ------
+    RuntimeError
+        If the rendered image does not match the requested size.
+    """
     state = _get_or_start(width, height)
     # The devtools session's own read timeout was fixed at 300s when the
     # singleton browser was started (cdp.WS's default). Widen it to this
@@ -753,8 +921,4 @@ def render(
             f"but {width}x{height} was requested; the render likely failed "
             "silently."
         )
-    if output is None:
-        return png
-    with open(output, "wb") as fh:
-        fh.write(png)
-    return output
+    return png

@@ -688,3 +688,43 @@ def test_backend_order_falls_back_where_vulkan_drivers_are_not_listed(monkeypatc
     monkeypatch.setattr(render_mod, "_VULKAN_ICD_DIR", Path("/no/such/dir"))
     assert render_mod._lavapipe_icd() is None
     assert render_mod._gl_backend_order() == ["hardware", "software"]
+
+
+def test_a_backend_without_webgl_is_skipped_not_fatal(monkeypatch):
+    """A GPU that cannot be reached must fall back, not fail the render.
+
+    Mounting an NVIDIA GPU into a headless container puts a render node in
+    /dev/dri, which is all the hardware check looks for, while ANGLE still has
+    no display to draw through. init() reports that by throwing rather than by
+    returning a renderer string, so without this the hardware attempt takes
+    the whole render down instead of moving on to software.
+    """
+
+    class _FakeProcess:
+        returncode = None
+
+        def poll(self):
+            return None
+
+    class _FakeWS:
+        def __init__(self, url):
+            pass
+
+        def call(self, *a, **k):
+            pass
+
+        def evaluate(self, script, **k):
+            raise RuntimeError(
+                "page raised: Error: Mol* could not initialise a WebGL viewer. "
+                "GL reports: NO WEBGL CONTEXT"
+            )
+
+    monkeypatch.setattr(render_mod, "find_chromium", lambda: "/bin/true")
+    monkeypatch.setattr(render_mod.subprocess, "Popen", lambda *a, **k: _FakeProcess())
+    monkeypatch.setattr(render_mod, "_devtools_port", lambda *a: 1234)
+    monkeypatch.setattr(render_mod, "page_target_url", lambda port: "ws://x")
+    monkeypatch.setattr(render_mod, "WS", _FakeWS)
+    monkeypatch.setattr(render_mod, "_wait_for_page_ready", lambda *a, **k: None)
+    monkeypatch.setattr(render_mod, "_stop", lambda *a, **k: None)
+
+    assert render_mod._start_with_backend(100, 100, "hardware") is None

@@ -2649,6 +2649,7 @@ class Molecule(object):
         transparent: bool = False,
         fog: float | None = None,
         clip: float | None = None,
+        server: str | None = None,
         timeout: float = 300.0,
     ):
         """Render the molecule to a PNG image without opening a viewer.
@@ -2694,6 +2695,11 @@ class Molecule(object):
             frames: geometry nearer to or further from the camera than this is
             cut away, which is how you see into a buried pocket. None draws the
             whole structure.
+        server : str or None, optional
+            Base URL of a render server, such as ``"http://gpuhost:8080"``, to
+            draw the image on instead of starting a browser here. None falls
+            back to the ``MOLECULEKIT_RENDER_SERVER`` environment variable, and
+            then to rendering locally.
         timeout : float, optional
             Seconds to allow for a single render before giving up.
 
@@ -2735,6 +2741,7 @@ class Molecule(object):
             transparent=transparent,
             fog=fog,
             clip=clip,
+            server=server,
             timeout=timeout,
         )
 

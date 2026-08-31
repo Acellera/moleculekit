@@ -78,21 +78,6 @@ on your PATH by itself. To point it at a particular one, set the
 Nothing is uploaded anywhere: no internet connection is needed and your
 structure never leaves your machine.
 
-## If rendering feels slow
-
-With a graphics card, an image takes well under a second. Without one the work
-falls to the processor and takes a few seconds, or longer on a machine with few
-cores, which is common inside containers and on cloud notebooks.
-
-Three things help, in order of effect:
-
-- **Ask for a smaller image.** The time scales with the number of pixels, so
-  halving the width and height makes it roughly four times faster.
-- **Use `quality="fast"`**, which is the default. `"high"` is worth it for a
-  final figure and wasteful for a quick look.
-- **Render several images in one script.** The first one is slower because the
-  browser has to start; every image after that reuses it.
-
 ## Good to know
 
 - **The picture shows the current frame**, `mol.frame`. For a trajectory, set
