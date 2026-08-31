@@ -94,7 +94,22 @@ _CHROMIUM_FLAGS = (
 # render time: a 1200x900 "fast" render measured 0.16s on an NVIDIA GPU and
 # 1.2s on the software rasteriser, because SwiftShader fills every pixel on
 # the CPU, across as many cores as it has.
+_VULKAN_FLAGS = (
+    "--use-gl=angle",
+    "--use-angle=vulkan",
+    # Chromium refuses a Vulkan device without these, and then reports no
+    # WebGL context at all rather than saying why.
+    "--ignore-gpu-blocklist",
+    "--enable-features=Vulkan",
+)
+
 _GL_BACKENDS = {
+    # ANGLE on Vulkan against a real GPU. Unlike the GL backend this needs no
+    # display of any kind, which is what makes GPU rendering possible in a
+    # container: no X server, no socket, no cookie, just the GPU. Measured on a
+    # GPU-less-looking container with the GPU passed in, 1M63 at 1400x1000 took
+    # 3.7s against 28.7s in software.
+    "hardware-vulkan": _VULKAN_FLAGS + ("--disable-gpu-sandbox",),
     "hardware": (
         "--use-gl=angle",
         "--use-angle=gl",
@@ -111,14 +126,7 @@ _GL_BACKENDS = {
     # median 1.7s against 2.4s. Only the Vulkan path works headless, because
     # ANGLE's GL backend wants an X display and says so ("Could not open the
     # default X display"), so llvmpipe cannot be reached through OpenGL here.
-    "software-vulkan": (
-        "--use-gl=angle",
-        "--use-angle=vulkan",
-        # Chromium refuses a software Vulkan device without these, and then
-        # reports no WebGL context at all rather than falling back.
-        "--ignore-gpu-blocklist",
-        "--enable-features=Vulkan",
-    ),
+    "software-vulkan": _VULKAN_FLAGS,
     "software": (
         "--use-gl=angle",
         "--use-angle=swiftshader",
@@ -133,8 +141,19 @@ _GL_ENV_VAR = "MOLECULEKIT_RENDER_GL"
 _SERVER_ENV_VAR = "MOLECULEKIT_RENDER_SERVER"
 # A GPU chromium can reach appears here as a DRM render node.
 _DRM_DIR = Path("/dev/dri")
-# Where Linux advertises Vulkan drivers; Mesa's software one is lvp.
-_VULKAN_ICD_DIR = Path("/usr/share/vulkan/icd.d")
+# PCI vendor of a DRM render node, and the Vulkan driver manifests that vendor
+# installs. Used to pin one driver: handing ANGLE every manifest on the machine
+# makes it fail outright, since most of them are for hardware that is not here.
+_PCI_VENDOR_ICDS = {
+    "0x10de": ("nvidia",),
+    "0x1002": ("radeon", "amd"),
+    "0x8086": ("intel",),
+}
+_DRM_CLASS_DIR = Path("/sys/class/drm")
+
+# Where Linux advertises Vulkan drivers. Distributions use the first; the
+# NVIDIA container toolkit drops its manifest in the second.
+_VULKAN_ICD_DIRS = (Path("/usr/share/vulkan/icd.d"), Path("/etc/vulkan/icd.d"))
 
 
 @dataclass
@@ -169,26 +188,74 @@ def _hardware_gl_present() -> bool:
     return any(node.name.startswith("renderD") for node in _DRM_DIR.iterdir())
 
 
-def _lavapipe_icd() -> str | None:
-    """Mesa's software Vulkan driver, when the machine has one installed.
+def _vulkan_manifests():
+    """Every Vulkan driver manifest installed here.
 
-    Linux only, which is where this matters: the GPU-less containers that pay
-    for software rendering are Linux, while Windows registers Vulkan drivers in
-    the registry and macOS puts them elsewhere. On those the lookup simply
-    finds nothing and rendering falls back to SwiftShader, which needs no
-    driver installed.
+    Returns
+    -------
+    manifests : list of Path
+        The manifest files, in a stable order.
+    """
+    found = []
+    for directory in _VULKAN_ICD_DIRS:
+        if directory.is_dir():
+            found.extend(sorted(directory.glob("*.json")))
+    return found
+
+
+def _software_vulkan_icd() -> str | None:
+    """Mesa's software Vulkan driver (lavapipe), when it is installed.
 
     Returns
     -------
     icd : str or None
-        Path to the lavapipe ICD manifest, or None when Mesa's Vulkan drivers
-        are not installed (Debian and Ubuntu ship them in mesa-vulkan-drivers).
+        Path to the manifest, or None when Mesa's Vulkan drivers are absent
+        (Debian and Ubuntu ship them in mesa-vulkan-drivers).
     """
-    if not _VULKAN_ICD_DIR.is_dir():
-        return None
-    for icd in sorted(_VULKAN_ICD_DIR.glob("lvp_icd*.json")):
-        return str(icd)
+    for icd in _vulkan_manifests():
+        if icd.name.startswith("lvp_"):
+            return str(icd)
     return None
+
+
+def _hardware_vulkan_icds() -> list[str]:
+    """Vulkan drivers worth trying, for GPUs this machine actually has.
+
+    One driver is pinned per attempt rather than all of them at once: ANGLE
+    fails outright when handed manifests for hardware that is not present.
+    Pinning matters in the other direction too, since with Mesa's software
+    driver visible ANGLE picks it and renders at software speed while
+    reporting success. Which of several candidates works cannot be known
+    without trying, so they come back in preference order: a machine with
+    both an Intel display adapter and an NVIDIA card should render on the
+    NVIDIA one.
+
+    Linux only, which is where this matters. Elsewhere this finds nothing and
+    rendering falls back to the paths that need no driver installed.
+
+    Returns
+    -------
+    icds : list of str
+        Manifest paths, best first, empty when no GPU here has one.
+    """
+    vendors = set()
+    for node in sorted(_DRM_DIR.glob("renderD*")) if _DRM_DIR.is_dir() else []:
+        try:
+            vendor = (_DRM_CLASS_DIR / node.name / "device/vendor").read_text()
+        except OSError:
+            continue
+        vendors.add(vendor.strip().lower())
+
+    icds = []
+    for vendor, prefixes in _PCI_VENDOR_ICDS.items():
+        if vendor not in vendors:
+            continue
+        for prefix in prefixes:
+            # Shortest name first, so intel_icd wins over intel_hasvk_icd, the
+            # legacy driver for hardware a decade older than this code.
+            matches = [i for i in _vulkan_manifests() if i.name.startswith(prefix)]
+            icds.extend(str(i) for i in sorted(matches, key=lambda i: len(i.name)))
+    return icds
 
 
 def _gl_backend_order() -> list[str]:
@@ -217,8 +284,14 @@ def _gl_backend_order() -> list[str]:
             f"{_GL_ENV_VAR}={requested!r} is not a known GL backend. Use one of "
             f"{sorted(_GL_BACKENDS)}, or 'auto'."
         )
-    order = ["hardware"] if _hardware_gl_present() else []
-    if _lavapipe_icd() is not None:
+    order = []
+    if _hardware_gl_present():
+        # Vulkan first: it draws on the GPU with or without a display, where
+        # the GL backend needs one and gets no WebGL context without it.
+        if _hardware_vulkan_icds():
+            order.append("hardware-vulkan")
+        order.append("hardware")
+    if _software_vulkan_icd() is not None:
         order.append("software-vulkan")
     # SwiftShader last and always: it needs nothing installed.
     order.append("software")
@@ -459,14 +532,42 @@ def _start_with_backend(
     width: int, height: int, backend: str
 ) -> _RendererState | None:
     """Start the browser on one GL backend. None when it yields no context."""
-    binary = find_chromium()
-    profile_dir = tempfile.mkdtemp(prefix="moleculekit-render-")
+    if backend == "hardware-vulkan":
+        # Pin one driver per attempt and take the first that draws. Handing
+        # ANGLE several at once fails, and leaving it unpinned lets it pick
+        # Mesa's software driver and report success at software speed.
+        for icd in _hardware_vulkan_icds():
+            state = _launch(width, height, backend, {**os.environ, "VK_ICD_FILENAMES": icd})
+            if state is not None:
+                return state
+        return None
     env = None
     if backend == "software-vulkan":
-        # Pin the driver: with hardware ICDs also present, ANGLE would
-        # otherwise be free to pick one, and this backend is only ever chosen
-        # to render in software.
-        env = {**os.environ, "VK_ICD_FILENAMES": _lavapipe_icd() or ""}
+        env = {**os.environ, "VK_ICD_FILENAMES": _software_vulkan_icd() or ""}
+    return _launch(width, height, backend, env)
+
+
+def _launch(width: int, height: int, backend: str, env: dict | None):
+    """Start one browser on one backend.
+
+    Parameters
+    ----------
+    width : int
+        Window width in pixels.
+    height : int
+        Window height in pixels.
+    backend : str
+        The key of ``_GL_BACKENDS`` to start with.
+    env : dict or None
+        Environment for the browser, or None to inherit this process's.
+
+    Returns
+    -------
+    state : _RendererState or None
+        The running browser, or None when it yields no WebGL context.
+    """
+    binary = find_chromium()
+    profile_dir = tempfile.mkdtemp(prefix="moleculekit-render-")
     process = subprocess.Popen(
         [
             binary,

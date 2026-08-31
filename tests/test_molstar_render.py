@@ -99,7 +99,8 @@ def test_non_positive_zoom_is_rejected(zoom):
 def test_gl_backend_order_prefers_hardware_when_a_gpu_is_present(monkeypatch):
     monkeypatch.delenv(render_mod._GL_ENV_VAR, raising=False)
     monkeypatch.setattr(render_mod, "_hardware_gl_present", lambda: True)
-    monkeypatch.setattr(render_mod, "_lavapipe_icd", lambda: None)
+    monkeypatch.setattr(render_mod, "_software_vulkan_icd", lambda: None)
+    monkeypatch.setattr(render_mod, "_hardware_vulkan_icds", list)
     assert render_mod._gl_backend_order() == ["hardware", "software"]
 
 
@@ -107,7 +108,8 @@ def test_gl_backend_order_skips_hardware_without_a_gpu(monkeypatch):
     """A GPU-less container must not pay for a browser start that cannot work."""
     monkeypatch.delenv(render_mod._GL_ENV_VAR, raising=False)
     monkeypatch.setattr(render_mod, "_hardware_gl_present", lambda: False)
-    monkeypatch.setattr(render_mod, "_lavapipe_icd", lambda: None)
+    monkeypatch.setattr(render_mod, "_software_vulkan_icd", lambda: None)
+    monkeypatch.setattr(render_mod, "_hardware_vulkan_icds", list)
     assert render_mod._gl_backend_order() == ["software"]
 
 
@@ -120,20 +122,78 @@ def test_gl_backend_order_prefers_mesa_over_swiftshader(monkeypatch):
     """
     monkeypatch.delenv(render_mod._GL_ENV_VAR, raising=False)
     monkeypatch.setattr(render_mod, "_hardware_gl_present", lambda: False)
-    monkeypatch.setattr(render_mod, "_lavapipe_icd", lambda: "/icd/lvp_icd.json")
+    monkeypatch.setattr(render_mod, "_software_vulkan_icd", lambda: "/icd/lvp_icd.json")
+    monkeypatch.setattr(render_mod, "_hardware_vulkan_icds", list)
     assert render_mod._gl_backend_order() == ["software-vulkan", "software"]
 
 
-def test_lavapipe_is_found_only_when_mesa_ships_it(monkeypatch, tmp_path):
-    monkeypatch.setattr(render_mod, "_VULKAN_ICD_DIR", tmp_path)
-    assert render_mod._lavapipe_icd() is None
-    (tmp_path / "radeon_icd.x86_64.json").touch()
-    assert render_mod._lavapipe_icd() is None
-    (tmp_path / "lvp_icd.x86_64.json").touch()
-    assert render_mod._lavapipe_icd().endswith("lvp_icd.x86_64.json")
+def test_gl_backend_order_prefers_vulkan_on_a_gpu(monkeypatch):
+    """Vulkan draws on the GPU with or without a display; the GL path needs one.
+
+    That is what makes GPU rendering work in a container at all, so it goes
+    ahead of the GL backend wherever a real driver is installed.
+    """
+    monkeypatch.delenv(render_mod._GL_ENV_VAR, raising=False)
+    monkeypatch.setattr(render_mod, "_hardware_gl_present", lambda: True)
+    monkeypatch.setattr(render_mod, "_software_vulkan_icd", lambda: "/icd/lvp.json")
+    monkeypatch.setattr(render_mod, "_hardware_vulkan_icds", lambda: ["/icd/nvidia.json"])
+    assert render_mod._gl_backend_order() == [
+        "hardware-vulkan",
+        "hardware",
+        "software-vulkan",
+        "software",
+    ]
 
 
-@pytest.mark.parametrize("backend", ["hardware", "software", "software-vulkan"])
+def test_one_vulkan_driver_is_pinned_and_it_matches_the_gpu(tmp_path, monkeypatch):
+    """Exactly one driver, chosen by the GPU's PCI vendor.
+
+    Handing ANGLE every manifest on the machine makes it fail outright, since
+    most are for hardware that is not there; leaving it unpinned with Mesa's
+    software driver visible makes it render in software and report success.
+    """
+    icds, drm, sysfs = tmp_path / "icd", tmp_path / "dri", tmp_path / "drm"
+    for d in (icds, drm, sysfs / "renderD128" / "device"):
+        d.mkdir(parents=True)
+    for name in ("lvp_icd.x86_64.json", "nvidia_icd.json", "radeon_icd.x86_64.json"):
+        (icds / name).touch()
+    (drm / "renderD128").touch()
+    (sysfs / "renderD128" / "device" / "vendor").write_text("0x10de\n")
+
+    monkeypatch.setattr(render_mod, "_VULKAN_ICD_DIRS", (icds,))
+    monkeypatch.setattr(render_mod, "_DRM_DIR", drm)
+    monkeypatch.setattr(render_mod, "_DRM_CLASS_DIR", sysfs)
+
+    assert render_mod._software_vulkan_icd().endswith("lvp_icd.x86_64.json")
+    assert [i.split("/")[-1] for i in render_mod._hardware_vulkan_icds()] == [
+        "nvidia_icd.json"
+    ]
+
+    (sysfs / "renderD128" / "device" / "vendor").write_text("0x1002\n")
+    assert [i.split("/")[-1] for i in render_mod._hardware_vulkan_icds()] == [
+        "radeon_icd.x86_64.json"
+    ]
+
+    # Several candidates come back best first: which one works cannot be known
+    # without trying, and a laptop's Intel display adapter must not win over
+    # the NVIDIA card next to it.
+    for node, vendor in (("renderD129", "0x10de"), ("renderD130", "0x8086")):
+        (sysfs / node / "device").mkdir(parents=True)
+        (sysfs / node / "device" / "vendor").write_text(f"{vendor}\n")
+        (drm / node).touch()
+    (icds / "intel_hasvk_icd.x86_64.json").touch()
+    (icds / "intel_icd.x86_64.json").touch()
+    assert [i.split("/")[-1] for i in render_mod._hardware_vulkan_icds()] == [
+        "nvidia_icd.json",
+        "radeon_icd.x86_64.json",
+        "intel_icd.x86_64.json",
+        "intel_hasvk_icd.x86_64.json",
+    ]
+
+
+@pytest.mark.parametrize(
+    "backend", ["hardware", "software", "software-vulkan", "hardware-vulkan"]
+)
 def test_gl_backend_order_honours_the_env_var(monkeypatch, backend):
     monkeypatch.setenv(render_mod._GL_ENV_VAR, backend)
     monkeypatch.setattr(render_mod, "_hardware_gl_present", lambda: True)
@@ -685,8 +745,8 @@ def test_backend_order_falls_back_where_vulkan_drivers_are_not_listed(monkeypatc
     """
     monkeypatch.delenv(render_mod._GL_ENV_VAR, raising=False)
     monkeypatch.setattr(render_mod, "_POSIX", False)
-    monkeypatch.setattr(render_mod, "_VULKAN_ICD_DIR", Path("/no/such/dir"))
-    assert render_mod._lavapipe_icd() is None
+    monkeypatch.setattr(render_mod, "_VULKAN_ICD_DIRS", (Path("/no/such/dir"),))
+    assert render_mod._software_vulkan_icd() is None
     assert render_mod._gl_backend_order() == ["hardware", "software"]
 
 
