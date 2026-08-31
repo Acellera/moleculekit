@@ -153,6 +153,34 @@ def _unique_selection(mol, chain, resid, insertion, segid, resname):
     return None
 
 
+def _segments(mol, residue_idx, chain_gaps):
+    """Runs of residues with no unmodelled gap between them.
+
+    A chain is one segment only when every gap in it was filled. Leave an internal
+    gap unmodelled and the built system has two pieces, each with its own pair of
+    ends -- 1LV1's GGSSG linker is never modelled, so its single chain arrives at
+    the builder as two protease copies with four termini between them, and the
+    builder caps whichever it is not told about.
+    """
+    breaks = {
+        (g["after_resid"], g["before_resid"])
+        for g in chain_gaps
+        if g.get("after_resid") is not None and g.get("before_resid") is not None
+    }
+    if not breaks:
+        return [list(residue_idx)]
+    segments, current = [], [residue_idx[0]]
+    for previous, nxt in zip(residue_idx, residue_idx[1:]):
+        pair = (int(mol.resid[previous[0]]), int(mol.resid[nxt[0]]))
+        if pair in breaks:
+            segments.append(current)
+            current = [nxt]
+        else:
+            current.append(nxt)
+    segments.append(current)
+    return segments
+
+
 def detectTermini(mol, sequences, gaps, chainmeta, mature_spans, skipped_chains=()):
     """Classify both ends of every protein chain as natural, truncated or unknown.
 
@@ -206,17 +234,33 @@ def detectTermini(mol, sequences, gaps, chainmeta, mature_spans, skipped_chains=
         ref = sequences.get(chain)
         chain_gaps = [g for g in gaps if g["chain"] == chain]
         no_gap_analysis = str(chain) in {str(c) for c in skipped_chains}
-        ends = (
-            ("N", residue_idx[0], any(g["after_resid"] is None for g in chain_gaps)),
-            ("C", residue_idx[-1], any(g["before_resid"] is None for g in chain_gaps)),
-        )
-        for end, atoms, has_terminal_gap in ends:
+        # Per segment, not per chain: an unmodelled internal gap makes two of them.
+        segments = _segments(mol, residue_idx, chain_gaps)
+        ends = []
+        for index, segment in enumerate(segments):
+            first, last = index == 0, index == len(segments) - 1
+            ends.append((
+                "N", segment[0],
+                first and any(g["after_resid"] is None for g in chain_gaps),
+                not first,
+            ))
+            ends.append((
+                "C", segment[-1],
+                last and any(g["before_resid"] is None for g in chain_gaps),
+                not last,
+            ))
+        for end, atoms, has_terminal_gap, at_break in ends:
             a = atoms[0]
             resid, insertion = int(mol.resid[a]), str(mol.insertion[a])
             resname = str(mol.resname[a])
             accession = meta.get("accession")
 
-            if has_terminal_gap:
+            if at_break:
+                # An end the structure has because residues either side of it were
+                # never modelled. It is a cut by construction -- no reference can
+                # make it a biological terminus -- so it needs a cap.
+                classification, evidence, feature = "truncated", "internal_gap", None
+            elif has_terminal_gap:
                 classification, evidence, feature = "truncated", "terminal_gap", None
             elif no_gap_analysis:
                 # No gap list for this chain, so "flush" is an assumption rather

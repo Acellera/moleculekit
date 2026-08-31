@@ -321,3 +321,42 @@ def test_canonical_chain_is_unaffected_by_the_skip_guard():
                          {"P00760": TRYPSIN_SPANS}, skipped_chains=skipped)
 
     assert [t["classification"] for t in term] == ["natural", "natural"]
+
+
+def test_unmodelled_internal_gap_gives_each_piece_its_own_ends():
+    """Leave a gap unmodelled and the builder receives two pieces, not one chain.
+
+    Both ends the gap creates need a cap; the chain's own two ends are still the
+    mature chain's and must stay natural.
+    """
+    mol, chain, ref = _mol_and_ref()
+    cut = mol.copy()
+    cut.remove("resid 100 to 104", _logger=False)  # reference still has them
+    gaps, _, _ = detectSequenceGaps(cut, {chain: ref})
+
+    term = detectTermini(cut, {chain: ref}, gaps, _meta(chain),
+                         {"P00760": TRYPSIN_SPANS})
+
+    assert [(t["end"], t["resid"]) for t in term] == [
+        ("N", 16), ("C", 99), ("N", 105), ("C", 245)
+    ]
+    assert [t["classification"] for t in term] == [
+        "natural", "truncated", "truncated", "natural"
+    ]
+    assert [t["evidence"] for t in term][1:3] == ["internal_gap", "internal_gap"]
+    assert [t["proposed_cap"] for t in term] == ["none", "NME", "ACE", "none"]
+
+
+def test_every_unmodelled_gap_adds_a_piece():
+    mol, chain, ref = _mol_and_ref()
+    cut = mol.copy()
+    cut.remove("resid 100 to 104 or resid 180 to 184", _logger=False)
+    gaps, _, _ = detectSequenceGaps(cut, {chain: ref})
+    assert len(gaps) == 2
+
+    term = detectTermini(cut, {chain: ref}, gaps, _meta(chain),
+                         {"P00760": TRYPSIN_SPANS})
+
+    assert [(t["end"], t["resid"]) for t in term] == [
+        ("N", 16), ("C", 99), ("N", 105), ("C", 179), ("N", 185), ("C", 245)
+    ]
