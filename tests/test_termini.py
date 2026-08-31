@@ -360,3 +360,41 @@ def test_every_unmodelled_gap_adds_a_piece():
     assert [(t["end"], t["resid"]) for t in term] == [
         ("N", 16), ("C", 99), ("N", 105), ("C", 179), ("N", 185), ("C", 245)
     ]
+
+
+def test_a_break_end_that_matches_a_mature_chain_is_natural():
+    """An end a gap leaves behind can still be the protein's own terminus.
+
+    A tandem construct joins two copies with a linker, and leaving the linker
+    unmodelled ends each copy where the protein really ends. Deciding
+    `internal_gap` before the reference is consulted calls those cuts and
+    proposes caps for two biological termini.
+    """
+    mol, chain, ref = _mol_and_ref()
+    resids = []
+    for r in mol.get("resid", sel="protein"):
+        if not resids or resids[-1] != int(r):
+            resids.append(int(r))
+    # The reference keeps every residue, so a residue's position in it is its
+    # index among the observed residues of the uncut structure.
+    entity_pos = resids.index(99) + 1
+    uniprot_pos = 23 + entity_pos          # _meta maps entity 1 -> UniProt 24
+
+    cut = mol.copy()
+    cut.remove("resid 100 to 104", _logger=False)
+    gaps, _, _ = detectSequenceGaps(cut, {chain: ref})
+    spans = {"P00760": [
+        {"start": 24, "end": uniprot_pos, "type": "Chain",
+         "description": "ends exactly where the structure breaks"}
+    ]}
+
+    term = detectTermini(cut, {chain: ref}, gaps, _meta(chain), spans)
+
+    by_end = {(t["end"], t["resid"]): t for t in term}
+    at_break = by_end[("C", 99)]
+    assert at_break["classification"] == "natural"
+    assert at_break["evidence"] == "uniprot_mature_chain"
+    assert at_break["proposed_cap"] == "none"
+    # The end on the far side of the same gap matches nothing, so it stays a cut.
+    assert by_end[("N", 105)]["classification"] == "truncated"
+    assert by_end[("N", 105)]["evidence"] == "internal_gap"

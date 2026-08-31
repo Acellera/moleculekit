@@ -81,8 +81,8 @@ def _chain_is_cyclic(mol, residue_idx):
     return bool(d <= _CYCLIC_TOL)
 
 
-def _uniprot_position(end, reflen, meta):
-    """Which UniProt entry covers this terminus, and at which position.
+def _uniprot_position(pos, meta):
+    """Which UniProt entry covers this reference position, and where it lands.
 
     Returns ``(accession, position)``, or ``(None, None)`` when nothing maps it.
     One entity can align to several UniProt entries - a receptor with a fused
@@ -90,7 +90,6 @@ def _uniprot_position(end, reflen, meta):
     carries the accession that actually covered the terminus. In a chimera the
     two ends legitimately belong to different proteins.
     """
-    pos = 1 if end == "N" else int(reflen)
     for ref in meta.get("uniprot_refs") or []:
         for reg in ref["aligned_regions"]:
             beg = reg["entity_beg_seq_id"]
@@ -153,6 +152,34 @@ def _unique_selection(mol, chain, resid, insertion, segid, resname):
     return None
 
 
+def _reference_positions(mol, residue_idx, chain_gaps):
+    """The reference position of every observed residue, 1-based.
+
+    An end in the middle of a chain has a reference position of its own, and
+    deriving one from "N" or "C" alone gives the position of the chain's outer
+    end instead -- which is a different residue, and on a tandem construct a
+    different protein.
+
+    Unmodelled residues still occupy the reference, so each gap crossed shifts
+    everything after it, and a gap before the first observed residue shifts all
+    of them.
+    """
+    after = {}
+    lead = 0
+    for gap in chain_gaps:
+        missing = len(gap.get("missing_seq") or "")
+        if gap.get("after_resid") is None:
+            lead += missing
+        else:
+            after[int(gap["after_resid"])] = after.get(int(gap["after_resid"]), 0) + missing
+    positions, pos = [], lead
+    for atoms in residue_idx:
+        pos += 1
+        positions.append(pos)
+        pos += after.get(int(mol.resid[atoms[0]]), 0)
+    return positions
+
+
 def _segments(mol, residue_idx, chain_gaps):
     """Runs of residues with no unmodelled gap between them.
 
@@ -166,15 +193,15 @@ def _segments(mol, residue_idx, chain_gaps):
         if g.get("after_resid") is not None and g.get("before_resid") is not None
     }
     if not breaks:
-        return [list(residue_idx)]
-    segments, current = [], [residue_idx[0]]
-    for previous, nxt in zip(residue_idx, residue_idx[1:]):
-        pair = (int(mol.resid[previous[0]]), int(mol.resid[nxt[0]]))
+        return [list(range(len(residue_idx)))]
+    segments, current = [], [0]
+    for k in range(1, len(residue_idx)):
+        pair = (int(mol.resid[residue_idx[k - 1][0]]), int(mol.resid[residue_idx[k][0]]))
         if pair in breaks:
             segments.append(current)
-            current = [nxt]
+            current = [k]
         else:
-            current.append(nxt)
+            current.append(k)
     segments.append(current)
     return segments
 
@@ -234,6 +261,7 @@ def detectTermini(mol, sequences, gaps, chainmeta, mature_spans, skipped_chains=
         no_gap_analysis = str(chain) in {str(c) for c in skipped_chains}
         # Per segment, not per chain: an unmodelled internal gap makes two of them.
         segments = _segments(mol, residue_idx, chain_gaps)
+        refpos = _reference_positions(mol, residue_idx, chain_gaps)
         ends = []
         for index, segment in enumerate(segments):
             first, last = index == 0, index == len(segments) - 1
@@ -247,18 +275,14 @@ def detectTermini(mol, sequences, gaps, chainmeta, mature_spans, skipped_chains=
                 last and any(g["before_resid"] is None for g in chain_gaps),
                 not last,
             ))
-        for end, atoms, has_terminal_gap, at_break in ends:
+        for end, k, has_terminal_gap, at_break in ends:
+            atoms = residue_idx[k]
             a = atoms[0]
             resid, insertion = int(mol.resid[a]), str(mol.insertion[a])
             resname = str(mol.resname[a])
             accession = meta.get("accession")
 
-            if at_break:
-                # An end the structure has because residues either side of it were
-                # never modelled. It is a cut by construction -- no reference can
-                # make it a biological terminus -- so it needs a cap.
-                classification, evidence, feature = "truncated", "internal_gap", None
-            elif has_terminal_gap:
+            if has_terminal_gap:
                 classification, evidence, feature = "truncated", "terminal_gap", None
             elif no_gap_analysis:
                 # No gap list for this chain, so "flush" is an assumption rather
@@ -272,12 +296,20 @@ def detectTermini(mol, sequences, gaps, chainmeta, mature_spans, skipped_chains=
                     None,
                 )
             else:
-                covering, upos = _uniprot_position(end, len(ref), meta)
+                covering, upos = _uniprot_position(refpos[k], meta)
                 classification, evidence, feature = _classify(
                     end, covering, upos, mature_spans
                 )
                 if covering is not None:
                     accession = covering
+
+            if at_break and classification != "natural":
+                # The gap either side of this end is why the end exists, and
+                # nothing in the reference says it is a real one. A tandem
+                # construct is the reason this is not decided first: an end a
+                # linker leaves behind can be the protein's own terminus, and on
+                # a repeat the reference says so at that position.
+                classification, evidence, feature = "truncated", "internal_gap", None
 
             # Resolve the selection FIRST: a terminus we cannot name unambiguously
             # cannot be capped, whatever its chemistry, and reporting
