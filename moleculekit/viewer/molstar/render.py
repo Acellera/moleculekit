@@ -95,7 +95,17 @@ _CHROMIUM_FLAGS = (
 # 1.2s on the software rasteriser, because SwiftShader fills every pixel on
 # the CPU, across as many cores as it has.
 _GL_BACKENDS = {
-    "hardware": ("--use-gl=angle", "--use-angle=gl"),
+    "hardware": (
+        "--use-gl=angle",
+        "--use-angle=gl",
+        # Without this the GPU process cannot open the driver's device nodes
+        # inside a container: chromium starts, the GPU process starts, and the
+        # page still reports no WebGL context, with nothing in the log saying
+        # why. The browser only ever loads our own packaged page, with no
+        # network and no user content, so the sandbox it gives up guards
+        # nothing here.
+        "--disable-gpu-sandbox",
+    ),
     # Mesa's software Vulkan (lavapipe). Measured about 30% faster than
     # SwiftShader on the same GPU-less container: 1M63 at 1000x750 took a
     # median 1.7s against 2.4s. Only the Vulkan path works headless, because
