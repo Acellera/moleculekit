@@ -117,6 +117,33 @@ _STYLES_WITHOUT_NGL = (
 )
 
 
+#: Other viewers' names for the per-atom fields a label can write, so a
+#: representation written for one of them labels the same thing here.
+LABEL_FIELD_ALIASES = {
+    "residuename": "resname",
+    "residueindex": "resid",
+    "atomname": "name",
+    "chainid": "chain",
+}
+
+
+def canonical_label_field(field: str) -> str:
+    """The molecule's own name for a label field.
+
+    Parameters
+    ----------
+    field : str
+        A field name, in any viewer's spelling.
+
+    Returns
+    -------
+    name : str
+        The name the molecule stores that field under.
+    """
+    key = field.lower().replace("_", "")
+    return LABEL_FIELD_ALIASES.get(key, key)
+
+
 def _normalize(name: str) -> str:
     """Fold a style or colour name to its lookup key."""
     return name.lower().replace(" ", "").replace("-", "").replace("_", "")
@@ -198,6 +225,13 @@ class Representations:
         """
         described = self._translateMolstar(rep)
         if described is not None:
+            if "label_fields" in described:
+                # One spelling for a backend to map: it should not have to know
+                # that residueName and resname are the same field. The scene
+                # keeps what was written, so a typo is reported as typed.
+                described["label_fields"] = [
+                    canonical_label_field(f) for f in described["label_fields"]
+                ]
             described["sel"] = rep.sel
             described["visibility"] = rep.visibility
             described["update_sel_every_frame"] = rep.update_sel_every_frame

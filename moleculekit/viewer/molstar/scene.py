@@ -34,12 +34,6 @@ MAX_FORMAL_CHARGE_LABELS = 200
 
 #: Fields a Labels representation can write, beyond the molecule's own per-atom
 #: arrays. The names on the left are what other viewers call them.
-LABEL_FIELD_ALIASES = {
-    "residuename": "resname",
-    "residueindex": "resid",
-    "atomname": "name",
-    "chainid": "chain",
-}
 _BALL_AND_STICK_SELECTORS = ("ligand", "ion", "water", "branched")
 
 # Which resnames count as canonical polymer, deciding cartoon versus
@@ -393,7 +387,9 @@ def _field_labels(mol, indices, fields, size=1.0, style=None) -> list[dict]:
     """
     resolved = []
     for field in fields:
-        name = LABEL_FIELD_ALIASES.get(field.lower().replace("_", ""), field.lower())
+        from moleculekit.representations import canonical_label_field
+
+        name = canonical_label_field(field)
         if name == "index":
             values = np.arange(mol.numAtoms)
         else:
