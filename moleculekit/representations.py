@@ -174,19 +174,34 @@ class Representations:
         if not self._notifies:
             return
 
-        def params():
-            described = self._translateMolstar(rep)
-            if described is not None:
-                # Beyond what a scene needs: the selection, which a viewer
-                # following a trajectory re-evaluates per frame and resolved
-                # indices cannot express, and the two flags a live viewer acts
-                # on but a single rendered image cannot.
-                described["sel"] = rep.sel
-                described["visibility"] = rep.visibility
-                described["update_sel_every_frame"] = rep.update_sel_every_frame
-            return described
+        notify(event, self._mol, index, lambda: self.describe(rep))
 
-        notify(event, self._mol, index, params)
+    def describe(self, rep) -> dict | None:
+        """Describe one representation for a viewer backend.
+
+        The same description a Mol* scene is built from, plus what only a live
+        viewer can act on: the selection it was written as, which a viewer
+        following a trajectory re-evaluates frame by frame and resolved atom
+        indices cannot express, and the two flags that mean nothing to a single
+        rendered image.
+
+        Parameters
+        ----------
+        rep : _Representation
+            The representation to describe.
+
+        Returns
+        -------
+        described : dict or None
+            Its style, colour, opacity, sizes, labels, selection, visibility
+            and per-frame flag, or None if the selection matched no atoms.
+        """
+        described = self._translateMolstar(rep)
+        if described is not None:
+            described["sel"] = rep.sel
+            described["visibility"] = rep.visibility
+            described["update_sel_every_frame"] = rep.update_sel_every_frame
+        return described
 
     def append(self, reps: "Representations"):
         """Append the representations of another Representations object.

@@ -2500,6 +2500,13 @@ class Molecule(object):
     ):
         """Visualizes the molecule in a molecular viewer
 
+        Beyond the arguments below, anything a representation takes is passed
+        to :meth:`Representations.add
+        <moleculekit.representations.Representations.add>`, so a whole
+        representation can be described in one call: ``opacity``, ``size``,
+        ``c_atom_color``, ``size_theme``, ``label_fields``, ``label_style``,
+        ``visibility`` and ``update_sel_every_frame``.
+
         Parameters
         ----------
         sel : str or np.ndarray
@@ -2550,12 +2557,6 @@ class Molecule(object):
             A specific viewer in which to visualize the molecule. If None it will use the current default viewer.
         gui : bool
             If set to True, show the graphical user interface of the viewer (only used by the webgl/ngl backend).
-
-        Anything else is passed to :meth:`Representations.add
-        <moleculekit.representations.Representations.add>`, so a whole
-        representation can be described in one call: ``opacity``, ``size``,
-        ``c_atom_color``, ``size_theme``, ``label_fields``, ``label_style``,
-        ``visibility`` and ``update_sel_every_frame``.
 
         Returns
         -------
