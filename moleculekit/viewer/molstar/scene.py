@@ -31,6 +31,15 @@ logger = logging.getLogger(__name__)
 MIN_CARTOON_RESIDUES = 6
 BALL_AND_STICK_SIZE_FACTOR = 0.6
 MAX_FORMAL_CHARGE_LABELS = 200
+
+#: Fields a Labels representation can write, beyond the molecule's own per-atom
+#: arrays. The names on the left are what other viewers call them.
+LABEL_FIELD_ALIASES = {
+    "residuename": "resname",
+    "residueindex": "resid",
+    "atomname": "name",
+    "chainid": "chain",
+}
 _BALL_AND_STICK_SELECTORS = ("ligand", "ion", "water", "branched")
 
 # Which resnames count as canonical polymer, deciding cartoon versus
@@ -241,6 +250,18 @@ def _components_from_reps(mol, reps) -> tuple[list[dict], list[dict]]:
                 rep.sel,
             )
             continue
+        if translated["type"] == "label" and "label_fields" in translated:
+            # Mol*'s own label representation writes a label of its own
+            # choosing, so a chosen set of fields is built here instead.
+            labels.extend(
+                _field_labels(
+                    mol,
+                    translated["atom_indices"],
+                    translated["label_fields"],
+                    translated.get("size_factor", 1.0),
+                )
+            )
+            continue
         if translated["type"] == "formal_charge":
             # Not a component: this draws the same per-atom "+1"/"-1" text the
             # automatic scene puts on charged atoms, restricted to the atoms
@@ -263,6 +284,8 @@ def _components_from_reps(mol, reps) -> tuple[list[dict], list[dict]]:
             representation["size_factor"] = BALL_AND_STICK_SIZE_FACTOR
         if "size_factor" in translated:
             representation["size_factor"] = translated["size_factor"]
+        if "size_theme" in translated:
+            representation["size_theme"] = translated["size_theme"]
         component = {
             "select": _atoms(translated["atom_indices"]),
             "representation": representation,
@@ -280,6 +303,76 @@ def _components_from_reps(mol, reps) -> tuple[list[dict], list[dict]]:
             "automatic scene."
         )
     return components, labels
+
+
+def _field_labels(mol, indices, fields, size=1.0) -> list[dict]:
+    """Text beside each atom, built from the molecule's own per-atom fields.
+
+    Mol*'s label representation writes a label of its own choosing, so anything
+    else has to be built here and placed atom by atom, as the formal charge
+    labels are. That costs one transform per label, which is why the same cap
+    applies.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule the fields are read from.
+    indices : list of int
+        The atoms to label.
+    fields : list of str
+        Per-atom fields to write, joined by spaces.
+    size : float, optional
+        Scales the text.
+
+    Returns
+    -------
+    labels : list of dict
+        One label per atom, empty when there are more than the cap allows.
+
+    Raises
+    ------
+    ValueError
+        If a field is not a per-atom field of the molecule.
+    """
+    resolved = []
+    for field in fields:
+        name = LABEL_FIELD_ALIASES.get(field.lower().replace("_", ""), field.lower())
+        if name == "index":
+            values = np.arange(mol.numAtoms)
+        else:
+            values = getattr(mol, name, None)
+        if values is None or len(np.atleast_1d(values)) != mol.numAtoms:
+            raise ValueError(
+                f"Cannot label by {field!r}: the molecule has no per-atom field "
+                f"of that name. Try name, element, resname, resid, chain or index."
+            )
+        resolved.append(values)
+
+    if len(indices) > MAX_FORMAL_CHARGE_LABELS:
+        logger.warning(
+            "Skipping labels: %d atoms exceeds the cap of %d. Each label is "
+            "drawn separately, so labelling a whole structure is slow and "
+            "unreadable; select the atoms worth naming.",
+            len(indices),
+            MAX_FORMAL_CHARGE_LABELS,
+        )
+        return []
+
+    frame = mol.frame
+    labels = []
+    for i in indices:
+        text = " ".join(str(values[i]) for values in resolved)
+        labels.append(
+            {
+                "atom": int(i),
+                "position": [float(mol.coords[i, axis, frame]) for axis in range(3)],
+                "text": text,
+                "size": 0.7 * size,
+                "color": "black",
+                "offset": 1.0,
+            }
+        )
+    return labels
 
 
 def _labels(mol, indices=None, size=1.0) -> list[dict]:

@@ -311,3 +311,139 @@ def test_b_factor_and_occupancy_colouring_reach_every_viewer():
     rep = _Representation("all", "NewCartoon", "Occupancy")
     assert mol.reps._translateMolstar(rep)["color"] == {"theme": "occupancy"}
     assert mol.reps._translateNGL(rep).color == "occupancy"
+
+
+@pytest.mark.parametrize(
+    "style,expected",
+    [("Backbone", "backbone"), ("Ellipsoid", "ellipsoid"), ("backbone", "backbone")],
+)
+def test_backbone_and_ellipsoid_styles(style, expected):
+    mol = _mol()
+    out = mol.reps._translateMolstar(_Representation("all", style, "Name"))
+    assert out["type"] == expected
+
+
+@pytest.mark.parametrize(
+    "name,theme",
+    [
+        ("Element-Index", "element-index"),
+        ("Entity-ID", "entity-id"),
+        ("Polymer-ID", "polymer-id"),
+        ("Model-Index", "model-index"),
+        ("Structure-Index", "structure-index"),
+        ("Illustrative", "illustrative"),
+    ],
+)
+def test_the_remaining_molstar_colour_themes(name, theme):
+    mol = _mol()
+    rep = mol.reps._translateMolstar(_Representation("all", "NewCartoon", name))
+    assert rep["color"] == {"theme": theme}
+
+
+def test_c_atom_color_recolours_only_carbon():
+    """Carbon carries the entity's colour while N, O and S keep theirs.
+
+    Mol* exposes this as the element theme's carbonColor, which is also what
+    it uses to colour carbon by chain when nothing else is asked for.
+    """
+    mol = _mol()
+    rep = mol.reps._translateMolstar(
+        _Representation("all", "Licorice", "Name", c_atom_color="#66ccff")
+    )
+    assert rep["color"] == {"theme": "element-symbol", "carbon": {"uniform": "#66ccff"}}
+
+    rep = mol.reps._translateMolstar(
+        _Representation("all", "Licorice", "Name", c_atom_color="chain-id")
+    )
+    assert rep["color"] == {"theme": "element-symbol", "carbon": {"theme": "chain-id"}}
+
+
+def test_c_atom_color_is_ignored_when_the_colour_is_not_by_element():
+    """There is no carbon to recolour in a uniform or per-residue colouring."""
+    mol = _mol()
+    for color in ("red", "ResName"):
+        rep = mol.reps._translateMolstar(
+            _Representation("all", "Licorice", color, c_atom_color="#66ccff")
+        )
+        assert "carbon" not in str(rep["color"])
+
+
+def test_size_theme_is_passed_through_and_checked():
+    mol = _mol()
+    rep = mol.reps._translateMolstar(
+        _Representation("all", "VDW", "Name", size_theme="Uniform")
+    )
+    assert rep["size_theme"] == "uniform"
+
+    with pytest.raises(ValueError, match="Unknown size_theme"):
+        mol.reps._translateMolstar(
+            _Representation("all", "VDW", "Name", size_theme="enormous")
+        )
+
+
+def test_backbone_reaches_ngl_but_ellipsoid_does_not():
+    """NGL draws a backbone; it has nothing for the rest of the Mol*-only set."""
+    mol = _mol()
+    assert mol.reps._translateNGL(_Representation("all", "Backbone", "Name")).style == (
+        "backbone"
+    )
+    for style in ("Ellipsoid", "Putty", "Labels", "FormalCharges"):
+        assert mol.reps._translateNGL(_Representation("all", style, "Name")) is None
+
+
+def test_labels_can_carry_any_per_atom_field():
+    """Mol* writes a label of its own choosing, so fields are built here.
+
+    That is the same mechanism the formal charge labels use, one transform per
+    label, which is why the same cap applies.
+    """
+    from moleculekit.viewer.molstar.scene import build_scene
+
+    mol = _mol()
+    mol.chain[:] = "A"
+    mol.reps.add("all", "Licorice", "Name")
+    mol.reps.add("all", "Labels", label_fields=["chain", "resname", "resid", "name"])
+    assert [lab["text"] for lab in build_scene(mol, mol.reps.replist)["labels"]] == [
+        "A ALA 1 N",
+        "A ALA 1 CA",
+        "A ALA 1 C",
+    ]
+
+
+def test_label_fields_accept_a_bare_string_and_other_viewers_names():
+    from moleculekit.viewer.molstar.scene import build_scene
+
+    mol = _mol()
+    mol.reps.add("all", "Licorice", "Name")
+    mol.reps.add("all", "Labels", label_fields="index")
+    assert [lab["text"] for lab in build_scene(mol, mol.reps.replist)["labels"]] == [
+        "0",
+        "1",
+        "2",
+    ]
+
+    other = _mol()
+    other.reps.add("all", "Licorice", "Name")
+    other.reps.add("all", "Labels", label_fields=["residueName", "residueIndex"])
+    assert build_scene(other, other.reps.replist)["labels"][0]["text"] == "ALA 1"
+
+
+def test_an_unknown_label_field_is_rejected():
+    from moleculekit.viewer.molstar.scene import build_scene
+
+    mol = _mol()
+    mol.reps.add("all", "Licorice", "Name")
+    mol.reps.add("all", "Labels", label_fields=["bfactor_typo"])
+    with pytest.raises(ValueError, match="Cannot label by 'bfactor_typo'"):
+        build_scene(mol, mol.reps.replist)
+
+
+def test_labels_without_fields_stay_a_molstar_representation():
+    """The cheap path: one representation for the whole selection."""
+    from moleculekit.viewer.molstar.scene import build_scene
+
+    mol = _mol()
+    mol.reps.add("all", "Labels", "black")
+    scene = build_scene(mol, mol.reps.replist)
+    assert [c["representation"]["type"] for c in scene["components"]] == ["label"]
+    assert "labels" not in scene

@@ -2510,7 +2510,8 @@ class Molecule(object):
             ``Cartoon``, ``Licorice``, ``CPK``, ``VDW``, ``Lines``, ``Surf``,
             ``QuickSurf``, ``Points``, ``Putty``, ``Labels`` and ``FormalCharges``, or
             Mol*'s ``cartoon``, ``ball-and-stick``, ``spacefill``, ``line``,
-            ``molecular-surface``, ``gaussian-surface``, ``point``, ``putty`` and
+            ``molecular-surface``, ``gaussian-surface``, ``point``, ``putty``,
+            ``backbone``, ``ellipsoid`` and
             ``atom-label`` (also ``label``) for the same things. Spacing, case
             and hyphens are ignored, and anything else is rejected rather than
             drawn as something it is not. ``Labels`` writes each atom's name
@@ -2527,7 +2528,9 @@ class Molecule(object):
             ``element-symbol``, ``chain-id``, ``residue-name``,
             ``sequence-id``, ``secondary-structure``, ``hydrophobicity``,
             ``molecule-type``, ``atom-id``, ``uncertainty`` (the B factor,
-            which VMD calls ``Beta``) and ``occupancy``. Any SVG colour name or
+            which VMD calls ``Beta``), ``occupancy``, ``element-index``,
+            ``entity-id``, ``polymer-id``, ``model-index``, ``structure-index``
+            and ``illustrative``. Any SVG colour name or
             ``#rrggbb`` string gives a uniform colour, as does a VMD ColorID.
         guessBonds : bool
             Allow the viewer to guess bonds for the molecule

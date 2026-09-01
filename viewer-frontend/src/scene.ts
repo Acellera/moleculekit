@@ -33,8 +33,8 @@ export interface SceneSelect {
 
 export interface SceneComponent {
   select: SceneSelect
-  representation: { type: string; size_factor?: number }
-  color?: { theme?: string; uniform?: string }
+  representation: { type: string; size_factor?: number; size_theme?: string }
+  color?: { theme?: string; uniform?: string; carbon?: { theme?: string; uniform?: string } }
   opacity?: number
 }
 
@@ -134,11 +134,21 @@ function expression(select: SceneSelect): any {
  * (cartoon, ball-and-stick, ...), and overwriting it with a theme name there
  * makes Mol* try to use "uniform" as a representation type.
  */
-function themeParams(color?: { theme?: string; uniform?: string }) {
+function themeParams(color?: SceneComponent['color']) {
   if (color?.uniform) {
     return { color: 'uniform', colorParams: { value: colorOf(color.uniform) } }
   }
-  return { color: color?.theme ?? 'element-symbol' }
+  const theme = color?.theme ?? 'element-symbol'
+  if (color?.carbon) {
+    // Mol* colours carbon by chain-id under the element theme, and exposes the
+    // choice as carbonColor. This is what lets one entity carry its own colour
+    // while nitrogen, oxygen and sulphur keep theirs.
+    const carbon = color.carbon.uniform
+      ? { name: 'uniform', params: { value: colorOf(color.carbon.uniform) } }
+      : { name: color.carbon.theme, params: {} }
+    return { color: theme, colorParams: { carbonColor: carbon } }
+  }
+  return { color: theme }
 }
 
 /**
@@ -166,7 +176,17 @@ function representationParams(representation: SceneComponent['representation']):
   sizeParams: Record<string, unknown>
 } {
   const value = representation.size_factor ?? 1
-  switch (representation.type) {
+  const chosen = sizeTheme(representation.size_theme, value)
+  const params = styleParams(representation.type, value)
+  return chosen ? { ...params, ...chosen } : params
+}
+
+/** The type, type params and default size theme for one style. */
+function styleParams(
+  type: string,
+  value: number
+): { type: string; typeParams: Record<string, unknown>; size: string; sizeParams: Record<string, unknown> } {
+  switch (type) {
     case 'cartoon':
       return { type: 'cartoon', typeParams: {}, size: 'uniform', sizeParams: { value } }
     case 'ball_and_stick':
@@ -198,6 +218,10 @@ function representationParams(representation: SceneComponent['representation']):
       }
     case 'point':
       return { type: 'point', typeParams: {}, size: 'uniform', sizeParams: { value: 3.0 * value } }
+    case 'backbone':
+      return { type: 'backbone', typeParams: {}, size: 'uniform', sizeParams: { value: 0.2 * value } }
+    case 'ellipsoid':
+      return { type: 'ellipsoid', typeParams: {}, size: 'uniform', sizeParams: { value } }
     case 'putty':
       // Sized by B factor rather than uniformly, which is the point of it, so
       // `size_factor` scales that base rather than replacing the theme.
@@ -216,7 +240,30 @@ function representationParams(representation: SceneComponent['representation']):
         sizeParams: { scale: value },
       }
     default:
-      throw new Error(`applyScene cannot render representation type: ${representation.type}`)
+      throw new Error(`applyScene cannot render representation type: ${type}`)
+  }
+}
+
+/**
+ * The size theme asked for, if any, replacing the one the style would pick.
+ *
+ * Each style has a sensible default (physical radii for spheres and surfaces,
+ * a uniform width for cartoons and lines, the B factor for putty), so this
+ * only comes into play when a representation names one.
+ */
+function sizeTheme(
+  name: string | undefined,
+  value: number
+): { size: string; sizeParams: Record<string, unknown> } | undefined {
+  switch (name) {
+    case 'physical':
+      return { size: 'physical', sizeParams: { scale: value } }
+    case 'uniform':
+      return { size: 'uniform', sizeParams: { value } }
+    case 'uncertainty':
+      return { size: 'uncertainty', sizeParams: { baseSize: 0.2 * value } }
+    default:
+      return undefined
   }
 }
 

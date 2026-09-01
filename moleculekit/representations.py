@@ -32,6 +32,8 @@ MOLSTAR_STYLES = {
     "label": "label",
     "atomlabel": "label",
     "putty": "putty",
+    "backbone": "backbone",
+    "ellipsoid": "ellipsoid",
 }
 
 #: The VMD representation each Mol* style name corresponds to. VMD's own names
@@ -81,6 +83,12 @@ MOLSTAR_THEMES = {
     "chainid": "chain-id",
     "residuename": "residue-name",
     "sequenceid": "sequence-id",
+    "elementindex": "element-index",
+    "entityid": "entity-id",
+    "polymerid": "polymer-id",
+    "modelindex": "model-index",
+    "structureindex": "structure-index",
+    "illustrative": "illustrative",
     # B factor. Mol* calls it uncertainty (it doubles as pLDDT for predicted
     # structures), VMD calls it Beta.
     "beta": "uncertainty",
@@ -88,8 +96,25 @@ MOLSTAR_THEMES = {
     "occupancy": "occupancy",
 }
 
-#: Styles no viewer but Mol* draws, skipped rather than sent to the others.
-_MOLSTAR_ONLY_STYLES = ("labels", "label", "atomlabel", "formalcharges", "putty")
+#: Styles VMD has no representation for, skipped rather than sent to it.
+_STYLES_WITHOUT_VMD = (
+    "labels",
+    "label",
+    "atomlabel",
+    "formalcharges",
+    "putty",
+    "backbone",
+    "ellipsoid",
+)
+#: The same for NGL, which does draw a backbone but none of the rest.
+_STYLES_WITHOUT_NGL = (
+    "labels",
+    "label",
+    "atomlabel",
+    "formalcharges",
+    "putty",
+    "ellipsoid",
+)
 
 
 def _normalize(name: str) -> str:
@@ -147,6 +172,9 @@ class Representations:
         frames: list | None = None,
         opacity: float | None = None,
         size: float | None = None,
+        c_atom_color: "str | None" = None,
+        size_theme: str | None = None,
+        label_fields: "str | list | None" = None,
     ):
         """Adds a new representation for Molecule.
 
@@ -160,7 +188,8 @@ class Representations:
             ``Cartoon``, ``Licorice``, ``CPK``, ``VDW``, ``Lines``, ``Surf``,
             ``QuickSurf``, ``Points``, ``Putty``, ``Labels`` and ``FormalCharges``, or
             Mol*'s ``cartoon``, ``ball-and-stick``, ``spacefill``, ``line``,
-            ``molecular-surface``, ``gaussian-surface``, ``point``, ``putty`` and
+            ``molecular-surface``, ``gaussian-surface``, ``point``, ``putty``,
+            ``backbone``, ``ellipsoid`` and
             ``atom-label`` (also ``label``) for the same things. Spacing, case
             and hyphens are ignored, and anything else is rejected rather than
             drawn as something it is not. ``Labels`` writes each atom's name
@@ -177,7 +206,9 @@ class Representations:
             ``element-symbol``, ``chain-id``, ``residue-name``,
             ``sequence-id``, ``secondary-structure``, ``hydrophobicity``,
             ``molecule-type``, ``atom-id``, ``uncertainty`` (the B factor,
-            which VMD calls ``Beta``) and ``occupancy``. Any SVG colour name or
+            which VMD calls ``Beta``), ``occupancy``, ``element-index``,
+            ``entity-id``, ``polymer-id``, ``model-index``, ``structure-index``
+            and ``illustrative``. Any SVG colour name or
             ``#rrggbb`` string gives a uniform colour, as does a VMD ColorID.
         frames : list
             List of frames to visualize with this representation. If None it will visualize the current frame only.
@@ -186,8 +217,36 @@ class Representations:
         size : float
             Scales the drawn size: stick and sphere radius, surface probe, point
             size, label text. Each style keeps its own sensible size at 1.
+        c_atom_color : str
+            Colour for carbon atoms only, leaving nitrogen, oxygen and the rest
+            their element colours. Takes an SVG colour name, a ``#rrggbb``
+            string, or one of ``chain-id``, ``entity-id``, ``model-index``,
+            ``structure-index``. Ignored unless the representation is coloured
+            by element, which is what it modifies.
+        size_theme : str
+            How sizes are decided before ``size`` scales them: ``physical`` for
+            atomic radii, ``uniform`` for one size everywhere, or
+            ``uncertainty`` for the B factor. Each style picks a sensible one,
+            so this is only worth setting to override it.
+        label_fields : str or list
+            What a ``Labels`` representation writes beside each atom: any
+            per-atom fields of the molecule, such as ``name``, ``element``,
+            ``resname``, ``resid``, ``chain`` or ``index``, joined by spaces.
+            Without it the label is the atom name alone.
         """
-        self.replist.append(_Representation(sel, style, color, frames, opacity, size))
+        self.replist.append(
+            _Representation(
+                sel,
+                style,
+                color,
+                frames,
+                opacity,
+                size,
+                c_atom_color,
+                size_theme,
+                label_fields,
+            )
+        )
 
     def addDefaults(self):
         """Add the representations a viewer draws when none are set.
@@ -238,7 +297,7 @@ class Representations:
         return s
 
     def _translateNGL(self, rep):
-        if _normalize(rep.style) in _MOLSTAR_ONLY_STYLES:
+        if _normalize(rep.style) in _STYLES_WITHOUT_NGL:
             return None
         styletrans = {
             "newcartoon": "cartoon",
@@ -256,6 +315,7 @@ class Representations:
             "gaussiansurface": "surface",
             "points": "point",
             "point": "point",
+            "backbone": "backbone",
         }
         colortrans = {
             "name": "element",
@@ -271,6 +331,8 @@ class Representations:
             "hydrophobicity": "hydrophobicity",
             "moleculetype": "moleculetype",
             "atomid": "atomindex",
+            "entityid": "entityindex",
+            "modelindex": "modelindex",
             "beta": "bfactor",
             "uncertainty": "bfactor",
             "occupancy": "occupancy",
@@ -342,7 +404,29 @@ class Representations:
             color = {"theme": themetrans[_normalize(rep.color)]}
         else:
             color = rep.color
+        if rep.c_atom_color is not None and isinstance(color, dict):
+            # Only the element theme has a carbon to recolour. A representation
+            # coloured any other way keeps that colour, which is how pmview
+            # behaves when both are given.
+            if color.get("theme") == "element-symbol":
+                carbon = _normalize(rep.c_atom_color)
+                color = dict(color)
+                color["carbon"] = (
+                    {"theme": themetrans[carbon]}
+                    if carbon in themetrans
+                    else {"uniform": rep.c_atom_color}
+                )
         out = {"atom_indices": indices, "type": style, "color": color}
+        if rep.size_theme is not None:
+            if rep.size_theme.lower() not in ("physical", "uniform", "uncertainty"):
+                raise ValueError(
+                    f"Unknown size_theme {rep.size_theme!r}. Use 'physical', "
+                    "'uniform' or 'uncertainty'."
+                )
+            out["size_theme"] = rep.size_theme.lower()
+        if rep.label_fields is not None:
+            fields = rep.label_fields
+            out["label_fields"] = [fields] if isinstance(fields, str) else list(fields)
         if rep.opacity is not None and rep.opacity != 1:
             out["opacity"] = float(rep.opacity)
         if rep.size is not None:
@@ -353,7 +437,7 @@ class Representations:
         if len(self.replist) > 0:
             viewer.send("mol delrep 0 top")
             for rep in self.replist:
-                if _normalize(rep.style) in _MOLSTAR_ONLY_STYLES:
+                if _normalize(rep.style) in _STYLES_WITHOUT_VMD:
                     continue
                 if isinstance(rep.color, str):
                     color = VMD_COLORS.get(_normalize(rep.color), rep.color)
@@ -402,6 +486,14 @@ class _Representation:
     size : float
         Scales the drawn size: stick and sphere radius, surface probe, point
         size, label text.
+    c_atom_color : str
+        Colour for carbon atoms only. See :meth:`Representations.add`.
+    size_theme : str
+        How sizes are decided before ``size`` scales them. See
+        :meth:`Representations.add`.
+    label_fields : str or list
+        Fields a ``Labels`` representation writes. See
+        :meth:`Representations.add`.
     frames : list
         List of frames to visualize with this representation. If None it will visualize the current frame only.
     opacity : float
@@ -415,7 +507,16 @@ class _Representation:
     """
 
     def __init__(
-        self, sel=None, style=None, color=None, frames=None, opacity=None, size=None
+        self,
+        sel=None,
+        style=None,
+        color=None,
+        frames=None,
+        opacity=None,
+        size=None,
+        c_atom_color=None,
+        size_theme=None,
+        label_fields=None,
     ):
         self.sel = "all" if sel is None else sel
         self.style = "Lines" if style is None else style
@@ -423,3 +524,6 @@ class _Representation:
         self.frames = frames
         self.opacity = 1 if opacity is None else opacity
         self.size = size
+        self.c_atom_color = c_atom_color
+        self.size_theme = size_theme
+        self.label_fields = label_fields

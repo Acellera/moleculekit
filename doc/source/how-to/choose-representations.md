@@ -41,6 +41,8 @@ hyphens are ignored, so `Secondary Structure`, `secondary-structure` and
 | `QuickSurf` | `gaussian-surface` | Coarser gaussian surface, cheaper |
 | `Points` | `point` | One dot per atom |
 | `Putty` | `putty` | Tube thickened by B factor |
+| `Backbone` | `backbone` | Backbone trace, proteins and nucleic acids |
+| `Ellipsoid` | `ellipsoid` | Residues as ellipsoids |
 | `Labels` | `atom-label`, `label` | Each atom's name beside it |
 | `FormalCharges` | | `+1`/`-1` on atoms carrying a formal charge |
 
@@ -62,6 +64,12 @@ passed to the VMD backend as written, so VMD's own styles still work there.
 | `Hydrophobicity` | `hydrophobicity` | Residue hydrophobicity |
 | `Molecule Type` | `molecule-type` | Protein, nucleic, water, ligand |
 | `Atom ID` | `atom-id` | Atom index |
+| | `element-index` | Position along the chain, a different gradient |
+| | `entity-id` | Entity: polymer, ligand, water |
+| | `polymer-id` | Polymer |
+| | `model-index` | Model |
+| | `structure-index` | Structure |
+| | `illustrative` | Chain, with non-carbon atoms picked out |
 
 Any SVG colour name (`"red"`, `"steelblue"`) or `#rrggbb` string gives a
 uniform colour, as does a VMD ColorID integer.
@@ -71,15 +79,33 @@ uniform colour, as does a VMD ColorID integer.
 ```python
 mol.reps.add("resname BEN", "Licorice", "Name", size=0.4)                 # thin sticks
 mol.reps.add("resname BEN", "VDW", "Name", size=0.85, opacity=0.25)       # ghost spheres
+mol.reps.add("resname BEN", "Licorice", "Name", c_atom_color="#66ccff")   # cyan carbons
 ```
 
 | Parameter | Meaning |
 | --- | --- |
 | `size` | Scales the drawn size: stick and sphere radius, surface probe, point size, label text. Each style keeps its own sensible size at `1`. |
 | `opacity` | `0` is fully transparent, `1` fully opaque. |
+| `c_atom_color` | Colours carbon only, leaving N, O and S their element colours. A colour, or one of `chain-id`, `entity-id`, `model-index`, `structure-index`. Needs an element-coloured representation, which is what it modifies. |
+| `size_theme` | How sizes are decided before `size` scales them: `physical` for atomic radii, `uniform` for one size everywhere, `uncertainty` for the B factor. Each style picks a sensible one already. |
+| `label_fields` | What a `Labels` representation writes beside each atom: any per-atom fields of the molecule, joined by spaces. Without it the label is the atom name. |
 
 Representations layer, so a transparent `VDW` over a `Licorice` of the same
 selection gives sticks inside a ghost surface.
+
+## Labelling atoms
+
+```python
+mol.reps.add("resname BEN", "Licorice", "Name")
+mol.reps.add("resname BEN", "Labels", "black",
+             label_fields=["resname", "resid", "name"], size=1.4)
+```
+
+`label_fields` takes any per-atom fields the molecule has — `name`, `element`,
+`resname`, `resid`, `chain`, `segid`, `beta`, `occupancy`, `index` and so on —
+and writes them space-separated. Each label is drawn separately, so label a
+selection worth naming rather than a whole structure; past a couple of hundred
+atoms they are skipped with a warning.
 
 ## Gotchas
 
