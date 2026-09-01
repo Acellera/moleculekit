@@ -1127,7 +1127,15 @@ def CIFwrite(
     if chemcomp is not None:
         single_mol = chemcomp
     else:
-        single_mol = len(np.unique(mol.resname)) == 1
+        # One resname is not one component: a box of waters, a bag of ions and
+        # several copies of one ligand all share a resname across many
+        # residues, and treating those as a component raised "CIF files don't
+        # support multiple residues with different resid and same resname"
+        # instead of writing a perfectly ordinary structure.
+        residues = set(
+            zip(mol.resid.tolist(), mol.insertion.tolist(), mol.chain.tolist())
+        )
+        single_mol = len(np.unique(mol.resname)) == 1 and len(residues) == 1
 
     if not len(mol.resname[0]):
         raise RuntimeError("Please specify a resname for your molecule.")
