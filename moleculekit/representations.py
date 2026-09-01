@@ -129,6 +129,11 @@ class Representations:
     ----------
     mol : Molecule
         The Molecule object for which the representations are stored.
+    notify : bool
+        Whether changes are reported to registered viewer backends. False for
+        the staging list ``view()`` collects its arguments in, which is not the
+        molecule's own set of representations and would otherwise be announced
+        as if it were.
 
     Examples
     --------
@@ -141,9 +146,10 @@ class Representations:
     >>> mol.reps.remove() # doctest: +SKIP
     """
 
-    def __init__(self, mol: "Molecule"):
+    def __init__(self, mol: "Molecule", notify: bool = True):
         self.replist = []
         self._mol = mol
+        self._notifies = notify
         return
 
     def _notify(self, event: str, index=None, rep=None):
@@ -164,6 +170,9 @@ class Representations:
             The representation itself, for the two events that have one.
         """
         from moleculekit.viewer.backends import notify
+
+        if not self._notifies:
+            return
 
         def params():
             described = self._translateMolstar(rep)

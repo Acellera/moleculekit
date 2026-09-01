@@ -274,7 +274,7 @@ class Molecule(object):
         self.crystalinfo = None
 
         self.reps = Representations(self)
-        self._tempreps = Representations(self)
+        self._tempreps = Representations(self, notify=False)
         self.viewname = name
 
         if filename is not None:
@@ -2496,6 +2496,7 @@ class Molecule(object):
         name: str | None = None,
         viewerhandle=None,
         gui: bool = False,
+        **kwargs,
     ):
         """Visualizes the molecule in a molecular viewer
 
@@ -2550,6 +2551,12 @@ class Molecule(object):
         gui : bool
             If set to True, show the graphical user interface of the viewer (only used by the webgl/ngl backend).
 
+        Anything else is passed to :meth:`Representations.add
+        <moleculekit.representations.Representations.add>`, so a whole
+        representation can be described in one call: ``opacity``, ``size``,
+        ``c_atom_color``, ``size_theme``, ``label_fields``, ``label_style``,
+        ``visibility`` and ``update_sel_every_frame``.
+
         Returns
         -------
         viewer
@@ -2585,8 +2592,8 @@ class Molecule(object):
         if self.numFrames == 0:
             raise RuntimeError("No frames in this molecule to visualize.")
 
-        if sel is not None or style is not None or color is not None:
-            self._tempreps.add(sel=sel, style=style, color=color)
+        if sel is not None or style is not None or color is not None or kwargs:
+            self._tempreps.add(sel=sel, style=style, color=color, **kwargs)
 
         if hold:
             return
