@@ -97,6 +97,7 @@ async function setViewport(width: number, height: number): Promise<void> {
 }
 
 let structureRef: StateObjectSelector | null = null
+let structureRefs: StateObjectSelector[] = []
 
 /** Parse a base64 BinaryCIF structure and make it the current one. */
 async function loadStructure(bcifBase64: string): Promise<void> {
@@ -110,6 +111,51 @@ async function loadStructure(bcifBase64: string): Promise<void> {
   const trajectory = await plugin.builders.structure.parseTrajectory(data, 'mmcif')
   const model = await plugin.builders.structure.createModel(trajectory)
   structureRef = await plugin.builders.structure.createStructure(model)
+}
+
+/**
+ * Parse several structures into one scene, replacing whatever was there.
+ *
+ * A figure often shows objects that were loaded separately, a protein and a
+ * docked ligand say, and merging them into one structure first would lose
+ * which atoms belong to which. Each keeps its own representations instead.
+ */
+async function loadStructures(bcifBase64List: string[]): Promise<void> {
+  if (!plugin) throw new Error('init() must run before loadStructures()')
+  await plugin.clear()
+  structureRefs = []
+  for (const bcifBase64 of bcifBase64List) {
+    const bytes = Uint8Array.from(atob(bcifBase64), (c) => c.charCodeAt(0))
+    const data = await plugin.builders.data.rawData({ data: bytes })
+    const trajectory = await plugin.builders.structure.parseTrajectory(data, 'mmcif')
+    const model = await plugin.builders.structure.createModel(trajectory)
+    structureRefs.push(await plugin.builders.structure.createStructure(model))
+  }
+  structureRef = structureRefs[0] ?? null
+}
+
+/**
+ * Apply one scene per structure, then the parts that belong to the whole
+ * picture: the background, and a camera that frames every object at once.
+ */
+async function applyScenesAndDraw(scenes: Scene[], globals: Scene): Promise<void> {
+  if (!plugin) throw new Error('loadStructures() must run first')
+  const canvas3d = plugin.canvas3d!
+  const baseline = canvas3d.didDraw.value
+  for (let i = 0; i < scenes.length; i++) {
+    await applyScene(plugin, structureRefs[i], scenes[i])
+  }
+  // The camera and canvas belong to the picture, not to any one object, so
+  // they are applied once at the end against the first structure.
+  await applyScene(plugin, structureRefs[0], globals)
+  await new Promise<void>((resolve) => {
+    const sub = canvas3d.didDraw.subscribe((t) => {
+      if (t > baseline) {
+        sub.unsubscribe()
+        resolve()
+      }
+    })
+  })
 }
 
 async function applySceneAndDraw(scene: Scene): Promise<void> {
@@ -185,7 +231,9 @@ async function screenshot(opts: {
   init,
   setViewport,
   loadStructure,
+  loadStructures,
   applyScene: applySceneAndDraw,
+  applyScenes: applyScenesAndDraw,
   screenshot,
   glInfo,
 }

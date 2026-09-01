@@ -40,6 +40,24 @@ png = mol.render(size=(800, 600))
 | `transparent` | Give the image a transparent background instead of a colour. |
 | `timeout` | How many seconds to allow for one image before giving up. |
 
+## Several molecules in one picture
+
+Pass a list to draw objects that were loaded separately, each keeping its own
+representations:
+
+```python
+from moleculekit.viewer.molstar.render import render
+
+protein.reps.add("all", "NewCartoon", "Secondary Structure")
+ligand.reps.add("all", "Licorice", "Name", c_atom_color="#ff6600")
+
+render([protein, ligand], "complex.png", center="resname BEN", zoom=0.3)
+```
+
+`center`, `rotate` and `zoom` apply to the picture as a whole: the selection is
+looked for in every object, and the camera frames what it finds. Nothing is cut
+away when you focus one object, so the others stay visible around it.
+
 ## Choosing what is drawn
 
 Representations come from `mol.reps`, exactly as for

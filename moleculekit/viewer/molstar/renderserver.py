@@ -64,13 +64,26 @@ def _validate(body: dict) -> dict:
     ValueError
         If a field is missing, of the wrong type, or out of range.
     """
-    for field in ("structure", "scene", "width", "height"):
+    for field in ("width", "height"):
         if field not in body:
             raise ValueError(f"missing field {field!r}")
-    if not isinstance(body["structure"], str):
-        raise ValueError("structure must be a base64 string")
-    if not isinstance(body["scene"], dict):
-        raise ValueError("scene must be an object")
+    if "objects" in body:
+        # Several objects drawn together, each with its own scene.
+        if not isinstance(body["objects"], list) or not body["objects"]:
+            raise ValueError("objects must be a non-empty list")
+        for obj in body["objects"]:
+            if not isinstance(obj.get("structure"), str):
+                raise ValueError("each object needs a base64 structure")
+            if not isinstance(obj.get("scene"), dict):
+                raise ValueError("each object needs a scene object")
+    else:
+        for field in ("structure", "scene"):
+            if field not in body:
+                raise ValueError(f"missing field {field!r}")
+        if not isinstance(body["structure"], str):
+            raise ValueError("structure must be a base64 string")
+        if not isinstance(body["scene"], dict):
+            raise ValueError("scene must be an object")
     width, height = int(body["width"]), int(body["height"])
     if width < 1 or height < 1:
         raise ValueError(f"size must be at least 1x1 pixels, got {width}x{height}")
@@ -129,7 +142,7 @@ class RenderHandler(BaseHTTPRequestHandler):
 
         try:
             with _render_lock:
-                png = render_png(body["structure"], body["scene"], **arguments)
+                png = render_png(body, **arguments)
         except Exception as exc:
             logger.exception("render failed")
             self._send(500, f"{type(exc).__name__}: {exc}".encode(), "text/plain")

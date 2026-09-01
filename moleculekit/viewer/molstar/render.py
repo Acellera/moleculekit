@@ -664,6 +664,86 @@ def _png_dimensions(png: bytes) -> tuple[int, int]:
     return width, height
 
 
+def _multi_payload(mols, *, center, rotate, zoom, background, transparent, fog, clip):
+    """Per-object scenes plus the parts that belong to the whole picture.
+
+    Each object keeps its own representations, so a protein and a ligand loaded
+    separately stay separate: merging them into one structure first would lose
+    which atoms belong to which. The camera and canvas are shared, and the
+    camera's sphere is worked out here because a selection spanning several
+    structures cannot be expressed as atom indices into one of them.
+
+    Parameters
+    ----------
+    mols : list of Molecule
+        The objects to draw, in order.
+    center : str or np.ndarray or None
+        Atom selection to frame, resolved against every object.
+    rotate : str or tuple of float or None
+        Camera orientation.
+    zoom : float or None
+        Camera tightness.
+    background : str
+        Background colour.
+    transparent : bool
+        Whether to render onto a transparent background.
+    fog : float or None
+        Depth cueing strength.
+    clip : float or None
+        Slab half-thickness.
+
+    Returns
+    -------
+    scenes : list of dict
+        One scene per object, carrying its components and labels.
+    globals : dict
+        The camera and canvas for the picture as a whole.
+    """
+    from moleculekit.viewer.molstar.scene import build_scene, focus_sphere
+
+    scenes = []
+    for index, mol in enumerate(mols):
+        try:
+            scenes.append(build_scene(mol, mol.reps.replist + mol._tempreps.replist))
+        except ValueError as exc:
+            # Say which object: with several of them, "every representation
+            # matched no atoms" gives no clue which one to look at, and one
+            # bad object takes the whole picture down.
+            name = getattr(mol, "viewname", None)
+            where = f"object {index}" + (f" ({name})" if name else "")
+            raise ValueError(f"{where}: {exc}") from exc
+
+    globals_: dict = {"components": []}
+    canvas: dict = {}
+    if not transparent and background is not None:
+        canvas["background"] = background
+    if fog is not None:
+        canvas["fog"] = float(fog)
+    if canvas:
+        globals_["canvas"] = canvas
+
+    if rotate is not None or zoom is not None or center is not None:
+        from moleculekit.viewer.molstar.scene import rotation_to_direction_up
+
+        focus_center, focus_radius = focus_sphere(mols, center)
+        _, scene_radius = focus_sphere(mols)
+        radius = focus_radius * (1.0 / float(zoom) if zoom is not None else 1.0)
+        camera = {
+            "center": focus_center,
+            "radius": radius,
+            # Without a slab, the planes take in the whole scene rather than
+            # only what is framed, so focusing one object does not cut the
+            # others away.
+            "clip_radius": float(clip) if clip is not None else max(radius, scene_radius),
+        }
+        if rotate is not None or zoom is not None:
+            direction, up = rotation_to_direction_up(rotate)
+            camera["direction"] = list(direction)
+            camera["up"] = list(up)
+        globals_["camera"] = camera
+    return scenes, globals_
+
+
 def _scene_description(
     mol: "Molecule",
     *,
@@ -723,7 +803,7 @@ def _scene_description(
 
 
 def render(
-    mol: "Molecule",
+    mol,
     output: str | None = None,
     *,
     size: tuple[int, int] = (1200, 900),
@@ -745,8 +825,9 @@ def render(
 
     Parameters
     ----------
-    mol : Molecule
-        The molecule to render.
+    mol : Molecule or list of Molecule
+        The object to render, or several to draw together in one picture. Each
+        keeps its own ``mol.reps``, so objects loaded separately stay separate.
     output : str or None, optional
         Path to write the PNG to. When None the PNG bytes are returned.
     size : tuple of int, optional
@@ -812,7 +893,10 @@ def render(
         raise ValueError(f"size must be at least 1x1 pixels, got {size!r}.")
     if zoom is not None and zoom <= 0:
         raise ValueError(f"zoom must be positive, got {zoom!r}.")
-    if center is not None and not mol.atomselect(center).any():
+    mols = list(mol) if isinstance(mol, (list, tuple)) else [mol]
+    if not mols:
+        raise ValueError("render() needs at least one molecule to draw.")
+    if center is not None and not any(m.atomselect(center).any() for m in mols):
         # build_scene treats a non-matching focus_sel as a no-op, which is the
         # right contract for that lower-level, permissive builder. render()
         # is public API though, so a center that silently produces a
@@ -821,25 +905,48 @@ def render(
 
     from moleculekit.viewer.molstar.inline import _b64, _bcif_bytes
 
-    description = _scene_description(
-        mol,
-        center=center,
-        rotate=rotate,
-        zoom=zoom,
-        background=background,
-        transparent=transparent,
-        fog=fog,
-        clip=clip,
-    )
-    bcif_b64 = _b64(_bcif_bytes(mol))
+    multi = len(mols) > 1
+    if multi:
+        scenes, globals_ = _multi_payload(
+            mols,
+            center=center,
+            rotate=rotate,
+            zoom=zoom,
+            background=background,
+            transparent=transparent,
+            fog=fog,
+            clip=clip,
+        )
+        objects = [
+            {"structure": _b64(_bcif_bytes(m)), "scene": scene}
+            for m, scene in zip(mols, scenes)
+        ]
+    else:
+        description = _scene_description(
+            mols[0],
+            center=center,
+            rotate=rotate,
+            zoom=zoom,
+            background=background,
+            transparent=transparent,
+            fog=fog,
+            clip=clip,
+        )
+        bcif_b64 = _b64(_bcif_bytes(mols[0]))
 
     if server is None:
         server = os.environ.get(_SERVER_ENV_VAR) or None
+    # One object keeps the single-object wire format, so a render server on an
+    # older moleculekit still answers the common case.
+    payload = (
+        {"objects": objects, "globals": globals_}
+        if multi
+        else {"structure": bcif_b64, "scene": description}
+    )
     if server:
         png = _render_remote(
             server,
-            bcif_b64,
-            description,
+            payload,
             width=width,
             height=height,
             quality=quality,
@@ -848,8 +955,7 @@ def render(
         )
     else:
         png = render_png(
-            bcif_b64,
-            description,
+            payload,
             width=width,
             height=height,
             quality=quality,
@@ -865,8 +971,7 @@ def render(
 
 def _render_remote(
     server: str,
-    bcif_b64: str,
-    description: dict,
+    payload: dict,
     *,
     width: int,
     height: int,
@@ -880,10 +985,9 @@ def _render_remote(
     ----------
     server : str
         Base URL of the render server.
-    bcif_b64 : str
-        The structure, BinaryCIF encoded as base64.
-    description : dict
-        The scene description.
+    payload : dict
+        What to draw: one structure and its scene, or several objects and the
+        camera and canvas they share.
     width : int
         Image width in pixels.
     height : int
@@ -908,10 +1012,9 @@ def _render_remote(
     import urllib.error
     import urllib.request
 
-    payload = json.dumps(
+    body = json.dumps(
         {
-            "structure": bcif_b64,
-            "scene": description,
+            **payload,
             "width": width,
             "height": height,
             "quality": quality,
@@ -921,7 +1024,7 @@ def _render_remote(
     ).encode()
     request = urllib.request.Request(
         server.rstrip("/") + "/render",
-        data=payload,
+        data=body,
         headers={"Content-Type": "application/json"},
     )
     try:
@@ -938,8 +1041,7 @@ def _render_remote(
 
 
 def render_png(
-    bcif_b64: str,
-    description: dict,
+    payload: dict,
     *,
     width: int,
     height: int,
@@ -956,11 +1058,9 @@ def render_png(
 
     Parameters
     ----------
-    bcif_b64 : str
-        The structure, BinaryCIF encoded as base64.
-    description : dict
-        The scene, as built by
-        :func:`moleculekit.viewer.molstar.scene.build_scene`.
+    payload : dict
+        What to draw: ``structure`` and ``scene`` for one object, or
+        ``objects`` and ``globals`` for several drawn together.
     width : int
         Image width in pixels.
     height : int
@@ -991,8 +1091,14 @@ def render_png(
     state.ws.set_timeout(timeout)
     timeout_ms = int(timeout * 1000)
     try:
+        objects = payload.get("objects")
+        structures = (
+            [o["structure"] for o in objects]
+            if objects is not None
+            else [payload["structure"]]
+        )
         state.ws.evaluate(
-            f"window.mkHeadless.loadStructure({json.dumps(bcif_b64)})",
+            f"window.mkHeadless.loadStructures({json.dumps(structures)})",
             timeout_ms=timeout_ms,
         )
         # Before the scene, so the camera fit (auto or from `rotate`/`zoom`)
@@ -1001,8 +1107,22 @@ def render_png(
             f"window.mkHeadless.setViewport({width}, {height})",
             timeout_ms=timeout_ms,
         )
+        if objects is not None:
+            scenes = [o["scene"] for o in objects]
+            globals_ = payload.get("globals", {"components": []})
+        else:
+            # The canvas and camera belong to the picture, so they are applied
+            # once, after every object. Leaving them on an object's own scene
+            # would let the next applyScene reset them: the fog is written on
+            # every call, deliberately, so one render cannot inherit another's.
+            scene = dict(payload["scene"])
+            globals_ = {"components": []}
+            for key in ("canvas", "camera"):
+                if key in scene:
+                    globals_[key] = scene.pop(key)
+            scenes = [scene]
         state.ws.evaluate(
-            f"window.mkHeadless.applyScene({json.dumps(description)})",
+            f"window.mkHeadless.applyScenes({json.dumps(scenes)}, {json.dumps(globals_)})",
             timeout_ms=timeout_ms,
         )
         options = {

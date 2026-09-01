@@ -98,9 +98,9 @@ def test_render_with_a_server_never_starts_a_local_browser(monkeypatch):
 def test_the_server_receives_what_the_client_built(monkeypatch):
     seen = {}
 
-    def _fake(structure, scene, **kwargs):
-        seen["structure"] = structure
-        seen["scene"] = scene
+    def _fake(payload, **kwargs):
+        seen["structure"] = payload["structure"]
+        seen["scene"] = payload["scene"]
         seen["kwargs"] = kwargs
         return b"png"
 
@@ -197,3 +197,39 @@ def test_serve_starts_the_browser_before_accepting_requests(monkeypatch):
     monkeypatch.setattr(renderserver, "ThreadingHTTPServer", _FakeHTTPD)
     renderserver.serve("127.0.0.1", 0)
     assert started, "the browser was never started"
+
+
+def test_the_server_accepts_several_objects(monkeypatch):
+    """A figure of objects loaded separately has to survive the wire.
+
+    One object keeps the older single-structure request shape, so a render
+    server on an older moleculekit still answers the common case.
+    """
+    seen = {}
+
+    def _capture(payload, **kwargs):
+        seen["p"] = payload
+        return b"png"
+
+    monkeypatch.setattr(renderserver, "render_png", _capture)
+    a, b = _mol(), _mol()
+    a.reps.add("all", "Licorice", "Name")
+    b.reps.add("all", "VDW", "Name")
+
+    with _Server() as url:
+        assert render_mod.render([a, b], server=url) == b"png"
+    assert len(seen["p"]["objects"]) == 2
+    assert "globals" in seen["p"]
+
+
+@pytest.mark.parametrize(
+    "body,message",
+    [
+        ({"objects": [], "width": 1, "height": 1}, "non-empty list"),
+        ({"objects": [{"scene": {}}], "width": 1, "height": 1}, "base64 structure"),
+        ({"objects": [{"structure": "x"}], "width": 1, "height": 1}, "needs a scene"),
+    ],
+)
+def test_bad_multi_object_requests_are_rejected(body, message):
+    with pytest.raises(ValueError, match=message):
+        renderserver._validate(body)

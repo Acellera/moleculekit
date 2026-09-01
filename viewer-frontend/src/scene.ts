@@ -57,6 +57,11 @@ export interface Scene {
     radius_factor?: number
     focus?: SceneSelect
     clip?: number
+    // A scene of several structures cannot express its focus as atom indices
+    // into one of them, so the sphere is computed by the caller instead.
+    center?: number[]
+    radius?: number
+    clip_radius?: number
   }
   canvas?: { background?: string; fog?: number }
 }
@@ -357,15 +362,20 @@ async function applyCamera(
   camera: NonNullable<Scene['camera']>
 ): Promise<void> {
   const canvas3d = plugin.canvas3d!
-  const loci = camera.focus
-    ? lociFor(structure, camera.focus)
-    : Structure.toStructureElementLoci(structure.data as Structure)
-  const sphere = Loci.getBoundingSphere(loci)!
+  const given = camera.center !== undefined
+  const sphere = given
+    ? { center: Vec3.create(camera.center![0], camera.center![1], camera.center![2]),
+        radius: camera.radius! }
+    : Loci.getBoundingSphere(
+        camera.focus
+          ? lociFor(structure, camera.focus)
+          : Structure.toStructureElementLoci(structure.data as Structure)
+      )!
   const dir = camera.direction
     ? Vec3.create(camera.direction[0], camera.direction[1], camera.direction[2])
     : undefined
   const up = camera.up ? Vec3.create(camera.up[0], camera.up[1], camera.up[2]) : undefined
-  const radius = sphere.radius * (camera.radius_factor ?? 1)
+  const radius = given ? sphere.radius : sphere.radius * (camera.radius_factor ?? 1)
   const snapshot = canvas3d.camera.getFocus(sphere.center, radius)
   // getFocus honours `dir` and `up` only up to sign: it runs them through
   // Vec3.matchDirection, which flips them into the hemisphere the camera
@@ -389,6 +399,8 @@ async function applyCamera(
   // `clip` when given, otherwise the whole structure, which draws everything.
   if (camera.clip !== undefined) {
     snapshot.radius = camera.clip
+  } else if (given) {
+    snapshot.radius = camera.clip_radius!
   } else {
     const whole = Loci.getBoundingSphere(
       Structure.toStructureElementLoci(structure.data as Structure)

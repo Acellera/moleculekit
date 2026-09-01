@@ -429,6 +429,46 @@ def _tubes(mol, highlight_bonds) -> list[dict]:
     return tubes
 
 
+def focus_sphere(mols, focus_sel=None):
+    """The sphere the camera should frame, across every object in the scene.
+
+    With one molecule the browser can work this out from the selected atoms
+    itself, but a selection spanning several structures cannot be expressed as
+    one set of atom indices, so it is computed here from the coordinates.
+
+    Parameters
+    ----------
+    mols : list
+        The molecules in the scene. The frame used is each molecule's own
+        ``mol.frame``.
+    focus_sel : str or np.ndarray or None, optional
+        Atom selection to frame. None frames everything.
+
+    Returns
+    -------
+    center : list of float
+        Middle of the framed atoms.
+    radius : float
+        Distance from the centre to the furthest framed atom, never zero.
+    """
+    points = []
+    for mol in mols:
+        coords = mol.coords[:, :, mol.frame]
+        if focus_sel is not None:
+            mask = mol.atomselect(focus_sel)
+            if not mask.any():
+                continue
+            coords = coords[mask]
+        points.append(coords)
+    if not points:
+        return None, None
+    stacked = np.vstack(points)
+    center = (stacked.min(axis=0) + stacked.max(axis=0)) / 2
+    radius = float(np.linalg.norm(stacked - center, axis=1).max())
+    # A single atom has no extent; give the camera something to frame.
+    return [float(v) for v in center], max(radius, 1.0)
+
+
 def build_scene(
     mol: "Molecule",
     reps=None,

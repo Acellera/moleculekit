@@ -788,3 +788,108 @@ def test_a_backend_without_webgl_is_skipped_not_fatal(monkeypatch):
     monkeypatch.setattr(render_mod, "_stop", lambda *a, **k: None)
 
     assert render_mod._start_with_backend(100, 100, "hardware") is None
+
+
+def _two_objects():
+    mol = _trypsin()
+    prot = mol.copy()
+    prot.filter("protein")
+    lig = mol.copy()
+    lig.filter("resid 100")
+    return prot, lig
+
+
+def test_focus_sphere_spans_every_object():
+    """A selection across several structures cannot be atom indices into one.
+
+    The sphere is worked out from coordinates instead, which is what lets
+    `center` mean the same thing whichever object the atoms are in.
+    """
+    from moleculekit.viewer.molstar.scene import focus_sphere
+
+    prot, lig = _two_objects()
+    whole_center, whole_radius = focus_sphere([prot, lig])
+    lig_center, lig_radius = focus_sphere([prot, lig], "resid 100")
+    assert lig_radius < whole_radius
+    assert focus_sphere([prot, lig], "resname NOPE") == (None, None)
+
+    # The union is larger than either object alone.
+    _, prot_only = focus_sphere([prot])
+    assert whole_radius >= prot_only
+
+
+def test_multi_payload_keeps_objects_apart_and_shares_the_camera():
+    prot, lig = _two_objects()
+    prot.reps.add("all", "NewCartoon", "Secondary Structure")
+    lig.reps.add("all", "Licorice", "Name")
+
+    scenes, globals_ = render_mod._multi_payload(
+        [prot, lig],
+        center="resid 100",
+        rotate="top",
+        zoom=None,
+        background="white",
+        transparent=False,
+        fog=None,
+        clip=None,
+    )
+    assert len(scenes) == 2
+    assert [s["components"][0]["representation"]["type"] for s in scenes] == [
+        "cartoon",
+        "ball_and_stick",
+    ]
+    # The camera belongs to the picture, not to either object, and carries a
+    # sphere rather than atom indices.
+    assert "camera" not in scenes[0] and "camera" not in scenes[1]
+    assert set(globals_["camera"]) >= {"center", "radius", "clip_radius", "direction"}
+    assert globals_["canvas"] == {"background": "white"}
+
+
+def test_one_molecule_still_uses_the_single_object_wire_format(monkeypatch):
+    """An older render server must keep answering the common case."""
+    seen = {}
+
+    def _capture(payload, **kwargs):
+        seen["p"] = payload
+        return b"png"
+
+    monkeypatch.setattr(render_mod, "render_png", _capture)
+    render_mod.render(_trypsin(), size=(50, 50))
+    assert set(seen["p"]) == {"structure", "scene"}
+
+    seen.clear()
+    render_mod.render(list(_two_objects()), size=(50, 50))
+    assert set(seen["p"]) == {"objects", "globals"}
+    assert len(seen["p"]["objects"]) == 2
+
+
+def test_rendering_no_molecules_is_rejected():
+    with pytest.raises(ValueError, match="at least one molecule"):
+        render_mod.render([], size=(50, 50))
+
+
+@needs_chromium
+def test_objects_are_drawn_together_and_stay_separate():
+    """Each object keeps its own representations in one picture.
+
+    Merging them into a single structure first would work, but loses which
+    atoms belong to which object, and with it the ability to style them
+    independently.
+    """
+    prot, lig = _two_objects()
+    prot.reps.add("all", "NewCartoon", "Secondary Structure")
+    lig.reps.add("all", "VDW", "Name")
+
+    both = render_mod.render([prot, lig], size=(220, 220))
+    protein_only = render_mod.render(prot, size=(220, 220))
+    assert both != protein_only, "the second object drew nothing"
+    render_mod.shutdown_for_tests()
+
+
+def test_a_bad_object_names_itself():
+    """One object's bad selections take the picture down, so say which one."""
+    prot, lig = _two_objects()
+    lig.viewname = "ligand.pdb"
+    lig.reps.add("resname NOSUCH", "NewCartoon", "Chain")
+    with pytest.raises(ValueError, match=r"object 1 \(ligand.pdb\).*matched no atoms"):
+        render_mod.render([prot, lig], size=(50, 50))
