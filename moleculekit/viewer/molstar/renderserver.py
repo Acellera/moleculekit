@@ -37,9 +37,12 @@ from moleculekit.viewer.molstar.render import (
 
 logger = logging.getLogger(__name__)
 
-#: Refuse bodies larger than this. A structure arrives base64 encoded, so this
-#: allows a very large complex while still bounding what one request can cost.
-MAX_REQUEST_BYTES = 64 * 1024 * 1024
+#: Refuse bodies larger than this. Structures and volumes arrive base64
+#: encoded, so this allows a very large complex, or a 256-cell grid, while
+#: still bounding what one request can cost: the body is read into memory and
+#: parsed, and passed on to the browser as JSON again, so a request peaks at
+#: several times its own size.
+MAX_REQUEST_BYTES = 256 * 1024 * 1024
 
 #: One browser serves every request, and it is a singleton with a single
 #: devtools connection, so renders are taken one at a time.

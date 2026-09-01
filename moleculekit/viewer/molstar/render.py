@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import atexit
 import base64
+import gzip
 import json
 import logging
 import os
@@ -664,6 +665,13 @@ def _png_dimensions(png: bytes) -> tuple[int, int]:
     return width, height
 
 
+def _default_volume_rep(vol):
+    """One isosurface for a volume the caller styled no further."""
+    from moleculekit.volume import _VolumeRepresentation
+
+    return _VolumeRepresentation(isovalue=vol.suggest_isovalue())
+
+
 def _multi_payload(mols, *, center, rotate, zoom, background, transparent, fog, clip):
     """Per-object scenes plus the parts that belong to the whole picture.
 
@@ -825,9 +833,12 @@ def render(
 
     Parameters
     ----------
-    mol : Molecule or list of Molecule
+    mol : Molecule or Volume or list
         The object to render, or several to draw together in one picture. Each
-        keeps its own ``mol.reps``, so objects loaded separately stay separate.
+        keeps its own representations, so objects loaded separately stay
+        separate. A :class:`moleculekit.volume.Volume` draws its isosurfaces
+        alongside the molecules; at least one molecule is needed, since a
+        volume has no atoms for the camera to frame.
     output : str or None, optional
         Path to write the PNG to. When None the PNG bytes are returned.
     size : tuple of int, optional
@@ -893,9 +904,18 @@ def render(
         raise ValueError(f"size must be at least 1x1 pixels, got {size!r}.")
     if zoom is not None and zoom <= 0:
         raise ValueError(f"zoom must be positive, got {zoom!r}.")
-    mols = list(mol) if isinstance(mol, (list, tuple)) else [mol]
+    from moleculekit.volume import Volume
+
+    objects_in = list(mol) if isinstance(mol, (list, tuple)) else [mol]
+    if not objects_in:
+        raise ValueError("render() needs at least one object to draw.")
+    volumes = [o for o in objects_in if isinstance(o, Volume)]
+    mols = [o for o in objects_in if not isinstance(o, Volume)]
     if not mols:
-        raise ValueError("render() needs at least one molecule to draw.")
+        raise ValueError(
+            "render() needs at least one molecule: a volume has no atoms, so "
+            "on its own there is nothing to frame the camera on."
+        )
     if center is not None and not any(m.atomselect(center).any() for m in mols):
         # build_scene treats a non-matching focus_sel as a no-op, which is the
         # right contract for that lower-level, permissive builder. render()
@@ -905,7 +925,7 @@ def render(
 
     from moleculekit.viewer.molstar.inline import _b64, _bcif_bytes
 
-    multi = len(mols) > 1
+    multi = len(mols) > 1 or bool(volumes)
     if multi:
         scenes, globals_ = _multi_payload(
             mols,
@@ -921,6 +941,28 @@ def render(
             {"structure": _b64(_bcif_bytes(m)), "scene": scene}
             for m, scene in zip(mols, scenes)
         ]
+        if volumes:
+            globals_["volumes"] = [
+                {
+                    # gzipped because base64 of a 200-cell grid is 43MB on
+                    # its own. Level 1: float32 mantissa bits are close to
+                    # random, so a density gains 1.1x to 2x and no level
+                    # spends its way past that.
+                    "ccp4_gz": _b64(gzip.compress(vol.to_ccp4(), 1)),
+                    "reps": [
+                        {
+                            "isovalue": float(rep.isovalue),
+                            "color": rep.color,
+                            "opacity": float(rep.opacity),
+                            "wireframe": bool(rep.wireframe),
+                        }
+                        # A volume with no representations set gets one surface
+                        # at a value taken from its own data.
+                        for rep in (vol.reps.replist or [_default_volume_rep(vol)])
+                    ],
+                }
+                for vol in volumes
+            ]
     else:
         description = _scene_description(
             mols[0],
@@ -1101,6 +1143,12 @@ def render_png(
             f"window.mkHeadless.loadStructures({json.dumps(structures)})",
             timeout_ms=timeout_ms,
         )
+        volumes = payload.get("globals", {}).get("volumes")
+        if volumes:
+            state.ws.evaluate(
+                f"window.mkHeadless.loadVolumes({json.dumps(volumes)})",
+                timeout_ms=timeout_ms,
+            )
         # Before the scene, so the camera fit (auto or from `rotate`/`zoom`)
         # is computed against this image's aspect rather than the window's.
         state.ws.evaluate(

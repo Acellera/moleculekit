@@ -863,8 +863,8 @@ def test_one_molecule_still_uses_the_single_object_wire_format(monkeypatch):
     assert len(seen["p"]["objects"]) == 2
 
 
-def test_rendering_no_molecules_is_rejected():
-    with pytest.raises(ValueError, match="at least one molecule"):
+def test_rendering_nothing_is_rejected():
+    with pytest.raises(ValueError, match="at least one object"):
         render_mod.render([], size=(50, 50))
 
 

@@ -15,6 +15,8 @@ import { Structure, StructureSelection } from 'molstar/lib/mol-model/structure'
 import { Loci } from 'molstar/lib/mol-model/loci'
 import { Vec3 } from 'molstar/lib/mol-math/linear-algebra'
 import { Color } from 'molstar/lib/mol-util/color'
+import { Volume } from 'molstar/lib/mol-model/volume'
+import { createVolumeRepresentationParams } from 'molstar/lib/mol-plugin-state/helpers/volume-representation-params'
 import { ParamDefinition as PD } from 'molstar/lib/mol-util/param-definition'
 import { CameraFogParams } from 'molstar/lib/mol-canvas3d/canvas3d'
 import { ColorNames } from 'molstar/lib/mol-util/color/names'
@@ -421,6 +423,45 @@ async function applyCamera(
   // mid-interpolation, which is how repeated renders stopped being identical
   // once before.
   canvas3d.requestCameraReset({ snapshot, durationMs: 0 })
+}
+
+/** One isosurface of a volume: where to draw it, and how it looks. */
+export interface VolumeRep {
+  isovalue: number
+  color?: string
+  opacity?: number
+  wireframe?: boolean
+}
+
+/**
+ * Draw a volume's isosurfaces.
+ *
+ * A volume is styled by its own list of surfaces rather than by selections:
+ * there are no atoms to select, so the equivalent of a representation is a
+ * value to contour at, with a colour and an opacity of its own.
+ */
+export async function applyVolume(
+  plugin: PluginContext,
+  volumeRef: StateObjectSelector,
+  reps: VolumeRep[]
+): Promise<void> {
+  const build = plugin.build()
+  for (const rep of reps) {
+    build.to(volumeRef).apply(
+      StateTransforms.Representation.VolumeRepresentation3D,
+      createVolumeRepresentationParams(plugin, volumeRef.data as any, {
+        type: 'isosurface',
+        typeParams: {
+          isoValue: Volume.IsoValue.absolute(rep.isovalue),
+          alpha: rep.opacity ?? 1,
+          visuals: rep.wireframe ? ['wireframe'] : ['solid'],
+        },
+        color: 'uniform',
+        colorParams: { value: colorOf(rep.color ?? '#3465a4') },
+      })
+    )
+  }
+  await build.commit()
 }
 
 /**

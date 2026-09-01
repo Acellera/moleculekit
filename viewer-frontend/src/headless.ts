@@ -9,7 +9,7 @@ import { DefaultPluginSpec } from 'molstar/lib/mol-plugin/spec'
 import { ParamDefinition as PD } from 'molstar/lib/mol-util/param-definition'
 import { SsaoParams } from 'molstar/lib/mol-canvas3d/passes/ssao'
 import type { StateObjectSelector } from 'molstar/lib/mol-state'
-import { applyScene, type Scene } from './scene'
+import { applyScene, applyVolume, type Scene, type VolumeRep } from './scene'
 
 let plugin: PluginContext | null = null
 
@@ -134,6 +134,38 @@ async function loadStructures(bcifBase64List: string[]): Promise<void> {
   structureRef = structureRefs[0] ?? null
 }
 
+/** Decode base64 to bytes. */
+function base64Bytes(b64: string): Uint8Array<ArrayBuffer> {
+  const binary = atob(b64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
+/** Inflate a gzip member, using the platform's own decompressor. */
+async function gunzip(bytes: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
+  return new Uint8Array(await new Response(stream).arrayBuffer())
+}
+
+/**
+ * Add volumes to the scene the structures were loaded into.
+ *
+ * Sent as a gzipped CCP4/MRC map rather than cube text: a 200-cell grid is
+ * eight million values, which as ASCII is a payload of a hundred megabytes
+ * and as float32 a thirtieth of that.
+ */
+async function loadVolumes(volumes: { ccp4_gz: string; reps: VolumeRep[] }[]): Promise<void> {
+  if (!plugin) throw new Error('init() must run before loadVolumes()')
+  for (const volume of volumes) {
+    const bytes = await gunzip(base64Bytes(volume.ccp4_gz))
+    const data = await plugin.builders.data.rawData({ data: bytes })
+    const parsed = await plugin.dataFormats.get('ccp4')!.parse(plugin, data)
+    const ref = parsed.volumes?.[0] ?? parsed.volume
+    await applyVolume(plugin, ref, volume.reps)
+  }
+}
+
 /**
  * Apply one scene per structure, then the parts that belong to the whole
  * picture: the background, and a camera that frames every object at once.
@@ -232,6 +264,7 @@ async function screenshot(opts: {
   setViewport,
   loadStructure,
   loadStructures,
+  loadVolumes,
   applyScene: applySceneAndDraw,
   applyScenes: applyScenesAndDraw,
   screenshot,

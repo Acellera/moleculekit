@@ -40,7 +40,7 @@ png = mol.render(size=(800, 600))
 | `transparent` | Give the image a transparent background instead of a colour. |
 | `timeout` | How many seconds to allow for one image before giving up. |
 
-## Several molecules in one picture
+## Several objects in one picture
 
 Pass a list to draw objects that were loaded separately, each keeping its own
 representations:
@@ -57,6 +57,28 @@ render([protein, ligand], "complex.png", center="resname BEN", zoom=0.3)
 `center`, `rotate` and `zoom` apply to the picture as a whole: the selection is
 looked for in every object, and the camera frames what it finds. Nothing is cut
 away when you focus one object, so the others stay visible around it.
+
+A representation only ever selects within its own object, so a selection
+written for the wrong molecule matches nothing and is skipped with a warning.
+
+## Densities and grids
+
+A volume goes in the same list. It carries its own surfaces rather than atom
+selections, since there are no atoms to select:
+
+```python
+from moleculekit.volume import Volume
+
+vol = Volume("density.cube")
+vol.reps.add(isovalue=0.4, color="#66ccff", opacity=0.45)   # see-through shell
+vol.reps.add(isovalue=0.8, color="#0044aa")                 # solid core
+
+render([protein, vol], "density.png", center="resname BEN", zoom=0.3)
+```
+
+Leave out `isovalue` and one is picked from the data, which saves guessing when
+you do not know how the map is scaled. At least one molecule has to be in the
+list: the camera is aimed with atom selections, and a grid has none.
 
 ## Choosing what is drawn
 
