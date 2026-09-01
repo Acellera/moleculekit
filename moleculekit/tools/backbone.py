@@ -222,6 +222,217 @@ def _reconstruct_backbone_planar_atom(
     return (new_atom, insert_at)
 
 
+# Per polymer: the atomselect keyword, and the link kind that continues a chain of
+# it. A side-chain isopeptide is deliberately not here -- it crosslinks.
+_POLYMER_LINKS = {"protein": "peptide", "nucleic": "phosphodiester"}
+
+
+def _polymer_masks(mol: Molecule):
+    """``{"protein": mask, "nucleic": mask}`` -- the shared polymer test.
+
+    What ``atomselect("protein")`` is usually asked for, answered so that a residue
+    modelled short of its backbone still counts. A residue is protein to that
+    selection only once four connected backbone atoms are present, and the protein
+    list is exactly ``N, CA, C, O``, so a residue missing only its carbonyl O is
+    not protein: it drops out of any sequence derived from the selection, and an
+    alignment against the reference then reports a residue missing that is sitting
+    in the file, bonded to both its neighbours. Gaps, termini and the caps a build
+    is asked for all inherit that.
+
+    The selection is added to, never reduced. Whatever it accepts stays accepted,
+    so a non-canonical residue known to no name list and recognised only by its
+    shape is unaffected, as is a structure whose coordinates carry no usable
+    geometry. A residue it rejects joins the chain when its resname is a polymer
+    one *and*
+    :func:`~moleculekit.tools.nonstandard_residues.geometric_interresidue_links`
+    puts a backbone link to a neighbour -- a peptide bond for protein, a
+    phosphodiester for nucleic. The link is what separates a residue of the chain
+    from a free amino acid or nucleotide in the solvent, which belongs to neither.
+    A side-chain isopeptide does not count: it crosslinks, it does not continue a
+    chain. Requiring the link is also what keeps a name from deciding alone: a
+    phosphoserine carries a P and no nucleic backbone at all.
+
+    The same four-atom threshold applies to ``atomselect("nucleic")``, but its
+    backbone list holds about ten names per nucleotide (``P``, ``OP1``, ``OP2``,
+    ``C5'``, ``O5'``, ``C4'``, ``C3'``, ``O3'`` and the ``*`` spellings), so four
+    of them is a far looser bar than four of four and a nucleotide has to lose most
+    of its backbone before it drops out.
+    """
+    from moleculekit.residues import (
+        MODIFIED_NUCLEIC_RESIDUE_NAMES,
+        MODIFIED_PROTEIN_RESIDUE_NAMES,
+        NUCLEIC_RESIDUE_NAMES_WITH_VARIANTS,
+        PROTEIN_RESIDUE_NAMES_WITH_VARIANTS,
+    )
+    from moleculekit.tools.nonstandard_residues import geometric_interresidue_links
+
+    tables = {
+        "protein": PROTEIN_RESIDUE_NAMES_WITH_VARIANTS | MODIFIED_PROTEIN_RESIDUE_NAMES,
+        "nucleic": NUCLEIC_RESIDUE_NAMES_WITH_VARIANTS | MODIFIED_NUCLEIC_RESIDUE_NAMES,
+    }
+    masks = {w: mol.atomselect(w) for w in _POLYMER_LINKS}
+    names = {w: {n.upper() for n in tables[w]} for w in _POLYMER_LINKS}
+
+    # No `sel` here on purpose: over "all" the returned indices are absolute.
+    # Selecting narrows them to positions within the selection.
+    _, res_idx = mol.getResidues(return_idx=True)
+
+    for i, atoms in enumerate(res_idx):
+        atoms = np.asarray(atoms, dtype=np.int64)
+        rname = str(mol.resname[atoms[0]]).upper()
+        # Which polymers would take this residue on its name, and do not already
+        # hold it. Anything the selections accepted needs no second opinion.
+        wanted = {
+            w: _POLYMER_LINKS[w]
+            for w in _POLYMER_LINKS
+            if rname in names[w] and not masks[w][atoms].any()
+        }
+        if not wanted:
+            continue
+        for other in (
+            res_idx[i - 1] if i else None,
+            res_idx[i + 1] if i + 1 < len(res_idx) else None,
+        ):
+            if other is None:
+                continue
+            found = {
+                kind for _ia, _ib, kind in
+                geometric_interresidue_links(mol, atoms, np.asarray(other))
+            }
+            for w, kind in wanted.items():
+                if kind in found:
+                    masks[w][atoms] = True
+    return masks
+
+
+def chainResidueMask(mol: Molecule, polymer: str = "protein") -> np.ndarray:
+    """Boolean atom mask over the residues of a polymer chain.
+
+    The drop-in for ``mol.atomselect("protein")`` where a residue modelled short of
+    its backbone has to count; see :func:`_polymer_masks` for the rule. Capping
+    groups are excluded, as ``atomselect`` excludes them: a cap belongs to the
+    chain it caps but is not a residue of its sequence. Combine polymers the way
+    atomselect masks combine -- ``chainResidueMask(mol, "protein") |
+    chainResidueMask(mol, "nucleic")``, which is what ``polymer="both"`` returns.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The molecule. Not modified.
+    polymer : str
+        ``"protein"``, ``"nucleic"``, or ``"both"``.
+    """
+    which = ("protein", "nucleic") if polymer == "both" else (polymer,)
+    if any(w not in _POLYMER_LINKS for w in which):
+        raise ValueError(
+            f"polymer accepts one of 'protein', 'nucleic', 'both', not {polymer!r}"
+        )
+    masks = _polymer_masks(mol)
+    out = np.zeros(mol.numAtoms, dtype=bool)
+    for w in which:
+        out |= masks[w]
+    return out
+
+
+def residuePolymerStatus(mol: Molecule, sel="all"):
+    """Yield ``(status, (segid, chain, resid, insertion), atom_indices)`` per
+    residue, in file order, with absolute atom indices.
+
+    ``status`` is one of ``"protein"``, ``"nucleic"``, ``"cap"``, ``"water"``,
+    ``"ion"``, ``"lipid"`` or ``"other"``. One classification for every caller to
+    read as its own purpose requires, rather than each deciding the chemistry
+    again: segmentation wants a cap walked with the chain it caps, while a sequence,
+    its gaps and its termini must not count a cap as a residue of the sequence.
+    Folding ``"cap"`` into ``"protein"`` is what stopped one answer serving both.
+
+    Polymer status comes from :func:`_polymer_masks`, so a residue modelled short of
+    its backbone keeps it. The indices index ``mol`` itself, unlike
+    ``Molecule.getResidues(sel=...)``, whose indices count within the selection.
+
+    Parameters
+    ----------
+    mol : :class:`Molecule <moleculekit.molecule.Molecule>`
+        The molecule. Not modified.
+    sel : str or np.ndarray
+        Atom selection to classify. A residue with no selected atom is skipped,
+        and one partly selected yields only its selected atoms.
+    """
+    from moleculekit.residues import (
+        CAP_RESIDUE_NAMES,
+        ION_RESIDUE_NAMES,
+        LIPID_RESIDUE_NAMES,
+        METAL_ION_RESIDUE_NAMES,
+        WATER_RESIDUE_NAMES,
+    )
+
+    masks = _polymer_masks(mol)
+    selected = mol.atomselect(sel)
+    _, res_idx = mol.getResidues(return_idx=True)
+
+    for atoms in res_idx:
+        atoms = np.asarray(atoms, dtype=np.int64)
+        atoms = atoms[selected[atoms]]
+        if not len(atoms):
+            continue
+        first = int(atoms[0])
+        key = (
+            str(mol.segid[first]),
+            str(mol.chain[first]),
+            int(mol.resid[first]),
+            str(mol.insertion[first]),
+        )
+        resname = str(mol.resname[first])
+        if resname in WATER_RESIDUE_NAMES:
+            status = "water"
+        # The single-atom guard keeps a polyatomic molecule whose code collides
+        # with an element symbol (e.g. CO, carbon monoxide) out of this branch.
+        elif resname in ION_RESIDUE_NAMES or (
+            resname in METAL_ION_RESIDUE_NAMES and len(atoms) == 1
+        ):
+            status = "ion"
+        elif resname in LIPID_RESIDUE_NAMES:
+            status = "lipid"
+        elif resname in CAP_RESIDUE_NAMES:
+            status = "cap"
+        elif masks["protein"][atoms].any():
+            status = "protein"
+        elif masks["nucleic"][atoms].any():
+            status = "nucleic"
+        else:
+            status = "other"
+        yield status, key, atoms
+
+
+def _observed_sequence(mol):
+    """``({chain: letters}, {chain: [atom_indices]})`` over the protein chains.
+
+    The shape ``Molecule.getSequence(dict_key="chain", return_idx=True)`` returns,
+    over the residues :func:`chainResidueMask` admits, and lettered by the one
+    table: a canonical residue by its own code, a known modified one by its
+    parent's, anything else ``X``.
+
+    Every consumer of an observed protein sequence reads it from here -- gap
+    detection, terminus classification and reference resolution -- so a chain is
+    not dropped by one and analysed by the next.
+    """
+    from moleculekit.molecule import _atoms_to_sequence
+    from moleculekit.util import sequenceID
+
+    mask = chainResidueMask(mol)
+    seqs, idxs = {}, {}
+    for chain in np.unique(mol.chain[mask]):
+        sel = mask & (mol.chain == chain)
+        if not sel.any():
+            continue
+        increm = sequenceID((mol.resid[sel], mol.insertion[sel], mol.chain[sel]))
+        letters, atoms = _atoms_to_sequence(
+            mol, sel, oneletter=True, incremseg=increm, _logger=False
+        )
+        seqs[str(chain)] = "".join(letters)
+        idxs[str(chain)] = atoms
+    return seqs, idxs
+
+
 def _iterate_residues(mol: Molecule):
     BB_ATOM_NAMES = {"N", "CA", "C", "O"}
 

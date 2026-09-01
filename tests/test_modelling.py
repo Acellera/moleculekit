@@ -1342,3 +1342,162 @@ def test_splice_stays_quiet_when_the_donor_covers_the_whole_gap(caplog):
         spliceMissingResidues(gapped, donor, {"A": "A"}, gaps=gaps)
 
     assert not [r for r in caplog.messages if "partly filled" in r], caplog.messages
+
+
+# --- a residue modelled short of its backbone is present, not missing ---------
+# `atomselect("protein")` asks for all four of N, CA, C and O, so a residue with
+# any one of them absent is not protein to it and drops out of the sequence
+# derived from it. The alignment then reports a residue missing that is sitting
+# in the file bonded to both neighbours, and the termini and caps that follow
+# name an end in the middle of a chain, which no build can apply.
+
+
+def test_a_residue_missing_its_carbonyl_is_not_a_gap():
+    m = _bonded_chain_mol(["ALA", "GLY", "LEU", "SER", "VAL"], [1, 2, 3, 4, 5])
+    # a real deposition: one atom short
+    m.remove("resid 3 and name O", _logger=False)
+
+    gaps, skipped, mismatches = detectSequenceGaps(m, {"A": "AGLSV"})
+
+    assert gaps == [], gaps
+    assert skipped == []
+    assert mismatches == []
+
+
+def test_that_residue_still_reaches_the_sequence_with_its_own_letter():
+    from moleculekit.tools.modelling import _observed_sequence
+
+    m = _bonded_chain_mol(["ALA", "GLY", "LEU", "SER", "VAL"], [1, 2, 3, 4, 5])
+    m.remove("resid 3 and name O", _logger=False)
+
+    seqs, idxs = _observed_sequence(m)
+
+    assert seqs["A"] == "AGLSV"
+    assert len(idxs["A"]) == 5
+
+
+def test_a_real_gap_is_still_reported():
+    """The fix must not swallow the case it has to keep finding."""
+    m = _bonded_chain_mol(["ALA", "GLY", "SER", "VAL"], [1, 2, 5, 6])
+
+    gaps, _, _ = detectSequenceGaps(m, {"A": "AGLLSV"})
+
+    assert len(gaps) == 1, gaps
+    assert (gaps[0]["after_resid"], gaps[0]["before_resid"]) == (2, 5)
+    assert gaps[0]["missing_seq"] == "LL"
+
+
+def test_an_unbonded_amino_acid_is_not_part_of_the_chain():
+    """A free glycine in the solvent is a component, not a residue of the chain.
+
+    It carries a polymer resname, so identity alone would take it; the peptide
+    bond is what decides.
+    """
+    from moleculekit.tools.modelling import _observed_sequence
+
+    m = _bonded_chain_mol(["ALA", "GLY", "LEU"], [1, 2, 3])
+    free = _bonded_chain_mol(["GLY"], [99], chain="A", segid="P")
+    free.moveBy([60.0, 60.0, 60.0])
+    # incomplete, so the selection rejects it too
+    free.remove("name O", _logger=False)
+    m.append(free)
+
+    seqs, _ = _observed_sequence(m)
+
+    assert seqs["A"] == "AGL", seqs
+
+
+def test_the_classifier_takes_the_short_residue_and_skips_the_free_one():
+    """The same rule as a public function, keyed per residue."""
+    from moleculekit.tools.backbone import residuePolymerStatus
+
+    m = _bonded_chain_mol(["ALA", "GLY", "LEU"], [1, 2, 3])
+    m.remove("resid 2 and name O", _logger=False)
+    free = _bonded_chain_mol(["GLY"], [99], chain="A", segid="P")
+    free.moveBy([60.0, 60.0, 60.0])
+    free.remove("name O", _logger=False)
+    m.append(free)
+
+    resids = [
+        key[2] for status, key, _atoms in residuePolymerStatus(m)
+        if status == "protein"
+    ]
+
+    assert resids == [1, 2, 3]
+
+
+def _polymer_keys(mol, polymer):
+    """Keys of the residues `polymer` claims, via the shared classifier."""
+    from moleculekit.tools.backbone import residuePolymerStatus
+
+    wanted = ("protein", "nucleic") if polymer == "both" else (polymer,)
+    return [
+        key for status, key, _atoms in residuePolymerStatus(mol) if status in wanted
+    ]
+
+
+def test_the_classifier_walks_a_nucleic_chain():
+    from moleculekit.tools.backbone import residuePolymerStatus
+
+    m = Molecule(os.path.join(curr_dir, "pdb", "1bna.pdb"))
+
+    assert len(_polymer_keys(m, "nucleic")) == 24
+    assert _polymer_keys(m, "protein") == []
+
+    # The yielded indices index the molecule, not positions within a selection:
+    # read relatively these would land on whatever sits at the front of the file.
+    for status, key, atoms in residuePolymerStatus(m):
+        assert str(m.chain[atoms[0]]) == key[1]
+        assert int(m.resid[atoms[0]]) == key[2]
+        if status == "nucleic":
+            assert str(m.resname[atoms[0]]) in ("DA", "DC", "DG", "DT")
+
+
+def test_a_nucleotide_short_of_its_backbone_stays_in_the_chain():
+    """The nucleic half of the rule, on the selection's own threshold.
+
+    ``atomselect("nucleic")`` wants four connected backbone atoms out of a list of
+    about ten, so a nucleotide has to lose most of its backbone to fall out. Strip
+    one that far and the phosphodiester to its neighbour is what puts it back.
+    """
+    m = Molecule(os.path.join(curr_dir, "pdb", "1bna.pdb"))
+    m.remove("chain A and resid 5 and name P OP1 OP2 O5' C5'", _logger=False)
+    stripped = (m.chain == "A") & (m.resid == 5)
+
+    assert not m.atomselect("nucleic")[stripped].any()
+
+    keys = _polymer_keys(m, "nucleic")
+    assert ("A", 5) in [(key[1], key[2]) for key in keys]
+    assert len(keys) == 24
+
+
+def test_both_walks_a_protein_rna_complex():
+    path = os.path.join(
+        curr_dir, "test_systemprepare", "test-rna-protein-complex", "3WBM.pdb"
+    )
+    m = Molecule(path)
+
+    protein = set(_polymer_keys(m, "protein"))
+    nucleic = set(_polymer_keys(m, "nucleic"))
+    both = set(_polymer_keys(m, "both"))
+
+    assert protein and nucleic
+    assert not (protein & nucleic)
+    assert both == protein | nucleic
+
+    # and the same at mask level, which is how a caller combines polymers
+    from moleculekit.tools.backbone import chainResidueMask
+
+    assert np.array_equal(
+        chainResidueMask(m, "both"),
+        chainResidueMask(m, "protein") | chainResidueMask(m, "nucleic"),
+    )
+
+
+def test_an_unknown_polymer_is_refused():
+    from moleculekit.tools.backbone import chainResidueMask
+
+    m = _bonded_chain_mol(["ALA", "GLY"], [1, 2])
+
+    with pytest.raises(ValueError):
+        chainResidueMask(m, "lipid")

@@ -546,7 +546,12 @@ def resolveFullSequences(mol, pdbid=None):
         of those covering the most entity residues (for display). Both are
         empty/``None`` when RCSB has no UniProt cross-reference for the chain.
     """
-    observed = mol.getSequence(dict_key="chain", sel="protein", _logger=False)
+    # The derivation the gaps and termini downstream use, not
+    # `getSequence(sel="protein")`: a chain whose residues are modelled short of
+    # their backbone would be dropped here and never reach them.
+    from moleculekit.tools.backbone import _observed_sequence
+
+    observed, _ = _observed_sequence(mol)
     resolved = {}
 
     entity_seqs = _entity_sequences_for_pdbid(pdbid) if pdbid else {}

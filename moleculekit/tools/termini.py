@@ -246,9 +246,13 @@ def detectTermini(mol, sequences, gaps, chainmeta, mature_spans, skipped_chains=
         verified-unique atom selection for the residue, and is None when the
         terminus cannot be capped or cannot be selected unambiguously.
     """
-    obsseq, obsidx = mol.getSequence(
-        dict_key="chain", return_idx=True, sel="protein", _logger=False
-    )
+    # The same derivation the gaps came from. `getSequence(sel="protein")` drops a
+    # residue modelled short of its backbone, so a segment whose last residue is
+    # one of those would end a residue early here while the gap it abuts starts a
+    # residue later -- and the two answers are read together.
+    from moleculekit.tools.backbone import _observed_sequence
+
+    obsseq, obsidx = _observed_sequence(mol)
     out = []
     for chain in sorted(obsseq):
         if not obsseq[chain]:

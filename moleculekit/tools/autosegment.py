@@ -17,12 +17,6 @@ logger = logging.getLogger(__name__)
 CHAIN_ALPHABET = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
 SEGID_ALPHABET = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
 
-# Protein residues are identified by the presence of these backbone atoms,
-# nucleic residues by any of these backbone link atoms (with ' / * variants).
-PROTEIN_BB = ("N", "CA", "C")
-NUCLEIC_LINK = ("P", "O3'", "O3*", "C3'", "C3*")
-
-
 def _residue_atom_coord(mol, res_atom_idx, names):
     """Coordinate of the first atom in ``res_atom_idx`` whose name is in ``names``.
 
@@ -41,9 +35,11 @@ def _classify_residues(mol, sel_mask):
     """Classify every residue in the selection as one of
     protein / nucleic / water / ion / other.
 
-    Protein and nucleic are decided by *backbone-atom presence*, not by
-    canonical resname, so noncanonical residues bonded into a chain are still
-    treated as polymer.
+    Protein and nucleic are decided by
+    :func:`~moleculekit.tools.backbone.residuePolymerStatus`, which is shared with
+    the sequence, gap and terminus code so one structure is not classified two
+    ways. A capping group is reported separately there and folded into protein
+    here, so the existing C-N geometric link attaches it to the residue it caps.
 
     Returns
     -------
@@ -52,46 +48,12 @@ def _classify_residues(mol, sel_mask):
     residue_idx : list of np.ndarray
         Global atom indices for each residue, in the same order as ``cats``.
     """
-    from moleculekit.residues import (
-        WATER_RESIDUE_NAMES,
-        CAP_RESIDUE_NAMES,
-        LIPID_RESIDUE_NAMES,
-        ION_RESIDUE_NAMES,
-        METAL_ION_RESIDUE_NAMES,
-    )
+    from moleculekit.tools.backbone import residuePolymerStatus
 
-    sel_idx = np.where(sel_mask)[0]
-    _, residue_idx = mol.getResidues(sel=sel_mask, return_idx=True)
-    residue_idx = [sel_idx[idx] for idx in residue_idx]
-
-    cats = []
-    for idx in residue_idx:
-        rep = idx[0]
-        resname = mol.resname[rep]
-        names = set(mol.name[idx])
-        if resname in WATER_RESIDUE_NAMES:
-            cats.append("water")
-        # The single-atom guard keeps a polyatomic molecule whose code collides
-        # with an element symbol (e.g. CO, carbon monoxide) out of this branch.
-        elif resname in ION_RESIDUE_NAMES or (
-            resname in METAL_ION_RESIDUE_NAMES and len(idx) == 1
-        ):
-            cats.append("ion")
-        elif resname in LIPID_RESIDUE_NAMES:
-            # Membrane lipids are individual molecules; collapse them into one
-            # segment (like water/ions) instead of one-per-molecule, so a bilayer
-            # of hundreds of lipids does not exhaust the chain-letter alphabet.
-            cats.append("lipid")
-        elif resname in CAP_RESIDUE_NAMES:
-            # A capping group joins the polymer traversal so the existing C-N
-            # geometric link attaches it to the residue it caps.
-            cats.append("protein")
-        elif all(a in names for a in PROTEIN_BB):
-            cats.append("protein")
-        elif any(a in names for a in NUCLEIC_LINK):
-            cats.append("nucleic")
-        else:
-            cats.append("other")
+    cats, residue_idx = [], []
+    for status, _key, atoms in residuePolymerStatus(mol, sel_mask):
+        cats.append("protein" if status == "cap" else status)
+        residue_idx.append(atoms)
     return cats, residue_idx
 
 

@@ -1,4 +1,5 @@
 from moleculekit.molecule import Molecule
+from moleculekit.tools.backbone import _observed_sequence
 from moleculekit.util import find_executable
 from subprocess import run
 import numpy as np
@@ -553,9 +554,9 @@ def detectSequenceGaps(mol, sequences):
         where either side is ``X`` (unknown or modified residue) are not reported:
         they are not evidence of a substitution.
     """
-    obsseq, obsidx = mol.getSequence(
-        dict_key="chain", return_idx=True, sel="protein", _logger=False
-    )
+    # Not `getSequence(sel="protein")`, which intersects the selection it is given
+    # with its own, so a residue that selection rejects cannot be put back.
+    obsseq, obsidx = _observed_sequence(mol)
     gaps = []
     skipped = []
     mismatches = []
@@ -647,9 +648,9 @@ def prepareGapModellingInput(mol, sequences, gaps, outdir):
 
     selected = set((g["chain"], g["after_resid"], g["missing_seq"]) for g in gaps)
     matched = set()
-    obsseq, obsidx = mol.getSequence(
-        dict_key="chain", return_idx=True, sel="protein", _logger=False
-    )
+    # Not `getSequence(sel="protein")`, which intersects the selection it is given
+    # with its own, so a residue that selection rejects cannot be put back.
+    obsseq, obsidx = _observed_sequence(mol)
 
     # Canonical protein chains we have a full sequence for. `obsseq` keys come from
     # np.unique (sorted), which fixes the chain order used for both the template
