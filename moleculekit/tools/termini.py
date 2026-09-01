@@ -206,6 +206,27 @@ def _segments(mol, residue_idx, chain_gaps):
     return segments
 
 
+def _drop_removable_chain_ends(mol, residue_idx, segments):
+    """The chain's ends as the build will have them.
+
+    ``check_backbone`` drops a residue at a chain end whose backbone is too
+    incomplete to cap, so reporting a terminus on one proposes a cap for a residue
+    that will not be there. Only the outer ends are trimmed: an internal gap edge
+    is not a terminal to ``check_backbone``, which reconstructs a broken residue
+    there instead of removing it.
+    """
+    from moleculekit.tools.backbone import removable_broken_terminal
+
+    segments = [list(s) for s in segments]
+    if segments and segments[0]:
+        if removable_broken_terminal(mol, residue_idx[segments[0][0]], "N"):
+            segments[0] = segments[0][1:]
+    if segments and segments[-1]:
+        if removable_broken_terminal(mol, residue_idx[segments[-1][-1]], "C"):
+            segments[-1] = segments[-1][:-1]
+    return [s for s in segments if s]
+
+
 def detectTermini(mol, sequences, gaps, chainmeta, mature_spans, skipped_chains=()):
     """Classify both ends of every protein chain as natural, truncated or unknown.
 
@@ -265,6 +286,9 @@ def detectTermini(mol, sequences, gaps, chainmeta, mature_spans, skipped_chains=
         no_gap_analysis = str(chain) in {str(c) for c in skipped_chains}
         # Per segment, not per chain: an unmodelled internal gap makes two of them.
         segments = _segments(mol, residue_idx, chain_gaps)
+        segments = _drop_removable_chain_ends(mol, residue_idx, segments)
+        if not segments:
+            continue
         refpos = _reference_positions(mol, residue_idx, chain_gaps)
         ends = []
         for index, segment in enumerate(segments):

@@ -613,10 +613,42 @@ def _complete_free_cterm_carboxyls(mol: Molecule) -> int:
     return len(to_add)
 
 
+TERMINAL_MIN_HEAVY_ATOMS = 4
+
+
+def removable_broken_terminal(mol: Molecule, atoms, end: str) -> bool:
+    """Whether :func:`check_backbone` would drop this residue as a broken terminal.
+
+    ``end`` is ``"N"`` or ``"C"``, naming which end of the chain the residue sits
+    at -- a missing O is forgiven at a C-terminus and a missing N at an N-terminus,
+    as pdb2pqr caps those correctly.
+
+    Read by ``detectTermini`` so a survey does not propose a cap for a residue the
+    build removes before capping: the two answers have to agree, and a terminus
+    that only exists because a residue is half-modelled is not one the build has.
+    Only a chain's true ends qualify, which is the terminality
+    :func:`check_backbone` itself uses -- an internal gap edge is not a terminal to
+    it, and a broken residue there is reconstructed or raised on, never dropped.
+    """
+    from moleculekit.residues import PROTEIN_RESIDUE_NAMES
+
+    atoms = np.asarray(atoms, dtype=np.int64)
+    if str(mol.resname[atoms[0]]) not in PROTEIN_RESIDUE_NAMES:
+        return False
+    names = {str(x) for x in mol.name[atoms]}
+    missing = {"N", "CA", "C", "O"} - names
+    if "OXT" in names:
+        missing.discard("O")
+    missing.discard("O" if end == "C" else "N")
+    if not missing:
+        return False
+    return int(np.sum(mol.element[atoms] != "H")) < TERMINAL_MIN_HEAVY_ATOMS
+
+
 def check_backbone(
     mol: Molecule,
     remove_broken_terminals: bool = True,
-    terminal_min_heavy_atoms: int = 4,
+    terminal_min_heavy_atoms: int = TERMINAL_MIN_HEAVY_ATOMS,
 ) -> Molecule:
     """Checks the backbone of all canonical aminoacids in a Molecule object and adds missing atoms if needed.
 

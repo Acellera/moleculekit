@@ -1501,3 +1501,64 @@ def test_an_unknown_polymer_is_refused():
 
     with pytest.raises(ValueError):
         chainResidueMask(m, "lipid")
+
+
+def test_a_terminus_the_build_will_remove_is_not_reported():
+    """A half-modelled chain end is not a terminus the build has.
+
+    The rule admits a residue carrying only its backbone N, which is right for a
+    gap: the tail starts after it. `check_backbone` then removes it, one heavy
+    atom against a threshold of four, so proposing a cap there asks for a cap on a
+    residue that will not exist. An internal gap edge is a different matter and
+    stays, being no terminal to `check_backbone`.
+    """
+    from moleculekit.tools.backbone import check_backbone, removable_broken_terminal
+
+    m = _bonded_chain_mol(["ALA", "GLY", "LEU", "SER", "VAL"], [1, 2, 3, 4, 5])
+    m.remove("resid 5 and not name N", _logger=False)
+    end = m.getResidues(return_idx=True)[1][-1]
+
+    assert removable_broken_terminal(m, end, "C")
+    # and the build agrees: the residue is gone after check_backbone
+    check_backbone(m)
+    assert 5 not in [int(x) for x in m.resid]
+
+
+def test_a_whole_terminus_is_kept():
+    from moleculekit.tools.backbone import removable_broken_terminal
+
+    m = _bonded_chain_mol(["ALA", "GLY", "LEU"], [1, 2, 3])
+    groups = m.getResidues(return_idx=True)[1]
+
+    assert not removable_broken_terminal(m, groups[-1], "C")
+    assert not removable_broken_terminal(m, groups[0], "N")
+
+
+def test_a_cap_is_never_trimmed_as_a_broken_terminus():
+    """The resname gate is load-bearing, not incidental.
+
+    NH2 carries one heavy atom and ACE three, both under the threshold, and both
+    are missing backbone atoms -- the arithmetic alone would drop them. They are
+    refused because they are not protein resnames, the same gate `check_backbone`
+    uses, which is why the two agree. They also never reach the trim: the observed
+    sequence is built over protein residues and a cap is not one.
+    """
+    from moleculekit.tools.backbone import (
+        _observed_sequence,
+        removable_broken_terminal,
+    )
+    from moleculekit.residues import CAP_RESIDUE_NAMES
+
+    m = _bonded_chain_mol(["ALA", "GLY", "LEU"], [1, 2, 3])
+    cap = _bonded_chain_mol(["ALA"], [4], chain="A", segid="P")
+    cap.resname[:] = "NME"
+    cap.filter("name N CA", _logger=False)
+    m.append(cap)
+
+    groups = m.getResidues(return_idx=True)[1]
+    assert str(m.resname[groups[-1][0]]) in CAP_RESIDUE_NAMES
+    assert not removable_broken_terminal(m, groups[-1], "C")
+
+    _, idxs = _observed_sequence(m)
+    walked = [str(m.resname[g[0]]) for g in idxs.get("A", [])]
+    assert "NME" not in walked, walked
