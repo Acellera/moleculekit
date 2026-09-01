@@ -80,6 +80,11 @@ Leave out `isovalue` and one is picked from the data, which saves guessing when
 you do not know how the map is scaled. At least one molecule has to be in the
 list: the camera is aimed with atom selections, and a grid has none.
 
+Gaussian cube files (`.cube`) and rDock grids (`.grd`, such as a cavity from
+`rbcavity`) can both be read. A grid carries its own position, so a cavity
+drawn beside the receptor it was mapped on lands in the right pocket without
+you lining anything up.
+
 ## Choosing what is drawn
 
 Representations come from `mol.reps`, exactly as for

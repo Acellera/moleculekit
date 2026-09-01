@@ -114,7 +114,8 @@ class Volume:
     Parameters
     ----------
     filename : str or None
-        A ``.cube`` file. None builds an empty Volume to fill in from arrays.
+        A ``.cube`` or rDock ``.grd`` file. None builds an empty Volume to
+        fill in from arrays.
     data : np.ndarray or None
         A 3D array, when building from memory rather than a file.
     origin : array_like or None
@@ -145,12 +146,13 @@ class Volume:
         Parameters
         ----------
         filename : str
-            A ``.cube`` file.
+            A ``.cube`` or rDock ``.grd`` file.
 
         Raises
         ------
         RuntimeError
-            If the extension is not one this can read.
+            If the extension is not one this can read, or if a ``.grd`` file
+            describes a grid this cannot represent.
         """
         extension = os.path.splitext(filename)[1].lower()
         if extension == ".cube":
@@ -169,9 +171,12 @@ class Volume:
                 ],
                 dtype=np.float64,
             )
+        elif extension == ".grd":
+            self._read_grd(filename)
         else:
             raise RuntimeError(
-                f"Cannot read {extension!r} as volumetric data. Supported: .cube"
+                f"Cannot read {extension!r} as volumetric data. "
+                "Supported: .cube, .grd"
             )
         self.viewname = os.path.basename(filename)
 
@@ -198,6 +203,53 @@ class Volume:
             The suggested value.
         """
         return float(np.quantile(self.data, quantile))
+
+    def _read_grd(self, filename: str):
+        """Read an rDock grid.
+
+        The header is five lines: a title, the Fortran format the values are
+        written in, the unit cell, the cell's grid sampling, and then the axis
+        order followed by the first and last grid index along each axis. The
+        indices are absolute, so they are what places the grid in space.
+
+        Parameters
+        ----------
+        filename : str
+            An rDock ``.grd`` file.
+
+        Raises
+        ------
+        RuntimeError
+            If the cell is not orthogonal, or the values are not stored with
+            x varying fastest: either would put the data somewhere other than
+            where this reads it.
+        """
+        with open(filename) as fh:
+            lines = fh.read().split("\n")
+
+        cell = np.array(lines[2].split(), dtype=np.float64)
+        if not np.allclose(cell[3:], 90.0):
+            raise RuntimeError(
+                f"{filename} has cell angles {cell[3:].tolist()}. Only "
+                "orthogonal grids are supported."
+            )
+        sampling = np.array(lines[3].split(), dtype=int)
+        header = np.array(lines[4].split(), dtype=int)
+        if header[0] != 1:
+            raise RuntimeError(
+                f"{filename} stores its values in axis order {header[0]}, and "
+                "only 1 (x fastest) is supported."
+            )
+        first, last = header[1::2], header[2::2]
+
+        self.spacing = cell[:3] / sampling
+        # Absolute grid indices, so the first point's index times the step is
+        # where the grid sits.
+        self.origin = first * self.spacing
+        values = np.fromstring(" ".join(lines[5:]), dtype=np.float32, sep=" ")
+        # x fastest, as the axis order says, and our own arrays are [x][y][z].
+        extent = last - first + 1
+        self.data = values.reshape(extent[::-1]).transpose(2, 1, 0)
 
     def to_ccp4(self) -> bytes:
         """Serialise to a CCP4/MRC map, the format the viewer parses.

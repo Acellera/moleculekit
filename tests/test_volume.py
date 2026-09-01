@@ -190,3 +190,56 @@ def test_a_ccp4_map_is_smaller_than_the_same_grid_as_text(tmp_path):
     vol = Volume(path)
     encoded = base64.b64encode(vol.to_ccp4())
     assert len(encoded) < len(vol.to_cube()) / 2
+
+
+def _grd(tmp_path, data, first=(-93, 62, -26), step=0.5, angles=(90.0, 90.0, 90.0)):
+    """Write a grid the way rDock does, for tests to read back.
+
+    The cell is sampled one step coarser than the extent of points, which is
+    what a real rDock grid does: 29 intervals of 0.5 A spanned by 30 points.
+    """
+    extent = np.array(data.shape)
+    sampling = extent - 1
+    cell = list(sampling * step) + list(angles)
+    last = np.array(first) + sampling
+    lines = [
+        "RBT FFT GRID",
+        "(1F15.10)",
+        " ".join(f"{v:8.3f}" for v in cell),
+        " ".join(f"{v:4d}" for v in sampling),
+        " ".join(f"{v:4d}" for v in [1, *sum(zip(first, last), ())]),
+    ]
+    # x fastest, as the axis order in the header says.
+    lines += [f"{v:15.10f}" for v in data.transpose(2, 1, 0).ravel()]
+    path = tmp_path / "cavity.grd"
+    path.write_text("\n".join(lines) + "\n")
+    return str(path)
+
+
+def test_reading_an_rdock_grid_puts_it_where_the_indices_say(tmp_path):
+    """The grid indices are absolute, so they are what places a cavity next to
+    the receptor it was mapped on. Asymmetric extents, so a swapped axis or a
+    transposed reshape cannot pass."""
+    data = np.arange(3 * 4 * 5, dtype=np.float32).reshape(3, 4, 5)
+    vol = Volume(_grd(tmp_path, data, first=(-93, 62, -26), step=0.5))
+
+    assert vol.shape == (3, 4, 5)
+    assert np.allclose(vol.spacing, [0.5, 0.5, 0.5])
+    assert np.allclose(vol.origin, [-46.5, 31.0, -13.0])
+    assert np.allclose(vol.data, data)
+    assert vol.viewname == "cavity.grd"
+
+
+def test_a_grid_this_cannot_place_is_refused(tmp_path):
+    """Both would silently draw the data somewhere other than where it is."""
+    data = np.zeros((3, 4, 5), dtype=np.float32)
+    path = _grd(tmp_path, data, angles=(90.0, 90.0, 120.0))
+    with pytest.raises(RuntimeError, match="orthogonal"):
+        Volume(path)
+
+    path = _grd(tmp_path, data)
+    lines = open(path).read().split("\n")
+    lines[4] = lines[4].replace("   1", "   2", 1)
+    open(path, "w").write("\n".join(lines))
+    with pytest.raises(RuntimeError, match="axis order"):
+        Volume(path)
