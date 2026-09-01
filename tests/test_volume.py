@@ -243,3 +243,45 @@ def test_a_grid_this_cannot_place_is_refused(tmp_path):
     open(path, "w").write("\n".join(lines))
     with pytest.raises(RuntimeError, match="axis order"):
         Volume(path)
+
+
+def test_updating_a_surface_keeps_the_rest_of_it(tmp_path):
+    path, _ = _blob(tmp_path)
+    vol = Volume(path)
+    vol.reps.add(isovalue=0.4, color="#66ccff", opacity=0.45)
+    vol.reps.add(isovalue=0.8)
+    vol.reps.update(0, color="#ff6600")
+
+    first = vol.reps.replist[0]
+    assert (first.color, first.isovalue, first.opacity) == ("#ff6600", 0.4, 0.45)
+    assert [r.isovalue for r in vol.reps.replist] == [0.4, 0.8]
+
+
+def test_a_hidden_surface_is_left_out_of_the_scene(tmp_path, monkeypatch):
+    path, _ = _blob(tmp_path)
+    vol = Volume(path)
+    vol.reps.add(isovalue=0.4, color="#66ccff")
+    vol.reps.add(isovalue=0.8, color="#0044aa")
+    vol.reps.update(0, visibility=False)
+    assert "hidden" in str(vol.reps)
+
+    mol = Molecule().empty(3)
+    mol.element[:] = ["N", "C", "C"]
+    mol.name[:] = ["N", "CA", "C"]
+    mol.resname[:] = "ALA"
+    mol.resid[:] = 1
+    mol.coords = np.zeros((3, 3, 1), dtype=np.float32)
+
+    seen = {}
+
+    def _capture(payload, **kwargs):
+        seen["p"] = payload
+        return b"png"
+
+    monkeypatch.setattr(render_mod, "render_png", _capture)
+    render_mod.render([mol, vol], size=(50, 50))
+
+    reps = seen["p"]["globals"]["volumes"][0]["reps"]
+    assert [r["isovalue"] for r in reps] == [0.8]
+    # Still there to switch back on, just not drawn.
+    assert len(vol.reps.replist) == 2

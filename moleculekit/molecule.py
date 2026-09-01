@@ -2535,10 +2535,12 @@ class Molecule(object):
         guessBonds : bool
             Allow the viewer to guess bonds for the molecule
         viewer : str ('vmd', 'pymol', 'webgl', 'molstar')
-            Choose viewer backend. Resolution order: explicit ``viewer=`` argument,
-            then the ``MOLECULEKIT_VIEWER`` environment variable, then
-            ``moleculekit.config["viewer"]``, then auto-detection of ``vmd``/``pymol``
-            in ``PATH``, then ``molstar`` as the fallback.
+            Choose viewer backend, either a built-in one or a name registered
+            with :func:`moleculekit.viewer.backends.register_viewer`. Resolution
+            order: explicit ``viewer=`` argument, then the ``MOLECULEKIT_VIEWER``
+            environment variable, then ``moleculekit.config["viewer"]``, then a
+            registered backend if exactly one is registered, then auto-detection
+            of ``vmd``/``pymol`` in ``PATH``, then ``molstar`` as the fallback.
         hold : bool
             If set to True, it will not visualize the molecule but instead collect representations until set back to False.
         name : str, optional
@@ -2563,6 +2565,13 @@ class Molecule(object):
             from moleculekit.config import _config
 
             viewer = _config["viewer"]
+
+        if viewer is None:
+            # A registered backend is a viewer that is already on screen, which
+            # is a better guess than anything found on PATH.
+            from moleculekit.viewer.backends import default_viewer
+
+            viewer = default_viewer()
 
         if viewer is None:
             for exe in ["vmd", "pymol"]:
@@ -2607,7 +2616,16 @@ class Molecule(object):
         elif viewer.lower() == "molstar":
             retval = self._viewMolstar(name)
         else:
-            raise ValueError("Unknown viewer.")
+            from moleculekit.viewer.backends import get_viewer
+
+            backend = get_viewer(viewer)
+            if backend is None:
+                raise ValueError(
+                    f"Unknown viewer {viewer!r}. Use 'vmd', 'pymol', 'ngl', "
+                    "'molstar', or register a backend with "
+                    "moleculekit.viewer.backends.register_viewer."
+                )
+            retval = backend.view(self, name=name)
 
         if retval is not None:
             return retval

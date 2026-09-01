@@ -447,3 +447,95 @@ def test_labels_without_fields_stay_a_molstar_representation():
     scene = build_scene(mol, mol.reps.replist)
     assert [c["representation"]["type"] for c in scene["components"]] == ["label"]
     assert "labels" not in scene
+
+
+def test_update_changes_only_what_it_is_given():
+    """Recolouring a representation must not cost it its size or selection."""
+    mol = _mol()
+    mol.reps.add("name CA", "VDW", "Name", size=0.8, opacity=0.5)
+    mol.reps.update(0, color="Chain")
+
+    rep = mol.reps.replist[0]
+    assert (rep.sel, rep.style, rep.color) == ("name CA", "VDW", "Chain")
+    assert (rep.size, rep.opacity) == (0.8, 0.5)
+
+
+def test_update_keeps_a_representation_where_it_was():
+    """The point of updating rather than removing and re-adding: the index of
+    every other representation stays what the caller last saw."""
+    mol = _mol()
+    mol.reps.add("all", "Lines", "Name")
+    mol.reps.add("name CA", "VDW", "Name")
+    mol.reps.add("all", "NewCartoon", "Name")
+    mol.reps.update(1, style="Licorice")
+
+    assert [r.style for r in mol.reps.replist] == ["Lines", "Licorice", "NewCartoon"]
+
+
+def test_a_hidden_representation_draws_nothing_but_keeps_its_index():
+    from moleculekit.viewer.molstar.scene import build_scene
+
+    mol = _mol()
+    mol.reps.add("all", "Lines", "Name")
+    mol.reps.add("all", "VDW", "Name")
+    mol.reps.update(1, visibility=False)
+
+    scene = build_scene(mol, mol.reps.replist)
+    assert [c["representation"]["type"] for c in scene["components"]] == ["line"]
+    assert len(mol.reps.replist) == 2
+    assert "hidden" in str(mol.reps)
+
+    mol.reps.update(1, visibility=True)
+    scene = build_scene(mol, mol.reps.replist)
+    assert [c["representation"]["type"] for c in scene["components"]] == [
+        "line",
+        "spacefill",
+    ]
+
+
+def test_label_style_reaches_every_label():
+    from moleculekit.viewer.molstar.scene import build_scene
+
+    mol = _mol()
+    mol.reps.add("all", "Licorice", "Name")
+    mol.reps.add(
+        "all",
+        "Labels",
+        label_fields="name",
+        label_style={"bg_color": "#003366", "bg_opacity": 0.9, "offset_y": 1.5},
+    )
+    labels = build_scene(mol, mol.reps.replist)["labels"]
+    assert len(labels) == 3
+    for label in labels:
+        assert label["bg_color"] == "#003366"
+        assert label["bg_opacity"] == 0.9
+        assert label["offset_y"] == 1.5
+
+
+def test_an_unknown_label_style_key_is_rejected():
+    """A misspelled cosmetic that silently drew a default label would look
+    like the option had simply not worked."""
+    from moleculekit.viewer.molstar.scene import build_scene
+
+    mol = _mol()
+    mol.reps.add("all", "Licorice", "Name")
+    mol.reps.add("all", "Labels", label_fields="name", label_style={"bgcolor": "red"})
+    with pytest.raises(ValueError, match="Unknown label_style 'bgcolor'"):
+        build_scene(mol, mol.reps.replist)
+
+
+def test_update_sel_every_frame_is_carried_but_not_drawn():
+    """It belongs to a live viewer following a trajectory. A rendered image is
+    one frame, so it reaches the scene and changes nothing about it."""
+    from moleculekit.viewer.molstar.scene import build_scene
+
+    mol = _mol()
+    mol.reps.add("all", "VDW", "Name", update_sel_every_frame=True)
+    assert mol.reps.replist[0].update_sel_every_frame
+    # Not in the scene: nothing there could act on it.
+    assert "update_sel_every_frame" not in mol.reps._translateMolstar(
+        mol.reps.replist[0]
+    )
+
+    scene = build_scene(mol, mol.reps.replist)
+    assert [c["representation"]["type"] for c in scene["components"]] == ["spacefill"]

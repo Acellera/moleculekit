@@ -146,6 +146,39 @@ class Representations:
         self._mol = mol
         return
 
+    def _notify(self, event: str, index=None, rep=None):
+        """Tell any registered viewer backend that this list changed.
+
+        A viewer already on screen has to hear about a representation the
+        moment it is added, where the renderer walks the list once when it
+        builds its scene. Translating is deferred to the backend registry, so a
+        scene being built pays nothing for this.
+
+        Parameters
+        ----------
+        event : str
+            ``added``, ``updated`` or ``removed``.
+        index : int or None
+            Which representation, or None when all were removed.
+        rep : _Representation or None
+            The representation itself, for the two events that have one.
+        """
+        from moleculekit.viewer.backends import notify
+
+        def params():
+            described = self._translateMolstar(rep)
+            if described is not None:
+                # Beyond what a scene needs: the selection, which a viewer
+                # following a trajectory re-evaluates per frame and resolved
+                # indices cannot express, and the two flags a live viewer acts
+                # on but a single rendered image cannot.
+                described["sel"] = rep.sel
+                described["visibility"] = rep.visibility
+                described["update_sel_every_frame"] = rep.update_sel_every_frame
+            return described
+
+        notify(event, self._mol, index, params)
+
     def append(self, reps: "Representations"):
         """Append the representations of another Representations object.
 
@@ -162,7 +195,9 @@ class Representations:
         """
         if not isinstance(reps, Representations):
             raise RuntimeError("You can only append Representations objects.")
-        self.replist += reps.replist
+        for rep in reps.replist:
+            self.replist.append(rep)
+            self._notify("added", len(self.replist) - 1, rep)
 
     def add(
         self,
@@ -175,6 +210,9 @@ class Representations:
         c_atom_color: "str | None" = None,
         size_theme: str | None = None,
         label_fields: "str | list | None" = None,
+        label_style: dict | None = None,
+        visibility: bool | None = None,
+        update_sel_every_frame: bool | None = None,
     ):
         """Adds a new representation for Molecule.
 
@@ -233,6 +271,19 @@ class Representations:
             per-atom fields of the molecule, such as ``name``, ``element``,
             ``resname``, ``resid``, ``chain`` or ``index``, joined by spaces.
             Without it the label is the atom name alone.
+        label_style : dict
+            Cosmetics for a ``Labels`` representation: ``border_width``,
+            ``border_color``, ``bg_color``, ``bg_opacity``, ``bg_margin``,
+            ``offset_x``, ``offset_y`` and ``offset_z``. Keys left out keep
+            their defaults, and any other key is rejected.
+        visibility : bool
+            Whether to draw this representation. A hidden one keeps its place
+            in the list, so it can be switched back on by index.
+        update_sel_every_frame : bool
+            Whether an interactive viewer re-evaluates the selection on every
+            trajectory frame, which is what a coordinate-dependent selection
+            such as ``within 5 of resname BEN`` needs to follow the structure.
+            A rendered image is one frame, so this does not reach it.
         """
         self.replist.append(
             _Representation(
@@ -245,8 +296,93 @@ class Representations:
                 c_atom_color,
                 size_theme,
                 label_fields,
+                label_style,
+                visibility,
+                update_sel_every_frame,
             )
         )
+        self._notify("added", len(self.replist) - 1, self.replist[-1])
+
+    def update(
+        self,
+        index: int,
+        sel: "str | np.ndarray | None" = None,
+        style: str | None = None,
+        color: "str | int | None" = None,
+        frames: list | None = None,
+        opacity: float | None = None,
+        size: float | None = None,
+        c_atom_color: "str | None" = None,
+        size_theme: str | None = None,
+        label_fields: "str | list | None" = None,
+        label_style: dict | None = None,
+        visibility: bool | None = None,
+        update_sel_every_frame: bool | None = None,
+    ):
+        """Change one representation in place, leaving the rest of it alone.
+
+        Only what is given is changed, so recolouring a representation does not
+        cost its size or its selection. Its position in the list is kept, which
+        is what makes it addressable by index at all: removing and re-adding
+        would move it to the end and renumber everything after it.
+
+        Parameters
+        ----------
+        index : int
+            Which representation to change, as listed by ``print(mol.reps)``.
+        sel : str or np.ndarray
+            New atom selection. See :meth:`add`.
+        style : str
+            New style. See :meth:`add`.
+        color : str or int
+            New colouring. See :meth:`add`.
+        frames : list
+            New frames to visualize. See :meth:`add`.
+        opacity : float
+            New opacity. See :meth:`add`.
+        size : float
+            New size scaling. See :meth:`add`.
+        c_atom_color : str
+            New carbon colour. See :meth:`add`.
+        size_theme : str
+            New size theme. See :meth:`add`.
+        label_fields : str or list
+            New label fields. See :meth:`add`.
+        label_style : dict
+            New label cosmetics. See :meth:`add`.
+        visibility : bool
+            Whether to draw it. See :meth:`add`.
+        update_sel_every_frame : bool
+            Whether a viewer re-evaluates the selection per frame. See
+            :meth:`add`.
+
+        Examples
+        --------
+        >>> mol = tryp.copy()
+        >>> mol.reps.add("protein", "NewCartoon", "Secondary Structure")
+        >>> mol.reps.update(0, color="Chain")
+        >>> mol.reps.update(0, visibility=False)      # keep it, stop drawing it
+        """
+        rep = self.replist[index]
+        changes = {
+            "sel": sel,
+            "style": style,
+            "color": color,
+            "frames": frames,
+            "opacity": opacity,
+            "size": size,
+            "c_atom_color": c_atom_color,
+            "size_theme": size_theme,
+            "label_fields": label_fields,
+            "label_style": label_style,
+            "update_sel_every_frame": update_sel_every_frame,
+        }
+        for name, value in changes.items():
+            if value is not None:
+                setattr(rep, name, value)
+        if visibility is not None:
+            rep.visibility = bool(visibility)
+        self._notify("updated", index, rep)
 
     def addDefaults(self):
         """Add the representations a viewer draws when none are set.
@@ -281,6 +417,7 @@ class Representations:
             self.replist = []
         else:
             del self.replist[index]
+        self._notify("removed", index)
 
     def list(self):
         """Print all currently stored representations.
@@ -293,7 +430,8 @@ class Representations:
     def __str__(self):
         s = ""
         for i, r in enumerate(self.replist):
-            s += f"rep {i}: sel='{r.sel}', style='{r.style}', color='{r.color}'\n"
+            hidden = "" if r.visibility else ", hidden"
+            s += f"rep {i}: sel='{r.sel}', style='{r.style}', color='{r.color}'{hidden}\n"
         return s
 
     def _translateNGL(self, rep):
@@ -427,6 +565,8 @@ class Representations:
         if rep.label_fields is not None:
             fields = rep.label_fields
             out["label_fields"] = [fields] if isinstance(fields, str) else list(fields)
+        if rep.label_style is not None:
+            out["label_style"] = dict(rep.label_style)
         if rep.opacity is not None and rep.opacity != 1:
             out["opacity"] = float(rep.opacity)
         if rep.size is not None:
@@ -494,6 +634,14 @@ class _Representation:
     label_fields : str or list
         Fields a ``Labels`` representation writes. See
         :meth:`Representations.add`.
+    label_style : dict
+        Cosmetics for a ``Labels`` representation. See
+        :meth:`Representations.add`.
+    visibility : bool
+        Whether the representation is drawn. See :meth:`Representations.add`.
+    update_sel_every_frame : bool
+        Whether the selection is re-evaluated per frame. See
+        :meth:`Representations.add`.
     frames : list
         List of frames to visualize with this representation. If None it will visualize the current frame only.
     opacity : float
@@ -517,6 +665,9 @@ class _Representation:
         c_atom_color=None,
         size_theme=None,
         label_fields=None,
+        label_style=None,
+        visibility=None,
+        update_sel_every_frame=None,
     ):
         self.sel = "all" if sel is None else sel
         self.style = "Lines" if style is None else style
@@ -527,3 +678,6 @@ class _Representation:
         self.c_atom_color = c_atom_color
         self.size_theme = size_theme
         self.label_fields = label_fields
+        self.label_style = label_style
+        self.visibility = True if visibility is None else bool(visibility)
+        self.update_sel_every_frame = update_sel_every_frame

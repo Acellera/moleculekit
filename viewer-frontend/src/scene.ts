@@ -47,6 +47,14 @@ export interface SceneLabel {
   size: number
   color: string
   offset: number
+  border_width?: number
+  border_color?: string
+  bg_color?: string
+  bg_opacity?: number
+  bg_margin?: number
+  offset_x?: number
+  offset_y?: number
+  offset_z?: number
 }
 
 export interface Scene {
@@ -335,10 +343,20 @@ function applyLabel(
       customText: label.text,
       textColor: colorOf(label.color),
       textSize: label.size,
-      borderColor: colorOf('white'),
-      borderWidth: 0.25,
-      background: false,
-      offsetZ: label.offset,
+      borderColor: colorOf(label.border_color ?? 'white'),
+      borderWidth: label.border_width ?? 0.25,
+      // A background is only drawn once asked for: one of its own keys being
+      // present is the ask, so a plain label stays plain.
+      background:
+        label.bg_color !== undefined ||
+        label.bg_opacity !== undefined ||
+        label.bg_margin !== undefined,
+      backgroundColor: colorOf(label.bg_color ?? 'black'),
+      backgroundOpacity: label.bg_opacity ?? 0.7,
+      backgroundMargin: label.bg_margin ?? 0.2,
+      offsetX: label.offset_x ?? 0,
+      offsetY: label.offset_y ?? 0,
+      offsetZ: label.offset_z ?? label.offset,
       scaleByRadius: false,
     } as any)
 }

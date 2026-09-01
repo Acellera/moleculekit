@@ -89,6 +89,8 @@ mol.reps.add("resname BEN", "Licorice", "Name", c_atom_color="#66ccff")   # cyan
 | `c_atom_color` | Colours carbon only, leaving N, O and S their element colours. A colour, or one of `chain-id`, `entity-id`, `model-index`, `structure-index`. Needs an element-coloured representation, which is what it modifies. |
 | `size_theme` | How sizes are decided before `size` scales them: `physical` for atomic radii, `uniform` for one size everywhere, `uncertainty` for the B factor. Each style picks a sensible one already. |
 | `label_fields` | What a `Labels` representation writes beside each atom: any per-atom fields of the molecule, joined by spaces. Without it the label is the atom name. |
+| `label_style` | Cosmetics for a `Labels` representation: `border_width`, `border_color`, `bg_color`, `bg_opacity`, `bg_margin`, `offset_x`, `offset_y`, `offset_z`. |
+| `visibility` | `False` keeps the representation in the list but stops drawing it. |
 
 Representations layer, so a transparent `VDW` over a `Licorice` of the same
 selection gives sticks inside a ghost surface.
@@ -101,11 +103,31 @@ mol.reps.add("resname BEN", "Labels", "black",
              label_fields=["resname", "resid", "name"], size=1.4)
 ```
 
+```python
+mol.reps.add("resname BEN", "Labels", label_fields="name", size=1.6,
+             label_style={"bg_color": "#003366", "bg_opacity": 0.85, "offset_y": 1.5})
+```
+
 `label_fields` takes any per-atom fields the molecule has — `name`, `element`,
 `resname`, `resid`, `chain`, `segid`, `beta`, `occupancy`, `index` and so on —
 and writes them space-separated. Each label is drawn separately, so label a
 selection worth naming rather than a whole structure; past a couple of hundred
 atoms they are skipped with a warning.
+
+## Changing a representation you already added
+
+{py:meth}`~moleculekit.representations.Representations.update` changes one entry in place and leaves the rest of it
+alone, so recolouring does not cost you the size or the selection. It keeps the
+entry where it is, which is what makes indices stable: removing and re-adding
+would move it to the end and renumber everything after it.
+
+```python
+mol.reps.update(0, color="Chain")
+mol.reps.update(0, visibility=False)     # keep it, stop drawing it
+mol.reps.update(0, visibility=True)
+```
+
+Only what you pass is changed, so passing nothing changes nothing.
 
 ## Gotchas
 
@@ -115,6 +137,10 @@ atoms they are skipped with a warning.
 - **Formal charge labels follow the same rule.** With no representations they
   are drawn automatically on charged atoms; once you set any, add a
   `FormalCharges` representation to keep them.
+- **`update_sel_every_frame` is for the interactive viewer.** It re-evaluates a
+  coordinate-dependent selection such as `within 5 of resname BEN` on every
+  trajectory frame. A rendered image is a single frame, so it is carried on the
+  representation and changes nothing about the picture.
 - **An unknown style or colour raises.** It used to draw ball-and-stick or a
   garbage uniform colour, which looked like a deliberate picture rather than a
   typo.

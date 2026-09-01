@@ -32,13 +32,18 @@ class _VolumeRepresentation:
         0 is fully transparent, 1 fully opaque.
     wireframe : bool
         Draw the surface as a mesh rather than solid.
+    visibility : bool
+        Whether the surface is drawn.
     """
 
-    def __init__(self, isovalue=None, color=None, opacity=None, wireframe=False):
+    def __init__(
+        self, isovalue=None, color=None, opacity=None, wireframe=False, visibility=None
+    ):
         self.isovalue = isovalue
         self.color = DEFAULT_VOLUME_COLOR if color is None else color
         self.opacity = 1.0 if opacity is None else float(opacity)
         self.wireframe = bool(wireframe)
+        self.visibility = True if visibility is None else bool(visibility)
 
 
 class VolumeRepresentations:
@@ -63,7 +68,9 @@ class VolumeRepresentations:
         self.replist = []
         self._vol = vol
 
-    def add(self, isovalue=None, color=None, opacity=None, wireframe=False):
+    def add(
+        self, isovalue=None, color=None, opacity=None, wireframe=False, visibility=None
+    ):
         """Add an isosurface.
 
         Parameters
@@ -77,10 +84,56 @@ class VolumeRepresentations:
             0 is fully transparent, 1 fully opaque.
         wireframe : bool
             Draw a mesh rather than a solid surface.
+        visibility : bool
+            Whether to draw it. A hidden surface keeps its place in the list,
+            so it can be switched back on by index.
         """
         if isovalue is None:
             isovalue = self._vol.suggest_isovalue()
-        self.replist.append(_VolumeRepresentation(isovalue, color, opacity, wireframe))
+        self.replist.append(
+            _VolumeRepresentation(isovalue, color, opacity, wireframe, visibility)
+        )
+
+    def update(
+        self,
+        index: int,
+        isovalue=None,
+        color=None,
+        opacity=None,
+        wireframe=None,
+        visibility=None,
+    ):
+        """Change one isosurface in place, leaving the rest of it alone.
+
+        Its position in the list is kept, so it stays addressable by the same
+        index. Only what is given is changed.
+
+        Parameters
+        ----------
+        index : int
+            Which isosurface to change.
+        isovalue : float
+            New value to draw the surface at.
+        color : str
+            New colour.
+        opacity : float
+            New opacity.
+        wireframe : bool
+            Whether to draw a mesh rather than a solid surface.
+        visibility : bool
+            Whether to draw it at all.
+        """
+        rep = self.replist[index]
+        if isovalue is not None:
+            rep.isovalue = isovalue
+        if color is not None:
+            rep.color = color
+        if opacity is not None:
+            rep.opacity = float(opacity)
+        if wireframe is not None:
+            rep.wireframe = bool(wireframe)
+        if visibility is not None:
+            rep.visibility = bool(visibility)
 
     def remove(self, index: int | None = None):
         """Remove one isosurface, or all of them.
@@ -98,9 +151,10 @@ class VolumeRepresentations:
     def __str__(self):
         out = ""
         for i, r in enumerate(self.replist):
+            hidden = "" if r.visibility else ", hidden"
             out += (
                 f"rep {i}: isovalue={r.isovalue}, color='{r.color}', "
-                f"opacity={r.opacity}, wireframe={r.wireframe}\n"
+                f"opacity={r.opacity}, wireframe={r.wireframe}{hidden}\n"
             )
         return out
 

@@ -242,6 +242,10 @@ def _components_from_reps(mol, reps) -> tuple[list[dict], list[dict]]:
     labels = []
     dropped = []
     for rep in reps:
+        if not getattr(rep, "visibility", True):
+            # Switched off rather than removed: it keeps its index so a viewer
+            # can switch it back on, and it draws nothing until then.
+            continue
         translated = Representations(mol)._translateMolstar(rep)
         if translated is None:
             dropped.append(rep.sel)
@@ -259,6 +263,7 @@ def _components_from_reps(mol, reps) -> tuple[list[dict], list[dict]]:
                     translated["atom_indices"],
                     translated["label_fields"],
                     translated.get("size_factor", 1.0),
+                    translated.get("label_style"),
                 )
             )
             continue
@@ -267,7 +272,12 @@ def _components_from_reps(mol, reps) -> tuple[list[dict], list[dict]]:
             # automatic scene puts on charged atoms, restricted to the atoms
             # this representation selected.
             labels.extend(
-                _labels(mol, translated["atom_indices"], translated.get("size_factor", 1.0))
+                _labels(
+                    mol,
+                    translated["atom_indices"],
+                    translated.get("size_factor", 1.0),
+                    translated.get("label_style"),
+                )
             )
             continue
         color = translated.get("color")
@@ -305,7 +315,51 @@ def _components_from_reps(mol, reps) -> tuple[list[dict], list[dict]]:
     return components, labels
 
 
-def _field_labels(mol, indices, fields, size=1.0) -> list[dict]:
+#: Cosmetic keys a ``label_style`` may carry, and the label dict keys they
+#: become. Anything else is a typo, and a typo that draws a default-looking
+#: label is worse than one that says so.
+LABEL_STYLE_KEYS = (
+    "border_width",
+    "border_color",
+    "bg_color",
+    "bg_opacity",
+    "bg_margin",
+    "offset_x",
+    "offset_y",
+    "offset_z",
+)
+
+
+def _label_style(style) -> dict:
+    """Check a ``label_style`` and return it as a plain dict.
+
+    Parameters
+    ----------
+    style : dict or None
+        The cosmetics given on the representation.
+
+    Returns
+    -------
+    style : dict
+        The same keys, or an empty dict when none were given.
+
+    Raises
+    ------
+    ValueError
+        If a key is not one a label understands.
+    """
+    if not style:
+        return {}
+    unknown = [key for key in style if key not in LABEL_STYLE_KEYS]
+    if unknown:
+        raise ValueError(
+            f"Unknown label_style {', '.join(repr(k) for k in unknown)}. "
+            f"Use any of {', '.join(LABEL_STYLE_KEYS)}."
+        )
+    return dict(style)
+
+
+def _field_labels(mol, indices, fields, size=1.0, style=None) -> list[dict]:
     """Text beside each atom, built from the molecule's own per-atom fields.
 
     Mol*'s label representation writes a label of its own choosing, so anything
@@ -323,6 +377,8 @@ def _field_labels(mol, indices, fields, size=1.0) -> list[dict]:
         Per-atom fields to write, joined by spaces.
     size : float, optional
         Scales the text.
+    style : dict, optional
+        Cosmetics, see ``LABEL_STYLE_KEYS``.
 
     Returns
     -------
@@ -332,7 +388,8 @@ def _field_labels(mol, indices, fields, size=1.0) -> list[dict]:
     Raises
     ------
     ValueError
-        If a field is not a per-atom field of the molecule.
+        If a field is not a per-atom field of the molecule, or a ``style`` key
+        is not one a label understands.
     """
     resolved = []
     for field in fields:
@@ -358,6 +415,7 @@ def _field_labels(mol, indices, fields, size=1.0) -> list[dict]:
         )
         return []
 
+    cosmetics = _label_style(style)
     frame = mol.frame
     labels = []
     for i in indices:
@@ -370,12 +428,13 @@ def _field_labels(mol, indices, fields, size=1.0) -> list[dict]:
                 "size": 0.7 * size,
                 "color": "black",
                 "offset": 1.0,
+                **cosmetics,
             }
         )
     return labels
 
 
-def _labels(mol, indices=None, size=1.0) -> list[dict]:
+def _labels(mol, indices=None, size=1.0, style=None) -> list[dict]:
     charges = mol.formalcharge
     within = range(len(charges)) if indices is None else indices
     charged = [i for i in within if int(charges[i]) != 0]
@@ -390,6 +449,7 @@ def _labels(mol, indices=None, size=1.0) -> list[dict]:
             MAX_FORMAL_CHARGE_LABELS,
         )
         return []
+    cosmetics = _label_style(style)
     frame = mol.frame
     labels = []
     for i in charged:
@@ -402,6 +462,7 @@ def _labels(mol, indices=None, size=1.0) -> list[dict]:
                 "size": 0.7 * size,
                 "color": "black",
                 "offset": 1.0,
+                **cosmetics,
             }
         )
     return labels

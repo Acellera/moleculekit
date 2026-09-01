@@ -959,6 +959,7 @@ def render(
                         # A volume with no representations set gets one surface
                         # at a value taken from its own data.
                         for rep in (vol.reps.replist or [_default_volume_rep(vol)])
+                        if rep.visibility
                     ],
                 }
                 for vol in volumes
