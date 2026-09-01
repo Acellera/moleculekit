@@ -89,3 +89,44 @@ def test_maxDistance():
 
     dist = maxDistance(_MOLDIALA)
     assert np.allclose(dist, 10.771703745561421)
+
+
+def test_renamed_arguments_accepts_the_old_spelling():
+    """Renaming a public argument must not break callers using the old name.
+
+    The point of the decorator is that the signature carries only the new
+    name, so the docs, IDEs and docstring linting see one API, while the old
+    name keeps working until it is dropped.
+    """
+    import inspect
+    import warnings
+
+    from moleculekit.util import renamed_arguments
+
+    @renamed_arguments(guessBonds="guess_bonds")
+    def f(sel, guess_bonds=True):
+        return sel, guess_bonds
+
+    assert list(inspect.signature(f).parameters) == ["sel", "guess_bonds"]
+    assert f("protein", guess_bonds=False) == ("protein", False)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        assert f("protein", guessBonds=False) == ("protein", False)
+    # FutureWarning, not DeprecationWarning: the latter is hidden by default
+    # outside __main__, so a library's users never see it.
+    assert caught[0].category is FutureWarning
+    assert "guessBonds" in str(caught[0].message)
+
+
+def test_renamed_arguments_refuses_both_spellings_at_once():
+    import pytest
+
+    from moleculekit.util import renamed_arguments
+
+    @renamed_arguments(guessBonds="guess_bonds")
+    def f(guess_bonds=True):
+        return guess_bonds
+
+    with pytest.raises(TypeError, match="got both 'guessBonds' and its new name"):
+        f(guessBonds=False, guess_bonds=True)

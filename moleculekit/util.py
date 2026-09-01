@@ -806,3 +806,61 @@ def rotation_matrix_from_vectors(vec1: np.ndarray, vec2: np.ndarray) -> np.ndarr
         return np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s**2))
     else:
         return np.eye(3)  # cross of all zeros only occurs on identical directions
+
+
+def renamed_arguments(**renames):
+    """Accept the previous spelling of renamed keyword arguments.
+
+    Renaming a public argument breaks every caller that used the old name, and
+    keeping a second function around to hold it is worse: two signatures to
+    document, two to keep in step. This decorates the one function instead, so
+    its signature only ever carries the new names while the old ones keep
+    working for a release or two. Deleting the decorator line removes the old
+    names, with no dead code left in the body.
+
+    ``FutureWarning`` rather than ``DeprecationWarning``: the latter is hidden
+    by default outside ``__main__``, so a library's users never see it and the
+    rename never lands.
+
+    Each keyword argument maps an old argument name to its new name.
+
+    Returns
+    -------
+    decorator : callable
+        Decorator applying the renames to one function.
+
+    Examples
+    --------
+    >>> @renamed_arguments(guessBonds="guess_bonds")
+    ... def f(guess_bonds=True):
+    ...     return guess_bonds
+    >>> f(guess_bonds=False)
+    False
+    """
+    import functools
+    import warnings
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            for old, new in renames.items():
+                if old not in kwargs:
+                    continue
+                if new in kwargs:
+                    raise TypeError(
+                        f"{func.__qualname__}() got both {old!r} and its new "
+                        f"name {new!r}; pass only {new!r}."
+                    )
+                warnings.warn(
+                    f"{func.__qualname__}()'s {old!r} argument has been renamed "
+                    f"to {new!r}. The old name still works but will be removed "
+                    "in a future release.",
+                    FutureWarning,
+                    stacklevel=2,
+                )
+                kwargs[new] = kwargs.pop(old)
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
