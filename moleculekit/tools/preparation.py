@@ -2196,10 +2196,9 @@ def _restore_rna_resnames(mol: Molecule) -> None:
     as a non-standard ligand by any later residue-detection pass, and
     ``systemPrepare`` would not be idempotent for RNA.
 
-    A residue is renamed back only if it is genuinely a nucleotide, gated on it
-    carrying one of the atoms a phosphodiester link is made of -- a ``P`` or one
-    of :data:`moleculekit.tools.nonstandard_residues._PHOSPHO_DONOR_NAMES`, which
-    is where that chemistry is defined. Several of the
+    A residue is renamed back only if it is genuinely a nucleotide, gated on
+    it carrying one of the backbone link atoms in
+    :data:`moleculekit.tools.autosegment.NUCLEIC_LINK`. Several of the
     ``R``-prefixed names collide with unrelated PDB ligand codes (``RU`` is
     ruthenium, ``RA3`` / ``RC5`` / ``RG3`` are inhibitor codes, ...), so a
     non-nucleic residue that happens to share one of these names is left
@@ -2214,9 +2213,8 @@ def _restore_rna_resnames(mol: Molecule) -> None:
     -------
     None
     """
-    from moleculekit.tools.nonstandard_residues import _PHOSPHO_DONOR_NAMES
+    from moleculekit.tools.autosegment import NUCLEIC_LINK as nucleic_link
 
-    nucleic_link = ("P",) + _PHOSPHO_DONOR_NAMES
     uqres = mol.getResidues(return_idx=False)
     for uq in set(uqres):
         resatm = uqres == uq
