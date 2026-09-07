@@ -581,3 +581,31 @@ def test_the_charge_labels_are_skipped_by_the_other_viewers():
 
     mol.reps._repsVMD(FakeViewer())
     assert not any("FormalCharges" in command for command in sent)
+
+
+def test_the_docstring_names_every_style_and_colour_there_is():
+    """The docstring is what a caller reads to find out what it can ask for,
+    including an agent that prints it instead of consulting a copy someone
+    wrote out elsewhere. A style or colour added to the tables without being
+    named there is invisible to all of them."""
+    import re
+
+    from moleculekit.representations import (
+        MOLSTAR_STYLES,
+        MOLSTAR_THEMES,
+        Representations,
+    )
+
+    flat = re.sub(r"[^a-z0-9]", "", Representations.add.__doc__.lower())
+
+    for drawn in sorted(set(MOLSTAR_STYLES.values())):
+        spellings = [k for k, v in MOLSTAR_STYLES.items() if v == drawn]
+        assert any(spelling in flat for spelling in spellings), (
+            f"no spelling of the {drawn!r} style is named in the docstring: "
+            f"{spellings}"
+        )
+
+    for theme in sorted(set(MOLSTAR_THEMES.values())):
+        assert re.sub(r"[^a-z0-9]", "", theme) in flat, (
+            f"the {theme!r} colour scheme is not named in the docstring"
+        )
