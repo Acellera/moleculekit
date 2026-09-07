@@ -539,3 +539,45 @@ def test_update_sel_every_frame_is_carried_but_not_drawn():
 
     scene = build_scene(mol, mol.reps.replist)
     assert [c["representation"]["type"] for c in scene["components"]] == ["spacefill"]
+
+
+def test_addDefaults_reproduces_the_automatic_charge_labels():
+    """addDefaults() promises the scene you get with no representations, and
+    that scene writes +1/-1 on charged atoms. Setting any representation
+    replaces it, so the starting point has to carry those labels too."""
+    from moleculekit.viewer.molstar.scene import build_scene
+
+    mol = _mol()
+    mol.formalcharge[:] = [1, 0, -1]
+    automatic = build_scene(mol, [])
+
+    mol.reps.addDefaults()
+    assert [r.style for r in mol.reps.replist][-1] == "FormalCharges"
+    assert [(lab["atom"], lab["text"]) for lab in build_scene(mol, mol.reps.replist)["labels"]] == [
+        (lab["atom"], lab["text"]) for lab in automatic["labels"]
+    ]
+
+
+def test_addDefaults_leaves_out_charge_labels_with_nothing_to_label():
+    """A representation that labels nothing is noise in the listing."""
+    mol = _mol()
+    mol.reps.addDefaults()
+    assert "FormalCharges" not in [r.style for r in mol.reps.replist]
+
+
+def test_the_charge_labels_are_skipped_by_the_other_viewers():
+    """addDefaults() feeds VMD and NGL too, and neither draws labels."""
+    mol = _mol()
+    mol.formalcharge[:] = [1, 0, -1]
+    mol.reps.addDefaults()
+    charges = mol.reps.replist[-1]
+    assert mol.reps._translateNGL(charges) is None
+
+    sent = []
+
+    class FakeViewer:
+        def send(self, command):
+            sent.append(command)
+
+    mol.reps._repsVMD(FakeViewer())
+    assert not any("FormalCharges" in command for command in sent)

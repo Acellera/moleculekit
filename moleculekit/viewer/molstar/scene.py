@@ -202,14 +202,20 @@ def default_representations(mol) -> list[tuple]:
         ``(sel, style, color)`` triples in drawing order.
     """
     if _count_standard_polymer_residues(mol) < MIN_CARTOON_RESIDUES:
-        return [("all", "CPK", "Name")]
-
-    reps = [("protein or nucleic", "NewCartoon", "Secondary Structure")]
-    hetero = "not (protein or nucleic)"
-    # Skipped when it matches nothing, so a bare protein does not carry a
-    # representation that build_scene would only warn about and drop.
-    if mol.atomselect(hetero).any():
-        reps.append((hetero, "CPK", "Name"))
+        reps = [("all", "CPK", "Name")]
+    else:
+        reps = [("protein or nucleic", "NewCartoon", "Secondary Structure")]
+        hetero = "not (protein or nucleic)"
+        # Skipped when it matches nothing, so a bare protein does not carry a
+        # representation that build_scene would only warn about and drop.
+        if mol.atomselect(hetero).any():
+            reps.append((hetero, "CPK", "Name"))
+    if np.any(mol.formalcharge != 0):
+        # The automatic scene writes +1/-1 on charged atoms, and setting any
+        # representation replaces it, so the starting point has to carry it or
+        # addDefaults() would quietly drop those labels. Left out when nothing
+        # is charged, where it would label nothing.
+        reps.append(("all", "FormalCharges", None))
     return reps
 
 

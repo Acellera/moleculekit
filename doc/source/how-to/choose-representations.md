@@ -137,6 +137,9 @@ Only what you pass is changed, so passing nothing changes nothing.
 - **Formal charge labels follow the same rule.** With no representations they
   are drawn automatically on charged atoms; once you set any, add a
   `FormalCharges` representation to keep them.
+  {py:meth}`~moleculekit.representations.Representations.addDefaults` includes
+  one when the molecule has a charged atom, so starting from the default scene
+  keeps them without asking.
 - **`update_sel_every_frame` is for the interactive viewer.** It re-evaluates a
   coordinate-dependent selection such as `within 5 of resname BEN` on every
   trajectory frame. A rendered image is a single frame, so it is carried on the
