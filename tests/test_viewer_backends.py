@@ -140,3 +140,81 @@ def test_nothing_is_translated_when_nobody_is_listening():
     mol.reps._translateMolstar = lambda rep: calls.append(rep)
     mol.reps.add("all", "VDW", "Name")
     assert calls == []
+
+
+class VolumeRecorder(Recorder):
+    """A backend that also shows volumes."""
+
+    def volume_representation_added(self, vol, index, params):
+        self.events.append(("vol added", index, params))
+
+    def volume_representation_updated(self, vol, index, params):
+        self.events.append(("vol updated", index, params))
+
+    def volume_representation_removed(self, vol, index):
+        self.events.append(("vol removed", index))
+
+
+class Handle:
+    """A volume a viewer already draws: no grid, just the value on screen.
+
+    This is the shape a browser viewer has, where the file was parsed on the
+    other side of the bridge. It is what the representations have to work
+    against, so nothing here may need the data.
+    """
+
+    def __init__(self, isovalue):
+        from moleculekit.volume import VolumeRepresentations
+
+        self._isovalue = isovalue
+        self.reps = VolumeRepresentations(self)
+
+    def suggest_isovalue(self):
+        return self._isovalue
+
+
+def test_a_backend_hears_volume_surfaces_separately():
+    """A backend showing molecules and volumes has to tell the two apart."""
+    from moleculekit.volume import Volume
+
+    recorder = VolumeRecorder()
+    register_viewer("volrecorder", recorder)
+    try:
+        vol = Volume(data=np.zeros((4, 4, 4), dtype=np.float32), origin=[0, 0, 0], spacing=[1, 1, 1])
+        vol.reps.add(isovalue=0.4, color="#66ccff", opacity=0.5)
+        vol.reps.update(0, wireframe=True)
+        vol.reps.remove(0)
+
+        mol = _mol()
+        mol.reps.add("all", "VDW", "Name")
+
+        assert [e[0] for e in recorder.events] == [
+            "vol added",
+            "vol updated",
+            "vol removed",
+            "added",
+        ]
+        assert recorder.events[0][2] == {
+            "isovalue": 0.4,
+            "color": "#66ccff",
+            "opacity": 0.5,
+            "wireframe": False,
+            "visibility": True,
+        }
+        assert recorder.events[1][2]["wireframe"] is True
+    finally:
+        unregister_viewer("volrecorder")
+
+
+def test_volume_representations_do_not_need_the_grid():
+    """A viewer that parsed the file itself has no data to hand to Python, so
+    the representations must work against a bare handle."""
+    recorder = VolumeRecorder()
+    register_viewer("volrecorder", recorder)
+    try:
+        handle = Handle(0.25)
+        handle.reps.add(color="#ff6600")  # no isovalue: taken from the handle
+        assert handle.reps.replist[0].isovalue == 0.25
+        assert recorder.events[-1][2]["color"] == "#ff6600"
+    finally:
+        unregister_viewer("volrecorder")

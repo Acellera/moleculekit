@@ -68,6 +68,49 @@ class VolumeRepresentations:
         self.replist = []
         self._vol = vol
 
+    def describe(self, rep) -> dict:
+        """Describe one isosurface, for a viewer backend or a scene.
+
+        Parameters
+        ----------
+        rep : _VolumeRepresentation
+            The isosurface to describe.
+
+        Returns
+        -------
+        described : dict
+            Its value, colour, opacity, mesh flag and visibility.
+        """
+        return {
+            "isovalue": float(rep.isovalue),
+            "color": rep.color,
+            "opacity": float(rep.opacity),
+            "wireframe": bool(rep.wireframe),
+            "visibility": bool(rep.visibility),
+        }
+
+    def _notify(self, event: str, index=None, rep=None):
+        """Tell any registered viewer backend that this list changed.
+
+        Parameters
+        ----------
+        event : str
+            ``added``, ``updated`` or ``removed``.
+        index : int or None
+            Which isosurface, or None when all were removed.
+        rep : _VolumeRepresentation or None
+            The isosurface itself, for the two events that have one.
+        """
+        from moleculekit.viewer.backends import notify
+
+        notify(
+            event,
+            self._vol,
+            index,
+            lambda: self.describe(rep),
+            kind="volume_representation",
+        )
+
     def add(
         self, isovalue=None, color=None, opacity=None, wireframe=False, visibility=None
     ):
@@ -93,6 +136,7 @@ class VolumeRepresentations:
         self.replist.append(
             _VolumeRepresentation(isovalue, color, opacity, wireframe, visibility)
         )
+        self._notify("added", len(self.replist) - 1, self.replist[-1])
 
     def update(
         self,
@@ -134,6 +178,7 @@ class VolumeRepresentations:
             rep.wireframe = bool(wireframe)
         if visibility is not None:
             rep.visibility = bool(visibility)
+        self._notify("updated", index, rep)
 
     def remove(self, index: int | None = None):
         """Remove one isosurface, or all of them.
@@ -147,6 +192,7 @@ class VolumeRepresentations:
             self.replist = []
         else:
             del self.replist[index]
+        self._notify("removed", index)
 
     def __str__(self):
         out = ""

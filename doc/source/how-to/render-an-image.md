@@ -76,6 +76,10 @@ vol.reps.add(isovalue=0.8, color="#0044aa")                 # solid core
 render([protein, vol], "density.png", center="resname BEN", zoom=0.3)
 ```
 
+Surfaces work like a molecule's representations: `vol.reps.update(0, ...)`
+changes one in place and `visibility=False` keeps it in the list without
+drawing it.
+
 Leave out `isovalue` and one is picked from the data, which saves guessing when
 you do not know how the map is scaled. At least one molecule has to be in the
 list: the camera is aimed with atom selections, and a grid has none.

@@ -20,11 +20,15 @@ A backend is duck-typed. Only ``view`` is required:
 - ``representation_updated(mol, index, params)``: one was changed in place.
 - ``representation_removed(mol, index)``: one was removed, or all of them when
   ``index`` is None.
+- ``volume_representation_added/updated/removed(vol, index, params)``: the same
+  three for the isosurfaces of a :class:`moleculekit.volume.Volume`.
 
 ``params`` is the same translated description the Mol* scene is built from
-(``type``, ``color``, ``opacity``, ``size_factor``, ``label_fields``, ``sel``
-and the rest), or None when the selection matched no atoms. A backend that
-leaves a method out simply does not hear about that kind of change.
+(for a molecule ``type``, ``color``, ``opacity``, ``size_factor``,
+``label_fields``, ``sel`` and the rest; for a volume ``isovalue``, ``color``,
+``opacity``, ``wireframe`` and ``visibility``), or None when a molecule's
+selection matched no atoms. A backend that leaves a method out simply does not
+hear about that kind of change.
 
 Examples
 --------
@@ -114,37 +118,41 @@ def default_viewer():
     return next(iter(_backends)) if len(_backends) == 1 else None
 
 
-def notify(event: str, mol, index, params):
-    """Tell every backend that cares about a change to ``mol.reps``.
+def notify(event: str, obj, index, params, kind: str = "representation"):
+    """Tell every backend that cares about a change to an object's ``reps``.
 
     Parameters
     ----------
     event : str
         ``added``, ``updated`` or ``removed``.
-    mol : Molecule
-        The molecule whose representations changed. A backend showing several
-        molecules uses this to tell which one it was, and ignores molecules it
-        is not showing.
+    obj : Molecule or Volume
+        The object whose representations changed. A backend showing several
+        objects uses this to tell which one it was, and ignores those it is not
+        showing.
     index : int or None
         Which representation, or None when all of them were removed.
     params : callable
         Returns the translated representation, called only if a backend is
-        listening, since translating resolves the selection against the
-        molecule and a scene being built has no need of it.
+        listening, since translating a molecule's resolves the selection
+        against it and a scene being built has no need of it.
+    kind : str, optional
+        ``representation`` for a molecule's, ``volume_representation`` for a
+        volume's. It names the methods a backend implements to hear about them,
+        so that a backend showing both can tell them apart.
     """
     if not _backends:
         return
     handlers = [
         handler
         for backend in _backends.values()
-        if (handler := getattr(backend, f"representation_{event}", None)) is not None
+        if (handler := getattr(backend, f"{kind}_{event}", None)) is not None
     ]
     if not handlers:
         return
     if event == "removed":
         for handler in handlers:
-            handler(mol, index)
+            handler(obj, index)
         return
     translated = params()
     for handler in handlers:
-        handler(mol, index, translated)
+        handler(obj, index, translated)

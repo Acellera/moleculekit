@@ -950,11 +950,12 @@ def render(
                     # spends its way past that.
                     "ccp4_gz": _b64(gzip.compress(vol.to_ccp4(), 1)),
                     "reps": [
+                        # Hidden surfaces are left out rather than sent with a
+                        # flag, so the scene carries only what it draws.
                         {
-                            "isovalue": float(rep.isovalue),
-                            "color": rep.color,
-                            "opacity": float(rep.opacity),
-                            "wireframe": bool(rep.wireframe),
+                            key: value
+                            for key, value in vol.reps.describe(rep).items()
+                            if key != "visibility"
                         }
                         # A volume with no representations set gets one surface
                         # at a value taken from its own data.
