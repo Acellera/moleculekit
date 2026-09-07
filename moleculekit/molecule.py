@@ -2599,14 +2599,15 @@ class Molecule(object):
         if hold:
             return
 
-        bonds = None
-        if guessBonds and viewer.lower() != "pymol":
-            bonds = self._getBonds()
-            bonds = (bonds, ["1"] * bonds.shape[0])
-
         # Call the specified backend
         retval = None
         if viewer.lower() == "vmd":
+            # Only VMD is handed explicit bonds, and guessing them costs a pass
+            # over every atom, so it is done here rather than for every backend.
+            bonds = None
+            if guessBonds:
+                guessed = self._getBonds()
+                bonds = (guessed, ["1"] * guessed.shape[0])
             psf = tempname(suffix=".psf")
             self.write(psf, explicitbonds=bonds)
             xtc = tempname(suffix=".xtc")

@@ -280,20 +280,32 @@ class Representations:
             Atom selection (string, boolean mask, or integer index array) for the representation.
             See more `here <http://www.ks.uiuc.edu/Research/vmd/vmd-1.9.2/ug/node89.html>`__
         style : str
-            Representation style, in either vocabulary. VMD's ``NewCartoon``,
-            ``Cartoon``, ``Licorice``, ``CPK``, ``VDW``, ``Lines``, ``Surf``,
-            ``QuickSurf``, ``Points``, ``Putty``, ``Labels`` and ``FormalCharges``, or
-            Mol*'s ``cartoon``, ``ball-and-stick``, ``spacefill``, ``line``,
-            ``molecular-surface``, ``gaussian-surface``, ``point``, ``putty``,
-            ``backbone``, ``ellipsoid`` and
-            ``atom-label`` (also ``label``) for the same things. Spacing, case
-            and hyphens are ignored, and anything else is rejected rather than
-            drawn as something it is not. ``Labels`` writes each atom's name
-            beside it and ``FormalCharges`` writes ``+1``/``-1`` on atoms
-            carrying one, both on top of another representation that draws the
-            atoms; neither reaches VMD or NGL. A name from neither list is passed
-            to the VMD backend as written, so VMD's own styles still work
-            there.
+            Representation style, in either vocabulary, naming what to draw:
+
+            - ``NewCartoon``, ``Cartoon`` (Mol*'s ``cartoon``): ribbon
+              following the backbone.
+            - ``Licorice``, ``CPK`` (``ball-and-stick``): sticks with atoms as
+              spheres.
+            - ``VDW`` (``spacefill``): space-filling spheres.
+            - ``Lines`` (``line``): bond lines, the cheapest to draw.
+            - ``Surf`` (``molecular-surface``): solvent-excluded surface.
+            - ``QuickSurf`` (``gaussian-surface``): coarser gaussian surface,
+              cheaper than ``Surf``.
+            - ``Points`` (``point``): one dot per atom.
+            - ``Putty`` (``putty``): tube thickened by the B factor.
+            - ``Backbone`` (``backbone``): backbone trace.
+            - ``Ellipsoid`` (``ellipsoid``): residues as ellipsoids.
+            - ``Labels`` (``atom-label``, ``label``): text beside each atom,
+              the atom name unless ``label_fields`` says otherwise.
+            - ``FormalCharges``: ``+1``/``-1`` on atoms carrying a formal
+              charge.
+
+            Spacing, case and hyphens are ignored, and anything else is
+            rejected rather than drawn as something it is not. ``Labels`` and
+            ``FormalCharges`` draw text over another representation that draws
+            the atoms themselves, and neither reaches VMD or NGL. A name from
+            neither vocabulary is passed to the VMD backend as written, so
+            VMD's own styles still work there.
         color : str or int
             Coloring mode (str) or ColorID (int), in either vocabulary. VMD's
             ``Name``, ``Element``, ``Chain``, ``ResName``, ``Index``,
