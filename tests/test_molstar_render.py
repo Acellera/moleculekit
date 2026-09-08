@@ -416,6 +416,35 @@ def test_segids_do_not_change_the_render(segid):
 
 
 @needs_chromium
+def test_a_render_does_not_inherit_the_previous_camera():
+    """The camera must be the scene's own, not whatever rendered before it.
+
+    The page is reused between renders and only its structure is cleared, so a
+    scene that carried no camera kept the last one that did. Measured on
+    1.17.3: a camera-free scene rendered one image into a fresh browser, a
+    different image after any scene with a camera, and stayed on the second
+    value -- so the same call gave two answers depending on what preceded it,
+    with nothing in the call to say so.
+
+    The sibling of test_framing_follows_the_requested_size: the same class of
+    bug, state carried across renders, there for the canvas and here for the
+    camera.
+    """
+    mol = _trypsin()
+    mol.reps.add(sel="protein", style="NewCartoon", color="Secondary Structure")
+
+    framed = mol.copy()
+    framed.reps.add(sel="protein", style="VDW", color="steelblue")
+
+    plain = render_mod.render(mol, size=(400, 300))
+    # A scene that sets a camera, which used to leak into the next render.
+    render_mod.render(framed, size=(400, 300), center="protein", zoom=1.4,
+                      rotate="top")
+    assert render_mod.render(mol, size=(400, 300)) == plain
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
 def test_framing_follows_the_requested_size():
     """The camera must fit the image being rendered, not the first one.
 
@@ -893,3 +922,20 @@ def test_a_bad_object_names_itself():
     lig.reps.add("resname NOSUCH", "NewCartoon", "Chain")
     with pytest.raises(ValueError, match=r"object 1 \(ligand.pdb\).*matched no atoms"):
         render_mod.render([prot, lig], size=(50, 50))
+
+
+def test_clip_without_a_camera_is_refused():
+    """The slab lives on the camera. With no camera argument the request used
+    to be dropped in silence and the pocket it was meant to open stayed shut."""
+    from moleculekit.viewer.molstar.scene import build_scene
+
+    mol = Molecule("3ptb")
+    mol.filter("protein", _logger=False)
+    mol.reps.add("protein", "NewCartoon", "Secondary Structure")
+    with pytest.raises(ValueError, match="clip needs something to clip around"):
+        build_scene(mol, mol.reps.replist, clip=8)
+
+    # Any of the three camera arguments is enough.
+    for camera in ({"focus_sel": "resid 57"}, {"rotate": "top"}, {"zoom": 1.0}):
+        scene = build_scene(mol, mol.reps.replist, clip=8, **camera)
+        assert scene["camera"]["clip"] == 8.0

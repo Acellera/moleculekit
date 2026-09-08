@@ -607,6 +607,14 @@ def build_scene(
         raise ValueError(f"fog must be between 0 and 100, got {fog}")
     if clip is not None and float(clip) <= 0:
         raise ValueError(f"clip must be a positive distance, got {clip}")
+    if clip is not None and focus_sel is None and rotate is None and zoom is None:
+        # The slab lives on the camera, and with no camera argument Mol*'s own
+        # fit sets the radius from the whole scene, so the request would be
+        # dropped and the pocket it was meant to open would stay shut.
+        raise ValueError(
+            "clip needs something to clip around: pass center, rotate or zoom "
+            "alongside it."
+        )
     if reps:
         # Labels follow the same replace-the-automatic-scene rule as the
         # components: with representations set, charges are labelled only

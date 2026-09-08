@@ -34,7 +34,7 @@ png = mol.render(size=(800, 600))
 | `center` | Atom selection to point the camera at, such as `"resname BEN"`. |
 | `rotate` | `"front"`, `"back"`, `"left"`, `"right"`, `"top"`, `"bottom"`, or your own `(x, y, z)` rotation in degrees. |
 | `zoom` | How close the camera sits. Larger is closer. |
-| `clip` | Show only a slab this many Angstrom thick around what the camera is pointed at, cutting away what is in front and behind. Leave it out to show the whole structure. |
+| `clip` | Show only what lies within this many Angstrom of what the camera is pointed at, cutting away the rest in front and behind, so the slab is twice this thick. Needs `center`, `rotate` or `zoom` alongside it. Leave it out to show the whole structure. |
 | `fog` | How much distant parts fade into the background, from `0` for none to `100` for the most. |
 | `background` | Background colour, by name or as `#rrggbb`. |
 | `transparent` | Give the image a transparent background instead of a colour. |
