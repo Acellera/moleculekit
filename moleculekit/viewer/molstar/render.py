@@ -796,12 +796,9 @@ def _scene_description(
         The scene description, as produced by
         :func:`moleculekit.viewer.molstar.scene.build_scene`.
     """
-    from moleculekit.viewer.molstar.scene import (
-        build_scene,
-        rotation_to_direction_up,
-    )
+    from moleculekit.viewer.molstar.scene import build_scene
 
-    description = build_scene(
+    return build_scene(
         mol,
         mol.reps.replist + mol._tempreps.replist,
         focus_sel=center,
@@ -811,19 +808,33 @@ def _scene_description(
         fog=fog,
         clip=clip,
     )
-    if "camera" not in description:
-        # A render states its camera even where the caller asked for none. The
-        # browser is reused and only its structure is cleared between renders,
-        # so a scene carrying no camera keeps the last one that did: measured,
-        # a camera-free scene rendered one image into a fresh browser and a
-        # different one after any scene with a camera, and stayed there.
-        #
-        # Only here, and not in build_scene: the interactive viewer and the
-        # inline export share it and leave the camera alone on purpose, so that
-        # updating a scene does not throw away the view the user has set up.
-        direction, up = rotation_to_direction_up(None)
-        description["camera"] = {"direction": list(direction), "up": list(up)}
-    return description
+
+
+def _with_stated_camera(description: dict) -> dict:
+    """`description` with a camera, adding the default one if it has none.
+
+    A render states its camera even where the caller asked for none. The
+    browser is reused and only its structure is cleared between renders, so a
+    scene carrying no camera keeps the last one that did: measured on 1.17.3, a
+    camera-free scene rendered one image into a fresh browser, a different one
+    after any scene with a camera, and stayed on the second value -- the same
+    call giving two answers depending on what preceded it.
+
+    Here rather than in the scene description, which stays in lockstep with the
+    interactive viewer's: the viewer's camera belongs to whoever is driving it
+    and must survive a change of representations, where a render has no camera
+    of its own unless it says so. The default direction and up are what "no
+    camera" already meant.
+    """
+    if "camera" in description:
+        return description
+    from moleculekit.viewer.molstar.scene import rotation_to_direction_up
+
+    direction, up = rotation_to_direction_up(None)
+    return {
+        **description,
+        "camera": {"direction": list(direction), "up": list(up)},
+    }
 
 
 def render(
@@ -992,6 +1003,7 @@ def render(
             fog=fog,
             clip=clip,
         )
+        description = _with_stated_camera(description)
         bcif_b64 = _b64(_bcif_bytes(mols[0]))
 
     if server is None:
