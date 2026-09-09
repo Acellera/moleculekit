@@ -754,3 +754,128 @@ def test_mutateResidue_all_residues():
         assert (
             actual == expected
         ), f"Mutation to {target}: expected {expected}, got {actual}"
+
+
+def test_cif_cell_follows_box_not_stale_crystalinfo(tmp_path):
+    """Setting mol.box must reach the written cif.
+
+    The writer used to read the cell from mol.crystalinfo only, so a Molecule
+    read from a prmtop (which populates crystalinfo) and then re-boxed wrote
+    its original cell.
+    """
+    import numpy as np
+    from moleculekit.molecule import Molecule
+
+    mol = Molecule().empty(1)
+    mol.name[:] = ["O"]
+    mol.element[:] = ["O"]
+    mol.resname[:] = "HOH"
+    mol.resid[:] = [1]
+    mol.coords = np.zeros((1, 3, 1), dtype=np.float32)
+    mol.crystalinfo = {
+        "a": 11.0, "b": 22.0, "c": 33.0,
+        "alpha": 90.0, "beta": 90.0, "gamma": 90.0,
+    }
+    mol.box = np.array([[30.0], [30.0], [30.0]], dtype=np.float32)
+    mol.boxangles = np.array([[60.0], [60.0], [90.0]], dtype=np.float32)
+
+    out = str(tmp_path / "cell.cif")
+    mol.write(out)
+    back = Molecule(out)
+
+    assert np.allclose(back.box.ravel(), [30.0, 30.0, 30.0]), back.box.ravel()
+    assert np.allclose(back.boxangles.ravel(), [60.0, 60.0, 90.0]), back.boxangles.ravel()
+
+
+def test_inpcrd_read_with_time_on_second_line(tmp_path):
+    """ParmEd writes "natoms time" on line 2; tleap writes only natoms."""
+    import numpy as np
+    from moleculekit.molecule import Molecule
+
+    path = tmp_path / "two_tokens.inpcrd"
+    path.write_text(
+        "\n"
+        " 2  0.0000000e+00\n"
+        "   1.0000000   2.0000000   3.0000000   4.0000000   5.0000000   6.0000000\n"
+        "  30.0000000  30.0000000  30.0000000  60.0000000  60.0000000  90.0000000\n"
+    )
+
+    mol = Molecule().empty(2)
+    mol.name[:] = ["C1", "C2"]
+    mol.element[:] = ["C", "C"]
+    mol.resname[:] = "LIG"
+    mol.resid[:] = [1, 1]
+    mol.read(str(path), type="inpcrd")
+
+    assert np.allclose(mol.coords[:, :, 0], [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    assert np.allclose(mol.box.ravel(), [30.0, 30.0, 30.0])
+    assert np.allclose(mol.boxangles.ravel(), [60.0, 60.0, 90.0])
+
+
+def test_cif_zero_boxangles_write_as_90_not_0(tmp_path):
+    """A zero-filled boxangles (e.g. left over from a reader with no angle
+    info, see readers.py's `np.zeros((3, 1))` default) must not be written
+    as a degenerate 0/0/0 degree cell; 90/90/90 is the correct default."""
+    from moleculekit.molecule import Molecule
+
+    mol = Molecule().empty(1)
+    mol.name[:] = ["O"]
+    mol.element[:] = ["O"]
+    mol.resname[:] = "HOH"
+    mol.resid[:] = [1]
+    mol.coords = np.zeros((1, 3, 1), dtype=np.float32)
+    mol.box = np.array([[30.0], [30.0], [30.0]], dtype=np.float32)
+    mol.boxangles = np.zeros((3, 1), dtype=np.float32)
+
+    out = str(tmp_path / "zero_angles.cif")
+    mol.write(out)
+    back = Molecule(out)
+
+    assert np.allclose(back.boxangles.ravel(), [90.0, 90.0, 90.0]), back.boxangles.ravel()
+
+
+def test_cif_cell_uses_selected_frame_box(tmp_path):
+    """mol.box/mol.boxangles carry one cell per frame; CIFwrite must use the
+    cell of mol.frame, not always frame 0."""
+    from moleculekit.molecule import Molecule
+
+    mol = Molecule().empty(1)
+    mol.name[:] = ["O"]
+    mol.element[:] = ["O"]
+    mol.resname[:] = "HOH"
+    mol.resid[:] = [1]
+    mol.coords = np.zeros((1, 3, 2), dtype=np.float32)
+    mol.box = np.array([[10.0, 40.0], [10.0, 40.0], [10.0, 40.0]], dtype=np.float32)
+    mol.boxangles = np.array(
+        [[90.0, 70.0], [90.0, 70.0], [90.0, 90.0]], dtype=np.float32
+    )
+    mol.frame = 1
+
+    out = str(tmp_path / "frame1.cif")
+    mol.write(out)
+    back = Molecule(out)
+
+    assert np.allclose(back.box.ravel(), [40.0, 40.0, 40.0]), back.box.ravel()
+    assert np.allclose(back.boxangles.ravel(), [70.0, 70.0, 90.0]), back.boxangles.ravel()
+
+
+def test_cif_roundtrip_preserves_double_precision_cell_when_box_untouched(tmp_path):
+    """3ptb.cif's cell (a=54.890 etc.) is not float32-exact. If CIFwrite took
+    the cell from mol.box (float32) whenever a box is set, a plain read then
+    write of an untouched Molecule would round the cell through float32 and
+    lose precision. It must instead detect that box still matches
+    crystalinfo and re-emit crystalinfo's doubles unchanged."""
+    from moleculekit.molecule import Molecule
+
+    mol1 = Molecule(os.path.join(curr_dir, "pdb", "3ptb.cif"))
+
+    out = str(tmp_path / "3ptb_roundtrip.cif")
+    mol1.write(out)
+    mol2 = Molecule(out)
+
+    for key in ("a", "b", "c", "alpha", "beta", "gamma"):
+        assert mol2.crystalinfo[key] == mol1.crystalinfo[key], (
+            key,
+            mol1.crystalinfo[key],
+            mol2.crystalinfo[key],
+        )

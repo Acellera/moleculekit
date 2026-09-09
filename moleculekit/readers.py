@@ -3432,7 +3432,9 @@ def INPCRDread(filename, frame=None, topoloc=None, stride=None, atom_indices=Non
         # Skip title
         f.readline()
         # Read number of atoms
-        natoms = int(f.readline().strip())
+        # AMBER allows an optional time value after the atom count on this
+        # line. tleap writes only the count; ParmEd writes "natoms time".
+        natoms = int(f.readline().split()[0])
 
         # Read coordinates
         coords = []

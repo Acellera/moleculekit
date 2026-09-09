@@ -1224,38 +1224,63 @@ def CIFwrite(
 
     curContainer = DataContainer(mol.resname[0] if single_mol else viewname)
 
-    # Cell + symmetry. Round-trippable with CIFread, which reads
-    # _cell.length_a/b/c + _cell.angle_* into mol.crystalinfo, and
-    # _symmetry.space_group_name_H-M into crystalinfo["sGroup"].
-    ci = mol.crystalinfo
-    if ci:
-        cell_keys = ("a", "b", "c", "alpha", "beta", "gamma")
-        if all(k in ci for k in cell_keys):
-            cellCat = DataCategory("cell")
-            for at in (
-                "length_a",
-                "length_b",
-                "length_c",
-                "angle_alpha",
-                "angle_beta",
-                "angle_gamma",
-            ):
-                cellCat.appendAttribute(at)
-            if "z" in ci:
-                cellCat.appendAttribute("Z_PDB")
-            row = [float(ci[k]) for k in cell_keys]
-            if "z" in ci:
-                row.append(int(ci["z"]))
-            cellCat.append(row)
-            curContainer.append(cellCat)
-        if "sGroup" in ci and ci["sGroup"]:
-            sGroup = ci["sGroup"]
-            if isinstance(sGroup, (list, tuple)):
-                sGroup = " ".join(sGroup)
-            symCat = DataCategory("symmetry")
-            symCat.appendAttribute("space_group_name_H-M")
-            symCat.append([sGroup])
-            curContainer.append(symCat)
+    # Cell + symmetry. mol.box / mol.boxangles are the authority for a
+    # simulation Molecule; crystalinfo is the fallback for structures read
+    # from a crystallographic file that were never re-boxed. mol.box is
+    # float32, so when crystalinfo's double-precision values still round to
+    # the same float32 as box, box has not actually changed since the file
+    # was read: keep crystalinfo's values so a cif->cif round-trip stays
+    # bit-exact instead of losing precision through the box cast.
+    ci = mol.crystalinfo if mol.crystalinfo else {}
+    cell_keys = ("a", "b", "c", "alpha", "beta", "gamma")
+    has_ci_cell = all(k in ci for k in cell_keys)
+    cell = None
+    has_box = mol.box is not None and mol.box.size >= 3 and np.any(mol.box)
+    if has_box:
+        frame = mol.frame if mol.box.shape[1] > 1 else 0
+        angles = [90.0, 90.0, 90.0]
+        if (
+            mol.boxangles is not None
+            and mol.boxangles.size >= 3
+            and np.any(mol.boxangles[:3, frame])
+        ):
+            angles = [float(a) for a in mol.boxangles[:, frame]]
+        box_cell = [float(b) for b in mol.box[:, frame]] + angles
+        if has_ci_cell and all(
+            np.float32(ci[k]) == np.float32(v) for k, v in zip(cell_keys, box_cell)
+        ):
+            cell = [float(ci[k]) for k in cell_keys]
+        else:
+            cell = box_cell
+    elif has_ci_cell:
+        cell = [float(ci[k]) for k in cell_keys]
+
+    if cell is not None:
+        cellCat = DataCategory("cell")
+        for at in (
+            "length_a",
+            "length_b",
+            "length_c",
+            "angle_alpha",
+            "angle_beta",
+            "angle_gamma",
+        ):
+            cellCat.appendAttribute(at)
+        row = list(cell)
+        if "z" in ci:
+            cellCat.appendAttribute("Z_PDB")
+            row.append(int(ci["z"]))
+        cellCat.append(row)
+        curContainer.append(cellCat)
+
+    if ci.get("sGroup"):
+        sGroup = ci["sGroup"]
+        if isinstance(sGroup, (list, tuple)):
+            sGroup = " ".join(sGroup)
+        symCat = DataCategory("symmetry")
+        symCat.appendAttribute("space_group_name_H-M")
+        symCat.append([sGroup])
+        curContainer.append(symCat)
 
     if atom_block == "chem_comp_atom":
         aCat = DataCategory("chem_comp")
