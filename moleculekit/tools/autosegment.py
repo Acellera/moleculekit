@@ -17,16 +17,10 @@ logger = logging.getLogger(__name__)
 CHAIN_ALPHABET = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
 SEGID_ALPHABET = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
 
-# The backbone-atom criteria segmentation used to decide polymer membership by,
-# kept because callers outside this package import them: they are read to decide
-# whether two residues with consecutive numbers are actually bonded, so removing
-# them is a breaking change even though nothing in here uses them any more.
-#
-# `_classify_residues` no longer consults them -- polymer status comes from
-# `backbone.residuePolymerStatus`, which asks by name and confirms by geometry --
-# so a caller wanting that answer should use it rather than these names.
-PROTEIN_BB = ("N", "CA", "C")
-NUCLEIC_LINK = ("P", "O3'", "O3*", "C3'", "C3*")
+# Re-exported for callers outside this package that import them from here.
+# `backbone` owns them because it is what now applies them, via
+# `residuePolymerStatus`; `_classify_residues` no longer reads them directly.
+from moleculekit.tools.backbone import PROTEIN_BB, NUCLEIC_LINK  # noqa: F401
 
 
 def _residue_atom_coord(mol, res_atom_idx, names):

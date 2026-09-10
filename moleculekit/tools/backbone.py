@@ -226,6 +226,23 @@ def _reconstruct_backbone_planar_atom(
 # it. A side-chain isopeptide is deliberately not here -- it crosslinks.
 _POLYMER_LINKS = {"protein": "peptide", "nucleic": "phosphodiester"}
 
+# The atoms that identify a polymer residue by shape, for a resname no table
+# knows. Deliberately not `mutate.BACKBONE_ATOMS`, which adds the carbonyl O:
+# these three are what a non-alpha backbone (N-CA-X-C) still carries, and
+# requiring the O is what drops such a residue out of the chain.
+# Re-exported by `autosegment`, whose importers read them from there.
+PROTEIN_BB = ("N", "CA", "C")
+NUCLEIC_LINK = ("P", "O3'", "O3*", "C3'", "C3*")
+
+# Protein needs every atom of its triple, nucleic any one of its link atoms.
+_POLYMER_SHAPE = {"protein": (PROTEIN_BB, all), "nucleic": (NUCLEIC_LINK, any)}
+
+
+def _shaped_like(atom_names: set, polymer: str) -> bool:
+    """Whether these atom names carry `polymer`'s backbone, ignoring resname."""
+    required, enough = _POLYMER_SHAPE[polymer]
+    return enough(a in atom_names for a in required)
+
 
 def _polymer_masks(mol: Molecule):
     """``{"protein": mask, "nucleic": mask}`` -- the shared polymer test.
@@ -282,10 +299,12 @@ def _polymer_masks(mol: Molecule):
         rname = str(mol.resname[atoms[0]]).upper()
         # Which polymers would take this residue on its name, and do not already
         # hold it. Anything the selections accepted needs no second opinion.
+        anames = set(mol.name[atoms])
         wanted = {
             w: _POLYMER_LINKS[w]
             for w in _POLYMER_LINKS
-            if rname in names[w] and not masks[w][atoms].any()
+            if (rname in names[w] or _shaped_like(anames, w))
+            and not masks[w][atoms].any()
         }
         if not wanted:
             continue
