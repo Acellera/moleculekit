@@ -140,6 +140,9 @@ _GL_ENV_VAR = "MOLECULEKIT_RENDER_GL"
 # Points render() at a render server instead of a local browser, so a machine
 # with no GPU (or no chromium at all) can still render.
 _SERVER_ENV_VAR = "MOLECULEKIT_RENDER_SERVER"
+# Extra request headers for the render server, as a JSON object: how a server
+# behind an authenticating proxy is given a token.
+_HEADERS_ENV_VAR = "MOLECULEKIT_RENDER_HEADERS"
 # A GPU chromium can reach appears here as a DRM render node.
 _DRM_DIR = Path("/dev/dri")
 # PCI vendor of a DRM render node, and the Vulkan driver manifests that vendor
@@ -1097,7 +1100,10 @@ def _render_remote(
     request = urllib.request.Request(
         server.rstrip("/") + "/render",
         data=body,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            **json.loads(os.environ.get(_HEADERS_ENV_VAR) or "{}"),
+        },
     )
     try:
         # The server has to finish the render before it answers, so allow it

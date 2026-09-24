@@ -146,6 +146,20 @@ def test_the_environment_variable_selects_a_server(monkeypatch):
         assert render_mod.render(_mol()) == b"env-png"
 
 
+def test_the_headers_variable_reaches_the_server(monkeypatch):
+    seen = {}
+
+    def _urlopen(request, timeout=None):
+        seen.update(request.headers)
+        return io.BytesIO(b"png")
+
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen)
+    monkeypatch.setenv(render_mod._HEADERS_ENV_VAR, json.dumps({"Authorization": "Bearer t"}))
+    render_mod.render(_mol(), server="http://render.example")
+    assert seen["Authorization"] == "Bearer t"
+    assert seen["Content-type"] == "application/json"
+
+
 @pytest.mark.skipif(
     render_mod._find_chromium_or_none() is None, reason="needs a chromium binary"
 )
