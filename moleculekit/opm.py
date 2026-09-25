@@ -185,7 +185,7 @@ def get_opm_pdb(
 
     try:
         resp = requests.get(
-            f"https://storage.googleapis.com/opm-assets/pdb/{pdbid.lower()}.pdb"
+            f"https://biomembhub.org/shared/opm-assets/pdb/{pdbid.lower()}.pdb"
         )
         resp.raise_for_status()
     except Exception as e:
