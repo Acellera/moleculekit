@@ -301,11 +301,14 @@ def rcsbFetchLigandSmiles(
 
 
 def rcsbIsMembraneProtein(pdbid: str) -> bool:
-    """Check whether an RCSB entry's keywords classify it as a membrane protein.
+    """Check whether an RCSB entry is annotated as a membrane protein.
 
-    Queries the entry's ``struct_keywords`` block and reports whether the word
-    "membrane" appears in it. This is a best-effort classification based on the
-    depositors' keywords, not a structural analysis.
+    Reports True when the entry's ``struct_keywords`` mention "membrane", or when
+    any of its polymer entities carries a Gene Ontology term under "membrane"
+    (GO:0016020). The GO terms come from UniProt, so they catch entries whose
+    depositors never used the word, e.g. 9HAO (AcrB, keywords "TRANSPORT
+    PROTEIN"). Peripheral membrane proteins match too. This is a best-effort
+    classification based on annotations, not a structural analysis.
 
     Parameters
     ----------
@@ -315,7 +318,8 @@ def rcsbIsMembraneProtein(pdbid: str) -> bool:
     Returns
     -------
     is_membrane : bool
-        True when the entry's keywords mention "membrane".
+        True when the entry's keywords or its entities' GO terms mark it as a
+        membrane protein.
 
     Raises
     ------
@@ -327,10 +331,25 @@ def rcsbIsMembraneProtein(pdbid: str) -> bool:
     >>> rcsbIsMembraneProtein("7q5b")  # doctest: +SKIP
     True
     """
-    url = f"https://data.rcsb.org/rest/v1/core/entry/{pdbid.strip().upper()}"
-    kw = _getRCSBjson(url).get("struct_keywords") or {}
+    pdbid = pdbid.strip().upper()
+    entry = _getRCSBjson(f"https://data.rcsb.org/rest/v1/core/entry/{pdbid}")
+    kw = entry.get("struct_keywords") or {}
     text = f"{kw.get('pdbx_keywords') or ''} {kw.get('text') or ''}"
-    return "membrane" in text.lower()
+    if "membrane" in text.lower():
+        return True
+
+    ids = entry.get("rcsb_entry_container_identifiers") or {}
+    for eid in ids.get("polymer_entity_ids") or []:
+        entity = _getRCSBjson(
+            f"https://data.rcsb.org/rest/v1/core/polymer_entity/{pdbid}/{eid}"
+        )
+        for ann in entity.get("rcsb_polymer_entity_annotation") or []:
+            if ann.get("type") != "GO":
+                continue
+            lineage = {a.get("id") for a in ann.get("annotation_lineage") or []}
+            if "GO:0016020" in lineage | {ann.get("annotation_id")}:
+                return True
+    return False
 
 
 def rcsbSequenceSearch(

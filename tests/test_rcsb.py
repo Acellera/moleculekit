@@ -217,6 +217,53 @@ def test_is_membrane_protein_false_for_soluble():
         assert rcsbIsMembraneProtein("3ptb") is False
 
 
+def test_is_membrane_protein_true_from_go_terms():
+    # 9HAO (AcrB): keywords never say "membrane", the GO terms do
+    entry = {
+        "struct_keywords": {
+            "pdbx_keywords": "TRANSPORT PROTEIN",
+            "text": "RND multidrug efflux pump, TRANSPORT PROTEIN",
+        },
+        "rcsb_entry_container_identifiers": {"polymer_entity_ids": ["1", "2"]},
+    }
+    soluble = {
+        "rcsb_polymer_entity_annotation": [
+            {"type": "GO", "annotation_id": "GO:0005737", "annotation_lineage": []}
+        ]
+    }
+    membrane = {
+        "rcsb_polymer_entity_annotation": [
+            {
+                "type": "GO",
+                "annotation_id": "GO:0005886",
+                "annotation_lineage": [{"id": "GO:0016020"}, {"id": "GO:0005886"}],
+            }
+        ]
+    }
+    with mock.patch(
+        "moleculekit.rcsb._getRCSBjson", side_effect=[entry, soluble, membrane]
+    ):
+        assert rcsbIsMembraneProtein("9hao") is True
+
+
+def test_is_membrane_protein_false_from_go_terms():
+    entry = {
+        "struct_keywords": {"pdbx_keywords": "HYDROLASE", "text": "trypsin"},
+        "rcsb_entry_container_identifiers": {"polymer_entity_ids": ["1"]},
+    }
+    entity = {
+        "rcsb_polymer_entity_annotation": [
+            {
+                "type": "GO",
+                "annotation_id": "GO:0005576",
+                "annotation_lineage": [{"id": "GO:0005575"}, {"id": "GO:0005576"}],
+            }
+        ]
+    }
+    with mock.patch("moleculekit.rcsb._getRCSBjson", side_effect=[entry, entity]):
+        assert rcsbIsMembraneProtein("3ptb") is False
+
+
 def test_is_membrane_protein_missing_keywords_is_false():
     with mock.patch("moleculekit.rcsb._getRCSBjson", return_value={}):
         assert rcsbIsMembraneProtein("1abc") is False
