@@ -1094,6 +1094,7 @@ def _superpose_and_graft_runs(
                 frag = donor.copy(sel=s["pred_atoms"])
                 frag.coords[:, :, 0] = _apply_fit(frag.coords[:, :, 0], fit)
                 s["frag"] = frag
+                s["grafted"] = True
         i = j
 
     return [s for k, s in enumerate(slots) if k not in skip]
@@ -1165,7 +1166,12 @@ def spliceMissingResidues(
 
     All original atoms (protein + ligands/metals/cofactors) are kept at their
     deposited coordinates AND with their deposited residue numbering, except the
-    ``graft_flanks`` residues on each side of a filled gap (see below). Each modelled
+    ``graft_flanks`` residues on each side of a filled gap (see below). Every bond of
+    ``mol`` whose two atoms are both kept is kept too - disulfides and covalent links
+    to cofactors, NCAAs and caps included; on a grafted flank it attaches to the
+    grafted atom of the same name. The donor's own bonds are kept wherever the donor
+    supplied an atom (inserted residues, grafted flanks and their junctions);
+    between two residues kept from ``mol``, only ``mol``'s bonds count. Each modelled
     chain is rebuilt as its original residues plus the residues present in
     ``donor`` but absent from the original, including any lying beyond either
     terminus, so a donor observed over a wider range extends the chain; pass
@@ -1281,6 +1287,13 @@ def spliceMissingResidues(
     result.filter(keep_mask, _logger=False)
     # `result` may now be empty (single all-protein modelled chain); `_concat`
     # handles the first append by starting from the rebuilt chain when empty.
+    # For result atom i: the `orig` atom it stands for (result_src, -1: inserted),
+    # the donor atom (result_dsrc, -1: none) and whether its coordinates came from
+    # the donor (result_owned), so the bonds the per-residue rebuild drops can be
+    # restored at the end.
+    result_src = np.where(keep_mask)[0]
+    result_dsrc = np.full(len(result_src), -1, dtype=np.int64)
+    result_owned = np.zeros(len(result_src), dtype=bool)
 
     for orig_chain, donor_chain in pairing.items():
         oseq, oidx = orig.getSequence(
@@ -1317,6 +1330,7 @@ def spliceMissingResidues(
                 slots.append(
                     {
                         "frag": orig.copy(sel=atoms),
+                        "orig_atoms": atoms,
                         "new": False,
                         "resid": int(orig.resid[atoms[0]]),
                         "insertion": str(orig.insertion[atoms[0]]),
@@ -1328,7 +1342,11 @@ def spliceMissingResidues(
                     pi += 1
             elif cp != "-":  # new residue from predicted
                 slots.append(
-                    {"frag": pred.copy(sel=pidx[donor_chain][pi]), "new": True}
+                    {
+                        "frag": pred.copy(sel=pidx[donor_chain][pi]),
+                        "pred_atoms": pidx[donor_chain][pi],
+                        "new": True,
+                    }
                 )
                 pi += 1
 
@@ -1346,6 +1364,7 @@ def spliceMissingResidues(
         _number_new_residues(slots, orig_chain)
         _resolve_nonprotein_collisions(result, orig_chain, slots)
         new_chain = None
+        chain_src, chain_dsrc, chain_owned = [], [], []
         for s in slots:
             frag = s["frag"]
             frag.chain[:] = orig_chain
@@ -1354,9 +1373,16 @@ def spliceMissingResidues(
             frag.insertion[:] = s["insertion"]
             if s["new"]:
                 frag.beta[:] = MARK
+            src, dsrc, owned = _frag_source(orig, pred, s, frag)
+            chain_src.append(src)
+            chain_dsrc.append(dsrc)
+            chain_owned.append(owned)
             new_chain = frag if new_chain is None else _concat(new_chain, frag)
         if new_chain is not None:
             result = _concat(result, new_chain)
+            result_src = np.concatenate([result_src, *chain_src])
+            result_dsrc = np.concatenate([result_dsrc, *chain_dsrc])
+            result_owned = np.concatenate([result_owned, *chain_owned])
 
     if gaps is not None:
         # iterate `gaps`, not the set, so the order is the caller's and repeated
@@ -1392,9 +1418,87 @@ def spliceMissingResidues(
                 "the resids do not match the deposited numbering."
             )
 
+    _carry_over_bonds(result, orig, result_src)
+    # Donor bonds only where the donor supplied an atom: the new residues, grafted
+    # flanks and their junctions. Kept residues keep exactly the original's bonds.
+    _carry_over_bonds(result, pred, result_dsrc, need=result_owned)
     new_mask = result.beta == MARK
     result.beta[new_mask] = 0.0
     return result, new_mask
+
+
+def _by_name(mol, atoms, names):
+    """For each of ``names``, the atom of ``mol`` among ``atoms`` with that name (-1)."""
+    by_name = {}
+    for a in np.asarray(atoms, dtype=np.int64)[::-1]:  # the first of a repeated name wins
+        by_name[str(mol.name[a])] = a
+    return np.array([by_name.get(str(n), -1) for n in names], dtype=np.int64)
+
+
+def _frag_source(orig, donor, slot, frag):
+    """Where each atom of a rebuilt slot's ``frag`` came from.
+
+    Returns ``(orig_src, donor_src, owned)``: the ``orig`` and ``donor`` atom each
+    stands for (-1: none) and whether its coordinates came from the donor. An
+    inserted residue is a copy of donor atoms; a grafted flank is a copy of donor
+    atoms standing in for an original residue (matched by name, so the original's
+    bonds attach to it); any other kept residue is a verbatim copy of original atoms,
+    matched to its aligned donor residue by name so a junction bond can reach it.
+    """
+    n = frag.numAtoms
+    pred_atoms = slot.get("pred_atoms")
+    if slot["new"]:
+        return (np.full(n, -1, dtype=np.int64),
+                np.asarray(pred_atoms, dtype=np.int64), np.ones(n, dtype=bool))
+    if slot.get("grafted"):
+        return (_by_name(orig, slot["orig_atoms"], frag.name),
+                np.asarray(pred_atoms, dtype=np.int64), np.ones(n, dtype=bool))
+    donor_src = (_by_name(donor, pred_atoms, frag.name) if pred_atoms is not None
+                 else np.full(n, -1, dtype=np.int64))
+    return (np.asarray(slot["orig_atoms"], dtype=np.int64), donor_src,
+            np.zeros(n, dtype=bool))
+
+
+def _carry_over_bonds(result, source, src, need=None):
+    """Re-add every bond of ``source`` whose two atoms both made it into ``result``.
+
+    ``src[i]`` is the ``source`` atom result atom i stands for (-1: none). With
+    ``need``, a bond is only added if at least one of its result atoms is in it.
+
+    Modelled chains are rebuilt from per-residue copies and a copy keeps only the
+    bonds inside it, so without this every bond between residues of a modelled
+    chain - disulfides, covalent cofactor and NCAA links, caps, metal bonds - is lost.
+    """
+    if len(source.bonds) == 0:
+        return
+    inv = np.full(source.numAtoms, -1, dtype=np.int64)
+    kept = src >= 0
+    inv[src[kept]] = np.where(kept)[0]
+    a = inv[source.bonds[:, 0]]
+    b = inv[source.bonds[:, 1]]
+    ok = (a >= 0) & (b >= 0)
+    if need is not None:
+        ok &= need[np.maximum(a, 0)] | need[np.maximum(b, 0)]
+    if not ok.any():
+        return
+    pairs = np.sort(np.stack([a[ok], b[ok]], axis=1), axis=1)
+    bondtype = np.asarray(source.bondtype)[ok]
+    n = result.numAtoms
+    code = pairs[:, 0] * n + pairs[:, 1]
+    have = np.sort(np.asarray(result.bonds, dtype=np.int64), axis=1)
+    have_code = have[:, 0] * n + have[:, 1] if len(have) else np.empty(0, np.int64)
+    _, first = np.unique(code, return_index=True)  # drop duplicates within source
+    add = np.zeros(len(code), dtype=bool)
+    add[first] = True
+    add &= ~np.isin(code, have_code)
+    if not add.any():
+        return
+    result.bonds = np.vstack(
+        [result.bonds, pairs[add].astype(result.bonds.dtype)]
+    ).astype(result.bonds.dtype)
+    result.bondtype = np.concatenate(
+        [np.asarray(result.bondtype), bondtype[add]]
+    ).astype(np.asarray(result.bondtype).dtype)
 
 
 def detectSplicedClashes(mol, new_mask, cutoff=2.0, targets="not protein"):

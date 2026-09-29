@@ -534,6 +534,71 @@ def test_splice_preserves_non_protein():
     assert list(spliced.resname[ca]) == ["ALA", "GLY", "HIS", "ILE", "SER"]
 
 
+def test_splice_keeps_bonds_between_residues_of_a_modelled_chain():
+    # The modelled chain is rebuilt from per-residue copies, which keep only the
+    # bonds inside each residue. Every other bond of the original must come back:
+    # to a ligand, between two residues far from the gap (a disulfide, say), and to
+    # a flank grafted from the donor (holes 4-5 and 8 graft resids 3, 6, 7, 9).
+    donor = _bonded_chain_mol(_MERGE_FULL_RESNAMES, list(range(1, 12)), chain="A")
+    gapped = _bonded_chain_mol(_MERGE_OBS_RESNAMES, _MERGE_OBS_RESIDS, chain="A")
+    zn = Molecule().empty(1)
+    zn.name[:] = ["ZN"]
+    zn.resname[:] = ["ZN"]
+    zn.resid[:] = [100]
+    zn.chain[:] = "A"
+    zn.segid[:] = "P"
+    zn.record[:] = "HETATM"
+    zn.element[:] = ["Zn"]
+    zn.coords = np.array([0.0, 0.0, 30.0], dtype=np.float32).reshape(1, 3, 1)
+    gapped.append(zn)
+
+    def atom(m, resid, name):
+        return int(np.where((m.resid == resid) & (m.name == name))[0][0])
+
+    extra = [((1, "O"), (100, "ZN")),   # ligand bond, far from the gap
+             ((6, "O"), (100, "ZN")),   # ligand bond on a grafted flank
+             ((2, "CA"), (10, "CA"))]   # disulfide-like, both residues kept verbatim
+    for (r1, n1), (r2, n2) in extra:
+        gapped.addBond(atom(gapped, r1, n1), atom(gapped, r2, n2), "1")
+
+    spliced, new_mask = spliceMissingResidues(gapped, donor, {"A": "A"})
+
+    assert [int(r) for r in spliced.resid[new_mask & (spliced.name == "CA")]] == [4, 5, 8]
+    have = {tuple(sorted(b)) for b in spliced.bonds.tolist()}
+    for (r1, n1), (r2, n2) in extra + [((1, "C"), (2, "N"))]:  # + a deposited peptide bond
+        pair = tuple(sorted((atom(spliced, r1, n1), atom(spliced, r2, n2))))
+        assert pair in have, f"bond {r1}:{n1}-{r2}:{n2} lost"
+    assert len(have) == len(spliced.bonds), "duplicated bonds"
+
+
+def test_splice_keeps_donor_bonds_only_where_the_donor_supplied_atoms():
+    # The donor's bonds come along inside the inserted residues and grafted flanks
+    # and at their junctions, but a donor bond between two residues kept from the
+    # original must not rewrite the original's chemistry.
+    donor = _bonded_chain_mol(_MERGE_FULL_RESNAMES, list(range(1, 12)), chain="A")
+    gapped = _bonded_chain_mol(_MERGE_OBS_RESNAMES, _MERGE_OBS_RESIDS, chain="A")
+
+    def atom(m, resid, name):
+        return int(np.where((m.resid == resid) & (m.name == name))[0][0])
+
+    # donor-only bond between resids 1 and 11, both kept verbatim (holes 4-5 and 8
+    # graft 3, 6, 7, 9)
+    donor.addBond(atom(donor, 1, "CA"), atom(donor, 11, "CA"), "1")
+
+    spliced, _ = spliceMissingResidues(gapped, donor, {"A": "A"})
+
+    have = {tuple(sorted(b)) for b in spliced.bonds.tolist()}
+
+    def bonded(r1, n1, r2, n2):
+        return tuple(sorted((atom(spliced, r1, n1), atom(spliced, r2, n2)))) in have
+
+    assert bonded(4, "C", 5, "N")   # inside the inserted run
+    assert bonded(3, "C", 4, "N")   # grafted flank -> inserted run
+    assert bonded(2, "C", 3, "N")   # kept residue -> grafted flank
+    assert not bonded(1, "CA", 11, "CA")
+    assert len(have) == len(spliced.bonds), "duplicated bonds"
+
+
 def test_detect_modelled_clashes_reports_ion_overlap():
     # one modelled protein CA at origin, a ZN ion 1.0 A away, a distant water
     m = Molecule().empty(3)
