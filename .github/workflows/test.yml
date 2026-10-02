@@ -43,6 +43,12 @@ jobs:
       - name: Install moleculekit
         run: uv sync --group test
 
+      # Chromium's first launch on a fresh runner builds its caches and can take
+      # longer than the renderer's 30 s startup window; pay that cost here.
+      - name: Warm up chromium
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: timeout 120 chromium --headless=new --no-sandbox --no-first-run --dump-dom about:blank > /dev/null || true
+
       - name: Test
         run: uv run pytest -n auto ./tests/ --durations=20
         env:

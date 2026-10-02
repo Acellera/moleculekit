@@ -266,6 +266,16 @@ def test_env_var_pointing_at_nothing_is_rejected(monkeypatch):
         render_mod.find_chromium()
 
 
+@pytest.mark.skipif(not render_mod._POSIX, reason="fake browser is a shell script")
+def test_a_failed_browser_start_reports_its_stderr(monkeypatch, tmp_path):
+    fake = tmp_path / "broken-chrome"
+    fake.write_text("#!/bin/sh\necho 'cannot open display' >&2\nexit 3\n")
+    fake.chmod(0o755)
+    monkeypatch.setenv("MOLECULEKIT_CHROMIUM", str(fake))
+    with pytest.raises(RuntimeError, match="(?s)code 3.*cannot open display"):
+        render_mod._launch(100, 100, "software", None)
+
+
 @needs_chromium
 def test_render_returns_png_bytes_of_the_requested_size():
     png = render_mod.render(_trypsin(), size=(400, 300))

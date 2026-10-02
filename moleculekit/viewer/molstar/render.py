@@ -51,6 +51,8 @@ _HEADLESS_PAGE = Path(__file__).parent / "static" / "headless.html"
 _CHROMIUM_NAMES = ("chromium", "chromium-browser", "google-chrome", "chrome")
 _PAGE_READY_POLL_INTERVAL = 0.05
 _PAGE_READY_TIMEOUT = 30.0
+# Chromium's stderr, kept in its profile directory so a failed start can say why.
+_CHROMIUM_LOG = "chromium-stderr.log"
 _POSIX = os.name == "posix"
 
 # sample_level is the anti-aliasing work: the scene is drawn 2**level times
@@ -386,7 +388,7 @@ def _devtools_port(profile_dir: str, process: subprocess.Popen) -> int:
         if process.poll() is not None:
             raise RuntimeError(
                 f"The headless browser exited with code {process.returncode} "
-                "before reporting a devtools port."
+                f"before reporting a devtools port.{_chromium_log_tail(profile_dir)}"
             )
         try:
             # First line is the port, second the browser's websocket path.
@@ -397,8 +399,18 @@ def _devtools_port(profile_dir: str, process: subprocess.Popen) -> int:
         return int(first)
     raise RuntimeError(
         f"The headless browser did not report a devtools port within "
-        f"{_PAGE_READY_TIMEOUT} seconds."
+        f"{_PAGE_READY_TIMEOUT} seconds.{_chromium_log_tail(profile_dir)}"
     )
+
+
+def _chromium_log_tail(profile_dir: str, lines: int = 20) -> str:
+    """The last lines chromium wrote to stderr, formatted to end an error message."""
+    try:
+        text = (Path(profile_dir) / _CHROMIUM_LOG).read_text(errors="replace")
+    except OSError:
+        return ""
+    tail = "\n".join(text.splitlines()[-lines:])
+    return f" Last chromium output:\n{tail}" if tail else ""
 
 
 def _wait_for_page_ready(ws: WS, timeout: float = _PAGE_READY_TIMEOUT) -> None:
@@ -523,6 +535,12 @@ def _start(width: int, height: int) -> _RendererState:
                     backends[0],
                     backend,
                 )
+            # Said once per browser, because which rasteriser answered decides
+            # what a render costs: a GPU, Mesa's software Vulkan, or
+            # SwiftShader, which is several times slower again.
+            logger.info(
+                "rendering on GL backend %r (%s)", state.gl_backend, state.gl_renderer
+            )
             return state
         failures.append(backend)
     raise RuntimeError(
@@ -572,25 +590,27 @@ def _launch(width: int, height: int, backend: str, env: dict | None):
     """
     binary = find_chromium()
     profile_dir = tempfile.mkdtemp(prefix="moleculekit-render-")
-    process = subprocess.Popen(
-        [
-            binary,
-            *_CHROMIUM_FLAGS,
-            *_GL_BACKENDS[backend],
-            # 0 means "pick a free port and write it to DevToolsActivePort".
-            "--remote-debugging-port=0",
-            f"--user-data-dir={profile_dir}",
-            f"--window-size={width},{height}",
-            _HEADLESS_PAGE.as_uri(),
-        ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        env=env,
-        # New session (POSIX only) so this process is its own process group
-        # leader: _stop() kills the whole group, taking chromium's helper
-        # processes down with it instead of leaving them to linger.
-        start_new_session=_POSIX,
-    )
+    # The child keeps its own copy of the handle, so ours can close right away.
+    with open(Path(profile_dir) / _CHROMIUM_LOG, "wb") as log:
+        process = subprocess.Popen(
+            [
+                binary,
+                *_CHROMIUM_FLAGS,
+                *_GL_BACKENDS[backend],
+                # 0 means "pick a free port and write it to DevToolsActivePort".
+                "--remote-debugging-port=0",
+                f"--user-data-dir={profile_dir}",
+                f"--window-size={width},{height}",
+                _HEADLESS_PAGE.as_uri(),
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=log,
+            env=env,
+            # New session (POSIX only) so this process is its own process group
+            # leader: _stop() kills the whole group, taking chromium's helper
+            # processes down with it instead of leaving them to linger.
+            start_new_session=_POSIX,
+        )
     ws: WS | None = None
     try:
         port = _devtools_port(profile_dir, process)
