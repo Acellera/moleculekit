@@ -281,6 +281,9 @@ class DataCategory(DataCategoryBase):
         self.__currentAttribute = None
         #
         self.__avoidEmbeddedQuoting = False
+        # Per-value memo for __formatPdbx / __dataTypePdbx; table columns repeat heavily.
+        self.__fmtCache = {}
+        self.__dtCache = {}
         #
         # --------------------------------------------------------------------
         # any whitespace
@@ -796,11 +799,14 @@ class DataCategory(DataCategoryBase):
         raise TypeError(attribute)
 
     def getValueFormattedByIndex(self, attributeIndex, rowIndex):
+        inp = self._rowList[rowIndex][attributeIndex]
+        key = (type(inp), inp)
         try:
-            list, type = self.__formatPdbx(self._rowList[rowIndex][attributeIndex])
-            return "".join(list)
-        except IndexError:
-            raise IndexError()
+            return self.__fmtCache[key]
+        except KeyError:
+            val = "".join(self.__formatPdbx(inp)[0])
+            self.__fmtCache[key] = val
+            return val
 
     def getAttributeValueMaxLengthList(self, steps=1):
         mList = [0 for i in range(len(self._attributeNameList))]
@@ -819,9 +825,12 @@ class DataCategory(DataCategoryBase):
                 for indx in range(len(self._attributeNameList)):
                     val = row[indx]
                     # print "index ",indx," val ",val
-                    dType = self.__dataTypePdbx(val)
-                    dIndx = self.__dataTypeList.index(dType)
-                    # print "d type", dType, " d type index ",dIndx
+                    key = (type(val), val)
+                    try:
+                        dIndx = self.__dtCache[key]
+                    except KeyError:
+                        dIndx = self.__dataTypeList.index(self.__dataTypePdbx(val))
+                        self.__dtCache[key] = dIndx
 
                     cType = curDataTypeList[indx]
                     cIndx = self.__dataTypeList.index(cType)

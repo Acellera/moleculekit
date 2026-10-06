@@ -1363,11 +1363,12 @@ def CIFwrite(
     for at in mapping:
         aCat.appendAttribute(at)
 
+    coords = mol.coords[:, :, mol.frame]
     for i in range(mol.numAtoms):
         data = []
         for at in mapping:
             if mapping[at] == "coords":
-                coord = mol.coords[i, xyz_map[at], mol.frame]
+                coord = coords[i, xyz_map[at]]
                 # When returning the typed container (used by BCIFwrite),
                 # keep coordinates as native floats. The fp_precision
                 # truncation only matters for the text CIF output below.
