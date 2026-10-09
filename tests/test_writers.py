@@ -475,3 +475,40 @@ def test_label_seq_ids_are_the_resids_without_insertion_codes():
     mol.insertion[:] = ""
 
     assert list(_label_seq_ids(mol)) == [10, 11, 12, 4, 5]
+
+
+def test_cif_roundtrip_keeps_an_unknown_bond_order(tmp_path):
+    """An order the source never stated must not come back as a single bond.
+
+    `pdbx_value_order` of "?" reads as "un", and writing it as SING states an
+    order the deposition did not, indistinguishably from a deposited one. The
+    order resolver only substitutes for an unknown order, so a single write of
+    the input was enough to put rhodopsin's C15=NZ Schiff base into templating
+    as a neutral amine.
+    """
+    mol = Molecule().empty(3)
+    mol.coords = np.array(
+        [[[0.0], [0.0], [0.0]], [[1.3], [0.0], [0.0]], [[2.8], [0.0], [0.0]]],
+        dtype=np.float32,
+    )
+    mol.name[:] = ["NZ", "C15", "C14"]
+    mol.element[:] = ["N", "C", "C"]
+    mol.resname[:] = ["LYS", "RET", "RET"]
+    mol.resid[:] = [296, 1332, 1332]
+    mol.chain[:] = ["A", "A", "A"]
+    mol.bonds = np.array([[0, 1], [1, 2]])
+    mol.bondtype = np.array(["un", "1"], dtype=object)
+
+    out = os.path.join(tmp_path, "roundtrip.cif")
+    mol.write(out)
+    assert "SING" not in open(out).read().split("_struct_conn")[-1]
+
+    back = Molecule(out)
+    orders = dict(
+        zip(
+            [tuple(sorted(back.name[b] for b in bond)) for bond in back.bonds],
+            [str(bt) for bt in back.bondtype],
+        )
+    )
+    assert orders[("C15", "NZ")] == "un", "the unknown order was stated on write"
+    assert orders[("C14", "C15")] == "1", "a stated order must survive too"

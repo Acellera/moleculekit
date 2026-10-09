@@ -1509,7 +1509,11 @@ def CIFwrite(
                     value_order = "?"
                 else:
                     conn_type = "covale"
-                    value_order = bondtype_map[bondtype[i]]
+                    # "un" is the deposition saying nothing, which is what
+                    # `pdbx_value_order` of "?" means
+                    value_order = (
+                        "?" if bondtype[i] == "un" else bondtype_map[bondtype[i]]
+                    )
                 bCat.append(
                     [
                         conn_type,
