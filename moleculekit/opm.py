@@ -9,8 +9,6 @@ import os
 
 logger = logging.getLogger(__name__)
 
-blastp = shutil.which("blastp", mode=os.X_OK)
-
 
 def _filter_opm_pdb(lines, keep_dum=False):
     good_starts = ("ATOM", "HETATM", "MODEL", "ENDMDL")
@@ -140,6 +138,129 @@ def blast_search_opm(query: str, sequences: dict) -> list:
     return results["BlastOutput2"][0]["report"]["results"]["search"]["hits"]
 
 
+def _opm_chain_sequences(sequences: dict, pdbids=None):
+    """``(pdbid, chain, sequence)`` for every protein chain, X for unknowns."""
+    for pdbid in sequences if pdbids is None else pdbids:
+        for chain, seq in (sequences[pdbid]["protein"] or {}).items():
+            seq = seq.replace("?", "X")
+            if seq:
+                yield pdbid, chain, seq
+
+
+def _rcsb_opm_candidates(query: str, sequences: dict, rows: int = 25) -> list:
+    """OPM ids whose sequence RCSB's hosted search matches to ``query``."""
+    from moleculekit.rcsb import rcsbSequenceSearch
+
+    hits = rcsbSequenceSearch(query, identity_cutoff=0.3, rows=rows)
+    seen, out = set(), []
+    for hit in hits:
+        pdbid = hit["polymer_entity_id"].split("_")[0].lower()
+        if pdbid in sequences and pdbid not in seen:
+            seen.add(pdbid)
+            out.append(pdbid)
+    return out
+
+
+def pairwise_search_opm(query: str, sequences: dict, maxhits: int = 3) -> list:
+    """Search a query sequence against OPM protein sequences with Biopython.
+
+    Scores the query against every chain in ``sequences`` with a local
+    (Smith-Waterman) alignment, then returns the best ``maxhits`` in the shape
+    :func:`align_to_opm` consumes: one entry per hit carrying a ``description``
+    title and its ``hsps`` records. Offsets are 1-based, start inclusive.
+
+    Parameters
+    ----------
+    query : str
+        The one-letter query protein sequence.
+    sequences : dict
+        The OPM sequences database, keyed by PDB id with a ``"protein"`` entry
+        mapping chain ids to sequences.
+    maxhits : int
+        How many of the best-scoring chains to align and return.
+
+    Returns
+    -------
+    hits : list of dict
+        Best-scoring first.
+    """
+    from Bio.Align import PairwiseAligner
+
+    aligner = PairwiseAligner(scoring="blastp")
+    aligner.mode = "local"
+
+    scored = sorted(
+        (
+            (aligner.score(query, seq), pdbid, chain, seq)
+            for pdbid, chain, seq in _opm_chain_sequences(sequences)
+        ),
+        key=lambda row: -row[0],
+    )
+
+    hits = []
+    for score, pdbid, chain, seq in scored[:maxhits]:
+        hsps = _local_hsps(aligner, query, seq)
+        if hsps:
+            hits.append(
+                {
+                    "description": [{"title": f"pdb|{pdbid.upper()}|{chain}"}],
+                    "hsps": hsps,
+                }
+            )
+    return hits
+
+
+def _local_hsps(aligner, query, target, min_length: int = 20, max_hsps: int = 10):
+    """Non-overlapping local alignments of ``query`` onto ``target``.
+
+    The caller runs one structural alignment per pair, so a query holding two
+    copies of the reference chain yields a candidate orientation per copy.
+    ``PairwiseAligner`` returns a single alignment, so the query is searched
+    again either side of each match until no segment is long enough to hold
+    one.
+
+    Offsets are 1-based, start inclusive.
+    """
+    hsps: list = []
+    pending = [(0, len(query))]
+    while pending and len(hsps) < max_hsps:
+        scored = []
+        for start, end in pending:
+            if end - start < min_length:
+                continue
+            alignments = aligner.align(query[start:end], target)
+            if len(alignments):
+                scored.append((alignments[0].score, start, end, alignments[0]))
+        if not scored:
+            break
+        score, start, end, alignment = max(scored, key=lambda row: row[0])
+        qblocks, tblocks = alignment.aligned
+        if not len(qblocks):
+            break
+        qfrom, qto = int(qblocks[0][0]) + start, int(qblocks[-1][1]) + start
+        tfrom, tto = int(tblocks[0][0]), int(tblocks[-1][1])
+        pending.remove((start, end))
+        pending.extend(
+            seg for seg in ((start, qfrom), (qto, end)) if seg[1] - seg[0] >= min_length
+        )
+        if qto - qfrom < min_length:
+            # A match shorter than the window is the tail of the search
+            # finding noise rather than another copy.
+            continue
+        hsps.append(
+            {
+                "query_from": qfrom + 1,
+                "query_to": qto,
+                "hit_from": tfrom + 1,
+                "hit_to": tto,
+                "align_len": qto - qfrom,
+                "bit_score": float(score),
+                "evalue": float("nan"),
+            }
+        )
+    return hsps
+
+
 def get_opm_pdb(
     pdbid: str,
     keep: bool = False,
@@ -222,11 +343,9 @@ def align_to_opm(
 ) -> list:
     """Align a Molecule to proteins/nucleics in the OPM database by sequence search
 
-    This function requires BLAST+ to be installed. You can find the latest BLAST executables here:
-    https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
-    Once you have it installed, export it to your PATH before starting python so that it's able to
-    detect the blastp and makeblastdb executables.
-    Alternatively install it via `conda install blast -c bioconda`
+    The matching entry is found with RCSB's hosted sequence search, and the
+    residue ranges it is aligned over with a local Biopython alignment. Passing
+    ``opmid`` skips the search entirely.
 
     Parameters
     ----------
@@ -238,7 +357,8 @@ def align_to_opm(
     maxalignments : int
         The maximum number of aligned structures to return
     opmid : str
-        If an OPM ID is passed the function will skip searching the database
+        An OPM ID to align onto. Passing one skips the search: the database is
+        narrowed to that entry and only the residue ranges are computed.
     macrotype : str
         If to align on "protein" or "nucleic"
 
@@ -270,7 +390,21 @@ def align_to_opm(
     seqmol = seqmol[macrotype]
     molidx = molidx[macrotype]
 
-    res = blast_search_opm(seqmol, sequences)
+    if opmid is None:
+        # The hosted search picks the candidates out of 15k chains in one call;
+        # scoring them all locally takes tens of seconds, so that is the
+        # fallback rather than the default.
+        try:
+            candidates = _rcsb_opm_candidates(seqmol, sequences)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"RCSB sequence search failed ({e}), scoring OPM locally")
+            candidates = None
+        if candidates is not None:
+            if not candidates:
+                raise RuntimeError("No OPM entry matched the query sequence")
+            sequences = {p: sequences[p] for p in candidates}
+
+    res = pairwise_search_opm(seqmol, sequences, maxhits=maxalignments)
 
     all_aligned_structs = []
     for i in range(min(maxalignments, len(res))):
