@@ -793,6 +793,16 @@ def _canonicalize_ncaa_h_names(mol, detect_specs):
                 # _process_custom_residue writes for this residue.
                 mol.name[h_neighbors[0]] = "HA2"
                 mol.name[h_neighbors[1]] = "HA3"
+            elif backbone_name == "N":
+                # A chain-initial NCAA carries NH2/NH3+. Name the extras like
+                # PDB2PQR's NTERM patch (H, H2, H3): a leftover rdkit "H1" is
+                # an NTERM alias of "H", and the patch's rename onto the
+                # existing H corrupts the residue's atom map. Swap names with
+                # any other atom in the residue already holding the target.
+                for nb, target in zip(h_neighbors, ("H", "H2", "H3")):
+                    holder = res_idx[mol.name[res_idx] == target]
+                    mol.name[holder] = mol.name[nb]
+                    mol.name[nb] = target
             else:
                 mol.name[h_neighbors[0]] = h_target
 

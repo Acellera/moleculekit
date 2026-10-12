@@ -1765,6 +1765,28 @@ def test_hydrogen_bonds_match_geometry():
     )
 
 
+def test_nterm_ncaa_extra_amide_h_name():
+    """Regression: a templated NCAA at a chain N-terminus carries two N-H.
+    ``_canonicalize_ncaa_h_names`` used to rename only the first to ``H``,
+    leaving the second with its rdkit name. When that name was ``H1`` (an
+    NTERM-patch alias of ``H``), PDB2PQR renamed it onto the existing ``H``,
+    desynced the residue's atom map and crashed ``remove_hydrogens`` with
+    ``KeyError: 'H'``. Which name the second H got depended on the input, so
+    this fixture (8QFZ with chain B starting at the crosslinked CYS 11 and
+    sidechains missing in chain A) only hits it with
+    ``restore_missing_sidechains=True``.
+    """
+    fixture = os.path.join(
+        curr_dir, "test_nonstandard_residues", "8QFZ_restore_sidechains.cif"
+    )
+    mol = Molecule(fixture)
+    pmol, _ = systemPrepare(mol, verbose=False, restore_missing_sidechains=True)
+
+    res = (pmol.chain == "B") & (pmol.resid == 11)
+    names = list(pmol.name[res])
+    assert len(names) == len(set(names)), names
+
+
 def _build_spec_mol():
     """Two-residue mol: a spec residue LIG (resid 1) and a canonical
     residue ALA (resid 2). Used by the formal-charge unit tests."""
