@@ -1568,6 +1568,30 @@ def _fix_protonation_resnames(mol):
             mol.resname[resatm] = "HIE"
 
 
+def _drop_protonation_hydrogens(mol):
+    """Remove the side-chain hydrogens that would otherwise name a state.
+
+    A residue carrying these arrives already protonated, and
+    :func:`_fix_protonation_resnames` reads them as the residue's state.
+    Under titration the state is PROPKA's to decide from pH, so the atoms go
+    and the residue reaches it as the plain one it is named. Leaving them in
+    place and only skipping the rename is not enough: PDB2PQR reads a GLU
+    carrying an HE2 as a structural gap. ``force_protonation`` is how a caller
+    states a state outright.
+    """
+    keyed = {"GLU": ("HE2",), "ASP": ("HD2",), "HIS": ("HD1", "HE2")}
+    uqres = mol.getResidues(return_idx=False)
+    drop = np.zeros(mol.numAtoms, dtype=bool)
+    for uq in set(uqres):
+        resatm = uqres == uq
+        names = keyed.get(mol.resname[resatm][0])
+        if names is None:
+            continue
+        drop |= resatm & np.isin(mol.name, names)
+    if drop.any():
+        mol.remove(drop, _logger=False)
+
+
 def _fix_backbone_amide_h_names(mol):
     """Rename a misnamed backbone amide H to ``H`` on canonical amino acid
     residues. Some PDBs (e.g. cyclic peptides like 5VAV) name the lone
@@ -2921,7 +2945,10 @@ def systemPrepare(
     mol_orig = mol_in.copy()
 
     _prepare_nucleics(mol_in)
-    _fix_protonation_resnames(mol_in)
+    if titration:
+        _drop_protonation_hydrogens(mol_in)
+    else:
+        _fix_protonation_resnames(mol_in)
     _fix_backbone_amide_h_names(mol_in)
 
     definition, forcefield = _get_custom_ff()
