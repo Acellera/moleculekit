@@ -2780,3 +2780,30 @@ def test_phosphate_typing_keeps_a_catalytic_glutamate_charged():
         f"every Glu58 pKa must fall below the build pH:\n"
         f"{glu58[['resid', 'chain', 'pKa']]}"
     )
+
+
+def test_restore_trimmed_sidechains_rebuilds_only_whole_missing_ones():
+    """A residue keeping one atom past CB is a deliberate truncation.
+
+    Rebuilding it would put back the atoms someone removed on purpose, so the
+    scan stops at residues trimmed all the way to CB.
+    """
+    from moleculekit.tools.preparation import (
+        restoreTrimmedSidechains,
+        findTrimmedSidechains,
+    )
+
+    mol = Molecule(os.path.join(curr_dir, "pdb", "3ptb.pdb"))
+    mol.filter("protein", _logger=False)
+    assert findTrimmedSidechains(mol) == []
+
+    trimmed = mol.copy()
+    trimmed.remove("resid 60 and name CG CD CE NZ", _logger=False)  # whole sidechain
+    trimmed.remove("resid 64 and name CD OE1 NE2", _logger=False)  # keeps CG
+    assert [(t[2], t[4]) for t in findTrimmedSidechains(trimmed)] == [(60, "LYS")]
+
+    n_before = trimmed.numAtoms
+    restored = restoreTrimmedSidechains(trimmed)
+    assert [(r[2], r[4]) for r in restored] == [(60, "LYS")]
+    assert trimmed.numAtoms > n_before
+    assert findTrimmedSidechains(trimmed) == []

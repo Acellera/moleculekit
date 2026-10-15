@@ -500,7 +500,52 @@ def _is_junction_bucket_rename(spec) -> bool:
 _AMBER_NAME_INVERSE_RESIDUES = {"LYN"}
 
 
-def _restore_trimmed_canonical_sidechains(mol, detect_specs):
+def findTrimmedSidechains(mol, detect_specs=None):
+    """``(segid, chain, resid, insertion, resname)`` per fully trimmed residue.
+
+    The scan behind :func:`restoreTrimmedSidechains`, so a caller can learn
+    which residues qualify without rebuilding them, and report exactly what a
+    restore would touch.
+    """
+    from moleculekit.residues import PROTEIN_RESIDUE_NAMES
+
+    BACKBONE_AND_CB = frozenset(
+        {"N", "CA", "C", "O", "OXT", "CB", "H", "H1", "H2", "H3", "HA"}
+    )
+    NO_RESTORE_RESNAMES = frozenset({"GLY", "ALA"})
+
+    spec_keys = set()
+    if detect_specs:
+        for spec in detect_specs:
+            r = spec.residue
+            spec_keys.add((str(r.segid), str(r.chain), int(r.resid), str(r.insertion)))
+
+    _, res_atom_idxs = mol.getResidues(return_idx=True)
+    targets = []
+    for atom_idxs in res_atom_idxs:
+        i0 = int(atom_idxs[0])
+        resname = str(mol.resname[i0])
+        if resname not in PROTEIN_RESIDUE_NAMES or resname in NO_RESTORE_RESNAMES:
+            continue
+        key = (
+            str(mol.segid[i0]),
+            str(mol.chain[i0]),
+            int(mol.resid[i0]),
+            str(mol.insertion[i0]),
+        )
+        if key in spec_keys:
+            continue
+        names_present = {str(n) for n in mol.name[atom_idxs]}
+        if not names_present.issubset(BACKBONE_AND_CB):
+            continue
+        if not {"N", "CA", "C"}.issubset(names_present):
+            continue
+        targets.append(key + (resname,))
+
+    return targets
+
+
+def restoreTrimmedSidechains(mol, detect_specs=None):
     """Reconstruct the heavy-atom sidechain of every canonical protein
     residue in ``mol`` whose sidechain is **completely** missing,
     using :func:`moleculekit.tools.mutate.mutate_residue` (Dunbrack
@@ -524,48 +569,21 @@ def _restore_trimmed_canonical_sidechains(mol, detect_specs):
       - Residues without a full N / CA / C backbone -
         :func:`mutate_residue` requires it for Kabsch alignment.
 
-    Mutates ``mol`` in place. Logs every reconstructed residue.
+    Mutates ``mol`` in place and returns the residues it rebuilt, each
+    ``(segid, chain, resid, insertion, resname)``. An empty list means the
+    structure had no fully trimmed sidechain to restore.
+
+    ``systemPrepare(restore_missing_sidechains=True)`` calls this before
+    PDB2PQR runs. Call it directly to repair a structure that is not being
+    prepared, or to see which residues would be rebuilt. PDB2PQR fills a
+    trimmed sidechain from its own templates when this does not run, so the
+    choice is which reconstruction the residue gets, not whether it gets one.
     """
     from moleculekit.tools.mutate import mutate_residue
-    from moleculekit.residues import PROTEIN_RESIDUE_NAMES
 
-    BACKBONE_AND_CB = frozenset(
-        {"N", "CA", "C", "O", "OXT", "CB", "H", "H1", "H2", "H3", "HA"}
-    )
-    NO_RESTORE_RESNAMES = frozenset({"GLY", "ALA"})
+    targets = findTrimmedSidechains(mol, detect_specs)
 
-    spec_keys = set()
-    if detect_specs:
-        for spec in detect_specs:
-            r = spec.residue
-            spec_keys.add((str(r.segid), str(r.chain), int(r.resid), str(r.insertion)))
-
-    # First pass: scan residues and record the IDs of the trimmed ones.
-    # Per-iteration we rebuild the boolean mask from these IDs because
-    # ``mutate_residue`` inserts new atoms and shifts every later
-    # index, invalidating any mask captured up front.
-    _, res_atom_idxs = mol.getResidues(return_idx=True)
-    targets = []
-    for atom_idxs in res_atom_idxs:
-        i0 = int(atom_idxs[0])
-        resname = str(mol.resname[i0])
-        if resname not in PROTEIN_RESIDUE_NAMES or resname in NO_RESTORE_RESNAMES:
-            continue
-        key = (
-            str(mol.segid[i0]),
-            str(mol.chain[i0]),
-            int(mol.resid[i0]),
-            str(mol.insertion[i0]),
-        )
-        if key in spec_keys:
-            continue
-        names_present = {str(n) for n in mol.name[atom_idxs]}
-        if not names_present.issubset(BACKBONE_AND_CB):
-            continue
-        if not {"N", "CA", "C"}.issubset(names_present):
-            continue
-        targets.append(key + (resname,))
-
+    restored = []
     for segid, chain, resid, insertion, resname in targets:
         mask = (
             (mol.segid == segid)
@@ -580,11 +598,13 @@ def _restore_trimmed_canonical_sidechains(mol, detect_specs):
             logger.info(
                 f"Restored missing sidechain atoms for {resname}:{chain}:{resid}"
             )
+            restored.append((segid, chain, resid, insertion, resname))
         except Exception as exc:
             logger.warning(
                 f"Could not restore sidechain for {resname}:{chain}:{resid}: "
                 f"{exc}. Falling back to PDB2PQR reconstruction."
             )
+    return restored
 
 
 def _anchor_bond_order(mol, res_atom_idxs, anchor_atom):
@@ -2872,7 +2892,21 @@ def systemPrepare(
     # bond capture so the reconstructed atoms participate in
     # everything downstream.
     if restore_missing_sidechains:
-        _restore_trimmed_canonical_sidechains(mol_in, detect_specs)
+        restoreTrimmedSidechains(mol_in, detect_specs)
+    else:
+        # PDB2PQR rebuilds these from its templates either way, so the choice is
+        # silent in the output: the residues come out with a full set of heavy
+        # atoms whichever path built them, and only their geometry differs.
+        trimmed = findTrimmedSidechains(mol_in, detect_specs)
+        if trimmed:
+            named = ", ".join(f"{t[4]}:{t[1]}:{t[2]}" for t in trimmed[:5])
+            more = f" and {len(trimmed) - 5} more" if len(trimmed) > 5 else ""
+            logger.warning(
+                f"{len(trimmed)} residue(s) have no sidechain past CB "
+                f"({named}{more}). PDB2PQR will rebuild them from its templates; "
+                "pass restore_missing_sidechains=True to place them with a "
+                "Dunbrack rotamer instead."
+            )
 
     # Rename + re-template canonical AAs with sidechain crosslinks
     # BEFORE PDB2PQR sees them. Renamed residues either land on a
