@@ -29,7 +29,7 @@ def dihedralAngle(pos: np.ndarray, box: np.ndarray | None = None) -> float:
     Returns
     -------
     angle: float
-        The angle in radians
+        The angle in radians, -pi to pi
     """
     if pos.shape[0] != 4 or pos.shape[1] != 3:
         raise RuntimeError(
