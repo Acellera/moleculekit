@@ -2696,8 +2696,18 @@ def systemPrepare(
         Atom selections use VMD syntax.
     no_opt : list of str, optional
         Atom selections of residues to exclude from H-bond / sidechain
-        flip optimization. Use this when an optimizer flip would degrade
-        a known-good structure (e.g. a residue in a metal site).
+        flip optimization, one residue per selection. Rarely needed: a
+        residue covalently bonded to a non-protein partner is already held
+        by ``hold_nonpeptidic_bonds``, a glycosylated residue by the sugar
+        path, and a metal-coordinating Cys/His/Tyr by the ``detect_specs``
+        rename, which is why ion bonds are left out of the automatic hold.
+        Pass it for geometry none of those three sees, or for a whole
+        structure whose coordinates are already the intended answer (an
+        equilibrated or QM-refined input, a frame that must stay
+        comparable to others). The flips and rotamer choices it suppresses
+        are what resolve the amide and histidine orientations an
+        unrefined input leaves open, so held residues keep whatever
+        orientation they arrived with.
     no_prot : list of str, optional
         Atom selections of residues to exclude from hydrogen addition.
     no_titr : list of str, optional
