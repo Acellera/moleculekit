@@ -27,10 +27,10 @@ here hand PROPKA what it cannot work out for itself:
     distance threshold (:func:`_apply_sybyl_types`)
   - the input's own formal charge, in place of PROPKA's titration verdict
     (:func:`_apply_templated_formal_charges`)
-  - metals, both the ones buried inside a cofactor residue that PROPKA's
-    residue-name lookup cannot see, and the groups coordinating them
-    (:func:`_add_cofactor_metal_groups`,
-    :func:`_hold_metal_coordinated_groups`)
+  - formal charges on atoms no PROPKA group covers, such as a metal buried
+    inside a cofactor residue or a cyclic guanidinium ligand typing misses
+    (:func:`_add_ungrouped_charge_groups`)
+  - the groups coordinating a metal (:func:`_hold_metal_coordinated_groups`)
   - PDB2PQR's terminus decision, in place of the one PROPKA infers from the
     text (:func:`_clear_phantom_termini`)
 
@@ -192,7 +192,7 @@ def _noncanonical_sidechain_plan(src_mol, detect_specs):
     all. The standard residues are left alone even where PROPKA models no
     sidechain group for them: re-typing a methionine or a phenylalanine would
     invite ligand typing to invent groups on chemistry PROPKA is right to
-    ignore. Backbone atoms are always left alone, because
+    ignore. Backbone atoms of chain residues are always left alone, because
     ``is_protein_group`` needs ``atom.type == 'atom'`` to build the ``BBN`` /
     ``BBC`` groups through which a residue's backbone donates and accepts
     hydrogen bonds, and to build genuine terminus groups.
@@ -209,6 +209,9 @@ def _noncanonical_sidechain_plan(src_mol, detect_specs):
     from moleculekit.residues import MODIFIED_PROTEIN_RESIDUE_NAMES
     from moleculekit.tools.nonstandard_residues import (
         _CANONICAL_RESNAMES,
+        CovalentLigandSpec,
+        LigandSpec,
+        ScaffoldSpec,
         getResidueMask,
         requiresTemplate,
     )
@@ -224,7 +227,13 @@ def _noncanonical_sidechain_plan(src_mol, detect_specs):
     # shows it was met. Without that an untemplated cofactor's default
     # ``formalcharge`` of zero reads as a decision that it is neutral.
     templated_atoms = np.zeros(src_mol.numAtoms, dtype=bool)
+    # Ligands, covalent ligands and scaffolds are never peptide-bonded into a
+    # chain, so an atom of theirs named ``C`` or ``N`` (benzamidine's amidine
+    # carbon is ``C``) is not a backbone atom and must not be skipped as one.
+    no_backbone = np.zeros(src_mol.numAtoms, dtype=bool)
     for spec in detect_specs or ():
+        if isinstance(spec, (LigandSpec, CovalentLigandSpec, ScaffoldSpec)):
+            no_backbone |= getResidueMask(src_mol, spec)
         if not requiresTemplate(spec):
             continue
         res_mask = getResidueMask(src_mol, spec)
@@ -237,7 +246,7 @@ def _noncanonical_sidechain_plan(src_mol, detect_specs):
             if resname in _CANONICAL_RESNAMES:
                 continue
         name = str(src_mol.name[idx]).strip()
-        if name in _BACKBONE_ATOM_NAMES:
+        if name in _BACKBONE_ATOM_NAMES and not no_backbone[idx]:
             continue
         key = (
             str(src_mol.chain[idx]),
@@ -422,6 +431,156 @@ def _apply_templated_formal_charges(molecule, parameters, templated_charges, ph)
 _METAL_COORDINATION_FALLBACK_DIST = 2.8
 
 
+def _apply_templated_bonds(molecule, src_mol, templated_charges):
+    """Replace PROPKA's distance-guessed bonds on templated heavy atoms with the
+    input's own.
+
+    PROPKA bonds every atom pair closer than an element-pair cutoff and never
+    reads the input's bonds. For a templated residue that is a guess where the
+    answer is known, and a strained or clashing pose turns it into wrong
+    connectivity, which ligand typing (``get_bonded_heavy_atoms``,
+    ``get_bonded_elements``) then reads as different chemistry. Bonds to other
+    residues are rebuilt too, so a covalent ligand stays attached to its
+    anchor. Bonds to metals stay exactly as PROPKA guessed them, whatever the
+    input says (a PDB's CONECT coordination reads as ``un``, not ``mc``):
+    metal handling is calibrated on PROPKA's own view, which bonds ATP's
+    oxygens to a Mg at ~2 A but not heme's nitrogens to its Fe, and a
+    porphyrin nitrogen counted as three-coordinate would lose the ``NAR``
+    group that carries its charge.
+
+    Must run after bonding and before hydrogens are restored and groups are
+    extracted. Returns the number of bonds set.
+    """
+    from moleculekit.periodictable import METAL_ELEMENTS
+
+    elements = np.char.title(np.char.strip(src_mol.element.astype(str)))
+    is_metal = np.isin(elements, list(METAL_ELEMENTS))
+    keyed = {}
+    for idx in range(src_mol.numAtoms):
+        key = (
+            str(src_mol.chain[idx]),
+            int(src_mol.resid[idx]),
+            str(src_mol.insertion[idx]).strip(),
+            str(src_mol.name[idx]).strip(),
+        )
+        keyed[idx] = key
+    metal_keys = {keyed[idx] for idx in np.where(is_metal)[0]}
+    templated = {
+        idx
+        for idx, key in keyed.items()
+        if key in templated_charges
+        and src_mol.element[idx] != "H"
+        and not is_metal[idx]
+    }
+    pairs = [
+        (int(a), int(b))
+        for a, b in src_mol.bonds
+        if (a in templated or b in templated)
+        and not (is_metal[a] or is_metal[b])
+        and src_mol.element[a] != "H"
+        and src_mol.element[b] != "H"
+    ]
+
+    made = 0
+    for conformation in molecule.conformations.values():
+        by_key = {_propka_atom_key(atom): atom for atom in conformation.atoms}
+        for idx in templated:
+            atom = by_key.get(keyed[idx])
+            if atom is None:
+                continue
+            kept = []
+            for other in atom.bonded_atoms:
+                # by key, not ``other.element``: PROPKA reads a free MG as "M"
+                if _propka_atom_key(other) in metal_keys:
+                    kept.append(other)
+                else:
+                    other.bonded_atoms.remove(atom)
+            atom.bonded_atoms = kept
+        for a, b in pairs:
+            atom_a, atom_b = by_key.get(keyed[a]), by_key.get(keyed[b])
+            if atom_a is None or atom_b is None or atom_b in atom_a.bonded_atoms:
+                continue
+            atom_a.bonded_atoms.append(atom_b)
+            atom_b.bonded_atoms.append(atom_a)
+            made += 1
+    return made
+
+
+def _restore_templated_hydrogens(molecule, src_mol, templated_charges):
+    """Put the input's own hydrogens back on templated ligand-typed atoms.
+
+    PROPKA drops every hydrogen it reads (``read_pdb`` without
+    ``keep_protons``), and ligand typing then re-protonates each ``hetatm`` atom
+    from a valence count on its SYBYL type. For a templated residue that
+    discards the template's protonation: both ring nitrogens of a BACE
+    inhibitor's pyrimidine came back as N-H donors. The atoms the template
+    covers get their input hydrogens re-attached and are marked protonated, so
+    ``protonate_atom`` leaves them alone; every other residue is protonated by
+    PROPKA as before.
+
+    Must run after bonding (the bond maker would otherwise re-bond the restored
+    hydrogens by distance) and before groups are extracted.
+
+    Returns the number of hydrogens restored.
+    """
+    import propka.atom
+
+    keys = {}
+    for idx in range(src_mol.numAtoms):
+        key = (
+            str(src_mol.chain[idx]),
+            int(src_mol.resid[idx]),
+            str(src_mol.insertion[idx]).strip(),
+            str(src_mol.name[idx]).strip(),
+        )
+        if key in templated_charges:
+            keys[idx] = key
+    h_parent = {}
+    for a, b in np.asarray(src_mol.bonds, dtype=int):
+        for h, heavy in ((a, b), (b, a)):
+            if h in keys and heavy in keys and src_mol.element[h] == "H":
+                h_parent[h] = heavy
+
+    restored = 0
+    for conformation in molecule.conformations.values():
+        by_key = {
+            _propka_atom_key(atom): atom
+            for atom in conformation.atoms
+            if atom.type == "hetatm"
+        }
+        for idx, key in keys.items():
+            atom = by_key.get(key)
+            if atom is not None and src_mol.element[idx] != "H":
+                atom.is_protonated = True
+        for h, heavy in h_parent.items():
+            parent = by_key.get(keys[heavy])
+            if parent is None:
+                continue
+            # mirrors propka.protonate.Protonate.add_proton
+            new_h = propka.atom.Atom()
+            x, y, z = (float(v) for v in src_mol.coords[h, :, 0])
+            new_h.set_property(
+                name=keys[h][3],
+                res_name=parent.res_name,
+                chain_id=parent.chain_id,
+                res_num=parent.res_num,
+                x=x,
+                y=y,
+                z=z,
+            )
+            new_h.icode = parent.icode
+            new_h.element = "H"
+            new_h.type = parent.type
+            new_h.bonded_atoms = [parent]
+            parent.bonded_atoms.append(new_h)
+            conformation.add_atom(new_h)
+            new_h.residue_label = (
+                f"{new_h.name:<3s}{new_h.res_num:>4d}{new_h.chain_id:>2s}"
+            )
+            restored += 1
+    return restored
+
+
 def _metal_coordinated_atom_keys(src_mol):
     """``(chain, resid, insertion, name)`` keys of atoms coordinating a metal.
 
@@ -527,32 +686,39 @@ def _hold_metal_coordinated_groups(molecule, parameters, metal_keys, mark):
     return held
 
 
-def _add_cofactor_metal_groups(molecule, parameters, templated_charges, mark):
-    """Give a cofactor's own metal a fixed-charge group.
+def _add_ungrouped_charge_groups(molecule, parameters, templated_charges, mark):
+    """Give every templated formal charge that no PROPKA group carries a
+    fixed-charge group of its own.
 
-    ``is_ion_group`` recognises an ion by its *residue* name, so a standalone
-    ``ZN`` residue is found but a metal that is one atom inside a larger residue
-    is not: a heme iron's resname is ``HEM``. Nothing else picks it up either,
-    once :func:`_correct_propka_elements` stops the element being misread as a
-    halogen that ligand typing would type by accident. A buried trication would
-    then contribute nothing at all, and the cofactor would present to PROPKA as
-    its anions alone - on 1U5U that pushed a neighbouring arginine up by 3.3
-    pKa units, in the opposite direction to the truth.
+    :func:`_apply_templated_formal_charges` can only correct groups PROPKA
+    built, so a charge on an atom outside every group would vanish. Two ways
+    that happens:
 
-    Only metals the input gives a formal charge to are added, through the same ion
-    channel the rest of this module uses, so the charge and its position both
-    come from the templated chemistry.
+    - ``is_ion_group`` recognises an ion by its *residue* name, so a standalone
+      ``ZN`` residue is found but a metal that is one atom inside a larger
+      residue is not: a heme iron's resname is ``HEM``. A buried trication would
+      then contribute nothing, and the cofactor would present to PROPKA as its
+      anions alone - on 1U5U that pushed a neighbouring arginine up by 3.3 pKa
+      units, in the opposite direction to the truth.
+    - ligand typing only knows acyclic amidinium and guanidinium
+      (``C2NGroup`` / ``CGGroup`` need two N.pl3 with one heavy neighbour), so
+      the ring-NH+ of a cyclic acylguanidine, as in the BACE inhibitors, gets
+      no group at all.
+
+    The charge goes in through the same ion channel the rest of this module
+    uses, centred on the atom the input puts it on.
     """
-    from moleculekit.periodictable import METAL_ELEMENTS
     from propka.group import IonGroup
 
     added = 0
     for conformation in molecule.conformations.values():
-        existing = {id(group.atom) for group in conformation.groups}
+        covered = set()
+        for group in conformation.groups:
+            covered.add(id(group.atom))
+            covered.update(id(a) for a in group.interaction_atoms_for_acids)
+            covered.update(id(a) for a in group.interaction_atoms_for_bases)
         for atom in list(conformation.atoms):
-            if str(atom.element).strip().title() not in METAL_ELEMENTS:
-                continue
-            if id(atom) in existing:
+            if id(atom) in covered:
                 continue
             key = _propka_atom_key(atom)
             if key not in mark:
@@ -640,6 +806,16 @@ def _run_propka(propka_args, biomolecule, src_mol=None, detect_specs=None):
                 "SYBYL types"
             )
         molecule.version.setup_bonding_and_protonation(molecule)
+        if templated_charges:
+            logger.debug(
+                f"Set {_apply_templated_bonds(molecule, src_mol, templated_charges)}"
+                " templated bonds in place of PROPKA's distance guesses"
+            )
+            logger.debug(
+                "Restored "
+                f"{_restore_templated_hydrogens(molecule, src_mol, templated_charges)}"
+                " templated hydrogens PROPKA would have re-derived"
+            )
         molecule.extract_groups()
         if templated_charges:
             logger.debug(
@@ -650,8 +826,8 @@ def _run_propka(propka_args, biomolecule, src_mol=None, detect_specs=None):
         if mark:
             logger.debug(
                 "Added "
-                f"{_add_cofactor_metal_groups(molecule, parameters, templated_charges, mark)}"
-                " fixed-charge groups for cofactor-internal metals"
+                f"{_add_ungrouped_charge_groups(molecule, parameters, templated_charges, mark)}"
+                " fixed-charge groups for formal charges no PROPKA group carries"
             )
         if retyped:
             metal_keys = _metal_coordinated_atom_keys(src_mol)

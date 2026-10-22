@@ -80,6 +80,130 @@ _LIGAND_SMILES = {
 }
 
 
+# SMILES for every component the build-system benchmark templates: its free
+# ligands and cofactors, and the non-canonical residues sitting in its chains.
+# RCSB's canonical SMILES, with every group that is ionised at pH 7.4 written in
+# that state, since preparation takes a template's charges as given. In-chain
+# residues are charged on the sidechain only; their backbone becomes peptide
+# bonds. HEM is the same ferric heme `test_systemPrepare` templates 1U5U with. Kept apart from `_LIGAND_SMILES` above, which
+# `test_systemPrepare` intersects against a structure's resnames -- adding these
+# there would template residues its stored references were never measured with.
+_BENCHMARK_LIGAND_SMILES = {
+    # 7-hydroxy-L-tryptophan
+    "0AF": "c1cc2c(c[nH]c2c(c1)O)C[C@@H](C(=O)O)N",
+    # 4-CHLORO-L-PHENYLALANINE
+    "200": "c1cc(ccc1C[C@@H](C(=O)O)N)Cl",
+    # N-methyl-D-alanine
+    "33X": "C[C@H](C(=O)O)NC",
+    # (3R)-4-[4-(2-methoxyethyl)piperazin-1-yl]-N-methyl-L-valine
+    "34E": "C[C@H](CN1CC[NH+](CC1)CCOC)[C@@H](C(=O)O)NC",
+    # (3P)-6-(4-methylpiperazin-1-yl)-3-(naphthalen-1-yl)-4-(pyridin-4
+    "A1C99": "CN1CCN(CC1)c2cc(c(nn2)c3cccc4c3cccc4)c5ccncc5",
+    # ALPHA-AMINOBUTYRIC ACID
+    "ABA": "CC[C@@H](C(=O)O)N",
+    # 2-AMINO-3-CYCLOHEXYL-PROPIONIC ACID
+    "ALC": "C1CCC(CC1)C[C@@H](C(=O)O)N",
+    # ADENOSINE-5'-TRIPHOSPHATE
+    "ATP": "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CO[P@@](=O)([O-])O[P@](=O)([O-])OP(=O)([O-])[O-])O)O)N",
+    # 1-(5-TERT-BUTYL-2-P-TOLYL-2H-PYRAZOL-3-YL)-3-[4-(2-MORPHOLIN-4-Y
+    "B96": "Cc1ccc(cc1)n2c(cc(n2)C(C)(C)C)NC(=O)Nc3ccc(c4c3cccc4)OCCN5CCOCC5",
+    # BENZAMIDINE
+    "BEN": "NC(=[NH2+])c1ccccc1",
+    # 4-METHYL-4-[(E)-2-BUTENYL]-4,N-METHYL-THREONINE
+    "BMT": "C/C=C/C[C@@H](C)[C@H]([C@@H](C(=O)O)NC)O",
+    # CHOLESTEROL
+    "CLR": "C[C@H](CCCC(C)C)[C@H]1CC[C@@H]2[C@@]1(CC[C@H]3[C@H]2CC=C4[C@@]3(CC[C@@H](C4)O)C)C",
+    # D-ALANINE
+    "DAL": "C[C@H](C(=O)O)N",
+    # ESTRADIOL
+    "EST": "C[C@]12CC[C@@H]3c4ccc(cc4CC[C@H]3[C@@H]1CC[C@@H]2O)O",
+    # 4-[3-(4-FLUOROPHENYL)-1H-PYRAZOL-4-YL]PYRIDINE
+    "GG5": "c1cc(ccc1c2c(c[nH]n2)c3ccncc3)F",
+    # 2,3,4,6-tetra-O-sulfonato-alpha-D-glucopyranose
+    "GU4": "C([C@@H]1[C@H]([C@@H]([C@H]([C@H](O1)O)OS(=O)(=O)[O-])OS(=O)(=O)[O-])OS(=O)(=O)[O-])OS(=O)(=O)[O-]",
+    # PROTOPORPHYRIN IX CONTAINING FE
+    "HEM": _LIGAND_SMILES["HEM"],
+    # L-HOMOARGININE
+    "HRG": "C(CCNC(=[NH2+])N)C[C@@H](C(=O)O)N",
+    # 1-[3,5-bis(3-bromanylpropanoyl)-1,3,5-triazinan-1-yl]-3-bromanyl
+    "LFI": "C1N(CN(CN1C(=O)CCBr)C(=O)CCBr)C(=O)CCBr",
+    # 2-methyl-L-norleucine
+    "MK8": "CCCC[C@@](C)(C(=O)O)N",
+    # N-METHYLLEUCINE
+    "MLE": "CC(C)C[C@@H](C(=O)O)NC",
+    # O-benzyl-N-methyl-L-tyrosinamide
+    "MS7": "CNC(=O)[C@H](Cc1ccc(cc1)OCc2ccccc2)[NH3+]",
+    # N-METHYLVALINE
+    "MVA": "CC(C)[C@@H](C(=O)O)NC",
+    # N-{(3S,8S)-3-{4-[(3,4-dichlorophenyl)methoxy]phenyl}-7-[(1S)-1-p
+    "N2V": "CC[C@@H](c1ccccc1)N2Cc3cc4c(cc3C[C@H]2C(=O)N[C@@H](Cc5ccc(cc5)c6ccnc(c6C)C)C(=O)[O-])OC[C@@H](O4)c7ccc(cc7)OCc8ccc(c(c8)Cl)Cl",
+    # NORLEUCINE
+    "NLE": "CCCC[C@@H](C(=O)O)N",
+    # OCTAHYDROINDOLE-2-CARBOXYLIC ACID
+    "OIC": "C1CC[C@H]2[C@@H](C1)C[C@H](N2)C(=O)O",
+    # N-(3-PHENYL-2-SULFANYLPROPANOYL)PHENYLALANYLALANINE
+    "OIR": "C[C@@H](C(=O)[O-])NC(=O)[C@H](Cc1ccccc1)NC(=O)[C@@H](Cc2ccccc2)S",
+    # PALMITIC ACID
+    # thioester-linked to Cys in 1GZM; templating drops the OH leaving group
+    "PLM": "CCCCCCCCCCCCCCCC(=O)O",
+    # O-PHOSPHOETHANOLAMINE
+    "PSE": "C([C@H](COP(=O)([O-])[O-])[NH3+])O",
+    # RETINAL
+    "RET": "CC1=C(C(CCC1)(C)C)/C=C/C(=C/C=C/C(=C/C=O)/C)/C",
+    # 4-(4-METHYL-PIPERAZIN-1-YLMETHYL)-N-[4-METHYL-3-(4-PYRIDIN-3-YL-
+    "STI": "Cc1ccc(cc1Nc2nccc(n2)c3cccnc3)NC(=O)c4ccc(cc4)CN5CC[NH+](CC5)C",
+    # 4-(3-amino-5-phenyl-1,2,4-triazin-6-yl)-2-chlorophenol
+    "T4E": "c1ccc(cc1)c2c(nnc(n2)N)c3ccc(c(c3)Cl)O",
+    # 3-[(1S,2S)-1-(5-[(4S)-2,2-dimethyloxan-4-yl]-2-{(4S)-2-(4-fluoro
+    "V6G": "Cc1cc(cc(c1F)C)n2c(c3c(n2)CCN([C@H]3C)C(=O)c4cc5cc(ccc5n4[C@]6(C[C@@H]6C)C7=NOC(=O)N7)[C@H]8CCOC(C8)(C)C)N9C=CN(C9=O)c1ccc2c(c1F)cnn2C",
+    # 1,3,4,6-tetra-O-sulfo-beta-D-fructofuranose
+    "YYJ": "C([C@@H]1[C@H]([C@@H]([C@](O1)(COS(=O)(=O)[O-])O)OS(=O)(=O)[O-])OS(=O)(=O)[O-])OS(=O)(=O)[O-]",
+    # 4-{2-[(7-amino-2-furan-2-yl[1,2,4]triazolo[1,5-a][1,3,5]triazin-
+    "ZMA": "c1cc(oc1)c2nc3nc(nc(n3n2)N)NCCc4ccc(cc4)O",
+}
+
+# (pdbid, components to remove, components to template). The removals are the
+# crystallisation additives and detergents the benchmark's sheets drop, so each
+# system is prepared as the benchmark builds it rather than as deposited. A
+# peptide-linking component is part of a chain and is always templated, never
+# dropped. Ions carry no SMILES and ACE / NH2 are standard caps, so neither is
+# listed. Nor are the glycans, which preparation routes through the sugar path,
+# or 5VQ2's GTP, whose two copies differ by a metal coordination and so need a
+# resname each before they can be templated. 1KV2 backs two benchmark cases differing only in which gaps they
+# model, which preparation never sees.
+_BENCHMARK_SYSTEMS = [
+    ('11OY', [], ['A1C99', 'GG5']),
+    ('1A25', [], ['PSE']),
+    ('1BL8', [], []),
+    ('1BNA', [], []),
+    ('1ERE', [], ['EST']),
+    ('1GZM', ['C8E', 'LDA', 'PEF'], ['PLM', 'RET']),
+    ('1HCK', [], ['ATP']),
+    ('1KV2', [], ['B96']),
+    ('1LKK', [], []),
+    ('1LV1', [], []),
+    ('1R1J', [], ['OIR']),
+    ('1U5U', [], ['HEM']),
+    ('1UNC', [], []),
+    ('2B5I', [], []),
+    ('2KDC', [], []),
+    ('3MSS', [], ['MS7', 'STI']),
+    ('3PTB', [], ['BEN']),
+    ('3QRC', ['C8E'], ['GU4', 'YYJ']),
+    ('3UZC', [], ['T4E']),
+    ('3WBM', [], []),
+    ('4EFP', ['EDO', 'PEG', 'PGE', 'SCN'], ['0AF']),
+    ('4EIY', ['OLA', 'OLB', 'OLC', 'PEG'], ['CLR', 'ZMA']),
+    ('4TOT', ['P6G', 'SO4'], ['33X', '34E', 'ABA', 'BMT', 'DAL', 'MLE', 'MVA']),
+    ('5VBL', ['OLC'], ['200', 'ALC', 'HRG', 'NLE', 'OIC']),
+    ('5VQ2', [], []),
+    ('6ORV', [], ['N2V']),
+    ('6XOX', [], ['V6G']),
+    ('8QFZ', [], ['LFI']),
+    ('8QU4', ['EDO', 'TRS'], ['MK8', 'NLE']),
+]
+
+
 def _two_res_closure(dist, add_bond):
     """Two ALA residues whose first-N and last-C are ``dist`` Angstrom apart,
     optionally with an explicit bond between them (a synthetic head-to-tail
@@ -765,6 +889,78 @@ def test_systemprepare_ligand():
         pmol,
         df,
     )
+
+
+@pytest.mark.parametrize(
+    "smiles, expected",
+    [
+        # [NH+] in a cyclic acylguanidine: PROPKA's ligand typing builds no group
+        # for it, so the charge only reaches the Asp dyad as a fixed ion group
+        ("CN1C(=O)[C@](c2cccc(-c3cccc(Cl)c3)c2)(c2ncccn2)[NH+]=C1N", ("ASP", "ASH")),
+        ("CN1C(=O)[C@](c2cccc(-c3cccc(Cl)c3)c2)(c2ncccn2)N=C1N", ("ASH", "ASH")),
+    ],
+)
+def test_systemprepare_bace_ligand_charge_reaches_dyad(smiles, expected):
+    # BACE / CAT-13n from the Schrodinger FEP+ benchmark jacs_set (MIT)
+    test_home = os.path.join(curr_dir, "test_systemprepare", "BACE")
+    mol = Molecule(os.path.join(test_home, "bace_protein.pdb"))
+    lig = Molecule(os.path.join(test_home, "CAT-13n.sdf"))
+    lig.resname[:] = "LIG"
+    lig.chain[:] = lig.segid[:] = "L"
+    lig.resid[:] = 1
+    lig.name[:] = [f"{e.upper()}{i}" for i, e in enumerate(lig.element)]
+    mol.append(lig)
+    mol.remove("resname LIG and hydrogen", _logger=False)
+    mol.templateResidueFromSmiles(mol.resname == "LIG", smiles, addHs=True)
+
+    _, _, df = systemPrepare(mol, pH=4.5, return_details=True)
+    dyad = df[(df.chain == "A") & df.resid.isin([93, 289])].sort_values("resid")
+    assert tuple(dyad.protonation) == expected
+
+
+def test_systemprepare_template_charge_overrides_propka_on_backbone_named_ligand_atoms():
+    # Benzamidine's amidine carbon is named ``C``. The template's charge must
+    # still decide the group: a neutral amidine leaves Asp189 without its salt
+    # bridge, a charged one restores it.
+    path = os.path.join(curr_dir, "test_systemprepare", "3PTB", "3PTB.pdb")
+    pkas = []
+    for smiles in (r"[H]/N=C(\c1ccccc1)/N", "NC(=[NH2+])c1ccccc1"):
+        mol = Molecule(path)
+        mol.remove("resname BEN and element H", _logger=False)
+        mol.templateResidueFromSmiles(mol.resname == "BEN", smiles, addHs=True)
+        _, _, df = systemPrepare(mol, return_details=True)
+        pkas.append(df.pKa[(df.resid == 189) & (df.chain == "A")].iloc[0])
+    assert pkas[0] > pkas[1] + 1
+
+
+def test_systemprepare_templated_bonds_replace_propka_distance_guesses(monkeypatch):
+    # Stretch benzamidine's C-N1 past PROPKA's bonding cutoff: PROPKA alone
+    # would drop the bond, the template must put it back.
+    from propka.molecular_container import MolecularContainer
+
+    captured = {}
+    calculate_pka = MolecularContainer.calculate_pka
+
+    def capture(self):
+        captured["molecule"] = self
+        calculate_pka(self)
+
+    monkeypatch.setattr(MolecularContainer, "calculate_pka", capture)
+
+    mol = Molecule(os.path.join(curr_dir, "test_systemprepare", "3PTB", "3PTB.pdb"))
+    mol.remove("resname BEN and element H", _logger=False)
+    mol.templateResidueFromSmiles(mol.resname == "BEN", "NC(=[NH2+])c1ccccc1", addHs=True)
+    c = np.where((mol.resname == "BEN") & (mol.name == "C"))[0][0]
+    n1 = np.where((mol.resname == "BEN") & (mol.name == "N1"))[0][0]
+    moved = [n1] + [h for h in mol.getNeighbors(n1) if mol.element[h] == "H"]
+    v = mol.coords[n1, :, 0] - mol.coords[c, :, 0]
+    mol.coords[moved, :, 0] += v / np.linalg.norm(v) * 2.3 - v
+    expected = {str(mol.name[i]) for i in mol.getNeighbors(c) if mol.element[i] != "H"}
+
+    systemPrepare(mol)
+    conf = next(c for c in captured["molecule"].conformations.values() if c.atoms)
+    atom = next(a for a in conf.atoms if a.res_name.strip() == "BEN" and a.name == "C")
+    assert {b.name for b in atom.bonded_atoms if b.element != "H"} == expected
 
 
 def test_reprotonate():
@@ -2866,3 +3062,43 @@ def test_rebuild_sidechain_repairs_one_residue_and_refuses_the_rest():
 
     with pytest.raises(ValueError, match="no sidechain past CB"):
         mol.rebuildSidechain("resid 18")  # GLY
+
+
+@pytest.mark.parametrize("pdbid,drop,templates", _BENCHMARK_SYSTEMS)
+def test_benchmark_system_prepares(pdbid, drop, templates):
+    """Every structure the build-system benchmark builds, prepared with its
+    ligands and non-canonical residues templated from SMILES.
+
+    Nothing is compared against a reference. The point for now is that each
+    system reaches the end of preparation with its chemistry defined, so a
+    protonation change shows as a diff across all of them at once rather than
+    one at a time. Add the per-system reference with `_compare_results` once
+    the states are settled.
+    """
+    from moleculekit.tools.autosegment import autoSegment
+
+    mol = Molecule(pdbid)
+    mol.dropFrames(keep=0)  # the NMR entries carry a model each
+    # Chains have to be single characters here, and several of these entries
+    # carry two-letter deposited ids, so segment on both fields first.
+    mol = autoSegment(mol, fields=("segid", "chain"), _logger=False)
+    if drop:
+        mol.remove(f"resname {' '.join(drop)}", _logger=False)
+    if templates:
+        # `addHs` below builds the residue's hydrogens from its SMILES, so drop
+        # any it already carries rather than end up with both sets.
+        mol.remove(f"resname {' '.join(templates)} and element H", _logger=False)
+        for resn in templates:
+            mol.templateResidueFromSmiles(
+                mol.resname == resn,
+                _BENCHMARK_LIGAND_SMILES[resn],
+                addHs=True,
+                _logger=False,
+            )
+
+    pmol, _, df = systemPrepare(mol, return_details=True)
+
+    # Deliberately not per-resname: preparation renames what it buckets, so a
+    # residue that survived can come out under another name.
+    assert (pmol.element == "H").any(), "preparation produced no hydrogens"
+    assert len(df), "preparation reported no residues"
