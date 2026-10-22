@@ -1983,6 +1983,75 @@ class Molecule(object):
             keep_backbone = np.isin(self.name[sel_idx], ("N", "CA", "C", "O"))
             self.remove(sel_idx[~keep_backbone], _logger=False)
 
+    def rebuildSidechain(self, sel: str | np.ndarray, rotamer_mode: str = "best"):
+        """Rebuild one residue's sidechain, keeping the residue it already is.
+
+        The sidechain is built from ideal geometry onto the existing backbone
+        and placed with the Dunbrack backbone-dependent rotamer library. The
+        residue's identity does not change, so this is the repair of a
+        truncated residue rather than a mutation.
+
+        Only a residue trimmed all the way to backbone + CB is rebuilt. One
+        keeping any atom past CB is refused: a partial sidechain almost always
+        marks a deliberate truncation, such as an isopeptide-bonded GLU keeping
+        CG and CD, or a covalent ligand on LYS. Re-templating it would put back
+        the atoms someone removed on purpose. GLY and ALA have nothing past CB
+        to build.
+
+        Parameters
+        ----------
+        sel : str or np.ndarray
+            An atom selection matching exactly one residue, as a selection
+            string, a boolean mask, or an integer index array.
+        rotamer_mode : str, optional
+            Which rotamer to take. ``"best"`` (default) picks the one with the
+            lowest VdW clash against its surroundings, ``"first"`` the most
+            probable, ``"random"`` samples by probability.
+
+        Raises
+        ------
+        ValueError
+            If the selection matches no atoms or more than one residue, if the
+            residue keeps an atom past CB, or if it is a residue with no
+            sidechain to rebuild.
+
+        Examples
+        --------
+        >>> mol.rebuildSidechain("chain A and resid 71")  # doctest: +SKIP
+        """
+        from moleculekit.tools.mutate import mutate_residue
+
+        sel_mask = self.atomselect(sel, strict=True)
+        sel_idx = np.where(sel_mask)[0]
+        if len(sel_idx) == 0:
+            raise ValueError(f"Selection '{sel}' matched no atoms.")
+        residues = set(
+            zip(self.chain[sel_idx], self.resid[sel_idx], self.insertion[sel_idx])
+        )
+        if len(residues) != 1:
+            raise ValueError(
+                f"Selection '{sel}' matched {len(residues)} residues; it has to "
+                "match exactly one."
+            )
+
+        resname = str(self.resname[sel_idx[0]])
+        if resname in ("GLY", "ALA"):
+            raise ValueError(f"{resname} has no sidechain past CB to rebuild.")
+        past_cb = [
+            str(n)
+            for n in self.name[sel_idx]
+            if str(n) not in ("N", "CA", "C", "O", "OXT", "CB")
+            and not str(n).startswith("H")
+        ]
+        if past_cb:
+            raise ValueError(
+                f"Residue {resname} keeps sidechain atoms past CB ({past_cb}), so "
+                "it is not a trimmed residue. Rebuilding it would restore atoms "
+                "that may have been removed deliberately."
+            )
+
+        mutate_residue(self, sel=sel_mask, newres=resname, rotamer_mode=rotamer_mode)
+
     def wrap(
         self,
         wrapsel: str | np.ndarray = "all",

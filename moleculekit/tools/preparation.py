@@ -545,7 +545,7 @@ def findTrimmedSidechains(mol, detect_specs=None):
     return targets
 
 
-def restoreTrimmedSidechains(mol, detect_specs=None):
+def restoreTrimmedSidechains(mol, detect_specs=None, residues=None):
     """Reconstruct the heavy-atom sidechain of every canonical protein
     residue in ``mol`` whose sidechain is **completely** missing,
     using :func:`moleculekit.tools.mutate.mutate_residue` (Dunbrack
@@ -573,15 +573,26 @@ def restoreTrimmedSidechains(mol, detect_specs=None):
     ``(segid, chain, resid, insertion, resname)``. An empty list means the
     structure had no fully trimmed sidechain to restore.
 
-    ``systemPrepare(restore_missing_sidechains=True)`` calls this before
-    PDB2PQR runs. Call it directly to repair a structure that is not being
-    prepared, or to see which residues would be rebuilt. PDB2PQR fills a
-    trimmed sidechain from its own templates when this does not run, so the
-    choice is which reconstruction the residue gets, not whether it gets one.
+    ``residues`` narrows the work to the residues it names, each one a
+    ``(segid, chain, resid, insertion, resname)`` key of the kind
+    :func:`findTrimmedSidechains` returns; the rest are left trimmed. The two
+    reconstructions answer to different things: a Dunbrack rotamer is chosen
+    for lowest clash, while :func:`systemPrepare` places a sidechain to satisfy
+    its hydrogen bonds. Restoring only the residues that need it here leaves
+    every other one to the placement that reads its surroundings.
+
+    :func:`systemPrepare` does not call this. It fills a trimmed sidechain
+    itself, placing it to satisfy the residue's hydrogen bonds, so reach for
+    this only where that has not happened: a structure prepared elsewhere, or
+    one past the tenth of its heavy atoms at which the repair is skipped.
+    :meth:`Molecule.rebuildSidechain` is the same repair for a single residue.
     """
     from moleculekit.tools.mutate import mutate_residue
 
     targets = findTrimmedSidechains(mol, detect_specs)
+    if residues is not None:
+        wanted = {tuple(r) for r in residues}
+        targets = [t for t in targets if tuple(t) in wanted]
 
     restored = []
     for segid, chain, resid, insertion, resname in targets:
@@ -2636,7 +2647,6 @@ def systemPrepare(
     _logger_level="ERROR",
     titrate: list | None = None,
     detect_specs: list | None = None,
-    restore_missing_sidechains: bool = False,
     guess_bonds: bool = True,
 ):
     """Prepare a molecular system by adding hydrogens, assigning protonation
@@ -2767,13 +2777,6 @@ def systemPrepare(
         ``detect_specs=[]`` to skip non-standard residue handling
         entirely. The applied specs are always returned so they can be
         forwarded to the downstream parameterizer / builder.
-    restore_missing_sidechains : bool, optional
-        If True, sidechain atoms removed by PDB2PQR are templated back in
-        after preparation. Specifically, canonical protein residues whose
-        entire heavy-atom sidechain is absent (only backbone + CB remain)
-        are reconstructed using the Dunbrack rotamer library before
-        PDB2PQR runs, so PDB2PQR's 10 %-missing-atom threshold does not
-        reject the structure on a partial input. Default False.
     guess_bonds : bool, optional
         Forwarded to :func:`detectNonStandardResidues` when ``detect_specs``
         is None. When the input molecule has no bonds, controls whether they
@@ -2884,29 +2887,11 @@ def systemPrepare(
 
         detect_specs = detectNonStandardResidues(mol_in, guess_bonds=guess_bonds)
 
-    # Restore canonical residues whose entire sidechain is missing
-    # using moleculekit's Dunbrack-rotamer mutator, so PDB2PQR's
-    # 10%-missing-atom threshold does not reject the structure on a
-    # partial input. Off by default - users who want it pass
-    # ``restore_missing_sidechains=True``. Runs BEFORE templating /
-    # bond capture so the reconstructed atoms participate in
-    # everything downstream.
-    if restore_missing_sidechains:
-        restoreTrimmedSidechains(mol_in, detect_specs)
-    else:
-        # PDB2PQR rebuilds these from its templates either way, so the choice is
-        # silent in the output: the residues come out with a full set of heavy
-        # atoms whichever path built them, and only their geometry differs.
-        trimmed = findTrimmedSidechains(mol_in, detect_specs)
-        if trimmed:
-            named = ", ".join(f"{t[4]}:{t[1]}:{t[2]}" for t in trimmed[:5])
-            more = f" and {len(trimmed) - 5} more" if len(trimmed) > 5 else ""
-            logger.warning(
-                f"{len(trimmed)} residue(s) have no sidechain past CB "
-                f"({named}{more}). PDB2PQR will rebuild them from its templates; "
-                "pass restore_missing_sidechains=True to place them with a "
-                "Dunbrack rotamer instead."
-            )
+    # PDB2PQR rebuilds a sidechain trimmed to backbone + CB from its own
+    # templates, placing it to satisfy the residue's hydrogen bonds. Past a
+    # tenth of the heavy atoms missing it skips that repair without failing;
+    # `findTrimmedSidechains` names what is still trimmed and
+    # `Molecule.rebuildSidechain` repairs one residue at a time.
 
     # Rename + re-template canonical AAs with sidechain crosslinks
     # BEFORE PDB2PQR sees them. Renamed residues either land on a

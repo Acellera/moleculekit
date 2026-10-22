@@ -139,16 +139,22 @@ This ensures that, for example, an N-terminal ammonium (formal charge +1) and
 a deprotonated Tyr-O⁻ in a metal site (formal charge -1) survive the pipeline
 with the correct charges for downstream force-field parameterization.
 
-## Step 8: Restore missing sidechains (optional)
+## Restoring absent sidechains
 
-When `restore_missing_sidechains=True`, {py:func}`~moleculekit.tools.preparation.systemPrepare` uses moleculekit's
-Dunbrack-rotamer mutator to template back any canonical residues whose entire
-sidechain is absent from the input structure (e.g. truncated crystal structures
-or homology models). This runs **before** the PDB2PQR call so the reconstructed
-atoms participate in all downstream protonation and optimization steps.
+A canonical residue whose entire sidechain is absent, as in a truncated
+crystal structure or a homology model, has it rebuilt by `systemPrepare`,
+placed to satisfy the residue's hydrogen bonds.
 
-This option is off by default because mutating residues is a significant
-structural change that should be made consciously.
+Past a tenth of the structure's heavy atoms missing, that repair is skipped
+without failing, and those residues come out still trimmed.
+{py:func}`~moleculekit.tools.preparation.findTrimmedSidechains` names them and
+{py:meth}`~moleculekit.molecule.Molecule.rebuildSidechain` repairs one at a
+time, with the Dunbrack-rotamer mutator, before preparation runs.
+
+Rebuild only the residues that need it. The two reconstructions answer to
+different things: a Dunbrack rotamer is picked for lowest clash, while
+`systemPrepare` places a sidechain to satisfy its hydrogen bonds. A buried
+sidechain whose job is a hydrogen bond is placed correctly only by the second.
 
 ## How parameters map onto the pipeline
 
@@ -161,7 +167,6 @@ structural change that should be made consciously.
 | `no_prot` | 3 | Exclude residues from hydrogen addition |
 | `no_titr` | 4 | Exclude residues from titration |
 | `hold_nonpeptidic_bonds=True` | 6 | Capture and restore non-peptidic bonds |
-| `restore_missing_sidechains=True` | 8 | Template back absent canonical sidechains |
 | `hydrophobic_thickness` | 4 | Warn on buried titratable residues (membrane context) |
 | `detect_specs` | 1 | Supply a pre-computed spec list; bypass auto-detection |
 | `return_details=True` | n/a | Return per-residue pKa / protonation DataFrame |

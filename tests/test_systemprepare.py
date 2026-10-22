@@ -1598,20 +1598,22 @@ def test_systemprepare_errors_on_untemplated_ncaa():
 
 
 def test_5vbl_restore_missing_sidechains():
-    """``systemPrepare(restore_missing_sidechains=True)`` rebuilds the
+    """``restoreTrimmedSidechains`` rebuilds the
     full heavy-atom sidechain of every canonical residue whose input
     sidechain is stripped down to backbone + CB.
 
     Fixture ``5VBL_A.cif`` is a hand-trimmed chain-A copy of 5VBL where
     five canonical residues (LYS1, PHE2, ARG3, ARG4, LYS12) are
     truncated to N/CA/C/O/CB. PDB2PQR would normally reject this
-    structure (>10%% heavy atoms missing); with
-    ``restore_missing_sidechains=True`` moleculekit's Dunbrack-rotamer
-    mutator regrows the sidechains before the PDB2PQR roundtrip, the
+    structure (>10%% heavy atoms missing), so ``restoreTrimmedSidechains``
+    regrows them with the Dunbrack-rotamer mutator first, the
     5 NCAAs (HRG, ALC, OIC, NLE, 200) keep their templated atoms, and
     every truncated residue ends up with its canonical heavy-atom set.
     """
-    from moleculekit.tools.preparation import systemPrepare
+    from moleculekit.tools.preparation import (
+        systemPrepare,
+        restoreTrimmedSidechains,
+    )
 
     fixture = os.path.join(curr_dir, "test_systemprepare", "5VBL_A.cif")
     mol = Molecule(fixture)
@@ -1653,7 +1655,8 @@ def test_5vbl_restore_missing_sidechains():
             "CB",
         }, f"fixture {resname}{resid} should be backbone+CB only, got {heavy}"
 
-    pmol, _ = systemPrepare(mol, verbose=False, restore_missing_sidechains=True)
+    restoreTrimmedSidechains(mol)
+    pmol, _ = systemPrepare(mol, verbose=False)
 
     for (resid, resname), expected in expected_heavy.items():
         mask = (pmol.resid == resid) & (pmol.resname == resname)
@@ -1773,14 +1776,17 @@ def test_nterm_ncaa_extra_amide_h_name():
     desynced the residue's atom map and crashed ``remove_hydrogens`` with
     ``KeyError: 'H'``. Which name the second H got depended on the input, so
     this fixture (8QFZ with chain B starting at the crosslinked CYS 11 and
-    sidechains missing in chain A) only hits it with
-    ``restore_missing_sidechains=True``.
+    sidechains missing in chain A) only hits it once those sidechains are
+    restored.
     """
     fixture = os.path.join(
         curr_dir, "test_nonstandard_residues", "8QFZ_restore_sidechains.cif"
     )
+    from moleculekit.tools.preparation import restoreTrimmedSidechains
+
     mol = Molecule(fixture)
-    pmol, _ = systemPrepare(mol, verbose=False, restore_missing_sidechains=True)
+    restoreTrimmedSidechains(mol)
+    pmol, _ = systemPrepare(mol, verbose=False)
 
     res = (pmol.chain == "B") & (pmol.resid == 11)
     names = list(pmol.name[res])
@@ -2782,6 +2788,31 @@ def test_phosphate_typing_keeps_a_catalytic_glutamate_charged():
     )
 
 
+def test_restore_trimmed_sidechains_can_take_a_subset():
+    """Restoring one residue leaves the others for PDB2PQR, whose placement
+    answers to hydrogen bonding rather than to clash alone."""
+    from moleculekit.tools.preparation import (
+        restoreTrimmedSidechains,
+        findTrimmedSidechains,
+    )
+
+    mol = Molecule(os.path.join(curr_dir, "pdb", "3ptb.pdb"))
+    mol.filter("protein", _logger=False)
+    mol.remove("resid 60 and name CG CD CE NZ", _logger=False)
+    mol.remove("resid 70 and name CG CD OE1 OE2", _logger=False)
+    trimmed = findTrimmedSidechains(mol)
+    assert sorted(t[2] for t in trimmed) == [60, 70]
+
+    one = [t for t in trimmed if t[2] == 60]
+    restored = restoreTrimmedSidechains(mol, residues=one)
+    assert [(r[2], r[4]) for r in restored] == [(60, "LYS")]
+    assert [t[2] for t in findTrimmedSidechains(mol)] == [70]
+
+    # An empty list is "restore nothing", not "restore everything".
+    assert restoreTrimmedSidechains(mol, residues=[]) == []
+    assert [t[2] for t in findTrimmedSidechains(mol)] == [70]
+
+
 def test_restore_trimmed_sidechains_rebuilds_only_whole_missing_ones():
     """A residue keeping one atom past CB is a deliberate truncation.
 
@@ -2807,3 +2838,31 @@ def test_restore_trimmed_sidechains_rebuilds_only_whole_missing_ones():
     assert [(r[2], r[4]) for r in restored] == [(60, "LYS")]
     assert trimmed.numAtoms > n_before
     assert findTrimmedSidechains(trimmed) == []
+
+
+def test_rebuild_sidechain_repairs_one_residue_and_refuses_the_rest():
+    """Rebuilding keeps the residue it already is, and only where the sidechain
+    is gone entirely: a residue keeping atoms past CB was truncated on purpose."""
+    import pytest
+
+    mol = Molecule(os.path.join(curr_dir, "pdb", "3ptb.pdb"))
+    mol.filter("protein", _logger=False)
+    mol.remove("resid 60 and name CG CD CE NZ", _logger=False)
+
+    n_before = mol.numAtoms
+    mol.rebuildSidechain("resid 60")
+    assert mol.numAtoms > n_before
+    assert set(mol.resname[mol.atomselect("resid 60")]) == {"LYS"}
+    heavy = [
+        str(n)
+        for n in mol.name[mol.atomselect("resid 60")]
+        if not str(n).startswith("H")
+    ]
+    assert {"CG", "CD", "CE", "NZ"} <= set(heavy)
+
+    # Intact sidechain: refused rather than re-templated.
+    with pytest.raises(ValueError, match="past CB"):
+        mol.rebuildSidechain("resid 64")
+
+    with pytest.raises(ValueError, match="no sidechain past CB"):
+        mol.rebuildSidechain("resid 18")  # GLY
