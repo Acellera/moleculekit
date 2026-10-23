@@ -1234,10 +1234,28 @@ class Molecule(object):
                 f"Must be less than the number of coordinate frames ({self.numFrames}) in this molecule."
             )
 
-        if rdkit:
-            return guess_bonds_rdkit(self)
-        else:
-            return guess_bonds(self)
+        # Keyed on what the guess reads, not on a "has anything changed" flag:
+        # `coords`, `element` and `name` are handed out as raw arrays and are
+        # written through in place all over, so there is no mutation to hook and
+        # a stale answer would be bonds for a structure that no longer exists.
+        # Only the current frame is ever read, so the key is N x 3 floats rather
+        # than the whole trajectory -- about 1.5 ms against the 750 ms the guess
+        # costs on a 100k-atom system, which the callers run several times over.
+        key = (
+            rdkit,
+            self.numAtoms,
+            int(self.frame),
+            hash(np.ascontiguousarray(self.coords[:, :, self.frame]).tobytes()),
+            hash(self.element.tobytes()),
+            hash(self.name.tobytes()),
+        )
+        cached = getattr(self, "_guessed_bonds_cache", None)
+        if cached is not None and cached[0] == key:
+            return cached[1]
+
+        bonds = guess_bonds_rdkit(self) if rdkit else guess_bonds(self)
+        self._guessed_bonds_cache = (key, bonds)
+        return bonds
 
     def guessBonds(self, rdkit: bool = False):
         """Guess the bonds of the Molecule and store them in-place.
