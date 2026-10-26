@@ -365,6 +365,40 @@ def test_detect_non_termini_ignores_disulfide():
     assert _detect_non_termini(mol) == set()
 
 
+def test_detect_non_termini_phosphodiester():
+    """A nucleotide's O3' bonded to the next residue's P blocks its own 3' ("C")
+    side and the next residue's 5' ("N") side, whatever that residue is."""
+    from moleculekit.tools.preparation import _detect_non_termini
+
+    mol = Molecule().empty(4)
+    mol.name[:] = ["C3'", "O3'", "P", "OP1"]
+    mol.element[:] = ["C", "O", "P", "O"]
+    mol.resname[:] = ["A", "A", "A23", "A23"]
+    mol.resid[:] = [75, 75, 76, 76]
+    mol.chain[:] = "A"
+    mol.coords = np.array(
+        [[0, 0, 0], [1.4, 0, 0], [3.0, 0, 0], [3.5, 1.4, 0]], dtype=np.float32
+    ).reshape(4, 3, 1)
+    mol.bonds = np.array([[0, 1], [1, 2], [2, 3]], dtype=np.uint32)
+    mol.bondtype = np.array(["1"] * 3, dtype=object)
+    assert _detect_non_termini(mol) == {((75, "A", ""), "C"), ((76, "A", ""), "N")}
+
+
+def test_rna_ending_in_modified_nucleotide_not_capped():
+    """4PLX chain A ends in A23 (2',3'-cyclic phosphate A), which PDB2PQR parses
+    as a ligand. Its O3'-P link to A75 means A75 is internal, not a 3' terminus
+    (no A3 rename, no H3T), and the 5'-GTP leaves G2 internal too."""
+    from moleculekit.tools.nonstandard_residues import detectNonStandardResidues
+
+    mol = Molecule(os.path.join(curr_dir, "test_systemprepare", "4PLX_A.cif"))
+    specs = detectNonStandardResidues(mol)
+    pmol, _ = systemPrepare(mol, detect_specs=specs, verbose=False)
+    for resid, resname in ((2, "G"), (75, "A")):
+        sel = pmol.resid == resid
+        assert set(pmol.resname[sel]) == {resname}
+        assert not np.any(sel & np.isin(pmol.name, ["H3T", "H5T"]))
+
+
 def _incomplete_sidechain_isopeptide():
     """An incompletely-modeled glutamate (resid 1): its backbone N is acylated
     by a gamma-glutamyl isopeptide from a DGL donor, it carries a COMPLETE

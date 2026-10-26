@@ -1116,6 +1116,8 @@ def _pdb2pqr(
     # assignment. See _split_glycan_chains.
     if glycan_residues:
         _split_glycan_chains(biomolecule, glycan_residues)
+    if non_termini:
+        _block_continued_chain_ends(biomolecule)
     biomolecule.set_termini(neutraln=neutraln, neutralc=neutralc)
     biomolecule.update_bonds()
     if clean:
@@ -1243,17 +1245,21 @@ def _atomsel_to_hold(mol_in, sel):
 # continuation. Generous relative to a real amide (~1.33 A) and stretched-but-real
 # closures (7BTI ~1.47 A, microcystin ~1.37 A), tight enough to reject garbage.
 _AMIDE_BOND_SANITY_DIST = 2.0
+# Same misassigned-record guard for an inter-residue O3'-P bond (~1.6 A).
+_PHOSPHODIESTER_BOND_SANITY_DIST = 2.0
 
 
 def _detect_non_termini(mol, extra_bonds=()):
     """Return a set of ``((resid, chain, insertion), side)`` tuples marking the
-    backbone termini that are NOT free because an inter-residue amide bond
-    continues the chain past them.
+    backbone termini that are NOT free because an inter-residue amide or
+    phosphodiester bond continues the chain past them.
 
     ``side`` is ``"N"`` when an inter-residue amide occupies a residue's backbone
     nitrogen (not a free N-terminus), or ``"C"`` when a residue donates an amide
     forward from a carbon - its backbone C for a standard peptide, or a side-chain
-    carbonyl for an isopeptide / head-to-tail closure (not a free C-terminus).
+    carbonyl for an isopeptide / head-to-tail closure (not a free C-terminus). For
+    nucleic acids, an O3' bonded to another residue's P marks the O3' residue's
+    3' end ``"C"`` and the P residue's 5' end ``"N"``.
 
     This is the bond-derived signal handed to PDB2PQR so it leaves these sides
     uncapped and does not split a hidden chain at a residue whose free main-chain
@@ -1322,6 +1328,21 @@ def _detect_non_termini(mol, extra_bonds=()):
             ):
                 continue
             non_termini.add((kc, "C"))
+        # Phosphodiester continuation: a nucleotide's O3' bonded to a P in another
+        # residue (the next nucleotide, standard or modified).
+        for o_at, p_at in ((a, b), (b, a)):
+            if name[o_at] not in ("O3'", "O3*") or element[p_at] != "P":
+                continue
+            ko, kp = reskey(o_at), reskey(p_at)
+            if ko == kp:
+                continue
+            if (
+                float(np.linalg.norm(coords[o_at] - coords[p_at]))
+                > _PHOSPHODIESTER_BOND_SANITY_DIST
+            ):
+                continue
+            non_termini.add((ko, "C"))
+            non_termini.add((kp, "N"))
     return non_termini
 
 
@@ -1350,6 +1371,25 @@ def _stamp_non_termini(biomolecule, non_termini):
             residue.n_term_blocked = True
         else:
             residue.c_term_blocked = True
+
+
+def _block_continued_chain_ends(biomolecule):
+    """PDB2PQR's ``set_termini`` reads ``c_term_blocked`` only on a chain's last
+    residue; when that is not an amino/nucleic acid (e.g. a 3'-modified nucleotide
+    parsed as a ligand) it walks back and caps the last polymer residue without
+    checking its flag. Mirror that walk and, if the residue it would cap is
+    blocked, block the chain end itself so nothing is capped.
+    """
+    from pdb2pqr import aa, na
+
+    for chain in biomolecule.chains:
+        for residue in reversed(chain.residues):
+            if residue.name in ("NH2", "NME"):
+                break
+            if isinstance(residue, (aa.Amino, na.Nucleic)):
+                if getattr(residue, "c_term_blocked", False):
+                    chain.residues[-1].c_term_blocked = True
+                break
 
 
 def _split_glycan_chains(biomolecule, glycan_residues):
