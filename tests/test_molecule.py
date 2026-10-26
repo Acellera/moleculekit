@@ -70,51 +70,45 @@ def test_guessBonds_cache_follows_the_structure():
     `coords`, `element` and `name` are handed out as raw arrays and written
     through in place, so a stale answer would be bonds for a structure that no
     longer exists."""
-    import time
-
     mol = TRAJMOL.copy()
     mol.coords = np.atleast_3d(mol.coords[:, :, 0])
 
-    def timed():
-        start = time.perf_counter()
-        bonds = mol._guessBonds()
-        return bonds, time.perf_counter() - start
+    # A hit hands back the stored array itself, so identity tells a cached
+    # answer from a fresh guess. Timing it does not: a ~50 us hit loses to any
+    # scheduler stall on a loaded CI runner.
+    last = mol._guessBonds()
 
-    first, cold = timed()
-    again, warm = timed()
-    assert np.array_equal(first, again)
-    assert warm < cold / 10, "a repeated guess on an untouched Molecule was not cached"
+    def looked_again():
+        nonlocal last
+        prev, last = last, mol._guessBonds()
+        return last is not prev
+
+    assert not looked_again(), "a repeated guess on an untouched Molecule was not cached"
 
     # Each thing the guess reads has to invalidate it. The bonds themselves may
     # come out the same -- a radius change need not move a neighbour -- so what
     # is asserted is that it looked again.
     mol.element[10] = "S"
-    assert timed()[1] > warm * 10, "an element change did not invalidate the cache"
+    assert looked_again(), "an element change did not invalidate the cache"
 
     mol.coords[7, :, 0] += 50.0
-    assert timed()[1] > warm * 10, "a coordinate change did not invalidate the cache"
+    assert looked_again(), "a coordinate change did not invalidate the cache"
 
     mol.remove("index 0 to 20", _logger=False)
-    assert timed()[1] > warm * 10, "removing atoms did not invalidate the cache"
+    assert looked_again(), "removing atoms did not invalidate the cache"
 
 
 def test_guessBonds_cache_is_per_frame():
     """Only the active frame is read, so moving to another one has to look again."""
-    import time
-
     mol = TRAJMOL.copy()
     if mol.numFrames < 2:
         return
     mol.frame = 0
-    mol._guessBonds()
-    start = time.perf_counter()
-    mol._guessBonds()
-    warm = time.perf_counter() - start
+    first = mol._guessBonds()
+    assert mol._guessBonds() is first
 
     mol.frame = 1
-    start = time.perf_counter()
-    mol._guessBonds()
-    assert time.perf_counter() - start > warm * 10, "changing frame did not invalidate the cache"
+    assert mol._guessBonds() is not first, "changing frame did not invalidate the cache"
 
 
 def test_setDihedral():
