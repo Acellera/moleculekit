@@ -264,6 +264,7 @@ def _components_from_reps(mol, reps) -> tuple[list[dict], list[dict]]:
                     translated["label_fields"],
                     translated.get("size_factor", 1.0),
                     translated.get("label_style"),
+                    translated.get("params"),
                 )
             )
             continue
@@ -277,6 +278,7 @@ def _components_from_reps(mol, reps) -> tuple[list[dict], list[dict]]:
                     translated["atom_indices"],
                     translated.get("size_factor", 1.0),
                     translated.get("label_style"),
+                    translated.get("params"),
                 )
             )
             continue
@@ -296,6 +298,8 @@ def _components_from_reps(mol, reps) -> tuple[list[dict], list[dict]]:
             representation["size_factor"] = translated["size_factor"]
         if "size_theme" in translated:
             representation["size_theme"] = translated["size_theme"]
+        if "params" in translated:
+            representation["params"] = translated["params"]
         component = {
             "select": _atoms(translated["atom_indices"]),
             "representation": representation,
@@ -359,7 +363,7 @@ def _label_style(style) -> dict:
     return dict(style)
 
 
-def _field_labels(mol, indices, fields, size=1.0, style=None) -> list[dict]:
+def _field_labels(mol, indices, fields, size=1.0, style=None, params=None) -> list[dict]:
     """Text beside each atom, built from the molecule's own per-atom fields.
 
     Mol*'s label representation writes a label of its own choosing, so anything
@@ -379,6 +383,8 @@ def _field_labels(mol, indices, fields, size=1.0, style=None) -> list[dict]:
         Scales the text.
     style : dict, optional
         Cosmetics, see ``LABEL_STYLE_KEYS``.
+    params : dict, optional
+        Other Mol* settings of the label, by their Mol* names.
 
     Returns
     -------
@@ -431,12 +437,13 @@ def _field_labels(mol, indices, fields, size=1.0, style=None) -> list[dict]:
                 "color": "black",
                 "offset": 1.0,
                 **cosmetics,
+                **({"params": params} if params else {}),
             }
         )
     return labels
 
 
-def _labels(mol, indices=None, size=1.0, style=None) -> list[dict]:
+def _labels(mol, indices=None, size=1.0, style=None, params=None) -> list[dict]:
     charges = mol.formalcharge
     within = range(len(charges)) if indices is None else indices
     charged = [i for i in within if int(charges[i]) != 0]
@@ -465,6 +472,7 @@ def _labels(mol, indices=None, size=1.0, style=None) -> list[dict]:
                 "color": "black",
                 "offset": 1.0,
                 **cosmetics,
+                **({"params": params} if params else {}),
             }
         )
     return labels

@@ -120,6 +120,7 @@ def test_new_styles_translate_to_their_molstar_types():
         "Points": "point",
         "Labels": "label",
         "FormalCharges": "formal_charge",
+        "Interactions": "interactions",
     }
     for style, type_ in expected.items():
         out = mol.reps._translateMolstar(_Representation("all", style, "Name"))
@@ -387,7 +388,7 @@ def test_backbone_reaches_ngl_but_ellipsoid_does_not():
     assert mol.reps._translateNGL(_Representation("all", "Backbone", "Name")).style == (
         "backbone"
     )
-    for style in ("Ellipsoid", "Putty", "Labels", "FormalCharges"):
+    for style in ("Ellipsoid", "Putty", "Labels", "FormalCharges", "Interactions"):
         assert mol.reps._translateNGL(_Representation("all", style, "Name")) is None
 
 
@@ -609,3 +610,26 @@ def test_the_docstring_names_every_style_and_colour_there_is():
         assert re.sub(r"[^a-z0-9]", "", theme) in flat, (
             f"the {theme!r} colour scheme is not named in the docstring"
         )
+
+
+def test_params_reach_the_style_and_every_label():
+    from moleculekit.viewer.molstar.scene import build_scene
+
+    mol = _mol()
+    mol.reps.add("all", "Licorice", "Name", params={"sizeAspectRatio": 0.4})
+    mol.reps.add("all", "Labels", label_fields="name", params={"tether": True})
+    scene = build_scene(mol, mol.reps.replist)
+    assert scene["components"][0]["representation"]["params"] == {"sizeAspectRatio": 0.4}
+    assert [label["params"] for label in scene["labels"]] == [{"tether": True}] * 3
+
+
+def test_update_joins_params_and_none_means_the_default():
+    mol = _mol()
+    mol.reps.add("all", "Labels", label_fields="name", params={"tether": True})
+    mol.reps.update(0, params={"tetherLength": np.float32(2.0), "tether": None})
+    assert mol.reps.replist[0].params == {"tether": None, "tetherLength": 2.0}
+
+
+def test_params_must_be_a_dict():
+    with pytest.raises(TypeError, match="dict of Mol\\* settings"):
+        _mol().reps.add("all", "Licorice", params=[("tether", True)])

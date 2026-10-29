@@ -51,6 +51,19 @@ def test_build_mvs_representation_accepts_atom_indices(ligand_mol):
     assert "spacefill" in blob
 
 
+def test_build_mvs_leaves_out_interactions(ligand_mol, caplog):
+    """MVS has no representation for contacts: the inline view says so and draws the rest."""
+    blob = build_mvs(
+        ligand_mol,
+        structure_url="data:,",
+        representations=[{"atom_indices": [0], "type": "interactions"},
+                         {"atom_indices": [0, 1], "type": "spacefill",
+                          "color": {"theme": "element-symbol"}}],
+    )
+    assert "spacefill" in blob and "interactions" not in blob
+    assert "does not draw Interactions" in caplog.text
+
+
 def test_build_mvs_formal_charge_label(ligand_mol):
     blob = build_mvs(ligand_mol, structure_url="data:,")
     # the -1 formal charge atom gets a label primitive

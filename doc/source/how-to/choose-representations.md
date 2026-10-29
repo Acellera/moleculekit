@@ -45,6 +45,7 @@ hyphens are ignored, so `Secondary Structure`, `secondary-structure` and
 | `Ellipsoid` | `ellipsoid` | Residues as ellipsoids |
 | `Labels` | `atom-label`, `label` | Each atom's name beside it |
 | `FormalCharges` | | `+1`/`-1` on atoms carrying a formal charge |
+| `Interactions` | `interactions` | Dashed lines for the non-covalent contacts (hydrogen bonds, pi stacking, cation-pi, halogen bonds, metal coordination) of the selected atoms with the rest of their molecule |
 
 `Labels` and `FormalCharges` draw text on top of another representation, so
 they need one that draws the atoms themselves. A style from neither column is
@@ -150,7 +151,7 @@ Only what you pass is changed, so passing nothing changes nothing.
 - **A representation whose selection matches no atoms is dropped with a
   warning**, and if every one matches nothing, the scene raises rather than
   drawing an empty image.
-- **`Putty`, `Labels` and `FormalCharges` only reach Mol\***. The VMD and NGL
+- **`Putty`, `Labels`, `FormalCharges` and `Interactions` only reach Mol\***. The VMD and NGL
   backends skip them rather than being sent a style they have no
   representation for.
 - **`frames` only applies to the interactive viewer.** A render is a single

@@ -20,11 +20,33 @@ import { createVolumeRepresentationParams } from 'molstar/lib/mol-plugin-state/h
 import { ParamDefinition as PD } from 'molstar/lib/mol-util/param-definition'
 import { CameraFogParams } from 'molstar/lib/mol-canvas3d/canvas3d'
 import { ColorNames } from 'molstar/lib/mol-util/color/names'
+import { LabelParams } from 'molstar/lib/mol-repr/shape/loci/label'
 import type { PluginContext } from 'molstar/lib/mol-plugin/context'
 import type { StateBuilder, StateObjectSelector } from 'molstar/lib/mol-state'
 
 /** Mol*'s own fog strength, read from its params so it cannot drift from them. */
 const MOLSTAR_DEFAULT_FOG = PD.getDefaultValues(CameraFogParams).intensity
+
+/** Mol* settings given by their Mol* names; null stands for the default. */
+type Settings = Record<string, unknown>
+
+/** `given` as Mol* takes it, checked against the settings `defs` has: a name
+ * it does not have raises, since drawing the default would look as if the
+ * setting had not worked. A group gets the defaults of the settings left out,
+ * as in pmview. */
+function molstarSettings(defs: PD.Params, given: Settings | undefined, style: string): Settings {
+  if (!given) return {}
+  const unknown = Object.keys(given).filter((name) => !(name in defs))
+  if (unknown.length) {
+    const names = Object.keys(defs).filter((name) => !defs[name].isHidden)
+    throw new Error(`${style} has no Mol* setting ${unknown.join(', ')}. Its settings: ${names.join(', ')}`)
+  }
+  const values = PD.normalizeParams(defs, given, 'children')
+  for (const [name, value] of Object.entries(given)) {
+    if (value == null) values[name] = defs[name].defaultValue
+  }
+  return values
+}
 
 export interface SceneSelect {
   kind: 'builtin' | 'resname' | 'atoms'
@@ -35,7 +57,7 @@ export interface SceneSelect {
 
 export interface SceneComponent {
   select: SceneSelect
-  representation: { type: string; size_factor?: number; size_theme?: string }
+  representation: { type: string; size_factor?: number; size_theme?: string; params?: Settings }
   color?: { theme?: string; uniform?: string; carbon?: { theme?: string; uniform?: string } }
   opacity?: number
 }
@@ -55,6 +77,7 @@ export interface SceneLabel {
   offset_x?: number
   offset_y?: number
   offset_z?: number
+  params?: Settings
 }
 
 export interface Scene {
@@ -237,6 +260,15 @@ function styleParams(
       return { type: 'backbone', typeParams: {}, size: 'uniform', sizeParams: { value: 0.2 * value } }
     case 'ellipsoid':
       return { type: 'ellipsoid', typeParams: {}, size: 'uniform', sizeParams: { value } }
+    case 'interactions':
+      // The contacts of the selection with the rest of its structure, as
+      // pmview draws them: the selection alone has no partners.
+      return {
+        type: 'interactions',
+        typeParams: { includeParent: true, parentDisplay: 'full' },
+        size: 'uniform',
+        sizeParams: { value },
+      }
     case 'putty':
       // Sized by B factor rather than uniformly, which is the point of it, so
       // `size_factor` scales that base rather than replacing the theme.
@@ -303,8 +335,21 @@ function applyComponent(
       typeParams: repr.typeParams,
       size: repr.size as any,
       sizeParams: repr.sizeParams,
-      ...themeParams(comp.color),
+      // A contact is coloured by its kind, not by the atoms at its ends,
+      // unless the representation has one colour: pmview does the same.
+      ...(repr.type === 'interactions' && !comp.color?.uniform
+        ? { color: 'interaction-type' }
+        : themeParams(comp.color)),
     } as any
+  )
+  const styles = plugin.representation.structure
+  Object.assign(
+    params.type.params,
+    molstarSettings(
+      styles.registry.get(repr.type).getParams(styles.themes, Structure.Empty),
+      comp.representation.params,
+      repr.type
+    )
   )
   if (comp.opacity !== undefined) {
     params.type.params.alpha = comp.opacity
@@ -358,6 +403,7 @@ function applyLabel(
       offsetY: label.offset_y ?? 0,
       offsetZ: label.offset_z ?? label.offset,
       scaleByRadius: false,
+      ...molstarSettings(LabelParams, label.params, 'label'),
     } as any)
 }
 

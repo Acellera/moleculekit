@@ -695,33 +695,25 @@ def _default_volume_rep(vol):
     return _VolumeRepresentation(isovalue=vol.suggest_isovalue())
 
 
-def _multi_payload(mols, *, center, rotate, zoom, background, transparent, fog, clip):
+def _multi_payload(mols, *, camera, background, transparent, fog):
     """Per-object scenes plus the parts that belong to the whole picture.
 
     Each object keeps its own representations, so a protein and a ligand loaded
     separately stay separate: merging them into one structure first would lose
-    which atoms belong to which. The camera and canvas are shared, and the
-    camera's sphere is worked out here because a selection spanning several
-    structures cannot be expressed as atom indices into one of them.
+    which atoms belong to which. The camera and canvas are shared.
 
     Parameters
     ----------
     mols : list of Molecule
         The objects to draw, in order.
-    center : str or np.ndarray or None
-        Atom selection to frame, resolved against every object.
-    rotate : str or tuple of float or None
-        Camera orientation.
-    zoom : float or None
-        Camera tightness.
+    camera : dict
+        The camera of the picture, from :func:`_camera`.
     background : str
         Background colour.
     transparent : bool
         Whether to render onto a transparent background.
     fog : float or None
         Depth cueing strength.
-    clip : float or None
-        Slab half-thickness.
 
     Returns
     -------
@@ -730,7 +722,7 @@ def _multi_payload(mols, *, center, rotate, zoom, background, transparent, fog, 
     globals : dict
         The camera and canvas for the picture as a whole.
     """
-    from moleculekit.viewer.molstar.scene import build_scene, focus_sphere
+    from moleculekit.viewer.molstar.scene import build_scene
 
     scenes = []
     for index, mol in enumerate(mols):
@@ -752,39 +744,139 @@ def _multi_payload(mols, *, center, rotate, zoom, background, transparent, fog, 
         canvas["fog"] = float(fog)
     if canvas:
         globals_["canvas"] = canvas
-
-    if rotate is not None or zoom is not None or center is not None:
-        from moleculekit.viewer.molstar.scene import rotation_to_direction_up
-
-        focus_center, focus_radius = focus_sphere(mols, center)
-        _, scene_radius = focus_sphere(mols)
-        radius = focus_radius * (1.0 / float(zoom) if zoom is not None else 1.0)
-        camera = {
-            "center": focus_center,
-            "radius": radius,
-            # Without a slab, the planes take in the whole scene rather than
-            # only what is framed, so focusing one object does not cut the
-            # others away.
-            "clip_radius": float(clip) if clip is not None else max(radius, scene_radius),
-        }
-        if rotate is not None or zoom is not None:
-            direction, up = rotation_to_direction_up(rotate)
-            camera["direction"] = list(direction)
-            camera["up"] = list(up)
-        globals_["camera"] = camera
+    globals_["camera"] = camera
     return scenes, globals_
+
+
+def _unit(vector, name: str):
+    """`vector` as a unit numpy vector, or a ValueError that names it."""
+    import numpy as np
+
+    v = np.asarray(vector, dtype=float)
+    norm = np.linalg.norm(v) if v.shape == (3,) else 0.0
+    if not np.isfinite(norm) or norm < 1e-9:
+        raise ValueError(f"{name} must be three numbers, not all zero: {vector!r}")
+    return v / norm
+
+
+def _camera(mols, volumes, *, center, direction, up, rotate, zoom, clip, size) -> dict:
+    """The camera of a picture: the side it looks from, and a framing that fits.
+
+    Always stated, for one object as for several: the headless page leaves the
+    camera to the render and never fits one of its own, so a picture without a
+    camera would keep the previous render's.
+
+    The camera is orthographic, so the image shows the framed atoms projected
+    along the line of sight, at the same scale at every depth. Their extent on
+    the image's two axes is what has to fit, not the sphere around them: a long
+    ligand seen from the side would fill only a part of the image inside that
+    sphere. The target stays at the middle of the framed atoms, so turning the
+    camera around them (a turntable) does not move them.
+
+    Parameters
+    ----------
+    mols : list of Molecule
+        The molecules in the picture.
+    volumes : list of Volume
+        The maps in the picture. They are not framed, but nothing of them is
+        cut away.
+    center : str or np.ndarray or None
+        Atoms to frame, resolved in every molecule. None frames the atoms the
+        representations draw (all atoms of a molecule with none).
+    direction : sequence of float or None
+        The side the camera looks from: a vector from the framed atoms toward
+        the camera, in the coordinates of the atoms.
+    up : sequence of float or None
+        The direction that points to the top of the image, with ``direction``.
+    rotate : str or tuple of float or None
+        A preset or ``(rx, ry, rz)`` degrees, in place of ``direction``.
+    zoom : float or None
+        Larger is closer. At 1, the framed atoms fill the image.
+    clip : float or None
+        Half-thickness of the slab drawn around the target.
+    size : tuple of int
+        The image's width and height, whose ratio decides which side fills.
+
+    Returns
+    -------
+    camera : dict
+        ``center``, ``radius``, ``clip_radius``, ``direction`` and ``up`` for
+        the render page.
+    """
+    import numpy as np
+    from moleculekit.viewer.molstar.scene import (
+        DEFAULT_DIRECTION,
+        DEFAULT_UP,
+        rotation_to_direction_up,
+    )
+
+    if clip is not None and float(clip) <= 0:
+        raise ValueError(f"clip must be a positive distance, got {clip}")
+    if direction is not None and rotate is not None:
+        raise ValueError("Give direction or rotate, not both: each sets the side the camera looks from.")
+    if up is not None and direction is None:
+        raise ValueError("up turns the image about the line of sight: give direction with it.")
+
+    if direction is None:
+        ahead, top = (np.asarray(v, dtype=float) for v in rotation_to_direction_up(rotate))
+    else:
+        ahead = -_unit(direction, "direction")  # the page takes camera -> target
+        top = _unit(up, "up") if up is not None else np.asarray(DEFAULT_UP, dtype=float)
+        top = top - ahead * (top @ ahead)
+        if np.linalg.norm(top) < 1e-6:
+            if up is not None:
+                raise ValueError(f"up points along direction: {up!r}. Give an up at an angle to it.")
+            # Looking straight along the default up: what was ahead goes up, as
+            # when a camera tilts down to look from the top (the "top" preset).
+            top = np.asarray(DEFAULT_DIRECTION, dtype=float)
+        top = top / np.linalg.norm(top)
+    right = np.cross(ahead, top)
+
+    framed, every = [], []
+    for mol in mols:
+        coords = mol.coords[:, :, mol.frame]
+        every.append(coords)
+        if center is not None:
+            coords = coords[mol.atomselect(center)]
+        elif reps := [r for r in mol.reps.replist + mol._tempreps.replist if r.visibility]:
+            # Waters and ions a file carries but nothing draws are not framed.
+            coords = coords[np.logical_or.reduce([mol.atomselect(r.sel) for r in reps])]
+        framed.append(coords)
+    framed, every = np.vstack(framed), np.vstack(every)
+    middle = (framed.min(axis=0) + framed.max(axis=0)) / 2
+    half_width = float(np.abs((framed - middle) @ right).max())
+    half_height = float(np.abs((framed - middle) @ top).max())
+    # Mol* fits the camera's radius to the short side of the image
+    # (Camera.targetDistance), so the long side shows radius * aspect.
+    aspect = size[0] / size[1]
+    if aspect >= 1:
+        fit = max(half_height, half_width / aspect)
+    else:
+        fit = max(half_width, half_height * aspect)
+    # The atoms are drawn with a size of their own, beyond their centres.
+    radius = (max(fit, 1.0) * 1.05 + 2.0) / (float(zoom) if zoom is not None else 1.0)
+
+    # Without a slab, the clipping planes take in everything around the target,
+    # so framing one object does not cut the others away.
+    reach = float(np.linalg.norm(every - middle, axis=1).max())
+    for vol in volumes:
+        corners = np.array([vol.origin, vol.origin + vol.spacing * np.array(vol.data.shape)])
+        reach = max(reach, float(np.linalg.norm(np.abs(corners - middle).max(axis=0))))
+    return {
+        "center": [float(v) for v in middle],
+        "radius": radius,
+        "clip_radius": float(clip) if clip is not None else max(radius, reach + 5.0),
+        "direction": [float(v) for v in ahead],
+        "up": [float(v) for v in top],
+    }
 
 
 def _scene_description(
     mol: "Molecule",
     *,
-    center: "str | np.ndarray | None" = None,
-    rotate=None,
-    zoom: float | None = None,
     background: str = "white",
     transparent: bool = False,
     fog: float | None = None,
-    clip: float | None = None,
 ) -> dict:
     """Build the scene description ``render()`` sends to the browser.
 
@@ -797,21 +889,12 @@ def _scene_description(
     ----------
     mol : Molecule
         The molecule to describe.
-    center : str or np.ndarray or None, optional
-        Atom selection to frame the camera on. None frames the whole structure.
-    rotate : str or tuple of float or None, optional
-        Camera orientation, as a preset name or ``(rx, ry, rz)`` in degrees.
-    zoom : float or None, optional
-        Camera tightness. Larger values move the camera closer.
     background : str, optional
         Background colour as an SVG colour name or hex string.
     transparent : bool, optional
         Ignore ``background`` and render onto a transparent background.
     fog : float or None, optional
         Depth cueing strength, from 0 for none to 100 for the strongest.
-    clip : float or None, optional
-        Half-thickness in Angstrom of the slab drawn around what the camera
-        frames. None draws the whole structure.
 
     Returns
     -------
@@ -824,40 +907,9 @@ def _scene_description(
     return build_scene(
         mol,
         mol.reps.replist + mol._tempreps.replist,
-        focus_sel=center,
-        rotate=rotate,
-        zoom=zoom,
         background_color=None if transparent else background,
         fog=fog,
-        clip=clip,
     )
-
-
-def _with_stated_camera(description: dict) -> dict:
-    """`description` with a camera, adding the default one if it has none.
-
-    A render states its camera even where the caller asked for none. The
-    browser is reused and only its structure is cleared between renders, so a
-    scene carrying no camera keeps the last one that did: measured on 1.17.3, a
-    camera-free scene rendered one image into a fresh browser, a different one
-    after any scene with a camera, and stayed on the second value -- the same
-    call giving two answers depending on what preceded it.
-
-    Here rather than in the scene description, which stays in lockstep with the
-    interactive viewer's: the viewer's camera belongs to whoever is driving it
-    and must survive a change of representations, where a render has no camera
-    of its own unless it says so. The default direction and up are what "no
-    camera" already meant.
-    """
-    if "camera" in description:
-        return description
-    from moleculekit.viewer.molstar.scene import rotation_to_direction_up
-
-    direction, up = rotation_to_direction_up(None)
-    return {
-        **description,
-        "camera": {"direction": list(direction), "up": list(up)},
-    }
 
 
 def render(
@@ -867,6 +919,8 @@ def render(
     size: tuple[int, int] = (1200, 900),
     quality: str = "fast",
     center: "str | np.ndarray | None" = None,
+    direction=None,
+    up=None,
     rotate=None,
     zoom: float | None = None,
     background: str = "white",
@@ -898,11 +952,21 @@ def render(
         occlusion, which is close to free on a GPU and costs roughly three
         times the render time on the software fallback.
     center : str or np.ndarray or None, optional
-        Atom selection to frame the camera on. None frames the whole structure.
+        The atoms to frame the camera on: a selection string, or a boolean mask
+        or index array over the atoms, in every object. None frames the atoms
+        that the representations draw.
+    direction : sequence of float or None, optional
+        ``[x, y, z]`` in the coordinates of the atoms: the camera looks from
+        that side of the framed atoms.
+    up : sequence of float or None, optional
+        ``[x, y, z]``, with ``direction``: the direction that points to the top
+        of the image. By default y, made perpendicular to the line of sight.
     rotate : str or tuple of float or None, optional
-        Camera orientation, as a preset name or ``(rx, ry, rz)`` in degrees.
+        Camera orientation in place of ``direction``, as a preset name or
+        ``(rx, ry, rz)`` in degrees.
     zoom : float or None, optional
-        Camera tightness. Larger values move the camera closer.
+        At 1 (the default), the framed atoms, as the camera sees them, fill the
+        image. Larger values move the camera closer.
     background : str, optional
         Background colour as an SVG colour name or hex string.
     transparent : bool, optional
@@ -935,8 +999,11 @@ def render(
         If ``quality`` names no known preset, if ``size`` is not at least one
         pixel in each dimension, if ``center`` matches no atoms, if ``zoom``
         is not positive, if ``rotate`` is a string that names no known
-        orientation preset, if ``fog`` falls outside 0 to 100, or if ``clip``
-        is not positive.
+        orientation preset, if ``fog`` falls outside 0 to 100, if ``clip``
+        is not positive, if ``direction`` and ``rotate`` are both given, or if
+        ``up`` is given without ``direction`` or along it.
+    TypeError
+        If ``center`` is not a selection, such as the coordinates of a point.
     RuntimeError
         If no browser is found, if WebGL is unavailable, if the page fails,
         or if the rendered image does not match the requested size.
@@ -966,6 +1033,17 @@ def render(
             "render() needs at least one molecule: a volume has no atoms, so "
             "on its own there is nothing to frame the camera on."
         )
+    if center is not None and not isinstance(center, str):
+        import numpy as np
+
+        if np.asarray(center).dtype.kind not in "biu":
+            # Coordinates read as a place to look at, but atomselect takes
+            # them as atom indices and fails with an IndexError that names
+            # neither center nor what it takes.
+            raise TypeError(
+                "center is an atom selection: a selection string, or a boolean "
+                f"mask or index array over the atoms, not a point: {center!r}"
+            )
     if center is not None and not any(m.atomselect(center).any() for m in mols):
         # build_scene treats a non-matching focus_sel as a no-op, which is the
         # right contract for that lower-level, permissive builder. render()
@@ -975,17 +1053,25 @@ def render(
 
     from moleculekit.viewer.molstar.inline import _b64, _bcif_bytes
 
+    camera = _camera(
+        mols,
+        volumes,
+        center=center,
+        direction=direction,
+        up=up,
+        rotate=rotate,
+        zoom=zoom,
+        clip=clip,
+        size=(width, height),
+    )
     multi = len(mols) > 1 or bool(volumes)
     if multi:
         scenes, globals_ = _multi_payload(
             mols,
-            center=center,
-            rotate=rotate,
-            zoom=zoom,
+            camera=camera,
             background=background,
             transparent=transparent,
             fog=fog,
-            clip=clip,
         )
         objects = [
             {"structure": _b64(_bcif_bytes(m)), "scene": scene}
@@ -1017,16 +1103,9 @@ def render(
             ]
     else:
         description = _scene_description(
-            mols[0],
-            center=center,
-            rotate=rotate,
-            zoom=zoom,
-            background=background,
-            transparent=transparent,
-            fog=fog,
-            clip=clip,
+            mols[0], background=background, transparent=transparent, fog=fog
         )
-        description = _with_stated_camera(description)
+        description["camera"] = camera
         bcif_b64 = _b64(_bcif_bytes(mols[0]))
 
     if server is None:

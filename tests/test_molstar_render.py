@@ -33,9 +33,10 @@ def test_headless_page_pins_the_canvas_container_size():
     image: repeated renders of one molecule drifted from 516x473 down to
     432x397 pixels of drawn structure.
     """
-    page = (STATIC / "headless.html").read_text()
-    assert "position: absolute" in page
-    assert "inset: 0" in page
+    # Without spaces: the build minifies the page's style.
+    page = (STATIC / "headless.html").read_text().replace(" ", "")
+    assert "position:absolute" in page
+    assert "inset:0" in page
 
 
 def test_interactive_viewer_page_still_ships():
@@ -84,6 +85,15 @@ def test_center_matching_no_atoms_is_rejected():
     mol.coords = np.zeros((1, 3, 1), dtype=np.float32)
     with pytest.raises(ValueError, match="center"):
         render_mod.render(mol, center="resname NOPE")
+
+
+def test_center_as_a_point_names_what_center_takes():
+    """Coordinates are not a selection. They used to reach atomselect as
+    indices and fail with an IndexError that did not name center."""
+    mol = Molecule().empty(1)
+    mol.coords = np.zeros((1, 3, 1), dtype=np.float32)
+    with pytest.raises(TypeError, match="center is an atom selection"):
+        render_mod.render(mol, center=np.array([0.5, 1.0, 2.0]))
 
 
 @pytest.mark.parametrize("zoom", [0.0, -1.0])
@@ -296,7 +306,7 @@ def test_out_of_range_fog_is_rejected(fog):
 @pytest.mark.parametrize("clip", [0, -5])
 def test_non_positive_clip_is_rejected(clip):
     with pytest.raises(ValueError, match="clip must be a positive distance"):
-        render_mod._scene_description(_trypsin(), clip=clip)
+        render_mod.render(_trypsin(), clip=clip)
 
 
 @needs_chromium
@@ -322,6 +332,52 @@ def test_added_representation_types_draw(style):
     mol.reps.add("all", style, "Name")
     image = Image.open(io.BytesIO(render_mod.render(mol, size=(250, 250))))
     assert (np.asarray(image.convert("L")) < 245).sum() > 100, f"{style} drew nothing"
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+def test_interactions_draw_the_contacts_with_the_rest_of_the_molecule():
+    """As in pmview: the ligand alone has no partners, so its contacts come
+    from the whole molecule, drawn as lines from the ligand to the protein."""
+    import io
+
+    from PIL import Image
+
+    mol = Molecule("3ptb")  # the local PDB folder (conftest.py): benzamidine in its pocket
+    mol.filter("protein or resname BEN")
+    mol.reps.add("same residue as (protein and within 4 of resname BEN)", "Licorice", "Name")
+    mol.reps.add("resname BEN", "Licorice", "Name")
+
+    def pixels():
+        png = render_mod.render(mol, size=(300, 300), center="resname BEN")
+        return np.asarray(Image.open(io.BytesIO(png)).convert("RGB"))
+
+    plain = pixels()
+    mol.reps.add("resname BEN", "Interactions")
+    assert (pixels() != plain).any(axis=2).sum() > 50
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+def test_interactions_take_one_colour_as_in_pmview():
+    """A colour mode colours each contact by its kind; one colour colours them all."""
+    import io
+
+    from PIL import Image
+
+    def pixels(color):
+        mol = Molecule("3ptb")
+        mol.filter("protein or resname BEN")
+        mol.reps.add("resname BEN", "Licorice", "Name")
+        mol.reps.add("resname BEN", "Interactions", color)
+        png = render_mod.render(mol, size=(300, 300), center="resname BEN")
+        return np.asarray(Image.open(io.BytesIO(png)).convert("RGB")).astype(int)
+
+    by_kind, magenta = pixels("Name"), pixels("#ff00ff")
+    changed = (by_kind != magenta).any(axis=2)
+    assert changed.sum() > 50
+    red, green, blue = magenta[changed].T
+    assert ((red > 150) & (blue > 150) & (green < 120)).sum() > 20
     render_mod.shutdown_for_tests()
 
 
@@ -473,9 +529,35 @@ def test_framing_follows_the_requested_size():
         image = Image.open(io.BytesIO(render_mod.render(mol, size=size)))
         box = image.convert("RGB").point(lambda v: 255 if v < 245 else 0)
         box = box.convert("L").getbbox()
-        # Fraction of whichever dimension the fit binds on.
+        # Fraction of whichever dimension the fit binds on. The cartoon stops
+        # short of the outermost side chain atoms, which the fit takes in.
         fill = max((box[2] - box[0]) / size[0], (box[3] - box[1]) / size[1])
-        assert 0.4 < fill < 0.7, f"{size} drew {box}, filling {fill:.2f}"
+        assert 0.65 < fill < 0.98, f"{size} drew {box}, filling {fill:.2f}"
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+def test_an_atom_has_one_size_at_any_depth():
+    """The camera is orthographic, as in pmview.
+
+    In perspective an atom halfway to the camera drew twice as large, so in a
+    close view of a ligand the residues in front of it grew over it.
+    """
+    import io
+
+    from PIL import Image
+
+    mol = Molecule().empty(2)
+    mol.name[:] = mol.element[:] = "C"
+    mol.resname[:] = "MOL"
+    # Apart in depth, and one in each half of the image.
+    mol.coords = np.array([[-6, 0, -12], [6, 0, 12]], dtype=np.float32)[:, :, None]
+    mol.reps.add("all", "VDW", "steelblue")
+    png = render_mod.render(mol, size=(400, 300))
+    drawn = np.asarray(Image.open(io.BytesIO(png)).convert("L")) < 245
+    left, right = drawn[:, :200].sum(), drawn[:, 200:].sum()
+    assert left and right
+    assert abs(left - right) < 0.05 * max(left, right), f"the two atoms drew {left} and {right} pixels"
     render_mod.shutdown_for_tests()
 
 
@@ -862,15 +944,12 @@ def test_multi_payload_keeps_objects_apart_and_shares_the_camera():
     prot.reps.add("all", "NewCartoon", "Secondary Structure")
     lig.reps.add("all", "Licorice", "Name")
 
+    camera = render_mod._camera(
+        [prot, lig], [], center="resid 100", direction=None, up=None,
+        rotate="top", zoom=None, clip=None, size=(400, 300),
+    )
     scenes, globals_ = render_mod._multi_payload(
-        [prot, lig],
-        center="resid 100",
-        rotate="top",
-        zoom=None,
-        background="white",
-        transparent=False,
-        fog=None,
-        clip=None,
+        [prot, lig], camera=camera, background="white", transparent=False, fog=None
     )
     assert len(scenes) == 2
     assert [s["components"][0]["representation"]["type"] for s in scenes] == [
@@ -949,3 +1028,141 @@ def test_clip_without_a_camera_is_refused():
     for camera in ({"focus_sel": "resid 57"}, {"rotate": "top"}, {"zoom": 1.0}):
         scene = build_scene(mol, mol.reps.replist, clip=8, **camera)
         assert scene["camera"]["clip"] == 8.0
+
+
+def _camera(mols, **kw):
+    args = dict(center=None, direction=None, up=None, rotate=None, zoom=None, clip=None, size=(400, 300))
+    return render_mod._camera(mols, [], **{**args, **kw})
+
+
+def _rod():
+    """Eleven atoms in a line along x, 20 A long."""
+    mol = Molecule().empty(11)
+    mol.coords = np.zeros((11, 3, 1), dtype=np.float32)
+    mol.coords[:, 0, 0] = np.arange(11) * 2.0
+    mol.element[:] = "C"
+    mol.name[:] = "C"
+    return mol
+
+
+def test_direction_puts_the_camera_on_that_side():
+    cam = _camera([_rod()], direction=[1, 0, 0])
+    assert np.allclose(cam["direction"], [-1, 0, 0])  # camera -> target
+    assert np.allclose(cam["up"], [0, 1, 0])
+    # The same camera as the preset for that side.
+    preset = _camera([_rod()], rotate="right")
+    assert np.allclose(cam["direction"], preset["direction"])
+    assert np.allclose(cam["up"], preset["up"])
+
+
+def test_up_turns_the_image_and_is_made_perpendicular():
+    cam = _camera([_rod()], direction=[0, 0, 1], up=[1, 0, 0.5])
+    assert np.allclose(cam["up"], [1, 0, 0])
+
+
+def test_looking_along_the_default_up_puts_ahead_on_top():
+    cam = _camera([_rod()], direction=[0, 1, 0])
+    preset = _camera([_rod()], rotate="top")
+    assert np.allclose(cam["direction"], preset["direction"])
+    assert np.allclose(cam["up"], preset["up"])
+
+
+@pytest.mark.parametrize(
+    "kw, message",
+    [
+        (dict(direction=[1, 0, 0], rotate="top"), "not both"),
+        (dict(up=[0, 1, 0]), "give direction"),
+        (dict(direction=[0, 0, 1], up=[0, 0, 2]), "along direction"),
+        (dict(direction=[0, 0, 0]), "not all zero"),
+        (dict(direction=[1, 0]), "three numbers"),
+    ],
+)
+def test_bad_camera_vectors_are_refused(kw, message):
+    with pytest.raises(ValueError, match=message):
+        _camera([_rod()], **kw)
+
+
+def test_zoom_one_fits_what_the_camera_sees():
+    """A rod seen from the side fills the width; seen end on, it is a point."""
+    side = _camera([_rod()], direction=[0, 0, 1], size=(400, 200))
+    end_on = _camera([_rod()], direction=[1, 0, 0], size=(400, 200))
+    # half length 10 A over an aspect of 2, with the margin for the atoms' size
+    assert side["radius"] == pytest.approx(10 / 2 * 1.05 + 2)
+    assert end_on["radius"] == pytest.approx(1 * 1.05 + 2)
+    assert np.allclose(side["center"], [10, 0, 0])
+    tall = _camera([_rod()], direction=[0, 0, 1], size=(200, 400))
+    assert tall["radius"] == pytest.approx(10 * 1.05 + 2)
+    assert _camera([_rod()], direction=[0, 0, 1], size=(400, 200), zoom=2)["radius"] == pytest.approx(
+        side["radius"] / 2
+    )
+
+
+def test_the_slab_takes_in_everything_unless_clip_is_given():
+    rod = _rod()
+    cam = _camera([rod], center="index 0", direction=[0, 0, 1])
+    assert cam["clip_radius"] >= 20  # the far end of the rod, 20 A from the framed atom
+    assert _camera([rod], center="index 0", clip=4)["clip_radius"] == 4
+
+
+@needs_chromium
+def test_direction_draws_the_preset_image():
+    mol = _trypsin()
+    a = render_mod.render(mol, size=(200, 150), direction=[1, 0, 0])
+    b = render_mod.render(mol, size=(200, 150), rotate="right")
+    assert a == b
+
+
+@needs_chromium
+@pytest.mark.parametrize("size", [(400, 300), (300, 400)])
+def test_the_framed_atoms_fill_the_image(size):
+    """At zoom 1 the atoms reach near two opposite edges, and no further."""
+    from PIL import Image
+    import io
+
+    mol = _trypsin()
+    mol.reps.add("all", "VDW", "steelblue")
+    img = np.asarray(Image.open(io.BytesIO(render_mod.render(mol, size=size))).convert("L"))
+    rows, cols = np.nonzero(img < 245)
+    fill = max((cols.max() - cols.min()) / size[0], (rows.max() - rows.min()) / size[1])
+    assert 0.85 < fill < 0.99, fill
+    assert rows.min() > 0 and cols.min() > 0 and rows.max() < size[1] - 1 and cols.max() < size[0] - 1
+
+
+def test_without_center_the_camera_frames_what_is_drawn():
+    rod = _rod()
+    whole = _camera([rod], direction=[0, 0, 1])
+    rod.reps.add("index 0 to 5", "Licorice", "Name")
+    drawn = _camera([rod], direction=[0, 0, 1])
+    assert np.allclose(drawn["center"], [5, 0, 0])
+    assert drawn["radius"] < whole["radius"]
+    rod.reps.update(0, visibility=False)
+    rod.reps.add("index 10", "VDW", "red")
+    assert np.allclose(_camera([rod], direction=[0, 0, 1])["center"], [20, 0, 0])
+
+
+@needs_chromium
+def test_a_label_param_changes_the_label():
+    """``attachment`` puts the text beside its atom and ``tether`` draws a line to it."""
+
+    def png(params):
+        mol = _trypsin()
+        mol.reps.add("resid 189", "Licorice", "Name")
+        mol.reps.add("resid 189 and name CA", "Labels", label_fields="resname", params=params)
+        return render_mod.render(mol, size=(300, 300), center="resid 189")
+
+    assert png(None) != png({"attachment": "bottom-left", "tether": True, "tetherLength": 3})
+    render_mod.shutdown_for_tests()
+
+
+@needs_chromium
+@pytest.mark.parametrize(
+    "style, kw",
+    [("Licorice", {}), ("Labels", {"label_fields": "resname"})],
+)
+def test_an_unknown_mol_star_setting_is_an_error(style, kw):
+    mol = _trypsin()
+    mol.reps.add("resid 189", "Licorice", "Name")
+    mol.reps.add("resid 189 and name CA", style, params={"tetherr": True}, **kw)
+    with pytest.raises(RuntimeError, match="has no Mol\\* setting tetherr"):
+        render_mod.render(mol, size=(200, 200), center="resid 189")
+    render_mod.shutdown_for_tests()

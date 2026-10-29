@@ -34,6 +34,7 @@ MOLSTAR_STYLES = {
     "putty": "putty",
     "backbone": "backbone",
     "ellipsoid": "ellipsoid",
+    "interactions": "interactions",
 }
 
 #: The VMD representation each Mol* style name corresponds to. VMD's own names
@@ -105,6 +106,7 @@ _STYLES_WITHOUT_VMD = (
     "putty",
     "backbone",
     "ellipsoid",
+    "interactions",
 )
 #: The same for NGL, which does draw a backbone but none of the rest.
 _STYLES_WITHOUT_NGL = (
@@ -114,6 +116,7 @@ _STYLES_WITHOUT_NGL = (
     "formalcharges",
     "putty",
     "ellipsoid",
+    "interactions",
 )
 
 
@@ -271,6 +274,7 @@ class Representations:
         label_style: dict | None = None,
         visibility: bool | None = None,
         update_sel_every_frame: bool | None = None,
+        params: dict | None = None,
     ):
         """Adds a new representation for Molecule.
 
@@ -299,11 +303,18 @@ class Representations:
               the atom name unless ``label_fields`` says otherwise.
             - ``FormalCharges``: ``+1``/``-1`` on atoms carrying a formal
               charge.
+            - ``Interactions`` (``interactions``): dashed lines for the
+              non-covalent contacts of the selected atoms with the rest of
+              their molecule (hydrogen bonds, pi stacking, cation-pi, halogen
+              bonds, metal coordination), found by Mol* from the geometry and
+              the bond orders, in Mol*'s colour for each kind of contact, or in
+              the one colour given.
 
             Spacing, case and hyphens are ignored, and anything else is
             rejected rather than drawn as something it is not. ``Labels`` and
             ``FormalCharges`` draw text over another representation that draws
-            the atoms themselves, and neither reaches VMD or NGL. A name from
+            the atoms themselves. Neither they nor ``Interactions`` reach VMD
+            or NGL. A name from
             neither vocabulary is passed to the VMD backend as written, so
             VMD's own styles still work there.
         color : str or int
@@ -324,7 +335,7 @@ class Representations:
             Opacity of the representation. 0 is fully transparent and 1 is fully opaque.
         size : float
             Scales the drawn size: stick and sphere radius, surface probe, point
-            size, label text. Each style keeps its own sensible size at 1.
+            size, label text. 1 is the normal size of each style, and 0.6 of sticks.
         c_atom_color : str
             Colour for carbon atoms only, leaving nitrogen, oxygen and the rest
             their element colours. Takes an SVG colour name, a ``#rrggbb``
@@ -354,6 +365,10 @@ class Representations:
             trajectory frame, which is what a coordinate-dependent selection
             such as ``within 5 of resname BEN`` needs to follow the structure.
             A rendered image is one frame, so this does not reach it.
+        params : dict
+            Any other Mol* setting of the style, by its Mol* name, such as
+            ``{'tether': True}`` for a label. A name the style does not have
+            makes the render raise, with the names it has.
         """
         self.replist.append(
             _Representation(
@@ -369,6 +384,7 @@ class Representations:
                 label_style,
                 visibility,
                 update_sel_every_frame,
+                params,
             )
         )
         self._notify("added", len(self.replist) - 1, self.replist[-1])
@@ -388,6 +404,7 @@ class Representations:
         label_style: dict | None = None,
         visibility: bool | None = None,
         update_sel_every_frame: bool | None = None,
+        params: dict | None = None,
     ):
         """Change one representation in place, leaving the rest of it alone.
 
@@ -425,6 +442,9 @@ class Representations:
         update_sel_every_frame : bool
             Whether a viewer re-evaluates the selection per frame. See
             :meth:`add`.
+        params : dict
+            Mol* settings. They join the ones set before, and None sets one
+            back to its default. See :meth:`add`.
 
         Examples
         --------
@@ -452,6 +472,8 @@ class Representations:
                 setattr(rep, name, value)
         if visibility is not None:
             rep.visibility = bool(visibility)
+        if params is not None:
+            rep.params = {**(rep.params or {}), **_plain_params(params)}
         self._notify("updated", index, rep)
 
     def addDefaults(self):
@@ -641,6 +663,8 @@ class Representations:
             out["opacity"] = float(rep.opacity)
         if rep.size is not None:
             out["size_factor"] = float(rep.size)
+        if rep.params:
+            out["params"] = dict(rep.params)
         return out
 
     def _repsVMD(self, viewer):
@@ -680,6 +704,22 @@ class Representations:
                 viewer.representations = reps
 
 
+def _plain_params(params) -> dict:
+    """``params`` with NumPy arrays and numbers as Python lists and numbers."""
+    import json
+
+    if not isinstance(params, dict):
+        raise TypeError(
+            "'params' must be a dict of Mol* settings, such as {'tether': True}."
+        )
+    try:
+        return json.loads(json.dumps(params, default=lambda v: v.tolist()))
+    except (AttributeError, TypeError):
+        raise TypeError(
+            "'params' must hold numbers, text, True or False, lists and dicts."
+        )
+
+
 class _Representation:
     """Class that stores a representation for Molecule
 
@@ -712,6 +752,8 @@ class _Representation:
     update_sel_every_frame : bool
         Whether the selection is re-evaluated per frame. See
         :meth:`Representations.add`.
+    params : dict
+        Other Mol* settings of the style. See :meth:`Representations.add`.
     frames : list
         List of frames to visualize with this representation. If None it will visualize the current frame only.
     opacity : float
@@ -738,6 +780,7 @@ class _Representation:
         label_style=None,
         visibility=None,
         update_sel_every_frame=None,
+        params=None,
     ):
         self.sel = "all" if sel is None else sel
         self.style = "Lines" if style is None else style
@@ -751,3 +794,4 @@ class _Representation:
         self.label_style = label_style
         self.visibility = True if visibility is None else bool(visibility)
         self.update_sel_every_frame = update_sel_every_frame
+        self.params = None if params is None else _plain_params(params)

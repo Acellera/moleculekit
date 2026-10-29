@@ -2607,12 +2607,14 @@ class Molecule(object):
             Mol*'s ``cartoon``, ``ball-and-stick``, ``spacefill``, ``line``,
             ``molecular-surface``, ``gaussian-surface``, ``point``, ``putty``,
             ``backbone``, ``ellipsoid`` and
-            ``atom-label`` (also ``label``) for the same things. Spacing, case
+            ``atom-label`` (also ``label``) for the same things, and
+            ``Interactions``: the non-covalent contacts of the selected atoms
+            with the rest of the molecule, as dashed lines. Spacing, case
             and hyphens are ignored, and anything else is rejected rather than
             drawn as something it is not. ``Labels`` writes each atom's name
             beside it and ``FormalCharges`` writes ``+1``/``-1`` on atoms
             carrying one, both on top of another representation that draws the
-            atoms; neither reaches VMD or NGL. A name from neither list is passed
+            atoms; neither reaches VMD or NGL, nor does ``Interactions``. A name from neither list is passed
             to the VMD backend as written, so VMD's own styles still work
             there.
         color : str or int
@@ -2760,6 +2762,8 @@ class Molecule(object):
         size: tuple[int, int] = (1200, 900),
         quality: str = "fast",
         center: "str | np.ndarray | None" = None,
+        direction=None,
+        up=None,
         rotate=None,
         zoom: float | None = None,
         background: str = "white",
@@ -2789,15 +2793,23 @@ class Molecule(object):
             times the render time on the software fallback.
         center : str or np.ndarray or None, optional
             Atom selection, boolean mask or index array to frame the camera on,
-            which is also the point ``rotate`` orbits and the extent ``zoom``
-            scales. None frames the whole structure.
+            which is also the point the camera turns around and the extent
+            ``zoom`` scales. None frames the atoms that the representations draw.
+        direction : sequence of float or None, optional
+            ``[x, y, z]`` in the coordinates of the atoms: the camera looks
+            from that side of the framed atoms.
+        up : sequence of float or None, optional
+            ``[x, y, z]``, with ``direction``: the direction that points to the
+            top of the image. By default y.
         rotate : str or tuple of float or None, optional
-            Camera orientation, either one of ``"front"``, ``"back"``,
-            ``"left"``, ``"right"``, ``"top"`` and ``"bottom"``, or
-            ``(rx, ry, rz)`` degrees about the x, y and z axes in that order.
-            This orbits the camera, it does not move the molecule.
+            Camera orientation in place of ``direction``, either one of
+            ``"front"``, ``"back"``, ``"left"``, ``"right"``, ``"top"`` and
+            ``"bottom"``, or ``(rx, ry, rz)`` degrees about the x, y and z axes
+            in that order. This orbits the camera, it does not move the
+            molecule.
         zoom : float or None, optional
-            Camera tightness. Larger values move the camera closer.
+            At 1 (the default), the framed atoms, as the camera sees them, fill
+            the image. Larger values move the camera closer.
         background : str, optional
             Background colour as an SVG colour name or hex string.
         transparent : bool, optional
@@ -2831,8 +2843,9 @@ class Molecule(object):
             If ``quality`` names no known preset, if ``size`` is not at least
             one pixel in each dimension, if ``center`` matches no atoms, if
             ``zoom`` is not positive, if ``rotate`` is a string naming no known
-            orientation preset, if ``fog`` falls outside 0 to 100, or if
-            ``clip`` is not positive.
+            orientation preset, if ``fog`` falls outside 0 to 100, if ``clip``
+            is not positive, if ``direction`` and ``rotate`` are both given, or
+            if ``up`` is given without ``direction`` or along it.
         RuntimeError
             If no browser is found, if WebGL is unavailable, if the page fails,
             or if the rendered image does not match the requested size.
@@ -2843,6 +2856,7 @@ class Molecule(object):
         >>> mol.reps.add(sel="protein", style="NewCartoon", color="SecondaryStructure")
         >>> mol.render("trypsin.png", size=(1200, 900), rotate="top")  # doctest: +SKIP
         >>> mol.render("ligand.png", center="resname BEN", zoom=0.25)  # doctest: +SKIP
+        >>> mol.render("side.png", center="resname BEN", direction=[1, 0, 0])  # doctest: +SKIP
         """
         from moleculekit.viewer.molstar import render as _render
 
@@ -2852,6 +2866,8 @@ class Molecule(object):
             size=size,
             quality=quality,
             center=center,
+            direction=direction,
+            up=up,
             rotate=rotate,
             zoom=zoom,
             background=background,

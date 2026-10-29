@@ -12,6 +12,7 @@ in notebooks)."""
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -29,6 +30,8 @@ from moleculekit.viewer.molstar.scene import (  # noqa: F401  (re-exported)
 
 if TYPE_CHECKING:
     from moleculekit.molecule import Molecule
+
+logger = logging.getLogger(__name__)
 
 
 def _import_mvs():
@@ -87,6 +90,10 @@ def mvs_from_scene(scene: dict, *, structure_url: str) -> str:
     for comp in scene["components"]:
         selector = _selector(comp["select"], ComponentExpression)
         rep_kwargs = dict(comp["representation"])
+        if rep_kwargs["type"] == "interactions":
+            # MVS has no representation for contacts; render() and the viewer draw them
+            logger.warning("The inline view does not draw Interactions.")
+            continue
         component = structure.component(selector=selector).representation(**rep_kwargs)
         color = comp.get("color") or {}
         if "theme" in color:

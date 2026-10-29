@@ -2992,7 +2992,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ---
 
 Name: immutable
-Version: 5.1.5
+Version: 5.1.9
 License: MIT
 Private: false
 Description: Immutable Data Collections

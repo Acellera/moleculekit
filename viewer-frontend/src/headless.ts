@@ -8,6 +8,7 @@ import { PluginContext } from 'molstar/lib/mol-plugin/context'
 import { DefaultPluginSpec } from 'molstar/lib/mol-plugin/spec'
 import { ParamDefinition as PD } from 'molstar/lib/mol-util/param-definition'
 import { SsaoParams } from 'molstar/lib/mol-canvas3d/passes/ssao'
+import type { Canvas3D } from 'molstar/lib/mol-canvas3d/canvas3d'
 import type { StateObjectSelector } from 'molstar/lib/mol-state'
 import { applyScene, applyVolume, type Scene, type VolumeRep } from './scene'
 
@@ -43,6 +44,16 @@ async function init(width: number, height: number): Promise<string> {
   if (!ok) {
     throw new Error(`Mol* could not initialise a WebGL viewer. GL reports: ${glInfo()}`)
   }
+  // Every render states its camera (scene.ts applyCamera), so Mol*'s own reset
+  // only fights it. That reset fires when a commit adds geometry outside the
+  // old bounds, which a scene of several structures does once per structure,
+  // and it animates to a fit of the whole scene for 250 ms. A camera requested
+  // during the move only retargets it, so the screenshot caught the camera in
+  // flight: three renders of one scene gave three framings, and on a render
+  // server sometimes a blank image and blank images after it.
+  // Orthographic, as in pmview: an atom has the same size at all depths, so
+  // atoms near the camera do not grow and cover the subject.
+  plugin.canvas3d!.setProps({ camera: { manualReset: true, mode: 'orthographic' } })
   await warmScreenshotPass()
   return glInfo()
 }
@@ -167,19 +178,20 @@ async function loadVolumes(volumes: { ccp4_gz: string; reps: VolumeRep[] }[]): P
 }
 
 /**
- * Apply one scene per structure, then the parts that belong to the whole
- * picture: the background, and a camera that frames every object at once.
+ * Commit what the scenes built, camera included, and wait for a draw of it.
+ *
+ * Without this the screenshot can be taken against an empty or half-built
+ * scene. The commit is synchronous because several structures otherwise
+ * commit over several frames, and the camera request resolves only after the
+ * last of them: a draw counted from before the scenes was often one with the
+ * previous render's camera.
  */
-async function applyScenesAndDraw(scenes: Scene[], globals: Scene): Promise<void> {
-  if (!plugin) throw new Error('loadStructures() must run first')
-  const canvas3d = plugin.canvas3d!
+async function settle(canvas3d: Canvas3D): Promise<void> {
+  canvas3d.commit(true)
+  // didDraw is a BehaviorSubject: subscribing to it always replays whatever
+  // value it last held, so wait for a strictly later draw.
   const baseline = canvas3d.didDraw.value
-  for (let i = 0; i < scenes.length; i++) {
-    await applyScene(plugin, structureRefs[i], scenes[i])
-  }
-  // The camera and canvas belong to the picture, not to any one object, so
-  // they are applied once at the end against the first structure.
-  await applyScene(plugin, structureRefs[0], globals)
+  canvas3d.requestDraw()
   await new Promise<void>((resolve) => {
     const sub = canvas3d.didDraw.subscribe((t) => {
       if (t > baseline) {
@@ -190,25 +202,25 @@ async function applyScenesAndDraw(scenes: Scene[], globals: Scene): Promise<void
   })
 }
 
+/**
+ * Apply one scene per structure, then the parts that belong to the whole
+ * picture: the background, and a camera that frames every object at once.
+ */
+async function applyScenesAndDraw(scenes: Scene[], globals: Scene): Promise<void> {
+  if (!plugin) throw new Error('loadStructures() must run first')
+  for (let i = 0; i < scenes.length; i++) {
+    await applyScene(plugin, structureRefs[i], scenes[i])
+  }
+  // The camera and canvas belong to the picture, not to any one object, so
+  // they are applied once at the end against the first structure.
+  await applyScene(plugin, structureRefs[0], globals)
+  await settle(plugin.canvas3d!)
+}
+
 async function applySceneAndDraw(scene: Scene): Promise<void> {
   if (!plugin || !structureRef) throw new Error('loadStructure() must run first')
-  const canvas3d = plugin.canvas3d!
-  // didDraw is a BehaviorSubject: subscribing to it always replays whatever
-  // value it last held, even if that draw predates this call. Capture the
-  // baseline before applying and wait for a strictly later draw, so we do
-  // not resolve on a stale replay of a draw from init() or a prior scene.
-  const baseline = canvas3d.didDraw.value
   await applyScene(plugin, structureRef, scene)
-  // Resolve only once something has actually been drawn after this. Without
-  // this the screenshot can be taken against an empty or half-built scene.
-  await new Promise<void>((resolve) => {
-    const sub = canvas3d.didDraw.subscribe((t) => {
-      if (t > baseline) {
-        sub.unsubscribe()
-        resolve()
-      }
-    })
-  })
+  await settle(plugin.canvas3d!)
 }
 
 
